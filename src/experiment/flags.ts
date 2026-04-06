@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ExperimentAssignment } from "../types.js";
+import { queryFactors } from "../factors/query.js";
+import { evaluateTargeting } from "./targeting.js";
+import type { TargetingRule } from "./targeting.js";
 
 /**
  * Flag evaluation: reads experiment assignments for the current user.
@@ -73,6 +76,9 @@ async function assignToExperiment(
   const experiment = await fetchRunningExperiment(supabase, experimentName);
   if (!experiment) return null;
 
+  const isTargeted = await checkTargeting(supabase, userId, experiment);
+  if (!isTargeted) return null;
+
   const variants = await fetchExperimentVariants(supabase, experiment.id);
   if (variants.length === 0) return null;
 
@@ -96,19 +102,37 @@ async function assignToExperiment(
   };
 }
 
+interface RunningExperiment {
+  id: string;
+  name: string;
+  component_path: string;
+  targeting_rules: TargetingRule[];
+}
+
 async function fetchRunningExperiment(
   supabase: SupabaseClient,
   experimentName: string,
-): Promise<{ id: string; name: string } | null> {
+): Promise<RunningExperiment | null> {
   const { data, error } = await supabase
     .from("experiments")
-    .select("id, name")
+    .select("id, name, component_path, targeting_rules")
     .eq("name", experimentName)
     .eq("status", "running")
     .maybeSingle();
 
   if (error || !data) return null;
-  return data as { id: string; name: string };
+  return data as RunningExperiment;
+}
+
+async function checkTargeting(
+  supabase: SupabaseClient,
+  userId: string,
+  experiment: RunningExperiment,
+): Promise<boolean> {
+  if (!experiment.targeting_rules || experiment.targeting_rules.length === 0) return true;
+
+  const factors = await queryFactors(supabase, userId, experiment.component_path);
+  return evaluateTargeting(factors, experiment.targeting_rules);
 }
 
 interface VariantWithTraffic {

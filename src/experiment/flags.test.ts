@@ -109,7 +109,7 @@ describe("evaluateFlag", () => {
     const { client, assignmentInsertMock, exposureInsertMock } = createMockSupabase({
       userId: "user-456",
       existingAssignment: null,
-      experiment: { id: "exp-2", name: "cta-text" },
+      experiment: { id: "exp-2", name: "cta-text", component_path: "test/cta", targeting_rules: [] },
       variants: [
         { variant_key: "control", config: { text: "Submit" }, traffic_percentage: 50 },
         { variant_key: "variant-a", config: { text: "Go!" }, traffic_percentage: 50 },

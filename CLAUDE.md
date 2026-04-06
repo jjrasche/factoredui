@@ -23,7 +23,7 @@ Autonomous app optimization library. Captures user interactions, computes standa
 
 ## Commands
 - `npm run build` -- tsup (ESM + CJS + DTS)
-- `npm test` -- vitest run (53 tests: 31 unit, 22 integration against local Supabase)
+- `npm test` -- vitest run (57 tests: 31 unit, 26 integration against local Supabase)
 - `npm run typecheck` -- tsc --noEmit
 - `npx supabase start` -- local Supabase (required for integration tests)
 
