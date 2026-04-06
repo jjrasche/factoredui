@@ -15,7 +15,7 @@ Autonomous app optimization library. Captures user interactions, computes standa
 - `factors/` -- three-tier computation: alarm, diagnostic, structural
 - `experiment/` -- feature flags, bucketing, exposure tracking
 - `bindings/` -- React provider/hooks (future: Flutter, native)
-- `migrations/` -- Supabase schema, factor views, experiment tables
+- `supabase/migrations/` -- Supabase schema, factor views, experiment tables
 
 ## Key concepts
 - CONCEPT.md -- full concept brief, design decisions, three audiences
@@ -23,7 +23,7 @@ Autonomous app optimization library. Captures user interactions, computes standa
 
 ## Commands
 - `npm run build` -- tsup (ESM + CJS + DTS)
-- `npm test` -- vitest run (23 tests: 17 unit, 6 integration against local Supabase)
+- `npm test` -- vitest run (37 tests: 22 unit, 15 integration against local Supabase)
 - `npm run typecheck` -- tsc --noEmit
 - `npx supabase start` -- local Supabase (required for integration tests)
 
