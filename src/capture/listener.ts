@@ -53,7 +53,7 @@ export function createEventListener(
   function startListening(): void {
     registerHandler("click", document, mapClickEvent, { capture: true });
     registerThrottledHandler("scroll", window, mapScrollEvent, { passive: true });
-    registerHandler("input", document, mapInputEvent, { capture: true });
+    registerThrottledHandler("input", document, mapInputEvent, { capture: true });
     registerHandler("focus", document, mapFocusEvent, { capture: true });
     registerHandler("blur", document, mapBlurEvent, { capture: true });
     registerHandler("submit", document, mapSubmitEvent, { capture: true });
