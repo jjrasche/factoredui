@@ -6,6 +6,8 @@ import { resolveComponentPath } from "./path.js";
  * Framework-agnostic: uses raw addEventListener on document/window.
  */
 
+const THROTTLE_INTERVAL_MS = 100;
+
 export interface EventListenerHandle {
   startListening: () => void;
   stopListening: () => void;
@@ -30,14 +32,32 @@ export function createEventListener(
     target.addEventListener(eventName, handler, options);
   }
 
+  function registerThrottledHandler(
+    eventName: string,
+    target: EventTarget,
+    mapToObserveEvent: (event: Event) => ObserveEvent | null,
+    options?: AddEventListenerOptions,
+  ): void {
+    let lastFiredAt = 0;
+    const handler = (event: Event) => {
+      const now = Date.now();
+      if (now - lastFiredAt < THROTTLE_INTERVAL_MS) return;
+      lastFiredAt = now;
+      const mapped = mapToObserveEvent(event);
+      if (mapped) onEvent(mapped);
+    };
+    handlers.set(eventName, handler);
+    target.addEventListener(eventName, handler, options);
+  }
+
   function startListening(): void {
     registerHandler("click", document, mapClickEvent, { capture: true });
-    registerHandler("scroll", window, mapScrollEvent, { passive: true });
+    registerThrottledHandler("scroll", window, mapScrollEvent, { passive: true });
     registerHandler("input", document, mapInputEvent, { capture: true });
     registerHandler("focus", document, mapFocusEvent, { capture: true });
     registerHandler("blur", document, mapBlurEvent, { capture: true });
     registerHandler("submit", document, mapSubmitEvent, { capture: true });
-    registerHandler("resize", window, mapResizeEvent, { passive: true });
+    registerThrottledHandler("resize", window, mapResizeEvent, { passive: true });
     registerHandler("error", window, mapErrorEvent);
     registerHandler(
       "visibilitychange",

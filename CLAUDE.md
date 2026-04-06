@@ -22,7 +22,10 @@ Autonomous app optimization library. Captures user interactions, computes standa
 - RESEARCH.md -- landscape analysis, prior art, novelty assessment
 
 ## Commands
-- TBD -- project is in concept/architecture phase
+- `npm run build` -- tsup (ESM + CJS + DTS)
+- `npm test` -- vitest run (23 tests: 17 unit, 6 integration against local Supabase)
+- `npm run typecheck` -- tsc --noEmit
+- `npx supabase start` -- local Supabase (required for integration tests)
 
 ## References
 - `~/.claude/references/coding-standards.md` -- read before writing any code
