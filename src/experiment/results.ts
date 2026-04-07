@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { queryFactorDelta } from "../factors/snapshots.js";
 import type { FactorDelta } from "../factors/snapshots.js";
 
 export interface VariantResult {
@@ -77,34 +76,28 @@ async function computeVariantDeltas(
   const beforeDate = new Date(experimentCreatedAt);
   const afterDate = new Date();
 
-  const deltaAccumulator = new Map<string, { sum: number; beforeSum: number; afterSum: number; count: number }>();
+  const { data, error } = await client.rpc("bulk_factor_deltas", {
+    p_user_ids: userIds,
+    p_component: componentPath,
+    p_factor_names: factorNames,
+    p_before: beforeDate.toISOString(),
+    p_after: afterDate.toISOString(),
+  });
 
-  for (const userId of userIds) {
-    for (const factorName of factorNames) {
-      const delta = await queryFactorDelta(
-        client, userId, componentPath, factorName, beforeDate, afterDate,
-      );
-      if (!delta) continue;
+  if (error) throw new Error(`bulk_factor_deltas failed: ${error.message}`);
+  if (!data) return [];
 
-      const existing = deltaAccumulator.get(factorName) ?? { sum: 0, beforeSum: 0, afterSum: 0, count: 0 };
-      existing.sum += delta.delta;
-      existing.beforeSum += delta.before;
-      existing.afterSum += delta.after;
-      existing.count += 1;
-      deltaAccumulator.set(factorName, existing);
-    }
-  }
+  return (data as BulkDeltaRow[]).map(row => ({
+    factor_name: row.factor_name,
+    before: row.avg_before,
+    after: row.avg_after,
+    delta: row.avg_delta,
+  }));
+}
 
-  const averagedDeltas: FactorDelta[] = [];
-  for (const [factorName, acc] of deltaAccumulator) {
-    if (acc.count === 0) continue;
-    averagedDeltas.push({
-      factor_name: factorName,
-      before: acc.beforeSum / acc.count,
-      after: acc.afterSum / acc.count,
-      delta: acc.sum / acc.count,
-    });
-  }
-
-  return averagedDeltas;
+interface BulkDeltaRow {
+  factor_name: string;
+  avg_before: number;
+  avg_after: number;
+  avg_delta: number;
 }
