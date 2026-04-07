@@ -15,6 +15,16 @@ import type {
 } from "../types.js";
 import { initCapture } from "../capture/index.js";
 import { evaluateFlag } from "../experiment/flags.js";
+import {
+  queryGovernanceLog,
+  queryRecentGovernanceLog,
+  type GovernanceLogRow,
+} from "../experiment/governance-log.js";
+import {
+  queryExperimentSummaries,
+  type ExperimentSummaryRow,
+  type ExperimentSummaryFilters,
+} from "../experiment/dashboard.js";
 
 // --- Context ---
 
@@ -160,4 +170,93 @@ async function fetchUserFactors(
   const { data, error } = await query;
   if (error || !data) return [];
   return data as Factor[];
+}
+
+// --- useGovernanceLog ---
+
+interface UseGovernanceLogResult {
+  log: GovernanceLogRow[];
+  isLoading: boolean;
+}
+
+export function useGovernanceLog(experimentId: string): UseGovernanceLogResult {
+  const { supabase } = useObserveContext();
+  const [log, setLog] = useState<GovernanceLogRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    queryGovernanceLog(supabase, experimentId).then((rows) => {
+      if (!isCancelled) {
+        setLog(rows);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (!isCancelled) setIsLoading(false);
+    });
+
+    return () => { isCancelled = true; };
+  }, [supabase, experimentId]);
+
+  return { log, isLoading };
+}
+
+// --- useRecentGovernanceLog ---
+
+export function useRecentGovernanceLog(limit?: number): UseGovernanceLogResult {
+  const { supabase } = useObserveContext();
+  const [log, setLog] = useState<GovernanceLogRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    queryRecentGovernanceLog(supabase, limit).then((rows) => {
+      if (!isCancelled) {
+        setLog(rows);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (!isCancelled) setIsLoading(false);
+    });
+
+    return () => { isCancelled = true; };
+  }, [supabase, limit]);
+
+  return { log, isLoading };
+}
+
+// --- useExperimentDashboard ---
+
+interface UseExperimentDashboardResult {
+  summaries: ExperimentSummaryRow[];
+  isLoading: boolean;
+}
+
+export function useExperimentDashboard(
+  filters?: ExperimentSummaryFilters,
+): UseExperimentDashboardResult {
+  const { supabase } = useObserveContext();
+  const [summaries, setSummaries] = useState<ExperimentSummaryRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const filterKey = JSON.stringify(filters ?? {});
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    queryExperimentSummaries(supabase, filters).then((rows) => {
+      if (!isCancelled) {
+        setSummaries(rows);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (!isCancelled) setIsLoading(false);
+    });
+
+    return () => { isCancelled = true; };
+  }, [supabase, filterKey]);
+
+  return { summaries, isLoading };
 }
