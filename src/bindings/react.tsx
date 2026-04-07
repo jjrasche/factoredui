@@ -218,11 +218,16 @@ export function useRecentGovernanceLog(limit?: number): UseGovernanceLogResult {
   const { supabase } = useObserveContext();
   const [log, setLog] = useState<GovernanceLogRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const effectiveLimit = limit ?? 50;
+
+  const prependRow = useCallback((row: GovernanceLogRow) => {
+    setLog((prev) => [row, ...prev].slice(0, effectiveLimit));
+  }, [effectiveLimit]);
 
   useEffect(() => {
     let isCancelled = false;
 
-    queryRecentGovernanceLog(supabase, limit).then((rows) => {
+    queryRecentGovernanceLog(supabase, effectiveLimit).then((rows) => {
       if (!isCancelled) {
         setLog(rows);
         setIsLoading(false);
@@ -231,8 +236,13 @@ export function useRecentGovernanceLog(limit?: number): UseGovernanceLogResult {
       if (!isCancelled) setIsLoading(false);
     });
 
-    return () => { isCancelled = true; };
-  }, [supabase, limit]);
+    const channel = subscribeToAllGovernanceInserts(supabase, prependRow);
+
+    return () => {
+      isCancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, effectiveLimit, prependRow]);
 
   return { log, isLoading };
 }
@@ -300,6 +310,24 @@ function subscribeToGovernanceInserts(
         schema: "observe",
         table: "governance_log",
         filter: `experiment_id=eq.${experimentId}`,
+      },
+      (payload) => onInsert(payload.new as GovernanceLogRow),
+    )
+    .subscribe();
+}
+
+function subscribeToAllGovernanceInserts(
+  supabase: SupabaseClient,
+  onInsert: (row: GovernanceLogRow) => void,
+): RealtimeChannel {
+  return supabase
+    .channel("governance-log:all")
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "observe",
+        table: "governance_log",
       },
       (payload) => onInsert(payload.new as GovernanceLogRow),
     )

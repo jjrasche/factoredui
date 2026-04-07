@@ -17,7 +17,7 @@ export default defineConfig({
         test: {
           name: "integration",
           environment: "jsdom",
-          include: ["src/**/*.integration.test.ts"],
+          include: ["src/**/*.integration.test.ts", "src/**/*.integration.test.tsx"],
           fileParallelism: false,
         },
       },

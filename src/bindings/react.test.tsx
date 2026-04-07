@@ -122,7 +122,7 @@ describe("useRecentGovernanceLog", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.log).toEqual(GOVERNANCE_LOG_ROWS);
-    expect(governanceLogModule.queryRecentGovernanceLog).toHaveBeenCalledWith(mockSupabase, undefined);
+    expect(governanceLogModule.queryRecentGovernanceLog).toHaveBeenCalledWith(mockSupabase, 50);
   });
 
   it("passes custom limit to query function", async () => {
@@ -134,6 +134,85 @@ describe("useRecentGovernanceLog", () => {
 
     expect(governanceLogModule.queryRecentGovernanceLog).toHaveBeenCalledWith(mockSupabase, 10);
     expect(result.current.log).toHaveLength(1);
+  });
+});
+
+describe("useRecentGovernanceLog realtime", () => {
+  it("subscribes to all governance_log inserts without experiment filter", async () => {
+    vi.mocked(governanceLogModule.queryRecentGovernanceLog).mockResolvedValue(GOVERNANCE_LOG_ROWS);
+
+    const { result } = renderHook(() => useRecentGovernanceLog(), { wrapper: createWrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect((mockSupabase as any).channel).toHaveBeenCalledWith("governance-log:all");
+    expect(mockChannelInstance.on).toHaveBeenCalledWith(
+      "postgres_changes",
+      expect.objectContaining({
+        event: "INSERT",
+        schema: "observe",
+        table: "governance_log",
+      }),
+      expect.any(Function),
+    );
+    // No filter property — subscribes to all inserts
+    const callArgs = mockChannelInstance.on.mock.calls.find(
+      (call: unknown[]) => (call[1] as any)?.table === "governance_log" && !(call[1] as any)?.filter,
+    );
+    expect(callArgs).toBeDefined();
+    expect(mockChannelInstance.subscribe).toHaveBeenCalled();
+  });
+
+  it("prepends new rows and trims to limit", async () => {
+    vi.mocked(governanceLogModule.queryRecentGovernanceLog).mockResolvedValue([GOVERNANCE_LOG_ROWS[0]]);
+
+    const { result } = renderHook(() => useRecentGovernanceLog(2), { wrapper: createWrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.log).toHaveLength(1);
+
+    const onCallback = mockChannelInstance.on.mock.calls.find(
+      (call: unknown[]) => (call[1] as any)?.table === "governance_log" && !(call[1] as any)?.filter,
+    )?.[2] as (payload: { new: GovernanceLogRow }) => void;
+
+    const realtimeRow1: GovernanceLogRow = {
+      id: "log-recent-rt-1",
+      experiment_id: "exp-2",
+      verdict: "continue",
+      winning_variant: null,
+      factor_verdicts: [],
+      evaluated_at: "2026-04-04T00:00:00Z",
+    };
+
+    const realtimeRow2: GovernanceLogRow = {
+      id: "log-recent-rt-2",
+      experiment_id: "exp-3",
+      verdict: "conclude",
+      winning_variant: "variant-b",
+      factor_verdicts: [],
+      evaluated_at: "2026-04-05T00:00:00Z",
+    };
+
+    await act(async () => onCallback({ new: realtimeRow1 }));
+    expect(result.current.log).toHaveLength(2);
+    expect(result.current.log[0].id).toBe("log-recent-rt-1");
+
+    await act(async () => onCallback({ new: realtimeRow2 }));
+    // Trimmed to limit of 2
+    expect(result.current.log).toHaveLength(2);
+    expect(result.current.log[0].id).toBe("log-recent-rt-2");
+    expect(result.current.log[1].id).toBe("log-recent-rt-1");
+  });
+
+  it("removes channel on unmount", async () => {
+    vi.mocked(governanceLogModule.queryRecentGovernanceLog).mockResolvedValue([]);
+
+    const { unmount } = renderHook(() => useRecentGovernanceLog(), { wrapper: createWrapper });
+
+    await waitFor(() => {});
+    unmount();
+
+    expect((mockSupabase as any).removeChannel).toHaveBeenCalledWith(mockChannelInstance);
   });
 });
 

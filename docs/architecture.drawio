@@ -274,6 +274,42 @@
                         <mxPoint x="4" y="-10" as="offset"/>
                     </mxGeometry>
                 </mxCell>
+                <mxCell id="realtime" value="Supabase Realtime&lt;br&gt;&lt;i style='font-size:8px;color:#555'&gt;postgres_changes&lt;/i&gt;" style="whiteSpace=wrap;html=1;rounded=1;absoluteArcSize=1;arcSize=16;fillColor=#e6ecf0;strokeColor=#4472C4;fontSize=10;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="510" width="300" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_hook_gov_rt" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#4472C4;endArrow=block;endFill=1;strokeWidth=1;dashed=1;dashPattern=6 3;" parent="1" source="hook_gov_log" target="realtime" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_hook_gov_rt_lbl" value="subscribe&lt;br&gt;governance_log" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontColor=#4472C4;fontSize=8;" parent="e_hook_gov_rt" vertex="1" connectable="0">
+                    <mxGeometry x="-0.2" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_hook_recent_rt" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#4472C4;endArrow=block;endFill=1;strokeWidth=1;dashed=1;dashPattern=6 3;" parent="1" source="hook_recent_log" target="realtime" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_hook_recent_rt_lbl" value="subscribe&lt;br&gt;governance_log (all)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontColor=#4472C4;fontSize=8;" parent="e_hook_recent_rt" vertex="1" connectable="0">
+                    <mxGeometry x="-0.2" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_hook_dash_rt" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#4472C4;endArrow=block;endFill=1;strokeWidth=1;dashed=1;dashPattern=6 3;" parent="1" source="hook_dashboard" target="realtime" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_hook_dash_rt_lbl" value="subscribe&lt;br&gt;experiments (*)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontColor=#4472C4;fontSize=8;" parent="e_hook_dash_rt" vertex="1" connectable="0">
+                    <mxGeometry x="-0.2" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_rt_gov_tbl" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#4472C4;endArrow=block;endFill=0;strokeWidth=1;dashed=1;dashPattern=6 3;" parent="1" source="realtime" target="tbl_governance_log" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_rt_exp_tbl" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#4472C4;endArrow=block;endFill=0;strokeWidth=1;dashed=1;dashPattern=6 3;" parent="1" source="realtime" target="tbl_experiments" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="trigger_gov" value="on_factor_snapshot_insert&lt;br&gt;&lt;i style='font-size:8px;color:#555'&gt;trigger → evaluate_governance&lt;br&gt;5-min debounce&lt;/i&gt;" style="whiteSpace=wrap;html=1;rounded=1;absoluteArcSize=1;arcSize=16;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" parent="db_governance" vertex="1">
+                    <mxGeometry x="140" y="195" width="115" height="40" as="geometry"/>
+                </mxCell>
             </root>
         </mxGraphModel>
     </diagram>
