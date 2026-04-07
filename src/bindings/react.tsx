@@ -1,12 +1,13 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
   type ReactNode,
 } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
 import type {
   CaptureHandle,
   ExperimentAssignment,
@@ -184,6 +185,10 @@ export function useGovernanceLog(experimentId: string): UseGovernanceLogResult {
   const [log, setLog] = useState<GovernanceLogRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const prependRow = useCallback((row: GovernanceLogRow) => {
+    setLog((prev) => [row, ...prev]);
+  }, []);
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -196,8 +201,13 @@ export function useGovernanceLog(experimentId: string): UseGovernanceLogResult {
       if (!isCancelled) setIsLoading(false);
     });
 
-    return () => { isCancelled = true; };
-  }, [supabase, experimentId]);
+    const channel = subscribeToGovernanceInserts(supabase, experimentId, prependRow);
+
+    return () => {
+      isCancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, experimentId, prependRow]);
 
   return { log, isLoading };
 }
@@ -243,6 +253,12 @@ export function useExperimentDashboard(
 
   const filterKey = JSON.stringify(filters ?? {});
 
+  const refetchSummaries = useCallback(() => {
+    queryExperimentSummaries(supabase, filters).then((rows) => {
+      setSummaries(rows);
+    }).catch(() => {});
+  }, [supabase, filterKey]);
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -255,8 +271,55 @@ export function useExperimentDashboard(
       if (!isCancelled) setIsLoading(false);
     });
 
-    return () => { isCancelled = true; };
-  }, [supabase, filterKey]);
+    // v_experiment_summary is a view — realtime doesn't fire on views.
+    // Subscribe to the underlying experiments table and refetch on changes.
+    const channel = subscribeToExperimentChanges(supabase, refetchSummaries);
+
+    return () => {
+      isCancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, filterKey, refetchSummaries]);
 
   return { summaries, isLoading };
+}
+
+// --- Realtime subscription helpers ---
+
+function subscribeToGovernanceInserts(
+  supabase: SupabaseClient,
+  experimentId: string,
+  onInsert: (row: GovernanceLogRow) => void,
+): RealtimeChannel {
+  return supabase
+    .channel(`governance-log:${experimentId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "observe",
+        table: "governance_log",
+        filter: `experiment_id=eq.${experimentId}`,
+      },
+      (payload) => onInsert(payload.new as GovernanceLogRow),
+    )
+    .subscribe();
+}
+
+function subscribeToExperimentChanges(
+  supabase: SupabaseClient,
+  onChange: () => void,
+): RealtimeChannel {
+  return supabase
+    .channel("experiments:changes")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "observe",
+        table: "experiments",
+      },
+      () => onChange(),
+    )
+    .subscribe();
 }

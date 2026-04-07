@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { type ReactNode } from "react";
 import {
   ObserveProvider,
@@ -9,6 +9,7 @@ import {
 } from "./react.js";
 
 import * as governanceLogModule from "../experiment/governance-log.js";
+import type { GovernanceLogRow } from "../experiment/governance-log.js";
 import * as dashboardModule from "../experiment/dashboard.js";
 
 vi.mock("../experiment/governance-log.js", () => ({
@@ -31,7 +32,16 @@ vi.mock("../capture/index.js", () => ({
   })),
 }));
 
-const mockSupabase = { auth: { getUser: vi.fn() } } as never;
+const mockChannelInstance = {
+  on: vi.fn().mockReturnThis(),
+  subscribe: vi.fn().mockReturnThis(),
+};
+
+const mockSupabase = {
+  auth: { getUser: vi.fn() },
+  channel: vi.fn(() => mockChannelInstance),
+  removeChannel: vi.fn(),
+} as never;
 
 function createWrapper({ children }: { children: ReactNode }) {
   return (
@@ -158,5 +168,121 @@ describe("useExperimentDashboard", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.summaries).toEqual([]);
+  });
+});
+
+describe("realtime subscriptions", () => {
+  it("useGovernanceLog subscribes to governance_log inserts on mount", async () => {
+    vi.mocked(governanceLogModule.queryGovernanceLog).mockResolvedValue(GOVERNANCE_LOG_ROWS);
+
+    const { result } = renderHook(() => useGovernanceLog("exp-1"), { wrapper: createWrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect((mockSupabase as any).channel).toHaveBeenCalledWith("governance-log:exp-1");
+    expect(mockChannelInstance.on).toHaveBeenCalledWith(
+      "postgres_changes",
+      expect.objectContaining({
+        event: "INSERT",
+        schema: "observe",
+        table: "governance_log",
+        filter: "experiment_id=eq.exp-1",
+      }),
+      expect.any(Function),
+    );
+    expect(mockChannelInstance.subscribe).toHaveBeenCalled();
+  });
+
+  it("useGovernanceLog prepends new rows from realtime inserts", async () => {
+    vi.mocked(governanceLogModule.queryGovernanceLog).mockResolvedValue([GOVERNANCE_LOG_ROWS[0]]);
+
+    const { result } = renderHook(() => useGovernanceLog("exp-1"), { wrapper: createWrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.log).toHaveLength(1);
+
+    // Simulate a realtime INSERT by invoking the callback passed to .on()
+    const onCallback = mockChannelInstance.on.mock.calls.find(
+      (call: unknown[]) => call[1]?.table === "governance_log",
+    )?.[2] as (payload: { new: GovernanceLogRow }) => void;
+
+    const realtimeRow: GovernanceLogRow = {
+      id: "log-realtime",
+      experiment_id: "exp-1",
+      verdict: "flag_review",
+      winning_variant: null,
+      factor_verdicts: [],
+      evaluated_at: "2026-04-03T00:00:00Z",
+    };
+
+    await act(async () => onCallback({ new: realtimeRow }));
+
+    expect(result.current.log).toHaveLength(2);
+    expect(result.current.log[0].id).toBe("log-realtime");
+  });
+
+  it("useGovernanceLog removes channel on unmount", async () => {
+    vi.mocked(governanceLogModule.queryGovernanceLog).mockResolvedValue([]);
+
+    const { unmount } = renderHook(() => useGovernanceLog("exp-1"), { wrapper: createWrapper });
+
+    await waitFor(() => {});
+    unmount();
+
+    expect((mockSupabase as any).removeChannel).toHaveBeenCalledWith(mockChannelInstance);
+  });
+
+  it("useExperimentDashboard subscribes to experiments table changes", async () => {
+    vi.mocked(dashboardModule.queryExperimentSummaries).mockResolvedValue(EXPERIMENT_SUMMARIES);
+
+    const { result } = renderHook(() => useExperimentDashboard(), { wrapper: createWrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect((mockSupabase as any).channel).toHaveBeenCalledWith("experiments:changes");
+    expect(mockChannelInstance.on).toHaveBeenCalledWith(
+      "postgres_changes",
+      expect.objectContaining({
+        event: "*",
+        schema: "observe",
+        table: "experiments",
+      }),
+      expect.any(Function),
+    );
+  });
+
+  it("useExperimentDashboard refetches on experiment table change", async () => {
+    vi.mocked(dashboardModule.queryExperimentSummaries).mockResolvedValue(EXPERIMENT_SUMMARIES);
+
+    renderHook(() => useExperimentDashboard(), { wrapper: createWrapper });
+
+    await waitFor(() => {
+      expect(dashboardModule.queryExperimentSummaries).toHaveBeenCalledTimes(1);
+    });
+
+    // Simulate a realtime change on experiments table
+    const onCallback = mockChannelInstance.on.mock.calls.find(
+      (call: unknown[]) => call[1]?.table === "experiments",
+    )?.[2] as () => void;
+
+    const updatedSummaries = [{ ...EXPERIMENT_SUMMARIES[0], status: "concluded", winning_variant: "variant-a" }];
+    vi.mocked(dashboardModule.queryExperimentSummaries).mockResolvedValue(updatedSummaries);
+
+    await act(async () => onCallback());
+
+    await waitFor(() => {
+      expect(dashboardModule.queryExperimentSummaries).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("useExperimentDashboard removes channel on unmount", async () => {
+    vi.mocked(dashboardModule.queryExperimentSummaries).mockResolvedValue([]);
+
+    const { unmount } = renderHook(() => useExperimentDashboard(), { wrapper: createWrapper });
+
+    await waitFor(() => {});
+    unmount();
+
+    expect((mockSupabase as any).removeChannel).toHaveBeenCalledWith(mockChannelInstance);
   });
 });
