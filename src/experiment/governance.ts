@@ -100,6 +100,7 @@ async function fetchThresholds(
 
 /**
  * Pure logic: compares variant deltas against thresholds to produce a verdict.
+ * SQL mirror: observe.evaluate_governance() in migration 021 duplicates these rules.
  *
  * Conservative rules:
  * - At least one factor must have a significant delta to conclude
