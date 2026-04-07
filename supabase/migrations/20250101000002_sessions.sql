@@ -1,6 +1,6 @@
--- observe schema: session tracking
+-- auxi schema: session tracking
 
-CREATE TABLE observe.sessions (
+CREATE TABLE auxi.sessions (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   started_at  timestamptz NOT NULL DEFAULT now(),
@@ -12,9 +12,9 @@ CREATE TABLE observe.sessions (
 );
 
 CREATE INDEX idx_sessions_user_started
-  ON observe.sessions (user_id, started_at DESC);
+  ON auxi.sessions (user_id, started_at DESC);
 
 CREATE INDEX idx_sessions_started_at
-  ON observe.sessions (started_at);
+  ON auxi.sessions (started_at);
 
-ALTER TABLE observe.sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auxi.sessions ENABLE ROW LEVEL SECURITY;

@@ -1,12 +1,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const OBSERVE_CONFIG_FILENAME = "observe.config.json";
+const AUXI_CONFIG_FILENAME = "auxi.config.json";
 
 const DEFAULT_CONFIG = {
   supabaseUrl: "http://localhost:54321",
   supabaseAnonKey: "<your-anon-key>",
-  schema: "observe",
+  schema: "auxi",
 };
 
 function main(): void {
@@ -37,7 +37,7 @@ function copyMigrations(targetDir: string): void {
 
   for (const file of migrationFiles) {
     const sourcePath = path.join(migrationsSource, file);
-    const targetFilename = `${timestamp}_observe_${file}`;
+    const targetFilename = `${timestamp}_auxi_${file}`;
     const targetPath = path.join(migrationsTarget, targetFilename);
 
     if (fs.existsSync(targetPath)) {
@@ -49,34 +49,34 @@ function copyMigrations(targetDir: string): void {
     console.log(`  copy: ${targetFilename}`);
   }
 
-  console.log(`\nCopied ${migrationFiles.length} observe migrations.`);
+  console.log(`\nCopied ${migrationFiles.length} auxi migrations.`);
 }
 
 function findMigrationsDir(): string {
-  // When installed as npm package, migrations are in the package root
-  const packageMigrations = path.resolve(__dirname, "..", "..", "migrations");
+  // When installed as npm package: dist/cli/init.cjs -> ../../supabase/migrations
+  const packageMigrations = path.resolve(__dirname, "..", "..", "supabase", "migrations");
   if (fs.existsSync(packageMigrations)) return packageMigrations;
 
-  // Fallback: development mode — migrations alongside source
-  const devMigrations = path.resolve(__dirname, "..", "migrations");
+  // Fallback: development mode — supabase/migrations alongside source root
+  const devMigrations = path.resolve(__dirname, "..", "supabase", "migrations");
   if (fs.existsSync(devMigrations)) return devMigrations;
 
   throw new Error(
-    "Could not find observe migrations directory. " +
-    "Ensure @practice/observe is installed correctly.",
+    "Could not find auxi migrations directory. " +
+    "Ensure auxi is installed correctly.",
   );
 }
 
 function writeConfig(targetDir: string): void {
-  const configPath = path.join(targetDir, OBSERVE_CONFIG_FILENAME);
+  const configPath = path.join(targetDir, AUXI_CONFIG_FILENAME);
 
   if (fs.existsSync(configPath)) {
-    console.log(`\n${OBSERVE_CONFIG_FILENAME} already exists — skipping.`);
+    console.log(`\n${AUXI_CONFIG_FILENAME} already exists — skipping.`);
     return;
   }
 
   fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2) + "\n");
-  console.log(`\nCreated ${OBSERVE_CONFIG_FILENAME}`);
+  console.log(`\nCreated ${AUXI_CONFIG_FILENAME}`);
 }
 
 function generateTimestamp(): string {
@@ -88,11 +88,11 @@ function printSetupInstructions(): void {
   console.log(`
 Setup complete! Next steps:
 
-  1. Update ${OBSERVE_CONFIG_FILENAME} with your Supabase URL and anon key
+  1. Update ${AUXI_CONFIG_FILENAME} with your Supabase URL and anon key
   2. Run: npx supabase db push
   3. In your app:
 
-     import { initCapture } from '@practice/observe'
+     import { initCapture } from 'auxi'
      import { createClient } from '@supabase/supabase-js'
 
      const supabase = createClient(url, anonKey)
@@ -100,11 +100,11 @@ Setup complete! Next steps:
 
   For React:
 
-     import { ObserveProvider } from '@practice/observe/react'
+     import { AuxiProvider } from 'auxi/react'
 
-     <ObserveProvider supabase={supabase}>
+     <AuxiProvider supabase={supabase}>
        <App />
-     </ObserveProvider>
+     </AuxiProvider>
 `);
 }
 

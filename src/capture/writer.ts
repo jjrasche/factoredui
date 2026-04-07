@@ -1,11 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ObserveEvent } from "../types.js";
+import type { AuxiEvent } from "../types.js";
 
 const DEFAULT_FLUSH_INTERVAL_MS = 2000;
 const DEFAULT_FLUSH_BATCH_SIZE = 50;
 
 export interface EventWriter {
-  enqueue: (sessionId: string, userId: string, event: ObserveEvent) => void;
+  enqueue: (sessionId: string, userId: string, event: AuxiEvent) => void;
   flush: () => Promise<void>;
   startAutoFlush: () => void;
   stopAutoFlush: () => void;
@@ -31,7 +31,7 @@ export function createEventWriter(
   function enqueue(
     sessionId: string,
     userId: string,
-    event: ObserveEvent,
+    event: AuxiEvent,
   ): void {
     queue.push({
       user_id: userId,
@@ -57,11 +57,11 @@ export function createEventWriter(
       if (error) {
         // Re-enqueue on failure — front of queue to preserve order
         queue.unshift(...batch);
-        console.error("observe: flush failed:", error.message);
+        console.error("auxi: flush failed:", error.message);
       }
     } catch (err) {
       queue.unshift(...batch);
-      console.error("observe: flush error:", err);
+      console.error("auxi: flush error:", err);
     } finally {
       isFlushing = false;
     }

@@ -1,8 +1,8 @@
-import type { ObserveEvent } from "../types.js";
+import type { AuxiEvent } from "../types.js";
 import { resolveComponentPath } from "./path.js";
 
 /**
- * Attaches DOM event listeners and maps browser events to ObserveEvents.
+ * Attaches DOM event listeners and maps browser events to AuxiEvents.
  * Framework-agnostic: uses raw addEventListener on document/window.
  */
 
@@ -14,18 +14,18 @@ export interface EventListenerHandle {
 }
 
 export function createEventListener(
-  onEvent: (event: ObserveEvent) => void,
+  onEvent: (event: AuxiEvent) => void,
 ): EventListenerHandle {
   const handlers = new Map<string, EventListener>();
 
   function registerHandler(
     eventName: string,
     target: EventTarget,
-    mapToObserveEvent: (event: Event) => ObserveEvent | null,
+    mapToAuxiEvent: (event: Event) => AuxiEvent | null,
     options?: AddEventListenerOptions,
   ): void {
     const handler = (event: Event) => {
-      const mapped = mapToObserveEvent(event);
+      const mapped = mapToAuxiEvent(event);
       if (mapped) onEvent(mapped);
     };
     handlers.set(eventName, handler);
@@ -35,7 +35,7 @@ export function createEventListener(
   function registerThrottledHandler(
     eventName: string,
     target: EventTarget,
-    mapToObserveEvent: (event: Event) => ObserveEvent | null,
+    mapToAuxiEvent: (event: Event) => AuxiEvent | null,
     options?: AddEventListenerOptions,
   ): void {
     let lastFiredAt = 0;
@@ -43,7 +43,7 @@ export function createEventListener(
       const now = Date.now();
       if (now - lastFiredAt < THROTTLE_INTERVAL_MS) return;
       lastFiredAt = now;
-      const mapped = mapToObserveEvent(event);
+      const mapped = mapToAuxiEvent(event);
       if (mapped) onEvent(mapped);
     };
     handlers.set(eventName, handler);
@@ -95,7 +95,7 @@ export function createEventListener(
 
 // --- Event mappers (leaf functions) ---
 
-function mapClickEvent(event: Event): ObserveEvent | null {
+function mapClickEvent(event: Event): AuxiEvent | null {
   const target = event.target as Element | null;
   if (!target) return null;
   return {
@@ -109,7 +109,7 @@ function mapClickEvent(event: Event): ObserveEvent | null {
   };
 }
 
-function mapScrollEvent(): ObserveEvent {
+function mapScrollEvent(): AuxiEvent {
   return {
     event_type: "scroll",
     component_path: resolveComponentPath(document.documentElement),
@@ -117,7 +117,7 @@ function mapScrollEvent(): ObserveEvent {
   };
 }
 
-function mapInputEvent(event: Event): ObserveEvent | null {
+function mapInputEvent(event: Event): AuxiEvent | null {
   const target = event.target as Element | null;
   if (!target) return null;
   return {
@@ -127,7 +127,7 @@ function mapInputEvent(event: Event): ObserveEvent | null {
   };
 }
 
-function mapFocusEvent(event: Event): ObserveEvent | null {
+function mapFocusEvent(event: Event): AuxiEvent | null {
   const target = event.target as Element | null;
   if (!target) return null;
   return {
@@ -137,7 +137,7 @@ function mapFocusEvent(event: Event): ObserveEvent | null {
   };
 }
 
-function mapBlurEvent(event: Event): ObserveEvent | null {
+function mapBlurEvent(event: Event): AuxiEvent | null {
   const target = event.target as Element | null;
   if (!target) return null;
   return {
@@ -147,7 +147,7 @@ function mapBlurEvent(event: Event): ObserveEvent | null {
   };
 }
 
-function mapSubmitEvent(event: Event): ObserveEvent | null {
+function mapSubmitEvent(event: Event): AuxiEvent | null {
   const target = event.target as Element | null;
   if (!target) return null;
   return {
@@ -157,7 +157,7 @@ function mapSubmitEvent(event: Event): ObserveEvent | null {
   };
 }
 
-function mapResizeEvent(): ObserveEvent {
+function mapResizeEvent(): AuxiEvent {
   return {
     event_type: "resize",
     component_path: resolveComponentPath(document.documentElement),
@@ -165,7 +165,7 @@ function mapResizeEvent(): ObserveEvent {
   };
 }
 
-function mapErrorEvent(event: Event): ObserveEvent | null {
+function mapErrorEvent(event: Event): AuxiEvent | null {
   const errorEvent = event as ErrorEvent;
   return {
     event_type: "error",
@@ -179,7 +179,7 @@ function mapErrorEvent(event: Event): ObserveEvent | null {
   };
 }
 
-function mapVisibilityEvent(): ObserveEvent {
+function mapVisibilityEvent(): AuxiEvent {
   return {
     event_type: "visibility",
     component_path: resolveComponentPath(document.documentElement),

@@ -1,4 +1,4 @@
-# @practice/observe
+# auxi
 
 Autonomous app optimization via standardized components. TypeScript library + Supabase migrations.
 
@@ -45,12 +45,12 @@ Experiment at element/component level (isolates causation). Measure factors at e
 ## Architecture
 
 ```
-@practice/observe
+auxi
 ├── capture/          -- interaction, error, structural (DOM-level, framework-agnostic)
 ├── factors/          -- alarm, diagnostic, structural (materialized SQL views)
 ├── experiment/       -- flags, bucketing, exposure tracking
-├── bindings/react.tsx -- ObserveProvider, useFlag(), useFactors()
-├── migrations/       -- observe schema, factor views, experiment tables
+├── bindings/react.tsx -- AuxiProvider, useFlag(), useFactors()
+├── migrations/       -- auxi schema, factor views, experiment tables
 └── index.ts
 ```
 
@@ -60,9 +60,9 @@ Cross-platform: TypeScript for web. Dart for Flutter. Swift/Kotlin for native. A
 
 - No session replay -- three-tier factors replace 95%+ of replay value
 - Libraries not services -- npm package, not containers
-- Separate schema, same Supabase -- `observe.*` apart from app tables
+- Separate schema, same Supabase -- `auxi.*` apart from app tables
 - AI queries materialized views, not raw event tables
-- No engagement metrics -- observe completion, patterns, flow. Not attention.
+- No engagement metrics -- measure completion, patterns, flow. Not attention.
 - Platform as pipes -- capture and present, do not interpret
 - No personalization -- factors determine best defaults, users configure explicitly
 - Governance decides thresholds -- what to measure is what to value

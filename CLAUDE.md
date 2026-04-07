@@ -1,11 +1,11 @@
-# @practice/observe
+# auxi
 
 ## Overview
-Autonomous app optimization library. Captures user interactions, computes standardized behavioral factors, enables LLM-driven experimentation, supports democratic governance of app changes. TypeScript library + Supabase migrations.
+Autonomous User eXperience Improver — "auxi". TypeScript library + Supabase migrations that captures user interactions, computes standardized behavioral factors, enables LLM-driven experimentation, supports democratic governance of app changes.
 
 ## Stack
 - Language: TypeScript (framework-agnostic capture, React bindings)
-- Database: Supabase (Postgres with RLS, separate `observe` schema)
+- Database: Supabase (Postgres with RLS, separate `auxi` schema)
 - Factor engine: SQL materialized views
 - Flags/experiments: Client-side evaluation from Supabase-stored config
 - Cross-platform: Dart (Flutter), Swift/Kotlin (native) write same event shape
@@ -23,7 +23,7 @@ Autonomous app optimization library. Captures user interactions, computes standa
 
 ## Commands
 - `npm run build` -- tsup (ESM + CJS + DTS)
-- `npm test` -- vitest run (82 tests: 42 unit, 40 integration against local Supabase)
+- `npm test` -- vitest run (102 tests: 58 unit, 44 integration against local Supabase)
 - `npm run typecheck` -- tsc --noEmit
 - `npx supabase start` -- local Supabase (required for integration tests)
 

@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { ObserveEvent } from "../types.js";
+import type { AuxiEvent } from "../types.js";
 import { createBehavioralDetector } from "./behavioral.js";
 
 describe("createBehavioralDetector", () => {
-  let collectedEvents: ObserveEvent[];
+  let collectedEvents: AuxiEvent[];
   let detector: ReturnType<typeof createBehavioralDetector>;
 
   beforeEach(() => {
     collectedEvents = [];
     document.body.innerHTML = `
-      <div data-observe-page="test-page">
-        <button data-observe-element="test-btn">Click me</button>
+      <div data-auxi-page="test-page">
+        <button data-auxi-element="test-btn">Click me</button>
       </div>
     `;
     detector = createBehavioralDetector((event) => collectedEvents.push(event));

@@ -12,7 +12,7 @@ import type {
   CaptureHandle,
   ExperimentAssignment,
   Factor,
-  ObserveConfig,
+  AuxiConfig,
 } from "../types.js";
 import { initCapture } from "../capture/index.js";
 import { evaluateFlag } from "../experiment/flags.js";
@@ -29,24 +29,24 @@ import {
 
 // --- Context ---
 
-interface ObserveContextValue {
+interface AuxiContextValue {
   supabase: SupabaseClient;
   captureHandle: CaptureHandle | null;
 }
 
-const ObserveContext = createContext<ObserveContextValue | null>(null);
+const AuxiContext = createContext<AuxiContextValue | null>(null);
 
-function useObserveContext(): ObserveContextValue {
-  const ctx = useContext(ObserveContext);
+function useAuxiContext(): AuxiContextValue {
+  const ctx = useContext(AuxiContext);
   if (!ctx) {
-    throw new Error("useObserveContext: must be used within <ObserveProvider>");
+    throw new Error("useAuxiContext: must be used within <AuxiProvider>");
   }
   return ctx;
 }
 
 // --- Provider ---
 
-interface ObserveProviderProps {
+interface AuxiProviderProps {
   supabase: SupabaseClient;
   children: ReactNode;
   flushIntervalMs?: number;
@@ -54,17 +54,17 @@ interface ObserveProviderProps {
   sessionTimeoutMs?: number;
 }
 
-export function ObserveProvider({
+export function AuxiProvider({
   supabase,
   children,
   flushIntervalMs,
   flushBatchSize,
   sessionTimeoutMs,
-}: ObserveProviderProps): ReactNode {
+}: AuxiProviderProps): ReactNode {
   const captureRef = useRef<CaptureHandle | null>(null);
 
   useEffect(() => {
-    const config: ObserveConfig = {
+    const config: AuxiConfig = {
       supabase,
       flushIntervalMs,
       flushBatchSize,
@@ -79,11 +79,11 @@ export function ObserveProvider({
   }, [supabase, flushIntervalMs, flushBatchSize, sessionTimeoutMs]);
 
   return (
-    <ObserveContext.Provider
+    <AuxiContext.Provider
       value={{ supabase, captureHandle: captureRef.current }}
     >
       {children}
-    </ObserveContext.Provider>
+    </AuxiContext.Provider>
   );
 }
 
@@ -96,7 +96,7 @@ interface UseFlagResult {
 }
 
 export function useFlag(experimentName: string): UseFlagResult {
-  const { supabase } = useObserveContext();
+  const { supabase } = useAuxiContext();
   const [assignment, setAssignment] = useState<ExperimentAssignment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -130,7 +130,7 @@ interface UseFactorsResult {
 }
 
 export function useFactors(componentPath?: string): UseFactorsResult {
-  const { supabase } = useObserveContext();
+  const { supabase } = useAuxiContext();
   const [factors, setFactors] = useState<Factor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -181,7 +181,7 @@ interface UseGovernanceLogResult {
 }
 
 export function useGovernanceLog(experimentId: string): UseGovernanceLogResult {
-  const { supabase } = useObserveContext();
+  const { supabase } = useAuxiContext();
   const [log, setLog] = useState<GovernanceLogRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -215,7 +215,7 @@ export function useGovernanceLog(experimentId: string): UseGovernanceLogResult {
 // --- useRecentGovernanceLog ---
 
 export function useRecentGovernanceLog(limit?: number): UseGovernanceLogResult {
-  const { supabase } = useObserveContext();
+  const { supabase } = useAuxiContext();
   const [log, setLog] = useState<GovernanceLogRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const effectiveLimit = limit ?? 50;
@@ -257,7 +257,7 @@ interface UseExperimentDashboardResult {
 export function useExperimentDashboard(
   filters?: ExperimentSummaryFilters,
 ): UseExperimentDashboardResult {
-  const { supabase } = useObserveContext();
+  const { supabase } = useAuxiContext();
   const [summaries, setSummaries] = useState<ExperimentSummaryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -307,7 +307,7 @@ function subscribeToGovernanceInserts(
       "postgres_changes",
       {
         event: "INSERT",
-        schema: "observe",
+        schema: "auxi",
         table: "governance_log",
         filter: `experiment_id=eq.${experimentId}`,
       },
@@ -326,7 +326,7 @@ function subscribeToAllGovernanceInserts(
       "postgres_changes",
       {
         event: "INSERT",
-        schema: "observe",
+        schema: "auxi",
         table: "governance_log",
       },
       (payload) => onInsert(payload.new as GovernanceLogRow),
@@ -344,7 +344,7 @@ function subscribeToExperimentChanges(
       "postgres_changes",
       {
         event: "*",
-        schema: "observe",
+        schema: "auxi",
         table: "experiments",
       },
       () => onChange(),

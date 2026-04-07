@@ -6,18 +6,18 @@ const LOCAL_ANON_KEY =
 const LOCAL_SERVICE_ROLE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU";
 
-type ObserveClient = ReturnType<typeof createServiceClient>;
+type AuxiClient = ReturnType<typeof createServiceClient>;
 
 export function createServiceClient() {
   return createClient(LOCAL_SUPABASE_URL, LOCAL_SERVICE_ROLE_KEY, {
-    db: { schema: "observe" },
+    db: { schema: "auxi" },
     auth: { persistSession: false },
   });
 }
 
 export function createAnonClient() {
   return createClient(LOCAL_SUPABASE_URL, LOCAL_ANON_KEY, {
-    db: { schema: "observe" },
+    db: { schema: "auxi" },
     auth: { persistSession: false },
   });
 }
@@ -29,9 +29,9 @@ interface TestUser {
 }
 
 export async function createTestUser(
-  serviceClient: ObserveClient,
+  serviceClient: AuxiClient,
 ): Promise<TestUser> {
-  const email = `test-${crypto.randomUUID().slice(0, 8)}@observe.test`;
+  const email = `test-${crypto.randomUUID().slice(0, 8)}@auxi.test`;
   const password = "test-password-123!";
 
   const { data, error } = await serviceClient.auth.admin.createUser({
@@ -45,16 +45,16 @@ export async function createTestUser(
 }
 
 export async function deleteTestUser(
-  serviceClient: ObserveClient,
+  serviceClient: AuxiClient,
   userId: string,
 ): Promise<void> {
   await serviceClient.auth.admin.deleteUser(userId);
 }
 
 export async function signInTestUser(
-  anonClient: ObserveClient,
+  anonClient: AuxiClient,
   user: TestUser,
-): Promise<ObserveClient> {
+): Promise<AuxiClient> {
   const { error } = await anonClient.auth.signInWithPassword({
     email: user.email,
     password: user.password,

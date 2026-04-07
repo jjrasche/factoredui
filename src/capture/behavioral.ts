@@ -1,4 +1,4 @@
-import type { ObserveEvent } from "../types.js";
+import type { AuxiEvent } from "../types.js";
 import { resolveComponentPath } from "./path.js";
 
 /**
@@ -19,7 +19,7 @@ export interface BehavioralDetector {
 }
 
 export function createBehavioralDetector(
-  onEvent: (event: ObserveEvent) => void,
+  onEvent: (event: AuxiEvent) => void,
 ): BehavioralDetector {
   const rageClickState = createRageClickState();
   const scrollState = createScrollState();
@@ -119,7 +119,7 @@ function recordClickAndDetectRage(
 function detectDeadClick(
   target: Element,
   componentPath: string,
-  onEvent: (event: ObserveEvent) => void,
+  onEvent: (event: AuxiEvent) => void,
 ): void {
   let hasMutation = false;
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { type ReactNode } from "react";
 import {
-  ObserveProvider,
+  AuxiProvider,
   useGovernanceLog,
   useRecentGovernanceLog,
   useExperimentDashboard,
@@ -21,7 +21,7 @@ vi.mock("../experiment/dashboard.js", () => ({
   queryExperimentSummaries: vi.fn(),
 }));
 
-// initCapture is called in ObserveProvider's useEffect
+// initCapture is called in AuxiProvider's useEffect
 vi.mock("../capture/index.js", () => ({
   initCapture: vi.fn(() => ({
     stopCapture: vi.fn(),
@@ -45,7 +45,7 @@ const mockSupabase = {
 
 function createWrapper({ children }: { children: ReactNode }) {
   return (
-    <ObserveProvider supabase={mockSupabase}>{children}</ObserveProvider>
+    <AuxiProvider supabase={mockSupabase}>{children}</AuxiProvider>
   );
 }
 
@@ -150,7 +150,7 @@ describe("useRecentGovernanceLog realtime", () => {
       "postgres_changes",
       expect.objectContaining({
         event: "INSERT",
-        schema: "observe",
+        schema: "auxi",
         table: "governance_log",
       }),
       expect.any(Function),
@@ -263,7 +263,7 @@ describe("realtime subscriptions", () => {
       "postgres_changes",
       expect.objectContaining({
         event: "INSERT",
-        schema: "observe",
+        schema: "auxi",
         table: "governance_log",
         filter: "experiment_id=eq.exp-1",
       }),
@@ -323,7 +323,7 @@ describe("realtime subscriptions", () => {
       "postgres_changes",
       expect.objectContaining({
         event: "*",
-        schema: "observe",
+        schema: "auxi",
         table: "experiments",
       }),
       expect.any(Function),

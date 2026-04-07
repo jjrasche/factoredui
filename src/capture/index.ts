@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CaptureHandle, ObserveConfig, ObserveEvent } from "../types.js";
+import type { CaptureHandle, AuxiConfig, AuxiEvent } from "../types.js";
 import { createSessionManager } from "./session.js";
 import { createEventListener } from "./listener.js";
 import { createBehavioralDetector } from "./behavioral.js";
@@ -9,7 +9,7 @@ import { createEventWriter } from "./writer.js";
  * Orchestrator: initializes capture pipeline.
  * Coordinates session, listeners, behavioral detectors, and batched writer.
  */
-export function initCapture(config: ObserveConfig): CaptureHandle {
+export function initCapture(config: AuxiConfig): CaptureHandle {
   const sessionManager = createSessionManager(
     config.supabase,
     config.sessionTimeoutMs,
@@ -55,17 +55,17 @@ function createEventEnqueuer(
   supabase: SupabaseClient,
   sessionManager: ReturnType<typeof createSessionManager>,
   writer: ReturnType<typeof createEventWriter>,
-): (event: ObserveEvent) => void {
+): (event: AuxiEvent) => void {
   let cachedUserId: string | null = null;
 
-  return (event: ObserveEvent) => {
+  return (event: AuxiEvent) => {
     resolveUserId(supabase, cachedUserId).then((userId) => {
       cachedUserId = userId;
       return sessionManager.ensureSession(userId).then((sessionId) => {
         writer.enqueue(sessionId, userId, event);
       });
     }).catch((err) => {
-      console.error("observe: failed to enqueue event:", err);
+      console.error("auxi: failed to enqueue event:", err);
     });
   };
 }
@@ -76,7 +76,7 @@ async function resolveUserId(
 ): Promise<string> {
   if (cachedUserId) return cachedUserId;
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("observe: user not authenticated");
+  if (!user) throw new Error("auxi: user not authenticated");
   return user.id;
 }
 

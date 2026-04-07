@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { ObserveEvent } from "../types.js";
+import type { AuxiEvent } from "../types.js";
 import { createEventListener } from "./listener.js";
 
 describe("createEventListener throttling", () => {
-  let collectedEvents: ObserveEvent[];
+  let collectedEvents: AuxiEvent[];
   let listener: ReturnType<typeof createEventListener>;
   let dateNowSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     collectedEvents = [];
-    document.body.innerHTML = `<div data-observe-page="test-page"></div>`;
+    document.body.innerHTML = `<div data-auxi-page="test-page"></div>`;
     listener = createEventListener((event) => collectedEvents.push(event));
     dateNowSpy = vi.spyOn(Date, "now");
     listener.startListening();
@@ -25,7 +25,7 @@ describe("createEventListener throttling", () => {
     window.dispatchEvent(new Event("scroll"));
   }
 
-  function collectScrollEvents(): ObserveEvent[] {
+  function collectScrollEvents(): AuxiEvent[] {
     return collectedEvents.filter((e) => e.event_type === "scroll");
   }
 

@@ -1,5 +1,5 @@
 {
-  "name": "@practice/observe",
+  "name": "auxi",
   "version": "0.1.0",
   "description": "Autonomous app optimization: capture interactions, compute behavioral factors, run experiments",
   "type": "module",
@@ -7,7 +7,7 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "observe": "./dist/cli/init.cjs"
+    "auxi": "./dist/cli/init.cjs"
   },
   "exports": {
     ".": {
@@ -23,7 +23,7 @@
   },
   "files": [
     "dist",
-    "migrations"
+    "supabase/migrations"
   ],
   "scripts": {
     "build": "tsup",

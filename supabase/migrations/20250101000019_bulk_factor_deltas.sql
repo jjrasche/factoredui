@@ -1,8 +1,8 @@
--- observe schema: bulk factor delta computation
+-- auxi schema: bulk factor delta computation
 -- Replaces N×M sequential queryFactorDelta calls with a single SQL function.
 -- Returns averaged deltas for a set of users across multiple factors.
 
-CREATE OR REPLACE FUNCTION observe.bulk_factor_deltas(
+CREATE OR REPLACE FUNCTION auxi.bulk_factor_deltas(
   p_user_ids     uuid[],
   p_component    text,
   p_factor_names text[],
@@ -21,7 +21,7 @@ LANGUAGE sql STABLE AS $$
       fs.user_id,
       fs.factor_name,
       fs.value
-    FROM observe.factor_snapshots fs
+    FROM auxi.factor_snapshots fs
     WHERE fs.user_id = ANY(p_user_ids)
       AND fs.component_path = p_component
       AND fs.factor_name = ANY(p_factor_names)
@@ -33,7 +33,7 @@ LANGUAGE sql STABLE AS $$
       fs.user_id,
       fs.factor_name,
       fs.value
-    FROM observe.factor_snapshots fs
+    FROM auxi.factor_snapshots fs
     WHERE fs.user_id = ANY(p_user_ids)
       AND fs.component_path = p_component
       AND fs.factor_name = ANY(p_factor_names)

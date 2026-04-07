@@ -6,12 +6,12 @@ describe("resolveComponentPath", () => {
     document.body.innerHTML = "";
   });
 
-  it("builds path from nested data-observe attributes", () => {
+  it("builds path from nested data-auxi attributes", () => {
     document.body.innerHTML = `
-      <div data-observe-flow="onboarding">
-        <div data-observe-page="review">
-          <div data-observe-component="photo-grid">
-            <button data-observe-element="upload-button">Upload</button>
+      <div data-auxi-flow="onboarding">
+        <div data-auxi-page="review">
+          <div data-auxi-component="photo-grid">
+            <button data-auxi-element="upload-button">Upload</button>
           </div>
         </div>
       </div>
@@ -25,8 +25,8 @@ describe("resolveComponentPath", () => {
 
   it("returns partial path when not all tiers are present", () => {
     document.body.innerHTML = `
-      <div data-observe-page="settings">
-        <button data-observe-element="save">Save</button>
+      <div data-auxi-page="settings">
+        <button data-auxi-element="save">Save</button>
       </div>
     `;
 
@@ -34,7 +34,7 @@ describe("resolveComponentPath", () => {
     expect(resolveComponentPath(button)).toBe("settings/save");
   });
 
-  it("returns unknown when no observe attributes exist", () => {
+  it("returns unknown when no auxi attributes exist", () => {
     document.body.innerHTML = `<button>Bare</button>`;
 
     const button = document.querySelector("button")!;
@@ -43,8 +43,8 @@ describe("resolveComponentPath", () => {
 
   it("uses closest ancestor for each tier", () => {
     document.body.innerHTML = `
-      <div data-observe-component="outer">
-        <div data-observe-component="inner">
+      <div data-auxi-component="outer">
+        <div data-auxi-component="inner">
           <span>Text</span>
         </div>
       </div>
@@ -56,7 +56,7 @@ describe("resolveComponentPath", () => {
 
   it("collects attributes from same element", () => {
     document.body.innerHTML = `
-      <button data-observe-page="home" data-observe-element="cta">Go</button>
+      <button data-auxi-page="home" data-auxi-element="cta">Go</button>
     `;
 
     const button = document.querySelector("button")!;

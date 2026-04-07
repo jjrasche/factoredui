@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ObserveSession } from "../types.js";
+import type { AuxiSession } from "../types.js";
 
-const SESSION_STORAGE_KEY = "observe:session_id";
+const SESSION_STORAGE_KEY = "auxi:session_id";
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 export interface SessionManager {
@@ -45,7 +45,7 @@ export function createSessionManager(
       .single();
 
     if (error) throw new Error(`Failed to create session: ${error.message}`);
-    return (data as ObserveSession).id;
+    return (data as AuxiSession).id;
   }
 
   function collectSessionMetadata(): Record<string, unknown> {

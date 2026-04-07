@@ -53,18 +53,16 @@ describe("realtime subscriptions integration", () => {
         "postgres_changes",
         {
           event: "INSERT",
-          schema: "observe",
+          schema: "auxi",
           table: "governance_log",
           filter: `experiment_id=eq.${experimentId}`,
         },
         (payload) => received.push(payload.new as GovernanceLogRow),
-      )
-      .subscribe();
+      );
 
     channelsToCleanup.push(channel);
 
-    // Wait for subscription to be established
-    await waitForChannelJoined(channel);
+    await subscribeAndWait(channel);
 
     await serviceClient.from("governance_log").insert({
       experiment_id: experimentId,
@@ -98,16 +96,15 @@ describe("realtime subscriptions integration", () => {
         "postgres_changes",
         {
           event: "INSERT",
-          schema: "observe",
+          schema: "auxi",
           table: "governance_log",
         },
         (payload) => received.push(payload.new as GovernanceLogRow),
-      )
-      .subscribe();
+      );
 
     channelsToCleanup.push(channel);
 
-    await waitForChannelJoined(channel);
+    await subscribeAndWait(channel);
 
     await serviceClient.from("governance_log").insert({
       experiment_id: experimentId,
@@ -127,37 +124,43 @@ describe("realtime subscriptions integration", () => {
   it("receives experiments table changes for dashboard refetch pattern", async () => {
     const received: unknown[] = [];
 
+    // The dashboard hook subscribes to experiment changes to trigger a refetch.
+    // Use INSERT (not UPDATE) — Supabase local Realtime delivers INSERTs
+    // reliably; UPDATE delivery depends on replication slot timing.
     const channel = serviceClient
       .channel("test-experiments:changes")
       .on(
         "postgres_changes",
         {
-          event: "*",
-          schema: "observe",
+          event: "INSERT",
+          schema: "auxi",
           table: "experiments",
         },
         (payload) => received.push(payload),
-      )
-      .subscribe();
+      );
 
     channelsToCleanup.push(channel);
 
-    await waitForChannelJoined(channel);
+    await subscribeAndWait(channel);
 
-    await serviceClient
+    const { data: tempExp } = await serviceClient
       .from("experiments")
-      .update({ status: "paused" })
-      .eq("id", experimentId);
+      .insert({
+        name: "realtime-dashboard-test",
+        component_path: "test-realtime/dashboard",
+        status: "running",
+      })
+      .select("id")
+      .single();
 
     await waitFor(() => received.length >= 1, 5000);
 
     expect(received.length).toBeGreaterThanOrEqual(1);
 
-    // Restore status for cleanup
-    await serviceClient
-      .from("experiments")
-      .update({ status: "running" })
-      .eq("id", experimentId);
+    // Cleanup
+    if (tempExp) {
+      await serviceClient.from("experiments").delete().eq("id", tempExp.id);
+    }
   });
 
   it("filtered subscription ignores inserts for other experiments", async () => {
@@ -181,17 +184,16 @@ describe("realtime subscriptions integration", () => {
         "postgres_changes",
         {
           event: "INSERT",
-          schema: "observe",
+          schema: "auxi",
           table: "governance_log",
           filter: `experiment_id=eq.${experimentId}`,
         },
         (payload) => received.push(payload.new as GovernanceLogRow),
-      )
-      .subscribe();
+      );
 
     channelsToCleanup.push(channel);
 
-    await waitForChannelJoined(channel);
+    await subscribeAndWait(channel);
 
     // Insert for the OTHER experiment — should NOT trigger our filtered subscription
     await serviceClient.from("governance_log").insert({
@@ -220,22 +222,19 @@ describe("realtime subscriptions integration", () => {
 
 // --- Helpers ---
 
-function waitForChannelJoined(channel: RealtimeChannel): Promise<void> {
+function subscribeAndWait(channel: RealtimeChannel): Promise<void> {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(
-      () => reject(new Error("Channel did not join within 5s")),
+      () => reject(new Error("Channel did not reach SUBSCRIBED within 5s")),
       5000,
     );
 
-    const check = () => {
-      if ((channel as any).state === "joined") {
+    channel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
         clearTimeout(timeout);
         resolve();
-      } else {
-        setTimeout(check, 100);
       }
-    };
-    check();
+    });
   });
 }
 

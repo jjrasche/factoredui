@@ -18,13 +18,13 @@ export type EventType =
 
 export type FactorTier = "alarm" | "diagnostic" | "structural";
 
-export interface ObserveEvent {
+export interface AuxiEvent {
   event_type: EventType;
   component_path: string;
   payload: Record<string, unknown>;
 }
 
-export interface ObserveSession {
+export interface AuxiSession {
   id: string;
   user_id: string;
   started_at: string;
@@ -47,7 +47,7 @@ export interface ExperimentAssignment {
   config: Record<string, unknown>;
 }
 
-export interface ObserveConfig {
+export interface AuxiConfig {
   supabase: SupabaseClient;
   flushIntervalMs?: number;
   flushBatchSize?: number;

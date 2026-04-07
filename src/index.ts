@@ -8,9 +8,9 @@ export { queryExperimentResults } from "./experiment/results.js";
 export { evaluateExperimentThresholds, concludeExperiment } from "./experiment/governance.js";
 
 export type {
-  ObserveConfig,
-  ObserveEvent,
-  ObserveSession,
+  AuxiConfig,
+  AuxiEvent,
+  AuxiSession,
   CaptureHandle,
   EventType,
   FactorTier,
