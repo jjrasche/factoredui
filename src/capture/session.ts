@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AuxiSession } from "../types.js";
+import type { AuxiSession, Platform } from "../types.js";
+import type { CaptureAdapter } from "./adapter.js";
 
-const SESSION_STORAGE_KEY = "auxi:session_id";
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 export interface SessionManager {
@@ -12,54 +12,31 @@ export interface SessionManager {
 
 export function createSessionManager(
   supabase: SupabaseClient,
+  adapter: CaptureAdapter,
+  platform: Platform,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ): SessionManager {
-  let currentSessionId: string | null = loadStoredSessionId();
+  let currentSessionId: string | null = adapter.loadSessionId();
   let lastActivityAt = Date.now();
-
-  function loadStoredSessionId(): string | null {
-    try {
-      return sessionStorage.getItem(SESSION_STORAGE_KEY);
-    } catch {
-      return null;
-    }
-  }
-
-  function storeSessionId(sessionId: string): void {
-    try {
-      sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
-    } catch {
-      // SSR or restricted storage -- session lives in memory only
-    }
-  }
 
   function isSessionExpired(): boolean {
     return Date.now() - lastActivityAt > timeoutMs;
   }
 
   async function createSession(userId: string): Promise<string> {
+    const metadata = {
+      ...adapter.collectSessionMetadata(),
+      platform,
+    };
+
     const { data, error } = await supabase
       .from("sessions")
-      .insert({ user_id: userId, metadata: collectSessionMetadata() })
+      .insert({ user_id: userId, metadata })
       .select("id")
       .single();
 
     if (error) throw new Error(`Failed to create session: ${error.message}`);
     return (data as AuxiSession).id;
-  }
-
-  function collectSessionMetadata(): Record<string, unknown> {
-    if (typeof window === "undefined") return {};
-    return {
-      user_agent: navigator.userAgent,
-      screen_width: screen.width,
-      screen_height: screen.height,
-      viewport_width: window.innerWidth,
-      viewport_height: window.innerHeight,
-      language: navigator.language,
-      referrer: document.referrer || null,
-      url: window.location.href,
-    };
   }
 
   async function ensureSession(userId: string): Promise<string> {
@@ -70,7 +47,7 @@ export function createSessionManager(
     }
 
     currentSessionId = await createSession(userId);
-    storeSessionId(currentSessionId);
+    adapter.storeSessionId(currentSessionId);
     return currentSessionId;
   }
 
@@ -83,11 +60,7 @@ export function createSessionManager(
       .eq("id", currentSessionId);
 
     currentSessionId = null;
-    try {
-      sessionStorage.removeItem(SESSION_STORAGE_KEY);
-    } catch {
-      // Ignore storage errors
-    }
+    adapter.clearSessionId();
   }
 
   function getSessionId(): string | null {

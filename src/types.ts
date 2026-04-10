@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { CaptureAdapter } from "./capture/adapter.js";
 
 export type EventType =
   | "click"
@@ -47,8 +48,12 @@ export interface ExperimentAssignment {
   config: Record<string, unknown>;
 }
 
+export type Platform = "web" | "ios" | "android";
+
 export interface AuxiConfig {
   supabase: SupabaseClient;
+  adapter?: CaptureAdapter;
+  platform?: Platform;
   flushIntervalMs?: number;
   flushBatchSize?: number;
   sessionTimeoutMs?: number;

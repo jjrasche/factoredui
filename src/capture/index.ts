@@ -1,17 +1,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CaptureHandle, AuxiConfig, AuxiEvent } from "../types.js";
 import { createSessionManager } from "./session.js";
-import { createEventListener } from "./listener.js";
-import { createBehavioralDetector } from "./behavioral.js";
 import { createEventWriter } from "./writer.js";
+import { createWebAdapter } from "./web-adapter.js";
 
 /**
  * Orchestrator: initializes capture pipeline.
- * Coordinates session, listeners, behavioral detectors, and batched writer.
+ * Coordinates adapter, session manager, and batched writer.
+ * Defaults to web adapter when no adapter provided.
  */
 export function initCapture(config: AuxiConfig): CaptureHandle {
+  const adapter = config.adapter ?? createWebAdapter();
+  const platform = config.platform ?? "web";
+
   const sessionManager = createSessionManager(
     config.supabase,
+    adapter,
+    platform,
     config.sessionTimeoutMs,
   );
   const writer = createEventWriter(
@@ -26,14 +31,19 @@ export function initCapture(config: AuxiConfig): CaptureHandle {
     writer,
   );
 
-  const listener = createEventListener(enqueueEvent);
-  const behavioral = createBehavioralDetector(enqueueEvent);
+  adapter.startListening(enqueueEvent);
+  writer.startAutoFlush();
 
-  startCapturePipeline(listener, behavioral, writer);
-  registerPageUnloadFlush(writer, sessionManager);
+  adapter.registerUnloadHandler(() => {
+    writer.flush();
+    sessionManager.endSession();
+  });
 
   return {
-    stopCapture: () => stopCapturePipeline(listener, behavioral, writer),
+    stopCapture: () => {
+      adapter.stopListening();
+      writer.stopAutoFlush();
+    },
     flushEvents: () => writer.flush(),
     getSessionId: () => sessionManager.getSessionId(),
     trackNavigation: (componentPath, action) =>
@@ -78,38 +88,4 @@ async function resolveUserId(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("auxi: user not authenticated");
   return user.id;
-}
-
-function startCapturePipeline(
-  listener: ReturnType<typeof createEventListener>,
-  behavioral: ReturnType<typeof createBehavioralDetector>,
-  writer: ReturnType<typeof createEventWriter>,
-): void {
-  listener.startListening();
-  behavioral.startDetecting();
-  writer.startAutoFlush();
-}
-
-function stopCapturePipeline(
-  listener: ReturnType<typeof createEventListener>,
-  behavioral: ReturnType<typeof createBehavioralDetector>,
-  writer: ReturnType<typeof createEventWriter>,
-): void {
-  listener.stopListening();
-  behavioral.stopDetecting();
-  writer.stopAutoFlush();
-}
-
-function registerPageUnloadFlush(
-  writer: ReturnType<typeof createEventWriter>,
-  sessionManager: ReturnType<typeof createSessionManager>,
-): void {
-  if (typeof window === "undefined") return;
-
-  window.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") {
-      writer.flush();
-      sessionManager.endSession();
-    }
-  });
 }

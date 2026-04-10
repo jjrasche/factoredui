@@ -109,7 +109,7 @@ describe("evaluateFlag", () => {
     const { client, assignmentInsertMock, exposureInsertMock } = createMockSupabase({
       userId: "user-456",
       existingAssignment: null,
-      experiment: { id: "exp-2", name: "cta-text", component_path: "test/cta", targeting_rules: [] },
+      experiment: { id: "exp-2", name: "cta-text", component_path: "test/cta", targeting_rules: [], platforms: [] },
       variants: [
         { variant_key: "control", config: { text: "Submit" }, traffic_percentage: 50 },
         { variant_key: "variant-a", config: { text: "Go!" }, traffic_percentage: 50 },
@@ -134,5 +134,69 @@ describe("evaluateFlag", () => {
     const result = await evaluateFlag(client, "nonexistent");
 
     expect(result).toBeNull();
+  });
+
+  it("returns null when experiment targets a different platform", async () => {
+    const { client } = createMockSupabase({
+      userId: "user-456",
+      existingAssignment: null,
+      experiment: {
+        id: "exp-3",
+        name: "ios-only",
+        component_path: "test/cta",
+        targeting_rules: [],
+        platforms: ["ios"],
+      },
+      variants: [
+        { variant_key: "control", config: {}, traffic_percentage: 100 },
+      ],
+    });
+
+    const result = await evaluateFlag(client, "ios-only", "android");
+
+    expect(result).toBeNull();
+  });
+
+  it("returns assignment when experiment targets the current platform", async () => {
+    const { client } = createMockSupabase({
+      userId: "user-456",
+      existingAssignment: null,
+      experiment: {
+        id: "exp-4",
+        name: "mobile-test",
+        component_path: "test/cta",
+        targeting_rules: [],
+        platforms: ["ios", "android"],
+      },
+      variants: [
+        { variant_key: "control", config: { text: "ok" }, traffic_percentage: 100 },
+      ],
+    });
+
+    const result = await evaluateFlag(client, "mobile-test", "ios");
+
+    expect(result).not.toBeNull();
+    expect(result!.variant_key).toBe("control");
+  });
+
+  it("returns assignment when experiment has empty platforms (all platforms)", async () => {
+    const { client } = createMockSupabase({
+      userId: "user-456",
+      existingAssignment: null,
+      experiment: {
+        id: "exp-5",
+        name: "all-platforms",
+        component_path: "test/cta",
+        targeting_rules: [],
+        platforms: [],
+      },
+      variants: [
+        { variant_key: "control", config: { text: "ok" }, traffic_percentage: 100 },
+      ],
+    });
+
+    const result = await evaluateFlag(client, "all-platforms", "android");
+
+    expect(result).not.toBeNull();
   });
 });

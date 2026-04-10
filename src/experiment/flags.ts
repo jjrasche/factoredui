@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ExperimentAssignment } from "../types.js";
+import type { ExperimentAssignment, Platform } from "../types.js";
 import { queryFactors } from "../factors/query.js";
 import { evaluateTargeting } from "./targeting.js";
 import type { TargetingRule } from "./targeting.js";
@@ -7,11 +7,13 @@ import type { TargetingRule } from "./targeting.js";
 /**
  * Flag evaluation: reads experiment assignments for the current user.
  * If not yet assigned to a running experiment, assigns deterministically via hash bucketing.
+ * Optional platform parameter filters experiments to those targeting the current platform.
  */
 
 export async function evaluateFlag(
   supabase: SupabaseClient,
   experimentName: string,
+  platform?: Platform,
 ): Promise<ExperimentAssignment | null> {
   const userId = await resolveUserId(supabase);
   if (!userId) return null;
@@ -22,7 +24,7 @@ export async function evaluateFlag(
     return existingAssignment;
   }
 
-  const newAssignment = await assignToExperiment(supabase, userId, experimentName);
+  const newAssignment = await assignToExperiment(supabase, userId, experimentName, platform);
   if (newAssignment) {
     await recordExposure(supabase, userId, newAssignment);
   }
@@ -72,8 +74,9 @@ async function assignToExperiment(
   supabase: SupabaseClient,
   userId: string,
   experimentName: string,
+  platform?: Platform,
 ): Promise<ExperimentAssignment | null> {
-  const experiment = await fetchRunningExperiment(supabase, experimentName);
+  const experiment = await fetchRunningExperiment(supabase, experimentName, platform);
   if (!experiment) return null;
 
   const isTargeted = await checkTargeting(supabase, userId, experiment);
@@ -107,21 +110,30 @@ interface RunningExperiment {
   name: string;
   component_path: string;
   targeting_rules: TargetingRule[];
+  platforms: string[];
 }
 
 async function fetchRunningExperiment(
   supabase: SupabaseClient,
   experimentName: string,
+  platform?: Platform,
 ): Promise<RunningExperiment | null> {
   const { data, error } = await supabase
     .from("experiments")
-    .select("id, name, component_path, targeting_rules")
+    .select("id, name, component_path, targeting_rules, platforms")
     .eq("name", experimentName)
     .eq("status", "running")
     .maybeSingle();
 
   if (error || !data) return null;
-  return data as RunningExperiment;
+
+  const experiment = data as RunningExperiment;
+
+  if (platform && experiment.platforms.length > 0 && !experiment.platforms.includes(platform)) {
+    return null;
+  }
+
+  return experiment;
 }
 
 async function checkTargeting(

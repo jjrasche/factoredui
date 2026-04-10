@@ -2,7 +2,11 @@ import { defineConfig } from "tsup";
 
 export default defineConfig([
   {
-    entry: { index: "src/index.ts", react: "src/bindings/react.tsx" },
+    entry: {
+      index: "src/index.ts",
+      react: "src/bindings/react.tsx",
+      "react-native": "src/bindings/react-native.tsx",
+    },
     format: ["esm", "cjs"],
     dts: true,
     sourcemap: true,

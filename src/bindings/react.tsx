@@ -351,3 +351,12 @@ function subscribeToExperimentChanges(
     )
     .subscribe();
 }
+
+// Re-export contract layer (context-based paths)
+export {
+  AuxiFlow,
+  AuxiPage,
+  AuxiComponent,
+  AuxiElement,
+  useComponentPath,
+} from "../capture/path-context.js";

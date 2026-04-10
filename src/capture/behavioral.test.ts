@@ -1,92 +1,65 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { AuxiEvent } from "../types.js";
-import { createBehavioralDetector } from "./behavioral.js";
+import { describe, it, expect } from "vitest";
+import {
+  createRageClickState,
+  recordClickAndDetectRage,
+  createScrollState,
+  detectScrollReversal,
+} from "./behavioral.js";
 
-describe("createBehavioralDetector", () => {
-  let collectedEvents: AuxiEvent[];
-  let detector: ReturnType<typeof createBehavioralDetector>;
+describe("recordClickAndDetectRage", () => {
+  it("returns true after 3 rapid clicks on same path", () => {
+    const state = createRageClickState();
+    const now = 1000;
 
-  beforeEach(() => {
-    collectedEvents = [];
-    document.body.innerHTML = `
-      <div data-auxi-page="test-page">
-        <button data-auxi-element="test-btn">Click me</button>
-      </div>
-    `;
-    detector = createBehavioralDetector((event) => collectedEvents.push(event));
-    detector.startDetecting();
+    expect(recordClickAndDetectRage(state, "page/button", now)).toBe(false);
+    expect(recordClickAndDetectRage(state, "page/button", now + 100)).toBe(false);
+    expect(recordClickAndDetectRage(state, "page/button", now + 200)).toBe(true);
   });
 
-  afterEach(() => {
-    detector.stopDetecting();
-    document.body.innerHTML = "";
+  it("resets when target path changes", () => {
+    const state = createRageClickState();
+    const now = 1000;
+
+    recordClickAndDetectRage(state, "page/button-a", now);
+    recordClickAndDetectRage(state, "page/button-a", now + 100);
+    // Switch target — count resets
+    recordClickAndDetectRage(state, "page/button-b", now + 200);
+    expect(recordClickAndDetectRage(state, "page/button-b", now + 300)).toBe(false);
   });
 
-  describe("rage click detection", () => {
-    it("emits rage_click after 3 rapid clicks on same target", () => {
-      const button = document.querySelector("button")!;
+  it("does not trigger when clicks are outside time window", () => {
+    const state = createRageClickState();
 
-      button.click();
-      button.click();
-      button.click();
+    expect(recordClickAndDetectRage(state, "page/btn", 1000)).toBe(false);
+    expect(recordClickAndDetectRage(state, "page/btn", 1100)).toBe(false);
+    // 600ms after first click — outside 500ms window, first click pruned
+    expect(recordClickAndDetectRage(state, "page/btn", 1600)).toBe(false);
+  });
+});
 
-      const rageEvents = collectedEvents.filter(
-        (e) => e.event_type === "rage_click",
-      );
-      expect(rageEvents.length).toBeGreaterThanOrEqual(1);
-      expect(rageEvents[0].component_path).toBe("test-page/test-btn");
-    });
+describe("detectScrollReversal", () => {
+  it("detects rapid direction change", () => {
+    const state = createScrollState();
 
-    it("does not emit rage_click for 2 clicks", () => {
-      const button = document.querySelector("button")!;
-
-      button.click();
-      button.click();
-
-      const rageEvents = collectedEvents.filter(
-        (e) => e.event_type === "rage_click",
-      );
-      expect(rageEvents).toHaveLength(0);
-    });
+    // Establish initial direction (down)
+    expect(detectScrollReversal(state, 100, 1000)).toBeNull();
+    // First reversal (up) — sets lastDirectionChangeAt
+    expect(detectScrollReversal(state, 50, 1100)).toBeNull();
+    // Second reversal (down) within 300ms of the first — triggers
+    expect(detectScrollReversal(state, 100, 1200)).toBe("down");
   });
 
-  describe("dead click detection", () => {
-    it("emits dead_click when no DOM mutation follows click", async () => {
-      vi.useFakeTimers();
-      const button = document.querySelector("button")!;
+  it("does not trigger on slow direction change", () => {
+    const state = createScrollState();
 
-      button.click();
+    detectScrollReversal(state, 100, 1000);
+    detectScrollReversal(state, 200, 1100);
+    // Reverse after 400ms — outside 300ms window
+    expect(detectScrollReversal(state, 150, 1500)).toBeNull();
+  });
 
-      await vi.advanceTimersByTimeAsync(1100);
-
-      const deadEvents = collectedEvents.filter(
-        (e) => e.event_type === "dead_click",
-      );
-      expect(deadEvents.length).toBeGreaterThanOrEqual(1);
-      expect(deadEvents[0].component_path).toBe("test-page/test-btn");
-
-      vi.useRealTimers();
-    });
-
-    it("does not emit dead_click when DOM mutates after click", async () => {
-      vi.useFakeTimers();
-      const button = document.querySelector("button")!;
-
-      button.click();
-
-      // Simulate DOM mutation within the wait window
-      await vi.advanceTimersByTimeAsync(100);
-      const newEl = document.createElement("span");
-      document.body.appendChild(newEl);
-
-      await vi.advanceTimersByTimeAsync(1000);
-
-      const deadEvents = collectedEvents.filter(
-        (e) => e.event_type === "dead_click",
-      );
-      expect(deadEvents).toHaveLength(0);
-
-      vi.useRealTimers();
-    });
+  it("returns null on first scroll", () => {
+    const state = createScrollState();
+    expect(detectScrollReversal(state, 100, 1000)).toBeNull();
   });
 });

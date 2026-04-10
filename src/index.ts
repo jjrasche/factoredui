@@ -6,6 +6,9 @@ export { queryFactorHistory, queryFactorDelta } from "./factors/snapshots.js";
 export { evaluateTargeting } from "./experiment/targeting.js";
 export { queryExperimentResults } from "./experiment/results.js";
 export { evaluateExperimentThresholds, concludeExperiment } from "./experiment/governance.js";
+export { createWebAdapter } from "./capture/web-adapter.js";
+
+export type { CaptureAdapter } from "./capture/adapter.js";
 
 export type {
   AuxiConfig,
@@ -16,6 +19,7 @@ export type {
   FactorTier,
   Factor,
   ExperimentAssignment,
+  Platform,
 } from "./types.js";
 
 export type { ComponentFactorAggregate } from "./factors/query.js";
