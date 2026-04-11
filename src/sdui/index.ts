@@ -10,6 +10,16 @@ export {
   isBindingRef,
 } from "./binding.js";
 
+// Default implementations — generic, no app-specific logic
+export { useSourceData, type SourceDataState } from "./use-source-data.js";
+export {
+  createSpecStorage,
+  createDataSourceCache,
+  devSignatureVerifier,
+  type KVStorage,
+} from "./default-storage.js";
+export { createComponentRegistry, type ThemeTokens } from "./rn-components.js";
+
 export {
   RENDERER_VERSION,
   type AuxiSpec,
