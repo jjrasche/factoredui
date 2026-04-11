@@ -9,10 +9,11 @@ export default defineConfig([
       sdui: "src/sdui/index.ts",
     },
     format: ["esm", "cjs"],
+    splitting: false,
     dts: true,
     sourcemap: true,
     clean: true,
-    external: ["react", "@supabase/supabase-js"],
+    external: ["react", "react-native", "@supabase/supabase-js"],
   },
   {
     entry: { "cli/init": "src/cli/init.ts" },
