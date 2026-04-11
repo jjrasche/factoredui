@@ -1,7 +1,7 @@
 {
   "name": "auxi",
-  "version": "0.1.0",
-  "description": "Autonomous app optimization: capture interactions, compute behavioral factors, run experiments",
+  "version": "0.2.0",
+  "description": "Autonomous app optimization: capture, factors, experiments, SDUI",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -14,21 +14,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
-    },
-    "./react": {
-      "types": "./dist/react.d.ts",
-      "import": "./dist/react.js",
-      "require": "./dist/react.cjs"
-    },
-    "./react-native": {
-      "types": "./dist/react-native.d.ts",
-      "import": "./dist/react-native.js",
-      "require": "./dist/react-native.cjs"
-    },
-    "./sdui": {
-      "types": "./dist/sdui.d.ts",
-      "import": "./dist/sdui.js",
-      "require": "./dist/sdui.cjs"
     }
   },
   "files": [
@@ -46,12 +31,8 @@
   },
   "peerDependencies": {
     "@supabase/supabase-js": "^2.0.0",
-    "react": "^18.0.0 || ^19.0.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    }
+    "react": "^18.0.0 || ^19.0.0",
+    "react-native": ">=0.73.0"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.103.0",

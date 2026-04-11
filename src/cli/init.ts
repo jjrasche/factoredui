@@ -98,11 +98,11 @@ Setup complete! Next steps:
      const supabase = createClient(url, anonKey)
      const capture = initCapture({ supabase })
 
-  For React:
+  For React Native / Expo:
 
-     import { AuxiProvider } from 'auxi/react'
+     import { AuxiProvider } from 'auxi'
 
-     <AuxiProvider supabase={supabase}>
+     <AuxiProvider supabase={supabase} adapter={adapter} platform="web">
        <App />
      </AuxiProvider>
 `);

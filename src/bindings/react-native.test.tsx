@@ -6,11 +6,15 @@ import {
   useGovernanceLog,
   useRecentGovernanceLog,
   useExperimentDashboard,
-} from "./react.js";
+} from "./react-native.js";
 
 import * as governanceLogModule from "../experiment/governance-log.js";
 import type { GovernanceLogRow } from "../experiment/governance-log.js";
 import * as dashboardModule from "../experiment/dashboard.js";
+
+vi.mock("../sdui/rn-components.js", () => ({
+  createComponentRegistry: vi.fn(() => ({})),
+}));
 
 vi.mock("../experiment/governance-log.js", () => ({
   queryGovernanceLog: vi.fn(),
@@ -21,7 +25,6 @@ vi.mock("../experiment/dashboard.js", () => ({
   queryExperimentSummaries: vi.fn(),
 }));
 
-// initCapture is called in AuxiProvider's useEffect
 vi.mock("../capture/index.js", () => ({
   initCapture: vi.fn(() => ({
     stopCapture: vi.fn(),
@@ -43,17 +46,29 @@ const mockSupabase = {
   removeChannel: vi.fn(),
 } as never;
 
+const mockAdapter = {
+  startListening: vi.fn(),
+  stopListening: vi.fn(),
+  collectSessionMetadata: vi.fn(() => ({})),
+  storeSessionId: vi.fn(),
+  loadSessionId: vi.fn(() => null),
+  clearSessionId: vi.fn(),
+  registerUnloadHandler: vi.fn(),
+};
+
 function createWrapper({ children }: { children: ReactNode }) {
   return (
-    <AuxiProvider supabase={mockSupabase}>{children}</AuxiProvider>
+    <AuxiProvider supabase={mockSupabase} adapter={mockAdapter} platform="web">
+      {children}
+    </AuxiProvider>
   );
 }
 
-const GOVERNANCE_LOG_ROWS = [
+const GOVERNANCE_LOG_ROWS: GovernanceLogRow[] = [
   {
     id: "log-1",
     experiment_id: "exp-1",
-    verdict: "continue" as const,
+    verdict: "continue",
     winning_variant: null,
     factor_verdicts: [],
     evaluated_at: "2026-04-01T00:00:00Z",
@@ -61,7 +76,7 @@ const GOVERNANCE_LOG_ROWS = [
   {
     id: "log-2",
     experiment_id: "exp-1",
-    verdict: "conclude" as const,
+    verdict: "conclude",
     winning_variant: "variant-a",
     factor_verdicts: [{ factor_name: "rage_click_rate", best_variant: "variant-a", best_delta: 0.3, control_delta: 0.1, is_significant: true }],
     evaluated_at: "2026-04-02T00:00:00Z",
@@ -155,7 +170,6 @@ describe("useRecentGovernanceLog realtime", () => {
       }),
       expect.any(Function),
     );
-    // No filter property — subscribes to all inserts
     const callArgs = mockChannelInstance.on.mock.calls.find(
       (call: unknown[]) => (call[1] as any)?.table === "governance_log" && !(call[1] as any)?.filter,
     );
@@ -198,7 +212,6 @@ describe("useRecentGovernanceLog realtime", () => {
     expect(result.current.log[0].id).toBe("log-recent-rt-1");
 
     await act(async () => onCallback({ new: realtimeRow2 }));
-    // Trimmed to limit of 2
     expect(result.current.log).toHaveLength(2);
     expect(result.current.log[0].id).toBe("log-recent-rt-2");
     expect(result.current.log[1].id).toBe("log-recent-rt-1");
@@ -280,7 +293,6 @@ describe("realtime subscriptions", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.log).toHaveLength(1);
 
-    // Simulate a realtime INSERT by invoking the callback passed to .on()
     const onCallback = mockChannelInstance.on.mock.calls.find(
       (call: unknown[]) => call[1]?.table === "governance_log",
     )?.[2] as (payload: { new: GovernanceLogRow }) => void;
@@ -339,7 +351,6 @@ describe("realtime subscriptions", () => {
       expect(dashboardModule.queryExperimentSummaries).toHaveBeenCalledTimes(1);
     });
 
-    // Simulate a realtime change on experiments table
     const onCallback = mockChannelInstance.on.mock.calls.find(
       (call: unknown[]) => call[1]?.table === "experiments",
     )?.[2] as () => void;

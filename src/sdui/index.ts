@@ -18,8 +18,6 @@ export {
   devSignatureVerifier,
   type KVStorage,
 } from "./default-storage.js";
-export { createComponentRegistry, type ThemeTokens } from "./rn-components.js";
-
 export {
   RENDERER_VERSION,
   type AuxiSpec,

@@ -1,20 +1,10 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
-  useRef,
   useState,
-  type ReactNode,
 } from "react";
 import type { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
-import type {
-  CaptureHandle,
-  ExperimentAssignment,
-  Factor,
-  AuxiConfig,
-} from "../types.js";
-import { initCapture } from "../capture/index.js";
+import type { ExperimentAssignment, Factor } from "../types.js";
 import { evaluateFlag } from "../experiment/flags.js";
 import {
   queryGovernanceLog,
@@ -27,76 +17,15 @@ import {
   type ExperimentSummaryFilters,
 } from "../experiment/dashboard.js";
 
-// --- Context ---
-
-interface AuxiContextValue {
-  supabase: SupabaseClient;
-  captureHandle: CaptureHandle | null;
-}
-
-const AuxiContext = createContext<AuxiContextValue | null>(null);
-
-function useAuxiContext(): AuxiContextValue {
-  const ctx = useContext(AuxiContext);
-  if (!ctx) {
-    throw new Error("useAuxiContext: must be used within <AuxiProvider>");
-  }
-  return ctx;
-}
-
-// --- Provider ---
-
-interface AuxiProviderProps {
-  supabase: SupabaseClient;
-  children: ReactNode;
-  flushIntervalMs?: number;
-  flushBatchSize?: number;
-  sessionTimeoutMs?: number;
-}
-
-export function AuxiProvider({
-  supabase,
-  children,
-  flushIntervalMs,
-  flushBatchSize,
-  sessionTimeoutMs,
-}: AuxiProviderProps): ReactNode {
-  const captureRef = useRef<CaptureHandle | null>(null);
-
-  useEffect(() => {
-    const config: AuxiConfig = {
-      supabase,
-      flushIntervalMs,
-      flushBatchSize,
-      sessionTimeoutMs,
-    };
-    captureRef.current = initCapture(config);
-
-    return () => {
-      captureRef.current?.flushEvents();
-      captureRef.current?.stopCapture();
-    };
-  }, [supabase, flushIntervalMs, flushBatchSize, sessionTimeoutMs]);
-
-  return (
-    <AuxiContext.Provider
-      value={{ supabase, captureHandle: captureRef.current }}
-    >
-      {children}
-    </AuxiContext.Provider>
-  );
-}
-
 // --- useFlag ---
 
-interface UseFlagResult {
+export interface UseFlagResult {
   variantKey: string | null;
   config: Record<string, unknown>;
   isLoading: boolean;
 }
 
-export function useFlag(experimentName: string): UseFlagResult {
-  const { supabase } = useAuxiContext();
+export function useFlag(supabase: SupabaseClient, experimentName: string): UseFlagResult {
   const [assignment, setAssignment] = useState<ExperimentAssignment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -124,13 +53,12 @@ export function useFlag(experimentName: string): UseFlagResult {
 
 // --- useFactors ---
 
-interface UseFactorsResult {
+export interface UseFactorsResult {
   factors: Factor[];
   isLoading: boolean;
 }
 
-export function useFactors(componentPath?: string): UseFactorsResult {
-  const { supabase } = useAuxiContext();
+export function useFactors(supabase: SupabaseClient, componentPath?: string): UseFactorsResult {
   const [factors, setFactors] = useState<Factor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -175,13 +103,12 @@ async function fetchUserFactors(
 
 // --- useGovernanceLog ---
 
-interface UseGovernanceLogResult {
+export interface UseGovernanceLogResult {
   log: GovernanceLogRow[];
   isLoading: boolean;
 }
 
-export function useGovernanceLog(experimentId: string): UseGovernanceLogResult {
-  const { supabase } = useAuxiContext();
+export function useGovernanceLog(supabase: SupabaseClient, experimentId: string): UseGovernanceLogResult {
   const [log, setLog] = useState<GovernanceLogRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -214,8 +141,7 @@ export function useGovernanceLog(experimentId: string): UseGovernanceLogResult {
 
 // --- useRecentGovernanceLog ---
 
-export function useRecentGovernanceLog(limit?: number): UseGovernanceLogResult {
-  const { supabase } = useAuxiContext();
+export function useRecentGovernanceLog(supabase: SupabaseClient, limit?: number): UseGovernanceLogResult {
   const [log, setLog] = useState<GovernanceLogRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const effectiveLimit = limit ?? 50;
@@ -249,15 +175,15 @@ export function useRecentGovernanceLog(limit?: number): UseGovernanceLogResult {
 
 // --- useExperimentDashboard ---
 
-interface UseExperimentDashboardResult {
+export interface UseExperimentDashboardResult {
   summaries: ExperimentSummaryRow[];
   isLoading: boolean;
 }
 
 export function useExperimentDashboard(
+  supabase: SupabaseClient,
   filters?: ExperimentSummaryFilters,
 ): UseExperimentDashboardResult {
-  const { supabase } = useAuxiContext();
   const [summaries, setSummaries] = useState<ExperimentSummaryRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -281,8 +207,6 @@ export function useExperimentDashboard(
       if (!isCancelled) setIsLoading(false);
     });
 
-    // v_experiment_summary is a view — realtime doesn't fire on views.
-    // Subscribe to the underlying experiments table and refetch on changes.
     const channel = subscribeToExperimentChanges(supabase, refetchSummaries);
 
     return () => {
@@ -351,12 +275,3 @@ function subscribeToExperimentChanges(
     )
     .subscribe();
 }
-
-// Re-export contract layer (context-based paths)
-export {
-  AuxiFlow,
-  AuxiPage,
-  AuxiComponent,
-  AuxiElement,
-  useComponentPath,
-} from "../capture/path-context.js";
