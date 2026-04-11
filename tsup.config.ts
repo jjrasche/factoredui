@@ -6,6 +6,7 @@ export default defineConfig([
       index: "src/index.ts",
       react: "src/bindings/react.tsx",
       "react-native": "src/bindings/react-native.tsx",
+      sdui: "src/sdui/index.ts",
     },
     format: ["esm", "cjs"],
     dts: true,

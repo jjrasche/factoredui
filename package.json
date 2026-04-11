@@ -24,6 +24,11 @@
       "types": "./dist/react-native.d.ts",
       "import": "./dist/react-native.js",
       "require": "./dist/react-native.cjs"
+    },
+    "./sdui": {
+      "types": "./dist/sdui.d.ts",
+      "import": "./dist/sdui.js",
+      "require": "./dist/sdui.cjs"
     }
   },
   "files": [
