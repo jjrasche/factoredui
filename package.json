@@ -1,46 +1,19 @@
 {
-  "name": "auxi",
-  "version": "0.2.0",
-  "description": "Autonomous app optimization: capture, factors, experiments, SDUI",
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": {
-    "auxi": "./dist/cli/init.cjs"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    }
-  },
-  "files": [
-    "dist",
-    "supabase/migrations"
+  "name": "factoredui",
+  "private": true,
+  "workspaces": [
+    "packages/*"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/rasche/auxi.git"
-  },
-  "license": "MIT",
   "scripts": {
-    "build": "tsup",
+    "build": "npm run build -w @factoredui/core && npm run build -w @factoredui/react && npm run build -w @factoredui/react-native",
+    "build:core": "npm run build -w @factoredui/core",
+    "build:react": "npm run build -w @factoredui/react",
+    "build:react-native": "npm run build -w @factoredui/react-native",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
-  },
-  "peerDependencies": {
-    "@supabase/supabase-js": "^2.0.0",
-    "react": "^18.0.0 || ^19.0.0",
-    "react-native": ">=0.73.0"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.103.0",

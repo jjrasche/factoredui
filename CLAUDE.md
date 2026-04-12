@@ -1,36 +1,40 @@
-# auxi
+# factoredui
 
-Autonomous User eXperience Improver. TypeScript library + Supabase migrations that captures user interactions, computes standardized behavioral factors, enables LLM-driven experimentation, and supports democratic governance of app changes.
+Autonomous User eXperience Improver (formerly auxi). Three npm packages that capture user interactions, compute standardized behavioral factors, enable LLM-driven experimentation, and support democratic governance of app changes.
 
 ## Stack
-- Language: TypeScript (framework-agnostic core, React + React Native bindings)
+- Language: TypeScript (npm workspaces monorepo)
+- Packages: `@factoredui/core` (pure TS), `@factoredui/react` (React bindings), `@factoredui/react-native` (RN primitives)
 - Database: Supabase (Postgres with RLS, separate `auxi` schema)
 - Factor engine: SQL materialized views
 - Flags/experiments: Client-side evaluation from Supabase-stored config
 
 ## Commands
 ```bash
-npm run build        # tsup (ESM + CJS + DTS)
+npm run build        # tsup: core → react → react-native (sequential, DTS depends on prior)
 npm test             # vitest run (unit + integration)
 npm run test:unit    # unit tests only
-npm run typecheck    # tsc --noEmit
+npm run typecheck    # tsc --noEmit (root tsconfig with paths)
 npx supabase start   # local Supabase (required for integration tests)
 ```
 
 ## Architecture
 
-### Key Directories
-- `capture/` -- platform-agnostic event pipeline + web adapter
-- `factors/` -- three-tier computation: alarm, diagnostic, structural
-- `experiment/` -- feature flags, bucketing, exposure tracking, governance
-- `bindings/` -- React provider/hooks, React Native provider/hooks
-- `supabase/migrations/` -- schema, factor views, experiment tables
+### Packages
+- `packages/core/` -- capture pipeline, factors, experiments, SDUI engine, types, CLI, migrations
+- `packages/react/` -- AuxiProvider, hooks, path context, SDUI renderer, useSourceData
+- `packages/react-native/` -- 20 themed RN component primitives (createComponentRegistry)
+
+### Build Notes
+- Build order matters: core must build first (react/react-native DTS resolve `@factoredui/core` via node_modules symlinks → `dist/index.d.ts`)
+- Root `tsconfig.json` has `paths` for all three packages → use for typecheck
+- Package `tsconfig.json` files have NO `paths` → used by tsup DTS generation, must resolve through node_modules
 
 ### Data Flow
-Capture adapters emit `AuxiEvent` -> batched writer flushes to `auxi.events` -> SQL materialized views compute factors -> experiment system reads factors for targeting and governance.
+Capture adapters emit `AuxiEvent` → batched writer flushes to `auxi.events` → SQL materialized views compute factors → experiment system reads factors for targeting and governance.
 
 ### Cross-Platform Contract
-`CaptureAdapter` interface defines what each platform must implement. `AuxiFlow/AuxiPage/AuxiComponent/AuxiElement` context providers define the shared path hierarchy. Platform-specific adapters live with their platform (e.g. Expo adapter in house-ops), not here.
+`CaptureAdapter` interface defines what each platform must implement. `AuxiFlow/AuxiPage/AuxiComponent/AuxiElement` context providers define the shared path hierarchy.
 
 ## Global References
 

@@ -1,0 +1,33 @@
+{
+  "name": "@factoredui/react-native",
+  "version": "0.1.0",
+  "description": "React Native component registry for FactoredUI SDUI — 20 themed primitives",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@factoredui/core": "^0.1.0",
+    "@factoredui/react": "^0.1.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-native": ">=0.73.0"
+  }
+}
