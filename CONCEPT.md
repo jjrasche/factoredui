@@ -1,6 +1,6 @@
-# auxi
+# factoredui
 
-Autonomous app optimization via standardized components. TypeScript library + Supabase migrations.
+Autonomous app optimization via standardized components. Three npm packages (`@factoredui/core`, `@factoredui/react`, `@factoredui/react-native`) + Supabase migrations.
 
 ## The core insight
 
@@ -45,13 +45,10 @@ Experiment at element/component level (isolates causation). Measure factors at e
 ## Architecture
 
 ```
-auxi
-├── capture/          -- interaction, error, structural (DOM-level, framework-agnostic)
-├── factors/          -- alarm, diagnostic, structural (materialized SQL views)
-├── experiment/       -- flags, bucketing, exposure tracking
-├── bindings/react.tsx -- AuxiProvider, useFlag(), useFactors()
-├── migrations/       -- auxi schema, factor views, experiment tables
-└── index.ts
+packages/
+├── core/             -- capture pipeline, factors, experiments, SDUI engine, types, CLI, migrations
+├── react/            -- AuxiProvider, hooks, path context, SDUI renderer, useSourceData
+└── react-native/     -- 20 themed RN component primitives (createComponentRegistry)
 ```
 
 Cross-platform: TypeScript for web. Dart for Flutter. Swift/Kotlin for native. All write same event shape to same Supabase tables. Factor engine is SQL.
