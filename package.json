@@ -20,6 +20,14 @@
     "dist",
     "supabase/migrations"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rasche/auxi.git"
+  },
+  "license": "MIT",
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
