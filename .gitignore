@@ -5,3 +5,4 @@ dist/
 .claude/
 *.tgz
 *.tsbuildinfo
+.playwright-mcp/
