@@ -57,7 +57,7 @@ function buildFactorList(): SpecNode {
   return {
     id: "factor-list",
     type: "list",
-    props: listProps as unknown as Record<string, never>,
+    props: { ...listProps },
   };
 }
 

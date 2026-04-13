@@ -8,12 +8,17 @@ export { queryFactors, queryComponentFactors } from "./factors/query.js";
 export { queryFactorHistory, queryFactorDelta } from "./factors/snapshots.js";
 export { factorSource, componentFactorSource, factorHistorySource } from "./factors/data-sources.js";
 export { buildFactorDashboardSpec } from "./factors/dashboard-spec.js";
+export { queryUserCluster, queryClusterMembers, kMeans } from "./factors/clustering.js";
+export type { UserCluster, KMeansResult } from "./factors/clustering.js";
 
 // --- Experiments ---
 export { evaluateFlag } from "./experiment/index.js";
+export { createExperiment, startExperiment } from "./experiment/index.js";
+export type { ExperimentDefinition, VariantDefinition, CreatedExperiment } from "./experiment/index.js";
 export { evaluateTargeting } from "./experiment/targeting.js";
 export { queryExperimentResults } from "./experiment/results.js";
 export { evaluateExperimentThresholds, concludeExperiment } from "./experiment/governance.js";
+export { logGovernanceVerdict, runGovernanceCheck } from "./experiment/index.js";
 
 // --- SDUI engine ---
 export { validateSpec } from "./sdui/spec-validator.js";
@@ -22,6 +27,7 @@ export { dispatchAction } from "./sdui/action-dispatch.js";
 export { loadSpec, type SpecStorage, type SignatureVerifier, type LoadedSpec } from "./sdui/spec-loader.js";
 export { resolveBinding, resolveTextWithBindings, resolveProps, isBindingRef } from "./sdui/binding.js";
 export { createSpecStorage, createDataSourceCache, devSignatureVerifier, type KVStorage } from "./sdui/default-storage.js";
+export { createEd25519Verifier, createEd25519Signer, generateEd25519Keypair, type SpecSigner } from "./sdui/ed25519.js";
 
 export {
   RENDERER_VERSION,

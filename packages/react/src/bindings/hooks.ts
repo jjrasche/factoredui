@@ -4,8 +4,8 @@ import {
   useState,
 } from "react";
 import type { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
-import type { ExperimentAssignment, Factor, ComponentFactorAggregate, GovernanceLogRow, ExperimentSummaryRow, ExperimentSummaryFilters } from "@factoredui/core";
-import { evaluateFlag, queryGovernanceLog, queryRecentGovernanceLog, queryExperimentSummaries, queryComponentFactors } from "@factoredui/core";
+import type { ExperimentAssignment, Factor, ComponentFactorAggregate, GovernanceLogRow, ExperimentSummaryRow, ExperimentSummaryFilters, VariantResult } from "@factoredui/core";
+import { evaluateFlag, queryGovernanceLog, queryRecentGovernanceLog, queryExperimentSummaries, queryComponentFactors, queryExperimentResults } from "@factoredui/core";
 
 // --- useFlag ---
 
@@ -235,6 +235,52 @@ export function useExperimentDashboard(
   }, [supabase, filterKey, refetchSummaries]);
 
   return { summaries, isLoading };
+}
+
+// --- useExperimentResults ---
+
+export interface UseExperimentResultsResult {
+  results: VariantResult[];
+  isLoading: boolean;
+  refetch: () => void;
+}
+
+export function useExperimentResults(
+  supabase: SupabaseClient,
+  experimentId: string,
+  factorNames: string[],
+): UseExperimentResultsResult {
+  const [results, setResults] = useState<VariantResult[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const factorKey = JSON.stringify(factorNames);
+
+  const refetch = useCallback(() => {
+    setIsLoading(true);
+    queryExperimentResults(supabase, experimentId, factorNames).then((rows) => {
+      setResults(rows);
+      setIsLoading(false);
+    }).catch(() => {
+      setIsLoading(false);
+    });
+  }, [supabase, experimentId, factorKey]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    queryExperimentResults(supabase, experimentId, factorNames).then((rows) => {
+      if (!isCancelled) {
+        setResults(rows);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (!isCancelled) setIsLoading(false);
+    });
+
+    return () => { isCancelled = true; };
+  }, [supabase, experimentId, factorKey]);
+
+  return { results, isLoading, refetch };
 }
 
 // --- Realtime subscription helpers ---

@@ -49,7 +49,7 @@ function validateNodeTree(node: SpecNode, errors: string[], depth: number): void
   }
 
   validateNodeStructure(node, errors);
-  validateBindingRefs(node, errors);
+  validateBindingRefs(node, errors, depth);
 
   if (node.children) {
     for (const child of node.children) {
@@ -70,16 +70,24 @@ function validateNodeStructure(node: SpecNode, errors: string[]): void {
   }
 }
 
-function validateBindingRefs(node: SpecNode, errors: string[]): void {
+function validateBindingRefs(node: SpecNode, errors: string[], depth: number): void {
   if (node.visible && !isValidBindingRef(node.visible)) {
     errors.push(`node "${node.id}" visible must be a binding ref like "{flag.name}"`);
   }
 
   if (node.props) {
     for (const [key, value] of Object.entries(node.props)) {
-      validatePropValue(node.id, key, value, errors);
+      if (isSpecNode(value)) {
+        validateNodeTree(value, errors, depth + 1);
+      } else {
+        validatePropValue(node.id, key, value, errors);
+      }
     }
   }
+}
+
+function isSpecNode(value: unknown): value is SpecNode {
+  return typeof value === "object" && value !== null && "id" in value && "type" in value;
 }
 
 function validatePropValue(
@@ -117,6 +125,14 @@ function collectDuplicateIds(
   if (node.children) {
     for (const child of node.children) {
       collectDuplicateIds(child, seen, errors);
+    }
+  }
+
+  if (node.props) {
+    for (const value of Object.values(node.props)) {
+      if (isSpecNode(value)) {
+        collectDuplicateIds(value, seen, errors);
+      }
     }
   }
 }

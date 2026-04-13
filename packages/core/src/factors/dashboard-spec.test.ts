@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildFactorDashboardSpec } from "./dashboard-spec";
 import { validateSpec } from "../sdui/spec-validator";
+import type { SpecNode } from "../sdui/spec-types";
 
 describe("buildFactorDashboardSpec", () => {
   it("produces a valid spec", () => {
@@ -55,8 +56,11 @@ describe("buildFactorDashboardSpec", () => {
   });
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function findNodeById(node: any, targetId: string): any | null {
+function isSpecNode(value: unknown): value is SpecNode {
+  return typeof value === "object" && value !== null && "id" in value && "type" in value;
+}
+
+function findNodeById(node: SpecNode, targetId: string): SpecNode | null {
   if (node.id === targetId) return node;
 
   if (node.children) {
@@ -66,17 +70,17 @@ function findNodeById(node: any, targetId: string): any | null {
     }
   }
 
-  if (node.props?.itemTemplate) {
-    const found = findNodeById(node.props.itemTemplate, targetId);
+  const template = node.props?.itemTemplate;
+  if (template && isSpecNode(template)) {
+    const found = findNodeById(template, targetId);
     if (found) return found;
   }
 
   return null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function collectIds(node: any): string[] {
-  const ids = [node.id as string];
+function collectIds(node: SpecNode): string[] {
+  const ids = [node.id];
 
   if (node.children) {
     for (const child of node.children) {
@@ -84,8 +88,9 @@ function collectIds(node: any): string[] {
     }
   }
 
-  if (node.props?.itemTemplate) {
-    ids.push(...collectIds(node.props.itemTemplate));
+  const template = node.props?.itemTemplate;
+  if (template && isSpecNode(template)) {
+    ids.push(...collectIds(template));
   }
 
   return ids;

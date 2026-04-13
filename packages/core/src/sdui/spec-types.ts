@@ -56,11 +56,14 @@ export interface SpecNode {
 // --- Values ---
 
 /**
- * A spec value is either a literal or a binding reference.
+ * A spec value is either a literal, a binding reference, or a nested SpecNode.
  * Binding refs are strings starting with "{" and ending with "}".
  * Single-level path only: "{sources.pipeline.name}" — no expressions, no chaining.
+ *
+ * SpecNode is included to support props like ListProps.itemTemplate
+ * where a prop value is itself a component subtree.
  */
-export type SpecValue = string | number | boolean | null | SpecValueArray | SpecValueObject;
+export type SpecValue = string | number | boolean | null | SpecNode | SpecValueArray | SpecValueObject;
 interface SpecValueArray extends Array<SpecValue> {}
 interface SpecValueObject { [key: string]: SpecValue; }
 

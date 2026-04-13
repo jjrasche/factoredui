@@ -7,6 +7,7 @@ export {
   useGovernanceLog,
   useRecentGovernanceLog,
   useExperimentDashboard,
+  useExperimentResults,
   usePlatform,
 } from "./bindings/provider.js";
 
@@ -30,4 +31,5 @@ export type {
   UseComponentFactorsResult,
   UseGovernanceLogResult,
   UseExperimentDashboardResult,
+  UseExperimentResultsResult,
 } from "./bindings/hooks.js";
