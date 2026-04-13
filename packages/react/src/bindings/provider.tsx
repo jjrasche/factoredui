@@ -15,6 +15,7 @@ import {
   useGovernanceLog as useGovernanceLogCore,
   useRecentGovernanceLog as useRecentGovernanceLogCore,
   useExperimentDashboard as useExperimentDashboardCore,
+  useComponentFactors as useComponentFactorsCore,
 } from "./hooks.js";
 
 // --- Context ---
@@ -104,6 +105,11 @@ export function useGovernanceLog(experimentId: string) {
 export function useRecentGovernanceLog(limit?: number) {
   const { supabase } = useFactoredContext();
   return useRecentGovernanceLogCore(supabase, limit);
+}
+
+export function useComponentFactors(componentPath: string) {
+  const { supabase } = useFactoredContext();
+  return useComponentFactorsCore(supabase, componentPath);
 }
 
 export function useExperimentDashboard(filters?: ExperimentSummaryFilters) {

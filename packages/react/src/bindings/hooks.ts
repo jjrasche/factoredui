@@ -4,8 +4,8 @@ import {
   useState,
 } from "react";
 import type { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
-import type { ExperimentAssignment, Factor, GovernanceLogRow, ExperimentSummaryRow, ExperimentSummaryFilters } from "@factoredui/core";
-import { evaluateFlag, queryGovernanceLog, queryRecentGovernanceLog, queryExperimentSummaries } from "@factoredui/core";
+import type { ExperimentAssignment, Factor, ComponentFactorAggregate, GovernanceLogRow, ExperimentSummaryRow, ExperimentSummaryFilters } from "@factoredui/core";
+import { evaluateFlag, queryGovernanceLog, queryRecentGovernanceLog, queryExperimentSummaries, queryComponentFactors } from "@factoredui/core";
 
 // --- useFlag ---
 
@@ -89,6 +89,35 @@ async function fetchUserFactors(
   const { data, error } = await query;
   if (error || !data) return [];
   return data as Factor[];
+}
+
+// --- useComponentFactors ---
+
+export interface UseComponentFactorsResult {
+  aggregates: ComponentFactorAggregate[];
+  isLoading: boolean;
+}
+
+export function useComponentFactors(supabase: SupabaseClient, componentPath: string): UseComponentFactorsResult {
+  const [aggregates, setAggregates] = useState<ComponentFactorAggregate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    queryComponentFactors(supabase, componentPath).then((result) => {
+      if (!isCancelled) {
+        setAggregates(result);
+        setIsLoading(false);
+      }
+    }).catch(() => {
+      if (!isCancelled) setIsLoading(false);
+    });
+
+    return () => { isCancelled = true; };
+  }, [supabase, componentPath]);
+
+  return { aggregates, isLoading };
 }
 
 // --- useGovernanceLog ---

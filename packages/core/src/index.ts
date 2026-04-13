@@ -6,6 +6,8 @@ export { createWebAdapter } from "./capture/web-adapter.js";
 // --- Factors ---
 export { queryFactors, queryComponentFactors } from "./factors/query.js";
 export { queryFactorHistory, queryFactorDelta } from "./factors/snapshots.js";
+export { factorSource, componentFactorSource, factorHistorySource } from "./factors/data-sources.js";
+export { buildFactorDashboardSpec } from "./factors/dashboard-spec.js";
 
 // --- Experiments ---
 export { evaluateFlag } from "./experiment/index.js";

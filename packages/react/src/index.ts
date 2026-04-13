@@ -3,6 +3,7 @@ export {
   Provider,
   useFlag,
   useFactors,
+  useComponentFactors,
   useGovernanceLog,
   useRecentGovernanceLog,
   useExperimentDashboard,
@@ -26,6 +27,7 @@ export { useSourceData, type SourceDataState } from "./sdui/use-source-data.js";
 export type {
   UseFlagResult,
   UseFactorsResult,
+  UseComponentFactorsResult,
   UseGovernanceLogResult,
   UseExperimentDashboardResult,
 } from "./bindings/hooks.js";
