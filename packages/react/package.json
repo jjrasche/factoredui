@@ -1,6 +1,6 @@
 {
   "name": "@factoredui/react",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "React bindings for FactoredUI — provider, hooks, path context, SDUI renderer",
   "type": "module",
   "main": "./dist/index.cjs",
