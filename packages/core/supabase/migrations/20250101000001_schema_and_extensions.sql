@@ -1,15 +1,15 @@
--- auxi schema: foundation
--- Creates the auxi schema, enables required extensions, and defines enum types.
+-- factoredui schema: foundation
+-- Creates the factoredui schema, enables required extensions, and defines enum types.
 
-CREATE SCHEMA IF NOT EXISTS auxi;
+CREATE SCHEMA IF NOT EXISTS factoredui;
 
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
-GRANT USAGE ON SCHEMA auxi TO authenticated, service_role, anon;
+GRANT USAGE ON SCHEMA factoredui TO authenticated, service_role, anon;
 
-CREATE TYPE auxi.event_type AS ENUM (
+CREATE TYPE factoredui.event_type AS ENUM (
   'click',
   'scroll',
   'error',
@@ -26,19 +26,19 @@ CREATE TYPE auxi.event_type AS ENUM (
   'scroll_reversal'
 );
 
-CREATE TYPE auxi.factor_tier AS ENUM (
+CREATE TYPE factoredui.factor_tier AS ENUM (
   'alarm',
   'diagnostic',
   'structural'
 );
 
-CREATE TYPE auxi.experiment_status AS ENUM (
+CREATE TYPE factoredui.experiment_status AS ENUM (
   'draft',
   'running',
   'concluded'
 );
 
-CREATE TYPE auxi.threshold_operator AS ENUM (
+CREATE TYPE factoredui.threshold_operator AS ENUM (
   'gt',
   'lt',
   'gte',
@@ -46,7 +46,7 @@ CREATE TYPE auxi.threshold_operator AS ENUM (
   'eq'
 );
 
-CREATE TYPE auxi.threshold_action AS ENUM (
+CREATE TYPE factoredui.threshold_action AS ENUM (
   'alert',
   'experiment'
 );

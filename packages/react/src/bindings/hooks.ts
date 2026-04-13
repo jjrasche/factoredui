@@ -221,7 +221,7 @@ function subscribeToGovernanceInserts(
       "postgres_changes",
       {
         event: "INSERT",
-        schema: "auxi",
+        schema: "factoredui",
         table: "governance_log",
         filter: `experiment_id=eq.${experimentId}`,
       },
@@ -240,7 +240,7 @@ function subscribeToAllGovernanceInserts(
       "postgres_changes",
       {
         event: "INSERT",
-        schema: "auxi",
+        schema: "factoredui",
         table: "governance_log",
       },
       (payload) => onInsert(payload.new as GovernanceLogRow),
@@ -258,7 +258,7 @@ function subscribeToExperimentChanges(
       "postgres_changes",
       {
         event: "*",
-        schema: "auxi",
+        schema: "factoredui",
         table: "experiments",
       },
       () => onChange(),

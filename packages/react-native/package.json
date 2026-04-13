@@ -1,6 +1,6 @@
 {
   "name": "@factoredui/react-native",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "React Native component registry for FactoredUI SDUI — 20 themed primitives",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -25,8 +25,8 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@factoredui/core": "^0.1.0",
-    "@factoredui/react": "^0.1.0",
+    "@factoredui/core": "^0.2.0",
+    "@factoredui/react": "^0.2.0",
     "react": "^18.0.0 || ^19.0.0",
     "react-native": ">=0.73.0"
   }

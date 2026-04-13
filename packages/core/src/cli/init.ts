@@ -1,12 +1,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const AUXI_CONFIG_FILENAME = "factoredui.config.json";
+const CONFIG_FILENAME = "factoredui.config.json";
 
 const DEFAULT_CONFIG = {
   supabaseUrl: "http://localhost:54321",
   supabaseAnonKey: "<your-anon-key>",
-  schema: "auxi",
+  schema: "factoredui",
 };
 
 function main(): void {
@@ -49,7 +49,7 @@ function copyMigrations(targetDir: string): void {
     console.log(`  copy: ${targetFilename}`);
   }
 
-  console.log(`\nCopied ${migrationFiles.length} auxi migrations.`);
+  console.log(`\nCopied ${migrationFiles.length} factoredui migrations.`);
 }
 
 function findMigrationsDir(): string {
@@ -68,15 +68,15 @@ function findMigrationsDir(): string {
 }
 
 function writeConfig(targetDir: string): void {
-  const configPath = path.join(targetDir, AUXI_CONFIG_FILENAME);
+  const configPath = path.join(targetDir, CONFIG_FILENAME);
 
   if (fs.existsSync(configPath)) {
-    console.log(`\n${AUXI_CONFIG_FILENAME} already exists — skipping.`);
+    console.log(`\n${CONFIG_FILENAME} already exists — skipping.`);
     return;
   }
 
   fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2) + "\n");
-  console.log(`\nCreated ${AUXI_CONFIG_FILENAME}`);
+  console.log(`\nCreated ${CONFIG_FILENAME}`);
 }
 
 function generateTimestamp(): string {
@@ -88,7 +88,7 @@ function printSetupInstructions(): void {
   console.log(`
 Setup complete! Next steps:
 
-  1. Update ${AUXI_CONFIG_FILENAME} with your Supabase URL and anon key
+  1. Update ${CONFIG_FILENAME} with your Supabase URL and anon key
   2. Run: npx supabase db push
   3. In your app:
 
@@ -100,11 +100,11 @@ Setup complete! Next steps:
 
   For React Native / Expo:
 
-     import { AuxiProvider } from '@factoredui/react'
+     import { Provider } from '@factoredui/react'
 
-     <AuxiProvider supabase={supabase} adapter={adapter} platform="web">
+     <Provider supabase={supabase} adapter={adapter} platform="web">
        <App />
-     </AuxiProvider>
+     </Provider>
 `);
 }
 

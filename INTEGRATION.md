@@ -1,24 +1,24 @@
-# Auxi Integration Guide
+# Factored UI Integration Guide
 
-All auxi apps are cross-platform. One codebase, one import, renders on iOS, Android, and web via React Native + Expo.
+All Factored UI apps are cross-platform. One codebase, one import, renders on iOS, Android, and web via React Native + Expo.
 
 ```bash
-npm install auxi @supabase/supabase-js
+npm install @factoredui/react @factoredui/core @supabase/supabase-js
 ```
 
 Everything comes from one import:
 
 ```tsx
-import { AuxiProvider, createComponentRegistry, renderSpec, useSourceData, ... } from 'auxi'
+import { Provider, createComponentRegistry, renderSpec, useSourceData, ... } from '@factoredui/react'
 ```
 
 ## What Your App Provides
 
-Auxi handles capture, factors, experiments, governance, rendering, spec loading, and storage. Your app provides three things:
+Factored UI handles capture, factors, experiments, governance, rendering, spec loading, and storage. Your app provides three things:
 
 **1. Theme tokens** (how it looks)
 ```tsx
-import { createComponentRegistry, type ThemeTokens } from 'auxi'
+import { createComponentRegistry, type ThemeTokens } from '@factoredui/core'
 
 const theme: ThemeTokens = {
   colors: {
@@ -39,7 +39,7 @@ export const componentRegistry = createComponentRegistry(theme)
 
 **2. Action handlers** (what the buttons do)
 ```tsx
-import type { ActionRegistry } from 'auxi'
+import type { ActionRegistry } from '@factoredui/core'
 
 export const actions: ActionRegistry = {
   submit: async (params) => { /* your domain logic */ },
@@ -50,7 +50,7 @@ export const actions: ActionRegistry = {
 
 **3. Data source queries** (where the data comes from)
 ```tsx
-import type { DataSourceRegistry } from 'auxi'
+import type { DataSourceRegistry } from '@factoredui/core'
 
 export function buildSourceRegistry(): DataSourceRegistry {
   return {
@@ -71,16 +71,16 @@ export function buildSourceRegistry(): DataSourceRegistry {
 
 ### Provider
 
-Wrap your root in `AuxiProvider` with a `CaptureAdapter`:
+Wrap your root in `Provider` with a `CaptureAdapter`:
 
 ```tsx
-import { AuxiProvider } from 'auxi'
+import { Provider } from '@factoredui/react'
 
 export default function Layout() {
   return (
-    <AuxiProvider supabase={supabase} adapter={adapter} platform="android">
+    <Provider supabase={supabase} adapter={adapter} platform="android">
       <Slot />
-    </AuxiProvider>
+    </Provider>
   )
 }
 ```
@@ -92,7 +92,7 @@ export default function Layout() {
 Your adapter implements platform-specific capture:
 
 ```ts
-import type { CaptureAdapter } from 'auxi'
+import type { CaptureAdapter } from '@factoredui/core'
 ```
 
 | Method                   | Purpose                              |
@@ -110,21 +110,21 @@ import type { CaptureAdapter } from 'auxi'
 Wrap screens and components for structured event paths:
 
 ```tsx
-import { AuxiFlow, AuxiPage, AuxiComponent } from 'auxi'
+import { Flow, Page, Component } from '@factoredui/react'
 
-<AuxiFlow name="my-app">
-  <AuxiPage name="dashboard">
-    <AuxiComponent name="chart">
+<Flow name="my-app">
+  <Page name="dashboard">
+    <Component name="chart">
       <MyChart />
-    </AuxiComponent>
-  </AuxiPage>
-</AuxiFlow>
+    </Component>
+  </Page>
+</Flow>
 ```
 
 ### Hooks
 
 ```tsx
-import { useFlag, useFactors, useGovernanceLog, useExperimentDashboard } from 'auxi'
+import { useFlag, useFactors, useGovernanceLog, useExperimentDashboard } from '@factoredui/react'
 
 const { variantKey, config, isLoading } = useFlag('onboarding-v2')
 const { factors } = useFactors('my-app/dashboard/chart')
@@ -141,7 +141,7 @@ The app is a shell. All UI comes from JSON specs.
 ### Storage
 
 ```tsx
-import { createSpecStorage, createDataSourceCache, type KVStorage } from 'auxi'
+import { createSpecStorage, createDataSourceCache, type KVStorage } from '@factoredui/core'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const kv: KVStorage = {
@@ -157,7 +157,7 @@ export const dataSourceCache = createDataSourceCache(kv)
 ### Signature Verification
 
 ```tsx
-import { devSignatureVerifier } from 'auxi'  // dev only — always passes
+import { devSignatureVerifier } from '@factoredui/core'  // dev only — always passes
 ```
 
 For production, implement Ed25519 via the `SignatureVerifier` interface.
@@ -167,7 +167,7 @@ For production, implement Ed25519 via the `SignatureVerifier` interface.
 Fallback chain: remote (Supabase) > active (local storage) > baseline (bundled):
 
 ```tsx
-import { loadSpec } from 'auxi'
+import { loadSpec } from '@factoredui/core'
 
 const { spec, source } = await loadSpec(supabase, 'android', baselineSpec, specStorage, verifier)
 ```
@@ -175,7 +175,7 @@ const { spec, source } = await loadSpec(supabase, 'android', baselineSpec, specS
 ### Rendering
 
 ```tsx
-import { renderSpec, useSourceData, type RenderContext } from 'auxi'
+import { renderSpec, useSourceData, type RenderContext } from '@factoredui/react'
 
 const { sourceData, sourcesLoaded } = useSourceData(buildSourceRegistry, dataSourceCache)
 
@@ -217,7 +217,7 @@ No expressions, no arithmetic, no conditionals beyond boolean visibility.
 
 | Field      | Required | Description                                |
 |------------|----------|--------------------------------------------|
-| `id`       | yes      | Unique identifier (React key + auxi path)  |
+| `id`       | yes      | Unique identifier (React key + factoredui path)  |
 | `type`     | yes      | One of 20 primitives                       |
 | `props`    | no       | Component props, may contain binding refs  |
 | `children` | no       | Nested spec nodes                          |
@@ -232,7 +232,7 @@ The 20 primitives: `column`, `row`, `stack`, `scrollview`, `grid`, `text`, `imag
 
 ```tsx
 import { View } from 'react-native'
-import { createComponentRegistry, renderSpec, useSourceData, type RenderContext } from 'auxi'
+import { createComponentRegistry, renderSpec, useSourceData, type RenderContext } from '@factoredui/react'
 import { theme } from './theme'
 import { actions } from './actions'
 import { buildSourceRegistry } from './sources'

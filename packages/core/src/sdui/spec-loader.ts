@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AuxiSpec, SignedSpec } from "./spec-types.js";
+import type { Spec, SignedSpec } from "./spec-types.js";
 import { RENDERER_VERSION } from "./spec-types.js";
 import { validateSpec } from "./spec-validator.js";
 
@@ -20,18 +20,18 @@ export interface SpecStorage {
 
 export interface SignatureVerifier {
   verify(specHash: string, signature: string): Promise<boolean>;
-  computeHash(spec: AuxiSpec): Promise<string>;
+  computeHash(spec: Spec): Promise<string>;
 }
 
 export interface LoadedSpec {
-  spec: AuxiSpec;
+  spec: Spec;
   source: "remote" | "active" | "baseline";
 }
 
 export async function loadSpec(
   supabase: SupabaseClient,
   platform: string,
-  baseline: AuxiSpec,
+  baseline: Spec,
   storage: SpecStorage,
   verifier: SignatureVerifier,
 ): Promise<LoadedSpec> {
@@ -114,7 +114,7 @@ function mapRowToSignedSpec(data: unknown): SignedSpec {
     spec: {
       spec_version: row.ui_specs.spec_version,
       renderer_min: row.ui_specs.renderer_min,
-      root: row.ui_specs.component_tree as AuxiSpec["root"],
+      root: row.ui_specs.component_tree as Spec["root"],
     },
     signature: row.ui_specs.signature,
     signed_at: "",

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AuxiSession, Platform } from "../types.js";
+import type { Session, Platform } from "../types.js";
 import type { CaptureAdapter } from "./adapter.js";
 
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -36,7 +36,7 @@ export function createSessionManager(
       .single();
 
     if (error) throw new Error(`Failed to create session: ${error.message}`);
-    return (data as AuxiSession).id;
+    return (data as Session).id;
   }
 
   async function ensureSession(userId: string): Promise<string> {

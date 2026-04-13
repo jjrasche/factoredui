@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createSpecStorage, createDataSourceCache, devSignatureVerifier } from "./default-storage";
 import type { KVStorage } from "./default-storage";
-import type { SignedSpec, AuxiSpec } from "./spec-types";
+import type { SignedSpec, Spec } from "./spec-types";
 
 function createMemoryKV(): KVStorage & { store: Map<string, string> } {
   const store = new Map<string, string>();
@@ -13,7 +13,7 @@ function createMemoryKV(): KVStorage & { store: Map<string, string> } {
   };
 }
 
-const testSpec: AuxiSpec = {
+const testSpec: Spec = {
   spec_version: 1,
   renderer_min: 1,
   root: { id: "root", type: "column" },
@@ -52,7 +52,7 @@ describe("createSpecStorage", () => {
     await storage.saveActive(testSigned);
 
     expect(kv.store.has("myapp:active-spec")).toBe(true);
-    expect(kv.store.has("auxi:active-spec")).toBe(false);
+    expect(kv.store.has("factoredui:active-spec")).toBe(false);
   });
 });
 
@@ -83,7 +83,7 @@ describe("createDataSourceCache", () => {
     await cache.save("items", [1, 2, 3]);
 
     expect(kv.store.has("myapp:source:items")).toBe(true);
-    expect(kv.store.has("auxi:source:items")).toBe(false);
+    expect(kv.store.has("factoredui:source:items")).toBe(false);
   });
 
   it("isolates keys between different source names", async () => {
@@ -113,7 +113,7 @@ describe("devSignatureVerifier", () => {
   });
 
   it("produces different hashes for different specs", async () => {
-    const otherSpec: AuxiSpec = {
+    const otherSpec: Spec = {
       spec_version: 2,
       renderer_min: 1,
       root: { id: "other", type: "row" },

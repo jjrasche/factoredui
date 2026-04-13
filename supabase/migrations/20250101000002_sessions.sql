@@ -1,6 +1,6 @@
--- auxi schema: session tracking
+-- factoredui schema: session tracking
 
-CREATE TABLE auxi.sessions (
+CREATE TABLE factoredui.sessions (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   started_at  timestamptz NOT NULL DEFAULT now(),
@@ -12,9 +12,9 @@ CREATE TABLE auxi.sessions (
 );
 
 CREATE INDEX idx_sessions_user_started
-  ON auxi.sessions (user_id, started_at DESC);
+  ON factoredui.sessions (user_id, started_at DESC);
 
 CREATE INDEX idx_sessions_started_at
-  ON auxi.sessions (started_at);
+  ON factoredui.sessions (started_at);
 
-ALTER TABLE auxi.sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE factoredui.sessions ENABLE ROW LEVEL SECURITY;

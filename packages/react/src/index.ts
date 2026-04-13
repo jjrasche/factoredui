@@ -1,20 +1,20 @@
 // --- Provider and context-aware hooks ---
 export {
-  AuxiProvider,
+  Provider,
   useFlag,
   useFactors,
   useGovernanceLog,
   useRecentGovernanceLog,
   useExperimentDashboard,
-  useAuxiPlatform,
+  usePlatform,
 } from "./bindings/provider.js";
 
 // --- Path context ---
 export {
-  AuxiFlow,
-  AuxiPage,
-  AuxiComponent,
-  AuxiElement,
+  Flow,
+  Page,
+  Component,
+  Element,
   useComponentPath,
 } from "./capture/path-context.js";
 

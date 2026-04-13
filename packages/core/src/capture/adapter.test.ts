@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { createWebAdapter } from "./web-adapter.js";
-import type { AuxiEvent } from "../types.js";
+import type { CaptureEvent } from "../types.js";
 
 describe("createWebAdapter", () => {
   it("stores and loads session ID via sessionStorage", () => {
@@ -33,7 +33,7 @@ describe("createWebAdapter", () => {
 
   it("emits click events when document is clicked", () => {
     const adapter = createWebAdapter();
-    const events: AuxiEvent[] = [];
+    const events: CaptureEvent[] = [];
 
     adapter.startListening((event) => events.push(event));
 

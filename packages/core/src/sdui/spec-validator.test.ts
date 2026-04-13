@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { validateSpec } from "./spec-validator.js";
-import type { AuxiSpec } from "./spec-types.js";
+import type { Spec } from "./spec-types.js";
 
-function makeValidSpec(overrides?: Partial<AuxiSpec>): AuxiSpec {
+function makeValidSpec(overrides?: Partial<Spec>): Spec {
   return {
     spec_version: 1,
     renderer_min: 1,

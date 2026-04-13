@@ -19,13 +19,13 @@ export type EventType =
 
 export type FactorTier = "alarm" | "diagnostic" | "structural";
 
-export interface AuxiEvent {
+export interface CaptureEvent {
   event_type: EventType;
   component_path: string;
   payload: Record<string, unknown>;
 }
 
-export interface AuxiSession {
+export interface Session {
   id: string;
   user_id: string;
   started_at: string;
@@ -50,7 +50,7 @@ export interface ExperimentAssignment {
 
 export type Platform = "web" | "ios" | "android";
 
-export interface AuxiConfig {
+export interface Config {
   supabase: SupabaseClient;
   adapter?: CaptureAdapter;
   platform?: Platform;

@@ -1,4 +1,4 @@
-import type { AuxiSpec, SignedSpec } from "./spec-types.js";
+import type { Spec, SignedSpec } from "./spec-types.js";
 import type { SpecStorage, SignatureVerifier } from "./spec-loader.js";
 import type { DataSourceCache } from "./data-source.js";
 
@@ -16,7 +16,7 @@ export interface KVStorage {
  * Creates a SpecStorage backed by any KV store.
  * Stores the active signed spec as JSON under a single key.
  */
-export function createSpecStorage(kv: KVStorage, prefix = "auxi"): SpecStorage {
+export function createSpecStorage(kv: KVStorage, prefix = "factoredui"): SpecStorage {
   const key = `${prefix}:active-spec`;
 
   return {
@@ -36,7 +36,7 @@ export function createSpecStorage(kv: KVStorage, prefix = "auxi"): SpecStorage {
  * Creates a DataSourceCache backed by any KV store.
  * Caches resolved source data for offline rendering.
  */
-export function createDataSourceCache(kv: KVStorage, prefix = "auxi"): DataSourceCache {
+export function createDataSourceCache(kv: KVStorage, prefix = "factoredui"): DataSourceCache {
   const keyPrefix = `${prefix}:source:`;
 
   return {
@@ -61,7 +61,7 @@ export const devSignatureVerifier: SignatureVerifier = {
     return true;
   },
 
-  async computeHash(spec: AuxiSpec): Promise<string> {
+  async computeHash(spec: Spec): Promise<string> {
     const json = JSON.stringify(spec);
     let hash = 0;
     for (let i = 0; i < json.length; i++) {

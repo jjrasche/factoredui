@@ -43,7 +43,7 @@ describe("capture integration", () => {
       writerSessionId = data!.id;
     });
 
-    it("flushes batched events to auxi.events", async () => {
+    it("flushes batched events to factoredui.events", async () => {
       const writer = createEventWriter(serviceClient, 5000, 50);
 
       writer.enqueue(writerSessionId, testUserId, {

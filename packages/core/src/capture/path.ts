@@ -1,16 +1,16 @@
 /**
- * Resolves a DOM element to its auxi component path.
- * Traverses upward looking for data-auxi attributes:
- *   data-auxi-flow, data-auxi-page, data-auxi-component, data-auxi-element
+ * Resolves a DOM element to its component path.
+ * Traverses upward looking for data-factored attributes:
+ *   data-factored-flow, data-factored-page, data-factored-component, data-factored-element
  *
  * Returns a path like "onboarding/review/photo-grid/upload-button"
  */
 
 const PATH_TIERS = [
-  "data-auxi-flow",
-  "data-auxi-page",
-  "data-auxi-component",
-  "data-auxi-element",
+  "data-factored-flow",
+  "data-factored-page",
+  "data-factored-component",
+  "data-factored-element",
 ] as const;
 
 export function resolveComponentPath(target: Element): string {

@@ -53,7 +53,7 @@ describe("realtime subscriptions integration", () => {
         "postgres_changes",
         {
           event: "INSERT",
-          schema: "auxi",
+          schema: "factoredui",
           table: "governance_log",
           filter: `experiment_id=eq.${experimentId}`,
         },
@@ -96,7 +96,7 @@ describe("realtime subscriptions integration", () => {
         "postgres_changes",
         {
           event: "INSERT",
-          schema: "auxi",
+          schema: "factoredui",
           table: "governance_log",
         },
         (payload) => received.push(payload.new as GovernanceLogRow),
@@ -133,7 +133,7 @@ describe("realtime subscriptions integration", () => {
         "postgres_changes",
         {
           event: "INSERT",
-          schema: "auxi",
+          schema: "factoredui",
           table: "experiments",
         },
         (payload) => received.push(payload),
@@ -184,7 +184,7 @@ describe("realtime subscriptions integration", () => {
         "postgres_changes",
         {
           event: "INSERT",
-          schema: "auxi",
+          schema: "factoredui",
           table: "governance_log",
           filter: `experiment_id=eq.${experimentId}`,
         },

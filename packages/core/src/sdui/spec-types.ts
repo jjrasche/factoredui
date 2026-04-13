@@ -1,5 +1,5 @@
 /**
- * Auxi SDUI Spec Types
+ * SDUI Spec Types
  *
  * Declarative UI spec format. Pure data, no expressions.
  * Inspired by A2UI's flat structure, constrained for LLM generation.
@@ -14,7 +14,7 @@
 
 // --- Spec envelope ---
 
-export interface AuxiSpec {
+export interface Spec {
   spec_version: number;
   renderer_min: number;
   root: SpecNode;
@@ -240,7 +240,7 @@ export type ComponentRegistry = Record<SpecNodeType, ComponentRenderer>;
 // --- Signing ---
 
 export interface SignedSpec {
-  spec: AuxiSpec;
+  spec: Spec;
   signature: string;
   signed_at: string;
   spec_hash: string;

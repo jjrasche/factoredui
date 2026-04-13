@@ -1,4 +1,4 @@
-import type { AuxiEvent } from "../types.js";
+import type { CaptureEvent } from "../types.js";
 import type { CaptureAdapter } from "./adapter.js";
 import { resolveComponentPath } from "./path.js";
 import {
@@ -12,7 +12,7 @@ import {
 
 const THROTTLE_INTERVAL_MS = 100;
 const DEAD_CLICK_WAIT_MS = 1000;
-const SESSION_STORAGE_KEY = "auxi:session_id";
+const SESSION_STORAGE_KEY = "factoredui:session_id";
 
 /**
  * Web (DOM) implementation of CaptureAdapter.
@@ -23,16 +23,16 @@ export function createWebAdapter(): CaptureAdapter {
   const handlers = new Map<string, EventListener>();
   const rageClickState = createRageClickState();
   const scrollState = createScrollState();
-  let emitEvent: ((event: AuxiEvent) => void) | null = null;
+  let emitEvent: ((event: CaptureEvent) => void) | null = null;
 
-  function emit(event: AuxiEvent): void {
+  function emit(event: CaptureEvent): void {
     emitEvent?.(event);
   }
 
   function addHandler(
     key: string,
     target: EventTarget,
-    mapFn: (event: Event) => AuxiEvent | null,
+    mapFn: (event: Event) => CaptureEvent | null,
     options?: AddEventListenerOptions,
   ): void {
     const eventName = key.split(":")[0];
@@ -47,7 +47,7 @@ export function createWebAdapter(): CaptureAdapter {
   function addThrottledHandler(
     key: string,
     target: EventTarget,
-    mapFn: (event: Event) => AuxiEvent | null,
+    mapFn: (event: Event) => CaptureEvent | null,
     options?: AddEventListenerOptions,
   ): void {
     const eventName = key.split(":")[0];
@@ -76,7 +76,7 @@ export function createWebAdapter(): CaptureAdapter {
     }
   }
 
-  function startListening(onEvent: (event: AuxiEvent) => void): void {
+  function startListening(onEvent: (event: CaptureEvent) => void): void {
     emitEvent = onEvent;
 
     addHandler("click", document, mapClickEvent, { capture: true });
@@ -169,7 +169,7 @@ function clearSessionId(): void {
 
 // --- Event mappers (pure leaf functions) ---
 
-function mapClickEvent(event: Event): AuxiEvent | null {
+function mapClickEvent(event: Event): CaptureEvent | null {
   const target = event.target as Element | null;
   if (!target) return null;
   return {
@@ -183,7 +183,7 @@ function mapClickEvent(event: Event): AuxiEvent | null {
   };
 }
 
-function mapScrollEvent(): AuxiEvent {
+function mapScrollEvent(): CaptureEvent {
   return {
     event_type: "scroll",
     component_path: resolveComponentPath(document.documentElement),
@@ -191,7 +191,7 @@ function mapScrollEvent(): AuxiEvent {
   };
 }
 
-function mapTargetEvent(event: Event, eventType: "input" | "focus" | "blur"): AuxiEvent | null {
+function mapTargetEvent(event: Event, eventType: "input" | "focus" | "blur"): CaptureEvent | null {
   const target = event.target as Element | null;
   if (!target) return null;
   return {
@@ -201,7 +201,7 @@ function mapTargetEvent(event: Event, eventType: "input" | "focus" | "blur"): Au
   };
 }
 
-function mapSubmitEvent(event: Event): AuxiEvent | null {
+function mapSubmitEvent(event: Event): CaptureEvent | null {
   const target = event.target as Element | null;
   if (!target) return null;
   return {
@@ -211,7 +211,7 @@ function mapSubmitEvent(event: Event): AuxiEvent | null {
   };
 }
 
-function mapResizeEvent(): AuxiEvent {
+function mapResizeEvent(): CaptureEvent {
   return {
     event_type: "resize",
     component_path: resolveComponentPath(document.documentElement),
@@ -219,7 +219,7 @@ function mapResizeEvent(): AuxiEvent {
   };
 }
 
-function mapErrorEvent(event: Event): AuxiEvent {
+function mapErrorEvent(event: Event): CaptureEvent {
   const errorEvent = event as ErrorEvent;
   return {
     event_type: "error",
@@ -233,7 +233,7 @@ function mapErrorEvent(event: Event): AuxiEvent {
   };
 }
 
-function mapVisibilityEvent(): AuxiEvent {
+function mapVisibilityEvent(): CaptureEvent {
   return {
     event_type: "visibility",
     component_path: resolveComponentPath(document.documentElement),
@@ -243,7 +243,7 @@ function mapVisibilityEvent(): AuxiEvent {
 
 // --- Behavioral mappers (delegate to pure logic in behavioral.ts) ---
 
-function mapRageClick(event: Event, state: RageClickState): AuxiEvent | null {
+function mapRageClick(event: Event, state: RageClickState): CaptureEvent | null {
   const target = event.target as Element | null;
   if (!target) return null;
 
@@ -266,7 +266,7 @@ function mapRageClick(event: Event, state: RageClickState): AuxiEvent | null {
 
 function detectDeadClick(
   event: Event,
-  emit: (e: AuxiEvent) => void,
+  emit: (e: CaptureEvent) => void,
 ): void {
   const target = event.target as Element | null;
   if (!target) return;
@@ -297,7 +297,7 @@ function detectDeadClick(
   }, DEAD_CLICK_WAIT_MS);
 }
 
-function mapScrollReversal(state: ScrollState): AuxiEvent | null {
+function mapScrollReversal(state: ScrollState): CaptureEvent | null {
   const scrollY = window.scrollY;
   const reversal = detectScrollReversal(state, scrollY, Date.now());
 

@@ -23,7 +23,7 @@ export { createSpecStorage, createDataSourceCache, devSignatureVerifier, type KV
 
 export {
   RENDERER_VERSION,
-  type AuxiSpec,
+  type Spec,
   type SpecNode,
   type SpecNodeType,
   type SpecValue,
@@ -58,9 +58,9 @@ export {
 // --- Types ---
 export type { CaptureAdapter } from "./capture/adapter.js";
 export type {
-  AuxiConfig,
-  AuxiEvent,
-  AuxiSession,
+  Config,
+  CaptureEvent,
+  Session,
   CaptureHandle,
   EventType,
   FactorTier,

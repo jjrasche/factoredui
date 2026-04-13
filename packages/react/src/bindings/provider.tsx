@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CaptureHandle, AuxiConfig, Platform, CaptureAdapter } from "@factoredui/core";
+import type { CaptureHandle, Config, Platform, CaptureAdapter } from "@factoredui/core";
 import { initCapture } from "@factoredui/core";
 import type { ExperimentSummaryFilters } from "@factoredui/core";
 import {
@@ -19,47 +19,47 @@ import {
 
 // --- Context ---
 
-interface AuxiContextValue {
+interface ContextValue {
   supabase: SupabaseClient;
   platform: Platform;
   captureHandle: CaptureHandle | null;
 }
 
-const AuxiContext = createContext<AuxiContextValue | null>(null);
+const FactoredContext = createContext<ContextValue | null>(null);
 
-function useAuxiContext(): AuxiContextValue {
-  const ctx = useContext(AuxiContext);
+function useFactoredContext(): ContextValue {
+  const ctx = useContext(FactoredContext);
   if (!ctx) {
-    throw new Error("useAuxiContext: must be used within <AuxiProvider>");
+    throw new Error("useFactoredContext: must be used within <Provider>");
   }
   return ctx;
 }
 
 // --- Provider ---
 
-interface AuxiProviderProps {
+interface ProviderProps {
   supabase: SupabaseClient;
-  adapter: CaptureAdapter;
-  platform: Platform;
+  adapter?: CaptureAdapter;
+  platform?: Platform;
   children: ReactNode;
   flushIntervalMs?: number;
   flushBatchSize?: number;
   sessionTimeoutMs?: number;
 }
 
-export function AuxiProvider({
+export function Provider({
   supabase,
   adapter,
-  platform,
+  platform = "web",
   children,
   flushIntervalMs,
   flushBatchSize,
   sessionTimeoutMs,
-}: AuxiProviderProps): ReactNode {
+}: ProviderProps): ReactNode {
   const captureRef = useRef<CaptureHandle | null>(null);
 
   useEffect(() => {
-    const config: AuxiConfig = {
+    const config: Config = {
       supabase,
       adapter,
       platform,
@@ -76,41 +76,41 @@ export function AuxiProvider({
   }, [supabase, adapter, platform, flushIntervalMs, flushBatchSize, sessionTimeoutMs]);
 
   return (
-    <AuxiContext.Provider
+    <FactoredContext.Provider
       value={{ supabase, platform, captureHandle: captureRef.current }}
     >
       {children}
-    </AuxiContext.Provider>
+    </FactoredContext.Provider>
   );
 }
 
 // --- Context-aware hook wrappers ---
 
 export function useFlag(experimentName: string) {
-  const { supabase } = useAuxiContext();
+  const { supabase } = useFactoredContext();
   return useFlagCore(supabase, experimentName);
 }
 
 export function useFactors(componentPath?: string) {
-  const { supabase } = useAuxiContext();
+  const { supabase } = useFactoredContext();
   return useFactorsCore(supabase, componentPath);
 }
 
 export function useGovernanceLog(experimentId: string) {
-  const { supabase } = useAuxiContext();
+  const { supabase } = useFactoredContext();
   return useGovernanceLogCore(supabase, experimentId);
 }
 
 export function useRecentGovernanceLog(limit?: number) {
-  const { supabase } = useAuxiContext();
+  const { supabase } = useFactoredContext();
   return useRecentGovernanceLogCore(supabase, limit);
 }
 
 export function useExperimentDashboard(filters?: ExperimentSummaryFilters) {
-  const { supabase } = useAuxiContext();
+  const { supabase } = useFactoredContext();
   return useExperimentDashboardCore(supabase, filters);
 }
 
-export function useAuxiPlatform(): Platform {
-  return useAuxiContext().platform;
+export function usePlatform(): Platform {
+  return useFactoredContext().platform;
 }

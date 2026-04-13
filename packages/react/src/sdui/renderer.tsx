@@ -1,12 +1,12 @@
 import { type ReactNode } from "react";
-import { AuxiComponent, AuxiElement } from "../capture/path-context.js";
+import { Component, Element } from "../capture/path-context.js";
 import type { SpecNode, ComponentRegistry, ActionRegistry } from "@factoredui/core";
 import { resolveProps, resolveBinding } from "@factoredui/core";
 
 /**
  * Recursive spec renderer.
  * Reads a spec node, resolves bindings, looks up the component, wraps in
- * Auxi path context for automatic event capture, and recurses into children.
+ * path context for automatic event capture, and recurses into children.
  *
  * Orchestrator: coordinates binding resolution, component lookup, path wrapping.
  */
@@ -24,13 +24,13 @@ export function renderSpec(root: SpecNode, context: RenderContext): ReactNode {
 function renderNode(node: SpecNode, context: RenderContext): ReactNode {
   if (!isNodeVisible(node, context.data)) return null;
 
-  const Component = context.components[node.type];
-  if (!Component) return null;
+  const RegistryComponent = context.components[node.type];
+  if (!RegistryComponent) return null;
 
   const resolvedProps = resolveNodeProps(node, context);
   const children = renderChildren(node, context);
 
-  return wrapWithAuxiPath(node, Component(resolvedProps, children));
+  return wrapWithPath(node, RegistryComponent(resolvedProps, children));
 }
 
 function isNodeVisible(node: SpecNode, data: Record<string, unknown>): boolean {
@@ -64,21 +64,21 @@ function renderChildren(node: SpecNode, context: RenderContext): ReactNode {
   return node.children.map((child) => renderNode(child, context));
 }
 
-function wrapWithAuxiPath(node: SpecNode, rendered: ReactNode): ReactNode {
+function wrapWithPath(node: SpecNode, rendered: ReactNode): ReactNode {
   const isContainer = isContainerType(node.type);
 
   if (isContainer) {
     return (
-      <AuxiComponent name={node.id} key={node.id}>
+      <Component name={node.id} key={node.id}>
         {rendered}
-      </AuxiComponent>
+      </Component>
     );
   }
 
   return (
-    <AuxiElement name={node.id} key={node.id}>
+    <Element name={node.id} key={node.id}>
       {rendered}
-    </AuxiElement>
+    </Element>
   );
 }
 

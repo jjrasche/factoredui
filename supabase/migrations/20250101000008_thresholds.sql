@@ -1,14 +1,14 @@
--- auxi schema: governance-defined factor thresholds
+-- factoredui schema: governance-defined factor thresholds
 -- Governors set thresholds that trigger alerts or spawn experiments.
 -- NULL component_path = global threshold (applies to any component).
 
-CREATE TABLE auxi.thresholds (
+CREATE TABLE factoredui.thresholds (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   factor_name     text NOT NULL,
   component_path  text,
-  operator        auxi.threshold_operator NOT NULL,
+  operator        factoredui.threshold_operator NOT NULL,
   value           double precision NOT NULL,
-  action          auxi.threshold_action NOT NULL,
+  action          factoredui.threshold_action NOT NULL,
   created_by      uuid NOT NULL REFERENCES auth.users(id),
   created_at      timestamptz NOT NULL DEFAULT now(),
 
@@ -17,6 +17,6 @@ CREATE TABLE auxi.thresholds (
 );
 
 CREATE INDEX idx_thresholds_factor
-  ON auxi.thresholds (factor_name);
+  ON factoredui.thresholds (factor_name);
 
-ALTER TABLE auxi.thresholds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE factoredui.thresholds ENABLE ROW LEVEL SECURITY;

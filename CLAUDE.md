@@ -1,11 +1,11 @@
 # factoredui
 
-Autonomous User eXperience Improver (formerly auxi). Three npm packages that capture user interactions, compute standardized behavioral factors, enable LLM-driven experimentation, and support democratic governance of app changes.
+Factored UI. Three npm packages that capture user interactions, compute standardized behavioral factors, enable LLM-driven experimentation, and support democratic governance of app changes.
 
 ## Stack
 - Language: TypeScript (npm workspaces monorepo)
 - Packages: `@factoredui/core` (pure TS), `@factoredui/react` (React bindings), `@factoredui/react-native` (RN primitives)
-- Database: Supabase (Postgres with RLS, separate `auxi` schema)
+- Database: Supabase (Postgres with RLS, separate `factoredui` schema)
 - Factor engine: SQL materialized views
 - Flags/experiments: Client-side evaluation from Supabase-stored config
 
@@ -22,7 +22,7 @@ npx supabase start   # local Supabase (required for integration tests)
 
 ### Packages
 - `packages/core/` -- capture pipeline, factors, experiments, SDUI engine, types, CLI, migrations
-- `packages/react/` -- AuxiProvider, hooks, path context, SDUI renderer, useSourceData
+- `packages/react/` -- Provider, hooks, path context, SDUI renderer, useSourceData
 - `packages/react-native/` -- 20 themed RN component primitives (createComponentRegistry)
 
 ### Build Notes
@@ -31,10 +31,10 @@ npx supabase start   # local Supabase (required for integration tests)
 - Package `tsconfig.json` files have NO `paths` → used by tsup DTS generation, must resolve through node_modules
 
 ### Data Flow
-Capture adapters emit `AuxiEvent` → batched writer flushes to `auxi.events` → SQL materialized views compute factors → experiment system reads factors for targeting and governance.
+Capture adapters emit `CaptureEvent` → batched writer flushes to `factoredui.events` → SQL materialized views compute factors → experiment system reads factors for targeting and governance.
 
 ### Cross-Platform Contract
-`CaptureAdapter` interface defines what each platform must implement. `AuxiFlow/AuxiPage/AuxiComponent/AuxiElement` context providers define the shared path hierarchy.
+`CaptureAdapter` interface defines what each platform must implement. `Flow/Page/Component/Element` context providers define the shared path hierarchy.
 
 ## Global References
 

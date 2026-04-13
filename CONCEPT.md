@@ -47,7 +47,7 @@ Experiment at element/component level (isolates causation). Measure factors at e
 ```
 packages/
 ├── core/             -- capture pipeline, factors, experiments, SDUI engine, types, CLI, migrations
-├── react/            -- AuxiProvider, hooks, path context, SDUI renderer, useSourceData
+├── react/            -- Provider, hooks, path context, SDUI renderer, useSourceData
 └── react-native/     -- 20 themed RN component primitives (createComponentRegistry)
 ```
 
@@ -57,7 +57,7 @@ Cross-platform: TypeScript for web. Dart for Flutter. Swift/Kotlin for native. A
 
 - No session replay -- three-tier factors replace 95%+ of replay value
 - Libraries not services -- npm package, not containers
-- Separate schema, same Supabase -- `auxi.*` apart from app tables
+- Separate schema, same Supabase -- `factoredui.*` apart from app tables
 - AI queries materialized views, not raw event tables
 - No engagement metrics -- measure completion, patterns, flow. Not attention.
 - Platform as pipes -- capture and present, do not interpret

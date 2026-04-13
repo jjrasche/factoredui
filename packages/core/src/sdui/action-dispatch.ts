@@ -14,7 +14,7 @@ export function dispatchAction(
 ): void {
   const handler = registry[actionRef.action];
   if (!handler) {
-    console.warn(`auxi: unknown action "${actionRef.action}"`);
+    console.warn(`factoredui: unknown action "${actionRef.action}"`);
     return;
   }
 
@@ -23,6 +23,6 @@ export function dispatchAction(
     : {};
 
   Promise.resolve(handler(resolvedParams)).catch((err) => {
-    console.error(`auxi: action "${actionRef.action}" failed:`, err);
+    console.error(`factoredui: action "${actionRef.action}" failed:`, err);
   });
 }

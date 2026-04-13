@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { render, screen } from "@testing-library/react";
 import {
-  AuxiFlow,
-  AuxiPage,
-  AuxiComponent,
-  AuxiElement,
+  Flow,
+  Page,
+  Component,
+  Element,
   useComponentPath,
 } from "./path-context.js";
 import type { ReactNode } from "react";
@@ -14,15 +14,15 @@ describe("context-based path system", () => {
   it("builds path from nested providers", () => {
     function wrapper({ children }: { children: ReactNode }) {
       return (
-        <AuxiFlow name="onboarding">
-          <AuxiPage name="review">
-            <AuxiComponent name="photo-grid">
-              <AuxiElement name="upload-button">
+        <Flow name="onboarding">
+          <Page name="review">
+            <Component name="photo-grid">
+              <Element name="upload-button">
                 {children}
-              </AuxiElement>
-            </AuxiComponent>
-          </AuxiPage>
-        </AuxiFlow>
+              </Element>
+            </Component>
+          </Page>
+        </Flow>
       );
     }
 
@@ -32,7 +32,7 @@ describe("context-based path system", () => {
 
   it("returns single segment for one provider", () => {
     function wrapper({ children }: { children: ReactNode }) {
-      return <AuxiFlow name="dashboard">{children}</AuxiFlow>;
+      return <Flow name="dashboard">{children}</Flow>;
     }
 
     const { result } = renderHook(() => useComponentPath(), { wrapper });
@@ -47,11 +47,11 @@ describe("context-based path system", () => {
   it("skips tiers when not all are provided", () => {
     function wrapper({ children }: { children: ReactNode }) {
       return (
-        <AuxiFlow name="settings">
-          <AuxiElement name="save-button">
+        <Flow name="settings">
+          <Element name="save-button">
             {children}
-          </AuxiElement>
-        </AuxiFlow>
+          </Element>
+        </Flow>
       );
     }
 
@@ -59,26 +59,26 @@ describe("context-based path system", () => {
     expect(result.current).toBe("settings/save-button");
   });
 
-  it("renders data-auxi attributes on web", () => {
+  it("renders data-factored attributes on web", () => {
     function TestComponent() {
       return (
-        <AuxiFlow name="checkout">
-          <AuxiComponent name="cart">
+        <Flow name="checkout">
+          <Component name="cart">
             <span data-testid="inner">content</span>
-          </AuxiComponent>
-        </AuxiFlow>
+          </Component>
+        </Flow>
       );
     }
 
     render(<TestComponent />);
     const inner = screen.getByTestId("inner");
 
-    const flowDiv = inner.closest("[data-auxi-flow]");
+    const flowDiv = inner.closest("[data-factored-flow]");
     expect(flowDiv).not.toBeNull();
-    expect(flowDiv!.getAttribute("data-auxi-flow")).toBe("checkout");
+    expect(flowDiv!.getAttribute("data-factored-flow")).toBe("checkout");
 
-    const componentDiv = inner.closest("[data-auxi-component]");
+    const componentDiv = inner.closest("[data-factored-component]");
     expect(componentDiv).not.toBeNull();
-    expect(componentDiv!.getAttribute("data-auxi-component")).toBe("cart");
+    expect(componentDiv!.getAttribute("data-factored-component")).toBe("cart");
   });
 });

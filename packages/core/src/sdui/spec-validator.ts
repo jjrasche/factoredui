@@ -1,8 +1,8 @@
-import type { AuxiSpec, SpecNode, SpecNodeType } from "./spec-types.js";
+import type { Spec, SpecNode, SpecNodeType } from "./spec-types.js";
 import { RENDERER_VERSION } from "./spec-types.js";
 
 /**
- * Validates an AuxiSpec for structural correctness and renderer compatibility.
+ * Validates an Spec for structural correctness and renderer compatibility.
  * Returns a list of errors. Empty list = valid spec.
  */
 
@@ -15,7 +15,7 @@ const VALID_TYPES: ReadonlySet<SpecNodeType> = new Set([
 
 const MAX_TREE_DEPTH = 20;
 
-export function validateSpec(spec: AuxiSpec): string[] {
+export function validateSpec(spec: Spec): string[] {
   const errors: string[] = [];
 
   validateEnvelope(spec, errors);
@@ -25,7 +25,7 @@ export function validateSpec(spec: AuxiSpec): string[] {
   return errors;
 }
 
-function validateEnvelope(spec: AuxiSpec, errors: string[]): void {
+function validateEnvelope(spec: Spec, errors: string[]): void {
   if (typeof spec.spec_version !== "number" || spec.spec_version < 1) {
     errors.push("spec_version must be a positive integer");
   }

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CaptureHandle, AuxiConfig, AuxiEvent } from "../types.js";
+import type { CaptureHandle, Config, CaptureEvent } from "../types.js";
 import { createSessionManager } from "./session.js";
 import { createEventWriter } from "./writer.js";
 import { createWebAdapter } from "./web-adapter.js";
@@ -9,7 +9,7 @@ import { createWebAdapter } from "./web-adapter.js";
  * Coordinates adapter, session manager, and batched writer.
  * Defaults to web adapter when no adapter provided.
  */
-export function initCapture(config: AuxiConfig): CaptureHandle {
+export function initCapture(config: Config): CaptureHandle {
   const adapter = config.adapter ?? createWebAdapter();
   const platform = config.platform ?? "web";
 
@@ -65,17 +65,17 @@ function createEventEnqueuer(
   supabase: SupabaseClient,
   sessionManager: ReturnType<typeof createSessionManager>,
   writer: ReturnType<typeof createEventWriter>,
-): (event: AuxiEvent) => void {
+): (event: CaptureEvent) => void {
   let cachedUserId: string | null = null;
 
-  return (event: AuxiEvent) => {
+  return (event: CaptureEvent) => {
     resolveUserId(supabase, cachedUserId).then((userId) => {
       cachedUserId = userId;
       return sessionManager.ensureSession(userId).then((sessionId) => {
         writer.enqueue(sessionId, userId, event);
       });
     }).catch((err) => {
-      console.error("auxi: failed to enqueue event:", err);
+      console.error("factoredui: failed to enqueue event:", err);
     });
   };
 }
@@ -86,6 +86,6 @@ async function resolveUserId(
 ): Promise<string> {
   if (cachedUserId) return cachedUserId;
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("auxi: user not authenticated");
+  if (!user) throw new Error("factoredui: user not authenticated");
   return user.id;
 }
