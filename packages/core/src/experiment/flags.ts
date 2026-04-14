@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ExperimentAssignment, Platform } from "../types.js";
 import { queryFactors } from "../factors/query.js";
 import { evaluateTargeting } from "./targeting.js";
-import type { TargetingRule } from "./targeting.js";
+import type { TargetingRule, DeviceMetadata } from "./targeting.js";
 
 /**
  * Flag evaluation: reads experiment assignments for the current user.
@@ -14,6 +14,7 @@ export async function evaluateFlag(
   supabase: SupabaseClient,
   experimentName: string,
   platform?: Platform,
+  deviceMetadata?: DeviceMetadata,
 ): Promise<ExperimentAssignment | null> {
   const userId = await resolveUserId(supabase);
   if (!userId) return null;
@@ -24,7 +25,7 @@ export async function evaluateFlag(
     return existingAssignment;
   }
 
-  const newAssignment = await assignToExperiment(supabase, userId, experimentName, platform);
+  const newAssignment = await assignToExperiment(supabase, userId, experimentName, platform, deviceMetadata);
   if (newAssignment) {
     await recordExposure(supabase, userId, newAssignment);
   }
@@ -75,11 +76,17 @@ async function assignToExperiment(
   userId: string,
   experimentName: string,
   platform?: Platform,
+  deviceMetadata?: DeviceMetadata,
 ): Promise<ExperimentAssignment | null> {
   const experiment = await fetchRunningExperiment(supabase, experimentName, platform);
   if (!experiment) return null;
 
-  const isTargeted = await checkTargeting(supabase, userId, experiment);
+  const hasConflict = await hasConflictingAssignment(
+    supabase, userId, experiment.component_path, experiment.id,
+  );
+  if (hasConflict) return null;
+
+  const isTargeted = await checkTargeting(supabase, userId, experiment, deviceMetadata);
   if (!isTargeted) return null;
 
   const variants = await fetchExperimentVariants(supabase, experiment.id);
@@ -103,6 +110,30 @@ async function assignToExperiment(
     variant_key: selectedVariant.variant_key,
     config: selectedVariant.config,
   };
+}
+
+/**
+ * Checks whether the user is already assigned to another running experiment
+ * on the same component_path. Prevents conflicting experiment assignments
+ * that would pollute factor data.
+ */
+async function hasConflictingAssignment(
+  supabase: SupabaseClient,
+  userId: string,
+  componentPath: string,
+  currentExperimentId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("experiment_assignments")
+    .select("experiment_id, experiments!inner ( id, status, component_path )")
+    .eq("user_id", userId)
+    .eq("experiments.status", "running")
+    .eq("experiments.component_path", componentPath)
+    .neq("experiment_id", currentExperimentId)
+    .limit(1);
+
+  if (error) return false;
+  return (data?.length ?? 0) > 0;
 }
 
 interface RunningExperiment {
@@ -140,11 +171,12 @@ async function checkTargeting(
   supabase: SupabaseClient,
   userId: string,
   experiment: RunningExperiment,
+  deviceMetadata?: DeviceMetadata,
 ): Promise<boolean> {
   if (!experiment.targeting_rules || experiment.targeting_rules.length === 0) return true;
 
   const factors = await queryFactors(supabase, userId, experiment.component_path);
-  return evaluateTargeting(factors, experiment.targeting_rules);
+  return evaluateTargeting(factors, experiment.targeting_rules, deviceMetadata);
 }
 
 interface VariantWithTraffic {

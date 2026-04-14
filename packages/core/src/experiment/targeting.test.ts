@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { evaluateTargeting } from "./targeting.js";
 import type { Factor } from "../types.js";
-import type { TargetingRule } from "./targeting.js";
+import type { TargetingRule, DeviceMetadata } from "./targeting.js";
 
 function buildFactor(name: string, value: number): Factor {
   return {
@@ -24,6 +24,8 @@ describe("evaluateTargeting", () => {
   it("returns true when no rules are defined", () => {
     expect(evaluateTargeting(factors, [])).toBe(true);
   });
+
+  // --- Legacy factor rules (backward compat, no type field) ---
 
   it("matches gt operator", () => {
     const rules: TargetingRule[] = [
@@ -80,5 +82,99 @@ describe("evaluateTargeting", () => {
       { factor: "nonexistent_factor", operator: "gt", threshold: 0 },
     ];
     expect(evaluateTargeting(factors, rules)).toBe(false);
+  });
+
+  // --- Typed factor rules ---
+
+  it("matches typed factor rule with type='factor'", () => {
+    const rules: TargetingRule[] = [
+      { type: "factor", factor: "error_rate", operator: "gt", threshold: 0.1 },
+    ];
+    expect(evaluateTargeting(factors, rules)).toBe(true);
+  });
+
+  // --- Metadata targeting rules ---
+
+  const device: DeviceMetadata = {
+    os_name: "android",
+    os_version: "14",
+    manufacturer: "Samsung",
+    model: "Galaxy S24",
+    app_version: "2.1.0",
+    platform: "android",
+  };
+
+  it("matches metadata eq (case-insensitive)", () => {
+    const rules: TargetingRule[] = [
+      { type: "metadata", field: "os_name", operator: "eq", value: "Android" },
+    ];
+    expect(evaluateTargeting([], rules, device)).toBe(true);
+  });
+
+  it("rejects metadata eq when value differs", () => {
+    const rules: TargetingRule[] = [
+      { type: "metadata", field: "os_name", operator: "eq", value: "ios" },
+    ];
+    expect(evaluateTargeting([], rules, device)).toBe(false);
+  });
+
+  it("matches metadata neq", () => {
+    const rules: TargetingRule[] = [
+      { type: "metadata", field: "os_name", operator: "neq", value: "ios" },
+    ];
+    expect(evaluateTargeting([], rules, device)).toBe(true);
+  });
+
+  it("matches metadata contains", () => {
+    const rules: TargetingRule[] = [
+      { type: "metadata", field: "model", operator: "contains", value: "Galaxy" },
+    ];
+    expect(evaluateTargeting([], rules, device)).toBe(true);
+  });
+
+  it("matches metadata gte for version comparison", () => {
+    const rules: TargetingRule[] = [
+      { type: "metadata", field: "os_version", operator: "gte", value: "14" },
+    ];
+    expect(evaluateTargeting([], rules, device)).toBe(true);
+  });
+
+  it("rejects metadata gte when version is lower", () => {
+    const rules: TargetingRule[] = [
+      { type: "metadata", field: "os_version", operator: "gte", value: "15" },
+    ];
+    expect(evaluateTargeting([], rules, device)).toBe(false);
+  });
+
+  it("returns false when metadata field is missing from device", () => {
+    const rules: TargetingRule[] = [
+      { type: "metadata", field: "app_build", operator: "eq", value: "100" },
+    ];
+    expect(evaluateTargeting([], rules, device)).toBe(false);
+  });
+
+  it("returns false for metadata rule when no device metadata provided", () => {
+    const rules: TargetingRule[] = [
+      { type: "metadata", field: "os_name", operator: "eq", value: "android" },
+    ];
+    expect(evaluateTargeting([], rules)).toBe(false);
+  });
+
+  // --- Mixed rules (factor + metadata) ---
+
+  it("combines factor and metadata rules with AND logic", () => {
+    const rules: TargetingRule[] = [
+      { factor: "error_rate", operator: "gt", threshold: 0.1 },
+      { type: "metadata", field: "os_name", operator: "eq", value: "android" },
+    ];
+    expect(evaluateTargeting(factors, rules, device)).toBe(true);
+  });
+
+  it("rejects when factor matches but metadata does not", () => {
+    const rules: TargetingRule[] = [
+      { factor: "error_rate", operator: "gt", threshold: 0.1 },
+      { type: "metadata", field: "os_name", operator: "eq", value: "ios" },
+    ];
+    expect(evaluateTargeting(factors, rules, device)).toBe(false);
   });
 });

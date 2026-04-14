@@ -4,11 +4,28 @@ import { evaluateFlag } from "./flags.js";
 function createMockSupabase(overrides: {
   userId?: string | null;
   existingAssignment?: Record<string, unknown> | null;
+  conflictingAssignments?: Record<string, unknown>[];
   experiment?: Record<string, unknown> | null;
   variants?: Record<string, unknown>[];
 }) {
   const assignmentInsertMock = vi.fn().mockResolvedValue({ error: null });
   const exposureInsertMock = vi.fn().mockResolvedValue({ error: null });
+
+  // Builds a chainable query mock where every method returns the same chain
+  // and terminal methods (maybeSingle, limit) resolve with the given data.
+  function buildChain(terminalData: { single?: unknown; list?: unknown[] }) {
+    const chain: Record<string, unknown> = {};
+    const self = () => chain;
+    chain.eq = self;
+    chain.neq = self;
+    chain.maybeSingle = () => Promise.resolve({ data: terminalData.single ?? null, error: null });
+    chain.limit = () => Promise.resolve({ data: terminalData.list ?? [], error: null });
+    return chain;
+  }
+
+  // Track which select call on experiment_assignments we're serving:
+  // first = fetchAssignment (maybeSingle), second = hasConflictingAssignment (limit)
+  let assignmentSelectCount = 0;
 
   return {
     client: {
@@ -20,35 +37,19 @@ function createMockSupabase(overrides: {
       from: (table: string) => {
         if (table === "experiment_assignments") {
           return {
-            select: () => ({
-              eq: () => ({
-                eq: () => ({
-                  eq: () => ({
-                    maybeSingle: () =>
-                      Promise.resolve({
-                        data: overrides.existingAssignment ?? null,
-                        error: null,
-                      }),
-                  }),
-                }),
-              }),
-            }),
+            select: () => {
+              assignmentSelectCount++;
+              if (assignmentSelectCount === 1) {
+                return buildChain({ single: overrides.existingAssignment ?? null });
+              }
+              return buildChain({ list: overrides.conflictingAssignments ?? [] });
+            },
             insert: assignmentInsertMock,
           };
         }
         if (table === "experiments") {
           return {
-            select: () => ({
-              eq: () => ({
-                eq: () => ({
-                  maybeSingle: () =>
-                    Promise.resolve({
-                      data: overrides.experiment ?? null,
-                      error: null,
-                    }),
-                }),
-              }),
-            }),
+            select: () => buildChain({ single: overrides.experiment ?? null }),
           };
         }
         if (table === "experiment_variants") {
@@ -66,6 +67,9 @@ function createMockSupabase(overrides: {
         }
         if (table === "experiment_exposures") {
           return { insert: exposureInsertMock };
+        }
+        if (table === "factors") {
+          return { select: () => buildChain({ list: [] }) };
         }
         return {};
       },
@@ -198,5 +202,54 @@ describe("evaluateFlag", () => {
     const result = await evaluateFlag(client, "all-platforms", "android");
 
     expect(result).not.toBeNull();
+  });
+
+  it("returns null when user has a conflicting assignment on the same component_path", async () => {
+    const { client, assignmentInsertMock } = createMockSupabase({
+      userId: "user-conflict",
+      existingAssignment: null,
+      conflictingAssignments: [
+        { experiment_id: "other-exp", experiments: { id: "other-exp", status: "running", component_path: "test/cta" } },
+      ],
+      experiment: {
+        id: "exp-new",
+        name: "new-cta-test",
+        component_path: "test/cta",
+        targeting_rules: [],
+        platforms: [],
+      },
+      variants: [
+        { variant_key: "control", config: {}, traffic_percentage: 50 },
+        { variant_key: "treatment", config: {}, traffic_percentage: 50 },
+      ],
+    });
+
+    const result = await evaluateFlag(client, "new-cta-test");
+
+    expect(result).toBeNull();
+    expect(assignmentInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("assigns when no conflicting assignment exists on the same component_path", async () => {
+    const { client, assignmentInsertMock } = createMockSupabase({
+      userId: "user-clean",
+      existingAssignment: null,
+      conflictingAssignments: [],
+      experiment: {
+        id: "exp-clean",
+        name: "clean-test",
+        component_path: "test/cta",
+        targeting_rules: [],
+        platforms: [],
+      },
+      variants: [
+        { variant_key: "control", config: { text: "ok" }, traffic_percentage: 100 },
+      ],
+    });
+
+    const result = await evaluateFlag(client, "clean-test");
+
+    expect(result).not.toBeNull();
+    expect(assignmentInsertMock).toHaveBeenCalledOnce();
   });
 });

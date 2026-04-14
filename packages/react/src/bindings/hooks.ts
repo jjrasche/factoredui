@@ -4,7 +4,7 @@ import {
   useState,
 } from "react";
 import type { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
-import type { ExperimentAssignment, Factor, ComponentFactorAggregate, GovernanceLogRow, ExperimentSummaryRow, ExperimentSummaryFilters, VariantResult } from "@factoredui/core";
+import type { ExperimentAssignment, Factor, ComponentFactorAggregate, GovernanceLogRow, ExperimentSummaryRow, ExperimentSummaryFilters, VariantResult, Platform, DeviceMetadata } from "@factoredui/core";
 import { evaluateFlag, queryGovernanceLog, queryRecentGovernanceLog, queryExperimentSummaries, queryComponentFactors, queryExperimentResults } from "@factoredui/core";
 
 // --- useFlag ---
@@ -15,14 +15,14 @@ export interface UseFlagResult {
   isLoading: boolean;
 }
 
-export function useFlag(supabase: SupabaseClient, experimentName: string): UseFlagResult {
+export function useFlag(supabase: SupabaseClient, experimentName: string, platform?: Platform, deviceMetadata?: DeviceMetadata): UseFlagResult {
   const [assignment, setAssignment] = useState<ExperimentAssignment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isCancelled = false;
 
-    evaluateFlag(supabase, experimentName).then((result) => {
+    evaluateFlag(supabase, experimentName, platform, deviceMetadata).then((result) => {
       if (!isCancelled) {
         setAssignment(result);
         setIsLoading(false);
@@ -32,7 +32,7 @@ export function useFlag(supabase: SupabaseClient, experimentName: string): UseFl
     });
 
     return () => { isCancelled = true; };
-  }, [supabase, experimentName]);
+  }, [supabase, experimentName, platform, deviceMetadata]);
 
   return {
     variantKey: assignment?.variant_key ?? null,

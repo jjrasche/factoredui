@@ -18,6 +18,7 @@ export default defineConfig({
             "@factoredui/core": path.resolve(__dirname, "packages/core/src/index.ts"),
             "@factoredui/react": path.resolve(__dirname, "packages/react/src/index.ts"),
             "@factoredui/react-native": path.resolve(__dirname, "packages/react-native/src/index.ts"),
+            "react-native": path.resolve(__dirname, "packages/react-native/src/__mocks__/react-native.ts"),
           },
         },
         test: {

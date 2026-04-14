@@ -7,7 +7,7 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "factoredui": "./dist/cli/init.cjs"
+    "factoredui": "./dist/cli/factoredui.cjs"
   },
   "exports": {
     ".": {

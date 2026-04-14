@@ -9,7 +9,7 @@ const DEFAULT_CONFIG = {
   schema: "factoredui",
 };
 
-function main(): void {
+export function runInit(): void {
   const targetDir = process.cwd();
   copyMigrations(targetDir);
   writeConfig(targetDir);
@@ -108,4 +108,3 @@ Setup complete! Next steps:
 `);
 }
 
-main();

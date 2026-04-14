@@ -78,7 +78,7 @@ export type {
 } from "./types.js";
 export type { ComponentFactorAggregate } from "./factors/query.js";
 export type { FactorSnapshot, FactorDelta } from "./factors/snapshots.js";
-export type { TargetingRule, TargetingOperator } from "./experiment/targeting.js";
+export type { TargetingRule, TargetingOperator, DeviceMetadata, MetadataTargetingRule, MetadataField, MetadataOperator, FactorTargetingRule } from "./experiment/targeting.js";
 export type { VariantResult } from "./experiment/results.js";
 export type { Threshold, GovernanceVerdict, GovernanceAction, FactorVerdict } from "./experiment/governance.js";
 export { queryGovernanceLog, queryRecentGovernanceLog, type GovernanceLogRow } from "./experiment/governance-log.js";

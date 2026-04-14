@@ -13,6 +13,7 @@ import {
 const THROTTLE_INTERVAL_MS = 100;
 const DEAD_CLICK_WAIT_MS = 1000;
 const SESSION_STORAGE_KEY = "factoredui:session_id";
+const QUEUE_STORAGE_KEY = "factoredui:offline_queue";
 
 /**
  * Web (DOM) implementation of CaptureAdapter.
@@ -124,7 +125,31 @@ export function createWebAdapter(): CaptureAdapter {
     loadSessionId,
     clearSessionId,
     registerUnloadHandler,
+    persistQueue,
+    loadQueue,
   };
+}
+
+// --- Offline queue (leaf functions) ---
+
+function persistQueue(serialized: string): void {
+  try {
+    if (!serialized || serialized === "") {
+      localStorage.removeItem(QUEUE_STORAGE_KEY);
+    } else {
+      localStorage.setItem(QUEUE_STORAGE_KEY, serialized);
+    }
+  } catch {
+    // Storage full or restricted
+  }
+}
+
+function loadQueue(): string | null {
+  try {
+    return localStorage.getItem(QUEUE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
 }
 
 // --- Session storage (leaf functions, no closure state needed) ---

@@ -48,13 +48,17 @@ export async function startExperiment(
   client: SupabaseClient,
   experimentId: string,
 ): Promise<void> {
-  const { error } = await client
+  const { data, error } = await client
     .from("experiments")
     .update({ status: "running" })
     .eq("id", experimentId)
-    .eq("status", "draft");
+    .eq("status", "draft")
+    .select("id");
 
   if (error) throw new Error(`startExperiment failed: ${error.message}`);
+  if (!data || data.length === 0) {
+    throw new Error(`startExperiment: experiment ${experimentId} not found or not in draft status`);
+  }
 }
 
 function validateDefinition(definition: ExperimentDefinition): void {

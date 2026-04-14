@@ -14,4 +14,8 @@ export interface CaptureAdapter {
   loadSessionId(): string | null;
   clearSessionId(): void;
   registerUnloadHandler(onUnload: () => void): void;
+  /** Persist queued events to survive app restarts. JSON string of event array. */
+  persistQueue?(serialized: string): void;
+  /** Load previously persisted queue. Returns null if empty. */
+  loadQueue?(): string | null;
 }

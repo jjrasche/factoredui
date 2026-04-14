@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CaptureHandle, Config, Platform, CaptureAdapter } from "@factoredui/core";
+import type { CaptureHandle, Config, Platform, CaptureAdapter, DeviceMetadata } from "@factoredui/core";
 import { initCapture } from "@factoredui/core";
 import type { ExperimentSummaryFilters } from "@factoredui/core";
 import {
@@ -24,6 +24,7 @@ import {
 interface ContextValue {
   supabase: SupabaseClient;
   platform: Platform;
+  deviceMetadata: DeviceMetadata;
   captureHandle: CaptureHandle | null;
 }
 
@@ -59,6 +60,7 @@ export function Provider({
   sessionTimeoutMs,
 }: ProviderProps): ReactNode {
   const captureRef = useRef<CaptureHandle | null>(null);
+  const deviceMetadata = useRef<DeviceMetadata>(buildDeviceMetadata(adapter, platform));
 
   useEffect(() => {
     const config: Config = {
@@ -70,6 +72,7 @@ export function Provider({
       sessionTimeoutMs,
     };
     captureRef.current = initCapture(config);
+    deviceMetadata.current = buildDeviceMetadata(adapter, platform);
 
     return () => {
       captureRef.current?.flushEvents();
@@ -79,7 +82,7 @@ export function Provider({
 
   return (
     <FactoredContext.Provider
-      value={{ supabase, platform, captureHandle: captureRef.current }}
+      value={{ supabase, platform, deviceMetadata: deviceMetadata.current, captureHandle: captureRef.current }}
     >
       {children}
     </FactoredContext.Provider>
@@ -89,8 +92,8 @@ export function Provider({
 // --- Context-aware hook wrappers ---
 
 export function useFlag(experimentName: string) {
-  const { supabase } = useFactoredContext();
-  return useFlagCore(supabase, experimentName);
+  const { supabase, platform, deviceMetadata } = useFactoredContext();
+  return useFlagCore(supabase, experimentName, platform, deviceMetadata);
 }
 
 export function useFactors(componentPath?: string) {
@@ -125,4 +128,23 @@ export function useExperimentResults(experimentId: string, factorNames: string[]
 
 export function usePlatform(): Platform {
   return useFactoredContext().platform;
+}
+
+// --- Helpers ---
+
+function buildDeviceMetadata(adapter: CaptureAdapter | undefined, platform: Platform): DeviceMetadata {
+  const sessionMeta = adapter?.collectSessionMetadata() ?? {};
+  return {
+    platform,
+    os_name: asString(sessionMeta.platform) ?? platform,
+    os_version: asString(sessionMeta.platform_version),
+    manufacturer: asString(sessionMeta.manufacturer),
+    model: asString(sessionMeta.model),
+    app_version: asString(sessionMeta.app_version),
+    app_build: asString(sessionMeta.app_build),
+  };
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
 }

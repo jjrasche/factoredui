@@ -11,7 +11,7 @@ export default defineConfig([
     external: ["@supabase/supabase-js"],
   },
   {
-    entry: { "cli/init": "src/cli/init.ts" },
+    entry: { "cli/factoredui": "src/cli/cli.ts" },
     format: ["cjs"],
     banner: { js: "#!/usr/bin/env node" },
     external: ["fs", "path"],

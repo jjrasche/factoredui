@@ -40,7 +40,9 @@ function createMockSupabase(overrides: {
             }),
             update: () => ({
               eq: () => ({
-                eq: () => Promise.resolve(overrides.updateResult ?? { error: null }),
+                eq: () => ({
+                  select: () => Promise.resolve(overrides.updateResult ?? { data: [{ id: "exp-1" }], error: null }),
+                }),
               }),
             }),
           };
@@ -138,11 +140,21 @@ describe("startExperiment", () => {
 
   it("propagates errors", async () => {
     const { client } = createMockSupabase({
-      updateResult: { error: { message: "not found" } },
+      updateResult: { data: null, error: { message: "not found" } },
     });
 
     await expect(startExperiment(client, "exp-1")).rejects.toThrow(
       "startExperiment failed: not found",
+    );
+  });
+
+  it("throws when experiment not found or not in draft", async () => {
+    const { client } = createMockSupabase({
+      updateResult: { data: [], error: null },
+    });
+
+    await expect(startExperiment(client, "nonexistent")).rejects.toThrow(
+      "not found or not in draft status",
     );
   });
 });

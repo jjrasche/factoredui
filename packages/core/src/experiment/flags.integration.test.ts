@@ -127,6 +127,115 @@ describe("evaluateFlag integration", () => {
   });
 });
 
+describe("evaluateFlag conflict guard", () => {
+  let serviceClient: ReturnType<typeof createServiceClient>;
+  let authedClient: ReturnType<typeof createAnonClient>;
+  let testUserId: string;
+  let existingExpId: string;
+  let conflictingExpId: string;
+  let unrelatedExpId: string;
+  const componentPath = "test-conflict/checkout";
+  const otherComponentPath = "test-conflict/settings";
+
+  beforeAll(async () => {
+    serviceClient = createServiceClient();
+    const user = await createTestUser(serviceClient);
+    testUserId = user.id;
+
+    const anonClient = createAnonClient();
+    authedClient = await signInTestUser(anonClient, user);
+
+    // Existing running experiment on componentPath — user already assigned
+    const { data: existingExp } = await serviceClient
+      .from("experiments")
+      .insert({
+        name: "existing-checkout-test",
+        component_path: componentPath,
+        status: "running",
+      })
+      .select("id")
+      .single();
+    existingExpId = existingExp!.id;
+
+    await serviceClient.from("experiment_variants").insert([
+      { experiment_id: existingExpId, variant_key: "control", config: {}, traffic_percentage: 50 },
+      { experiment_id: existingExpId, variant_key: "treatment", config: {}, traffic_percentage: 50 },
+    ]);
+
+    await serviceClient.from("experiment_assignments").insert({
+      user_id: testUserId,
+      experiment_id: existingExpId,
+      variant_key: "control",
+    });
+
+    // Second running experiment on SAME componentPath — should be blocked
+    const { data: conflictingExp } = await serviceClient
+      .from("experiments")
+      .insert({
+        name: "conflicting-checkout-test",
+        component_path: componentPath,
+        status: "running",
+      })
+      .select("id")
+      .single();
+    conflictingExpId = conflictingExp!.id;
+
+    await serviceClient.from("experiment_variants").insert([
+      { experiment_id: conflictingExpId, variant_key: "control", config: {}, traffic_percentage: 50 },
+      { experiment_id: conflictingExpId, variant_key: "treatment", config: {}, traffic_percentage: 50 },
+    ]);
+
+    // Running experiment on DIFFERENT componentPath — should NOT be blocked
+    const { data: unrelatedExp } = await serviceClient
+      .from("experiments")
+      .insert({
+        name: "unrelated-settings-test",
+        component_path: otherComponentPath,
+        status: "running",
+      })
+      .select("id")
+      .single();
+    unrelatedExpId = unrelatedExp!.id;
+
+    await serviceClient.from("experiment_variants").insert([
+      { experiment_id: unrelatedExpId, variant_key: "control", config: {}, traffic_percentage: 50 },
+      { experiment_id: unrelatedExpId, variant_key: "treatment", config: {}, traffic_percentage: 50 },
+    ]);
+  });
+
+  afterAll(async () => {
+    for (const expId of [existingExpId, conflictingExpId, unrelatedExpId]) {
+      await serviceClient.from("experiment_exposures").delete().eq("experiment_id", expId);
+      await serviceClient.from("experiment_assignments").delete().eq("experiment_id", expId);
+      await serviceClient.from("experiment_variants").delete().eq("experiment_id", expId);
+      await serviceClient.from("experiments").delete().eq("id", expId);
+    }
+    await deleteTestUser(serviceClient, testUserId);
+  });
+
+  it("blocks assignment when user is already in a running experiment on the same component_path", async () => {
+    const result = await evaluateFlag(authedClient, "conflicting-checkout-test");
+
+    expect(result).toBeNull();
+
+    const { data: assignments } = await serviceClient
+      .from("experiment_assignments")
+      .select("id")
+      .eq("user_id", testUserId)
+      .eq("experiment_id", conflictingExpId);
+
+    expect(assignments).toHaveLength(0);
+  });
+
+  it("allows assignment when user is in a running experiment on a different component_path", async () => {
+    const result = await evaluateFlag(authedClient, "unrelated-settings-test");
+
+    expect(result).not.toBeNull();
+    expect(result!.experiment_id).toBe(unrelatedExpId);
+    expect(["control", "treatment"]).toContain(result!.variant_key);
+  });
+});
+
 describe("evaluateFlag with targeting rules", () => {
   let serviceClient: ReturnType<typeof createServiceClient>;
   let authedClient: ReturnType<typeof createAnonClient>;
