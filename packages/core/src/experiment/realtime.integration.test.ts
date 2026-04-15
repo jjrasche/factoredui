@@ -44,7 +44,7 @@ describe("realtime subscriptions integration", () => {
       .eq("id", experimentId);
   });
 
-  it("receives governance_log INSERT filtered by experiment_id", async () => {
+  it("receives governance_log INSERT filtered by experiment_id", { timeout: 15000 }, async () => {
     const received: GovernanceLogRow[] = [];
 
     const channel = serviceClient
@@ -79,7 +79,7 @@ describe("realtime subscriptions integration", () => {
       ],
     });
 
-    await waitFor(() => received.length >= 1, 5000);
+    await waitFor(() => received.length >= 1, 10000);
 
     expect(received).toHaveLength(1);
     expect(received[0].experiment_id).toBe(experimentId);

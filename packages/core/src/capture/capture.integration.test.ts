@@ -6,6 +6,20 @@ import {
 } from "../testing/supabase-harness.js";
 import { createEventWriter } from "./writer.js";
 import { createSessionManager } from "./session.js";
+import type { CaptureAdapter } from "./adapter.js";
+
+function createStubAdapter(): CaptureAdapter {
+  let storedSessionId: string | null = null;
+  return {
+    startListening: () => {},
+    stopListening: () => {},
+    collectSessionMetadata: () => ({ test: true }),
+    storeSessionId: (id: string) => { storedSessionId = id; },
+    loadSessionId: () => storedSessionId,
+    clearSessionId: () => { storedSessionId = null; },
+    registerUnloadHandler: () => {},
+  };
+}
 
 describe("capture integration", () => {
   let serviceClient: ReturnType<typeof createServiceClient>;
@@ -77,7 +91,7 @@ describe("capture integration", () => {
 
   describe("session lifecycle", () => {
     it("creates a session row and sets ended_at on end", async () => {
-      const sessionManager = createSessionManager(serviceClient);
+      const sessionManager = createSessionManager(serviceClient, createStubAdapter(), "web");
 
       const sessionId = await sessionManager.ensureSession(testUserId);
       expect(sessionId).toBeTruthy();
@@ -105,7 +119,7 @@ describe("capture integration", () => {
     });
 
     it("reuses session within timeout window", async () => {
-      const sessionManager = createSessionManager(serviceClient);
+      const sessionManager = createSessionManager(serviceClient, createStubAdapter(), "web");
 
       const firstId = await sessionManager.ensureSession(testUserId);
       const secondId = await sessionManager.ensureSession(testUserId);
