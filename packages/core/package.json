@@ -1,6 +1,6 @@
 {
   "name": "@factoredui/core",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Capture, factors, experiments, SDUI engine — pure TypeScript, no framework deps",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -29,7 +29,14 @@
     "url": "https://github.com/jimjrasche/factored-ui",
     "directory": "packages/core"
   },
-  "keywords": ["analytics", "behavioral-factors", "experiments", "sdui", "supabase", "capture"],
+  "keywords": [
+    "analytics",
+    "behavioral-factors",
+    "experiments",
+    "sdui",
+    "supabase",
+    "capture"
+  ],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit"

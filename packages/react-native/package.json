@@ -1,6 +1,6 @@
 {
   "name": "@factoredui/react-native",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "React Native component registry for FactoredUI SDUI — 20 themed primitives",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -25,7 +25,13 @@
     "url": "https://github.com/jimjrasche/factored-ui",
     "directory": "packages/react-native"
   },
-  "keywords": ["react-native", "expo", "sdui", "component-registry", "supabase"],
+  "keywords": [
+    "react-native",
+    "expo",
+    "sdui",
+    "component-registry",
+    "supabase"
+  ],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit"
