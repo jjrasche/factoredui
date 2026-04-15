@@ -24,6 +24,12 @@
     "access": "public"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jimjrasche/factored-ui",
+    "directory": "packages/core"
+  },
+  "keywords": ["analytics", "behavioral-factors", "experiments", "sdui", "supabase", "capture"],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit"

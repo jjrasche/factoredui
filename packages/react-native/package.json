@@ -20,6 +20,12 @@
     "access": "public"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jimjrasche/factored-ui",
+    "directory": "packages/react-native"
+  },
+  "keywords": ["react-native", "expo", "sdui", "component-registry", "supabase"],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit"
