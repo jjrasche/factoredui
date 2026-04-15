@@ -148,7 +148,25 @@ Setup complete! Next steps:
   5. Deploy the clustering edge function:
        npx supabase functions deploy factoredui-cluster
 
-  6. In your app:
+  6. Configure pg_cron → edge function auth (self-hosted / production only):
+
+     The nightly clustering cron job calls the edge function via pg_net.
+     It reads two PostgreSQL GUC settings that must match your edge function's
+     Deno environment variables:
+
+       ALTER SYSTEM SET app.supabase_url = 'https://your-project.supabase.co';
+       ALTER SYSTEM SET app.service_role_key = 'your-service-role-key';
+       SELECT pg_reload_conf();
+
+     These must match:
+       - SUPABASE_URL (Deno env in edge runtime)
+       - SUPABASE_SERVICE_ROLE_KEY (Deno env in edge runtime)
+
+     On local dev (npx supabase start), these are auto-configured.
+     On Supabase Cloud, these are set automatically.
+     On self-hosted Supabase, you must set them manually.
+
+  7. In your app:
 
      import { initCapture } from '@factoredui/core'
      import { createClient } from '@supabase/supabase-js'

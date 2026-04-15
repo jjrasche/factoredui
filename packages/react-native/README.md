@@ -2,7 +2,7 @@
 
 React Native component registry and capture adapter for FactoredUI SDUI.
 
-Part of the [FactoredUI](https://github.com/jimjrasche/factored-ui) monorepo.
+Part of the [FactoredUI](https://github.com/jjrasche/factoredui) monorepo.
 
 ## Install
 

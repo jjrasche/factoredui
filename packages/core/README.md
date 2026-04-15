@@ -2,7 +2,7 @@
 
 Capture user interactions, compute behavioral factors, run experiments, and render server-driven UI. Pure TypeScript — no framework dependencies.
 
-Part of the [FactoredUI](https://github.com/jimjrasche/factored-ui) monorepo.
+Part of the [FactoredUI](https://github.com/jjrasche/factoredui) monorepo.
 
 ## Install
 

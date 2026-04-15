@@ -2,7 +2,7 @@
 
 React bindings for FactoredUI — provider, hooks, path context, and SDUI renderer.
 
-Part of the [FactoredUI](https://github.com/jimjrasche/factored-ui) monorepo.
+Part of the [FactoredUI](https://github.com/jjrasche/factoredui) monorepo.
 
 ## Install
 
