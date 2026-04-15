@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore } from "../store.js";
 import type { GovernanceAction, FactorVerdict } from "./governance.js";
 
 export interface GovernanceLogRow {
@@ -10,25 +10,15 @@ export interface GovernanceLogRow {
   evaluated_at: string;
 }
 
-const GOVERNANCE_LOG_COLUMNS =
-  "id, experiment_id, verdict, winning_variant, factor_verdicts, evaluated_at";
-
 /**
  * Queries all governance evaluations for a single experiment,
  * ordered by most recent first.
  */
 export async function queryGovernanceLog(
-  client: SupabaseClient,
+  store: FactoredStore,
   experimentId: string,
 ): Promise<GovernanceLogRow[]> {
-  const { data, error } = await client
-    .from("governance_log")
-    .select(GOVERNANCE_LOG_COLUMNS)
-    .eq("experiment_id", experimentId)
-    .order("evaluated_at", { ascending: false });
-
-  if (error) throw new Error(`queryGovernanceLog failed: ${error.message}`);
-  return (data ?? []) as GovernanceLogRow[];
+  return store.queryGovernanceLog(experimentId);
 }
 
 /**
@@ -36,17 +26,10 @@ export async function queryGovernanceLog(
  * Defaults to 50 rows.
  */
 export async function queryRecentGovernanceLog(
-  client: SupabaseClient,
+  store: FactoredStore,
   limit = 50,
 ): Promise<GovernanceLogRow[]> {
-  const { data, error } = await client
-    .from("governance_log")
-    .select(GOVERNANCE_LOG_COLUMNS)
-    .order("evaluated_at", { ascending: false })
-    .limit(limit);
-
-  if (error) throw new Error(`queryRecentGovernanceLog failed: ${error.message}`);
-  return (data ?? []) as GovernanceLogRow[];
+  return store.queryRecentGovernanceLog(limit);
 }
 
 /**
@@ -54,15 +37,8 @@ export async function queryRecentGovernanceLog(
  * (conclude, flag_review, continue).
  */
 export async function queryGovernanceLogByVerdict(
-  client: SupabaseClient,
+  store: FactoredStore,
   verdict: GovernanceAction,
 ): Promise<GovernanceLogRow[]> {
-  const { data, error } = await client
-    .from("governance_log")
-    .select(GOVERNANCE_LOG_COLUMNS)
-    .eq("verdict", verdict)
-    .order("evaluated_at", { ascending: false });
-
-  if (error) throw new Error(`queryGovernanceLogByVerdict failed: ${error.message}`);
-  return (data ?? []) as GovernanceLogRow[];
+  return store.queryGovernanceLogByVerdict(verdict);
 }

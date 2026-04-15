@@ -5,8 +5,9 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @factoredui/core && npm run build -w @factoredui/react && npm run build -w @factoredui/react-native",
+    "build": "npm run build -w @factoredui/core && npm run build -w @factoredui/adapter-supabase && npm run build -w @factoredui/react && npm run build -w @factoredui/react-native",
     "build:core": "npm run build -w @factoredui/core",
+    "build:adapter-supabase": "npm run build -w @factoredui/adapter-supabase",
     "build:react": "npm run build -w @factoredui/react",
     "build:react-native": "npm run build -w @factoredui/react-native",
     "test": "vitest run",

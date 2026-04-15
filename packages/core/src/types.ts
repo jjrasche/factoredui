@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore } from "./store.js";
 import type { CaptureAdapter } from "./capture/adapter.js";
 
 export type EventType =
@@ -51,7 +51,7 @@ export interface ExperimentAssignment {
 export type Platform = "web" | "ios" | "android";
 
 export interface Config {
-  supabase: SupabaseClient;
+  store: FactoredStore;
   adapter?: CaptureAdapter;
   platform?: Platform;
   flushIntervalMs?: number;

@@ -9,7 +9,7 @@ import {
 } from "./provider.js";
 
 import * as core from "@factoredui/core";
-import type { GovernanceLogRow } from "@factoredui/core";
+import type { GovernanceLogRow, FactoredStore } from "@factoredui/core";
 
 vi.mock("@factoredui/core", async () => {
   const actual = await vi.importActual("@factoredui/core");
@@ -28,16 +28,17 @@ vi.mock("@factoredui/core", async () => {
   };
 });
 
-const mockChannelInstance = {
-  on: vi.fn().mockReturnThis(),
-  subscribe: vi.fn().mockReturnThis(),
-};
+// Track subscribe calls so tests can invoke the onInsert callback
+const subscribeCallbacks: Array<{ channel: string; table: string; filter: string | null; onInsert: (row: unknown) => void }> = [];
+const unsubscribeMock = vi.fn();
 
-const mockSupabase = {
-  auth: { getUser: vi.fn() },
-  channel: vi.fn(() => mockChannelInstance),
-  removeChannel: vi.fn(),
-} as never;
+const mockStore = {
+  getCurrentUserId: vi.fn().mockResolvedValue("user-1"),
+  subscribe: vi.fn((channel: string, table: string, filter: string | null, onInsert: (row: unknown) => void) => {
+    subscribeCallbacks.push({ channel, table, filter, onInsert });
+    return unsubscribeMock;
+  }),
+} as unknown as FactoredStore;
 
 const mockAdapter = {
   startListening: vi.fn(),
@@ -51,7 +52,7 @@ const mockAdapter = {
 
 function createWrapper({ children }: { children: ReactNode }) {
   return (
-    <Provider supabase={mockSupabase} adapter={mockAdapter} platform="web">
+    <Provider store={mockStore} adapter={mockAdapter} platform="web">
       {children}
     </Provider>
   );
@@ -94,6 +95,7 @@ const EXPERIMENT_SUMMARIES = [
 
 beforeEach(() => {
   vi.clearAllMocks();
+  subscribeCallbacks.length = 0;
 });
 
 describe("useGovernanceLog", () => {
@@ -107,7 +109,7 @@ describe("useGovernanceLog", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.log).toEqual(GOVERNANCE_LOG_ROWS);
-    expect(core.queryGovernanceLog).toHaveBeenCalledWith(mockSupabase, "exp-1");
+    expect(core.queryGovernanceLog).toHaveBeenCalledWith(mockStore, "exp-1");
   });
 
   it("returns empty log on query failure", async () => {
@@ -130,7 +132,7 @@ describe("useRecentGovernanceLog", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.log).toEqual(GOVERNANCE_LOG_ROWS);
-    expect(core.queryRecentGovernanceLog).toHaveBeenCalledWith(mockSupabase, 50);
+    expect(core.queryRecentGovernanceLog).toHaveBeenCalledWith(mockStore, 50);
   });
 
   it("passes custom limit to query function", async () => {
@@ -140,7 +142,7 @@ describe("useRecentGovernanceLog", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(core.queryRecentGovernanceLog).toHaveBeenCalledWith(mockSupabase, 10);
+    expect(core.queryRecentGovernanceLog).toHaveBeenCalledWith(mockStore, 10);
     expect(result.current.log).toHaveLength(1);
   });
 });
@@ -153,21 +155,10 @@ describe("useRecentGovernanceLog realtime", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect((mockSupabase as any).channel).toHaveBeenCalledWith("governance-log:all");
-    expect(mockChannelInstance.on).toHaveBeenCalledWith(
-      "postgres_changes",
-      expect.objectContaining({
-        event: "INSERT",
-        schema: "factoredui",
-        table: "governance_log",
-      }),
-      expect.any(Function),
-    );
-    const callArgs = mockChannelInstance.on.mock.calls.find(
-      (call: unknown[]) => (call[1] as any)?.table === "governance_log" && !(call[1] as any)?.filter,
-    );
-    expect(callArgs).toBeDefined();
-    expect(mockChannelInstance.subscribe).toHaveBeenCalled();
+    const sub = subscribeCallbacks.find(s => s.channel === "governance-log:all");
+    expect(sub).toBeDefined();
+    expect(sub!.table).toBe("governance_log");
+    expect(sub!.filter).toBeNull();
   });
 
   it("prepends new rows and trims to limit", async () => {
@@ -178,9 +169,7 @@ describe("useRecentGovernanceLog realtime", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.log).toHaveLength(1);
 
-    const onCallback = mockChannelInstance.on.mock.calls.find(
-      (call: unknown[]) => (call[1] as any)?.table === "governance_log" && !(call[1] as any)?.filter,
-    )?.[2] as (payload: { new: GovernanceLogRow }) => void;
+    const sub = subscribeCallbacks.find(s => s.channel === "governance-log:all");
 
     const realtimeRow1: GovernanceLogRow = {
       id: "log-recent-rt-1",
@@ -200,11 +189,11 @@ describe("useRecentGovernanceLog realtime", () => {
       evaluated_at: "2026-04-05T00:00:00Z",
     };
 
-    await act(async () => onCallback({ new: realtimeRow1 }));
+    await act(async () => sub!.onInsert(realtimeRow1));
     expect(result.current.log).toHaveLength(2);
     expect(result.current.log[0].id).toBe("log-recent-rt-1");
 
-    await act(async () => onCallback({ new: realtimeRow2 }));
+    await act(async () => sub!.onInsert(realtimeRow2));
     expect(result.current.log).toHaveLength(2);
     expect(result.current.log[0].id).toBe("log-recent-rt-2");
     expect(result.current.log[1].id).toBe("log-recent-rt-1");
@@ -218,7 +207,7 @@ describe("useRecentGovernanceLog realtime", () => {
     await waitFor(() => {});
     unmount();
 
-    expect((mockSupabase as any).removeChannel).toHaveBeenCalledWith(mockChannelInstance);
+    expect(unsubscribeMock).toHaveBeenCalled();
   });
 });
 
@@ -231,7 +220,7 @@ describe("useExperimentDashboard", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.summaries).toEqual(EXPERIMENT_SUMMARIES);
-    expect(core.queryExperimentSummaries).toHaveBeenCalledWith(mockSupabase, undefined);
+    expect(core.queryExperimentSummaries).toHaveBeenCalledWith(mockStore, undefined);
   });
 
   it("passes filters to query function", async () => {
@@ -242,7 +231,7 @@ describe("useExperimentDashboard", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(core.queryExperimentSummaries).toHaveBeenCalledWith(mockSupabase, filters);
+    expect(core.queryExperimentSummaries).toHaveBeenCalledWith(mockStore, filters);
   });
 
   it("returns empty summaries on query failure", async () => {
@@ -264,18 +253,10 @@ describe("realtime subscriptions", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect((mockSupabase as any).channel).toHaveBeenCalledWith("governance-log:exp-1");
-    expect(mockChannelInstance.on).toHaveBeenCalledWith(
-      "postgres_changes",
-      expect.objectContaining({
-        event: "INSERT",
-        schema: "factoredui",
-        table: "governance_log",
-        filter: "experiment_id=eq.exp-1",
-      }),
-      expect.any(Function),
-    );
-    expect(mockChannelInstance.subscribe).toHaveBeenCalled();
+    const sub = subscribeCallbacks.find(s => s.channel === "governance-log:exp-1");
+    expect(sub).toBeDefined();
+    expect(sub!.table).toBe("governance_log");
+    expect(sub!.filter).toBe("experiment_id=eq.exp-1");
   });
 
   it("useGovernanceLog prepends new rows from realtime inserts", async () => {
@@ -286,9 +267,7 @@ describe("realtime subscriptions", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.log).toHaveLength(1);
 
-    const onCallback = mockChannelInstance.on.mock.calls.find(
-      (call: unknown[]) => call[1]?.table === "governance_log",
-    )?.[2] as (payload: { new: GovernanceLogRow }) => void;
+    const sub = subscribeCallbacks.find(s => s.channel === "governance-log:exp-1");
 
     const realtimeRow: GovernanceLogRow = {
       id: "log-realtime",
@@ -299,7 +278,7 @@ describe("realtime subscriptions", () => {
       evaluated_at: "2026-04-03T00:00:00Z",
     };
 
-    await act(async () => onCallback({ new: realtimeRow }));
+    await act(async () => sub!.onInsert(realtimeRow));
 
     expect(result.current.log).toHaveLength(2);
     expect(result.current.log[0].id).toBe("log-realtime");
@@ -313,7 +292,7 @@ describe("realtime subscriptions", () => {
     await waitFor(() => {});
     unmount();
 
-    expect((mockSupabase as any).removeChannel).toHaveBeenCalledWith(mockChannelInstance);
+    expect(unsubscribeMock).toHaveBeenCalled();
   });
 
   it("useExperimentDashboard subscribes to experiments table changes", async () => {
@@ -323,16 +302,9 @@ describe("realtime subscriptions", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect((mockSupabase as any).channel).toHaveBeenCalledWith("experiments:changes");
-    expect(mockChannelInstance.on).toHaveBeenCalledWith(
-      "postgres_changes",
-      expect.objectContaining({
-        event: "*",
-        schema: "factoredui",
-        table: "experiments",
-      }),
-      expect.any(Function),
-    );
+    const sub = subscribeCallbacks.find(s => s.channel === "experiments:changes");
+    expect(sub).toBeDefined();
+    expect(sub!.table).toBe("experiments");
   });
 
   it("useExperimentDashboard refetches on experiment table change", async () => {
@@ -344,14 +316,12 @@ describe("realtime subscriptions", () => {
       expect(core.queryExperimentSummaries).toHaveBeenCalledTimes(1);
     });
 
-    const onCallback = mockChannelInstance.on.mock.calls.find(
-      (call: unknown[]) => call[1]?.table === "experiments",
-    )?.[2] as () => void;
+    const sub = subscribeCallbacks.find(s => s.channel === "experiments:changes");
 
     const updatedSummaries = [{ ...EXPERIMENT_SUMMARIES[0], status: "concluded", winning_variant: "variant-a" }];
     vi.mocked(core.queryExperimentSummaries).mockResolvedValue(updatedSummaries);
 
-    await act(async () => onCallback());
+    await act(async () => sub!.onInsert({}));
 
     await waitFor(() => {
       expect(core.queryExperimentSummaries).toHaveBeenCalledTimes(2);
@@ -366,6 +336,6 @@ describe("realtime subscriptions", () => {
     await waitFor(() => {});
     unmount();
 
-    expect((mockSupabase as any).removeChannel).toHaveBeenCalledWith(mockChannelInstance);
+    expect(unsubscribeMock).toHaveBeenCalled();
   });
 });

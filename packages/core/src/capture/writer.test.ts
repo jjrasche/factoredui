@@ -1,28 +1,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createEventWriter } from "./writer.js";
+import type { FactoredStore } from "../store.js";
 
-function createMockSupabase(insertFn: ReturnType<typeof vi.fn>) {
-  return {
-    from: () => ({
-      insert: insertFn,
-    }),
-  } as never;
+function createMockStore(insertEvents: ReturnType<typeof vi.fn>): FactoredStore {
+  return { insertEvents } as unknown as FactoredStore;
 }
 
 describe("createEventWriter", () => {
   let insertMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    insertMock = vi.fn().mockResolvedValue({ error: null });
+    insertMock = vi.fn().mockResolvedValue(undefined);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("batches events and flushes to supabase", async () => {
-    const supabase = createMockSupabase(insertMock);
-    const writer = createEventWriter(supabase, 5000, 50);
+  it("batches events and flushes to store", async () => {
+    const store = createMockStore(insertMock);
+    const writer = createEventWriter(store, 5000, 50);
 
     writer.enqueue("session-1", "user-1", {
       event_type: "click",
@@ -45,8 +42,8 @@ describe("createEventWriter", () => {
   });
 
   it("auto-flushes when batch size reached", async () => {
-    const supabase = createMockSupabase(insertMock);
-    const writer = createEventWriter(supabase, 60000, 3);
+    const store = createMockStore(insertMock);
+    const writer = createEventWriter(store, 60000, 3);
 
     writer.enqueue("s1", "u1", { event_type: "click", component_path: "a", payload: {} });
     writer.enqueue("s1", "u1", { event_type: "click", component_path: "b", payload: {} });
@@ -61,15 +58,15 @@ describe("createEventWriter", () => {
   });
 
   it("re-enqueues events on flush failure", async () => {
-    insertMock.mockResolvedValueOnce({ error: { message: "network error" } });
-    const supabase = createMockSupabase(insertMock);
-    const writer = createEventWriter(supabase, 5000, 50);
+    insertMock.mockRejectedValueOnce(new Error("network error"));
+    const store = createMockStore(insertMock);
+    const writer = createEventWriter(store, 5000, 50);
 
     writer.enqueue("s1", "u1", { event_type: "click", component_path: "a", payload: {} });
     await writer.flush();
 
     // Event re-enqueued — second flush should retry
-    insertMock.mockResolvedValueOnce({ error: null });
+    insertMock.mockResolvedValueOnce(undefined);
     await writer.flush();
 
     expect(insertMock).toHaveBeenCalledTimes(2);
@@ -77,8 +74,8 @@ describe("createEventWriter", () => {
   });
 
   it("does nothing when flushing an empty queue", async () => {
-    const supabase = createMockSupabase(insertMock);
-    const writer = createEventWriter(supabase, 5000, 50);
+    const store = createMockStore(insertMock);
+    const writer = createEventWriter(store, 5000, 50);
 
     await writer.flush();
 
@@ -86,11 +83,11 @@ describe("createEventWriter", () => {
   });
 
   it("persists queue to adapter on flush failure", async () => {
-    insertMock.mockResolvedValueOnce({ error: { message: "offline" } });
-    const supabase = createMockSupabase(insertMock);
+    insertMock.mockRejectedValueOnce(new Error("offline"));
+    const store = createMockStore(insertMock);
     const persistQueue = vi.fn();
     const adapter = { persistQueue, loadQueue: vi.fn() } as never;
-    const writer = createEventWriter(supabase, 5000, 50, adapter);
+    const writer = createEventWriter(store, 5000, 50, adapter);
 
     writer.enqueue("s1", "u1", { event_type: "click", component_path: "a", payload: {} });
     await writer.flush();
@@ -102,14 +99,14 @@ describe("createEventWriter", () => {
   });
 
   it("drains persisted queue into memory on startup", async () => {
-    const supabase = createMockSupabase(insertMock);
+    const store = createMockStore(insertMock);
     const persistedEvents = [
       { user_id: "u1", session_id: "s1", event_type: "click", component_path: "a", payload: {} },
     ];
     const persistQueue = vi.fn();
     const loadQueue = vi.fn().mockReturnValue(JSON.stringify(persistedEvents));
     const adapter = { persistQueue, loadQueue } as never;
-    const writer = createEventWriter(supabase, 5000, 50, adapter);
+    const writer = createEventWriter(store, 5000, 50, adapter);
 
     writer.drainPersistedQueue();
     await writer.flush();
@@ -123,10 +120,10 @@ describe("createEventWriter", () => {
   });
 
   it("ignores corrupt persisted queue data", async () => {
-    const supabase = createMockSupabase(insertMock);
+    const store = createMockStore(insertMock);
     const loadQueue = vi.fn().mockReturnValue("not-valid-json{{{");
     const adapter = { loadQueue } as never;
-    const writer = createEventWriter(supabase, 5000, 50, adapter);
+    const writer = createEventWriter(store, 5000, 50, adapter);
 
     // Should not throw
     writer.drainPersistedQueue();

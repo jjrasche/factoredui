@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore } from "../store.js";
 import type { Platform } from "../types.js";
 import type { TargetingRule } from "./targeting.js";
 
@@ -29,13 +29,19 @@ export interface CreatedExperiment {
  * Validates traffic percentages sum to 100 and requires a control variant.
  */
 export async function createExperiment(
-  client: SupabaseClient,
+  store: FactoredStore,
   definition: ExperimentDefinition,
 ): Promise<CreatedExperiment> {
   validateDefinition(definition);
 
-  const experiment = await insertExperiment(client, definition);
-  await insertVariants(client, experiment.id, definition.variants);
+  const experiment = await store.insertExperiment({
+    name: definition.name,
+    description: definition.description ?? null,
+    component_path: definition.component_path,
+    targeting_rules: definition.targeting_rules ?? [],
+    platforms: definition.platforms ?? [],
+  });
+  await store.insertVariants(experiment.id, definition.variants);
 
   return experiment;
 }
@@ -45,20 +51,10 @@ export async function createExperiment(
  * Fails if the experiment is not in draft status.
  */
 export async function startExperiment(
-  client: SupabaseClient,
+  store: FactoredStore,
   experimentId: string,
 ): Promise<void> {
-  const { data, error } = await client
-    .from("experiments")
-    .update({ status: "running" })
-    .eq("id", experimentId)
-    .eq("status", "draft")
-    .select("id");
-
-  if (error) throw new Error(`startExperiment failed: ${error.message}`);
-  if (!data || data.length === 0) {
-    throw new Error(`startExperiment: experiment ${experimentId} not found or not in draft status`);
-  }
+  await store.startExperiment(experimentId);
 }
 
 function validateDefinition(definition: ExperimentDefinition): void {
@@ -75,43 +71,4 @@ function validateDefinition(definition: ExperimentDefinition): void {
   if (totalTraffic !== 100) {
     throw new Error(`Traffic percentages must sum to 100, got ${totalTraffic}`);
   }
-}
-
-async function insertExperiment(
-  client: SupabaseClient,
-  definition: ExperimentDefinition,
-): Promise<CreatedExperiment> {
-  const { data, error } = await client
-    .from("experiments")
-    .insert({
-      name: definition.name,
-      description: definition.description ?? null,
-      component_path: definition.component_path,
-      targeting_rules: definition.targeting_rules ?? [],
-      platforms: definition.platforms ?? [],
-    })
-    .select("id, name, status, component_path")
-    .single();
-
-  if (error) throw new Error(`insertExperiment failed: ${error.message}`);
-  return data as CreatedExperiment;
-}
-
-async function insertVariants(
-  client: SupabaseClient,
-  experimentId: string,
-  variants: VariantDefinition[],
-): Promise<void> {
-  const rows = variants.map(v => ({
-    experiment_id: experimentId,
-    variant_key: v.variant_key,
-    config: v.config,
-    traffic_percentage: v.traffic_percentage,
-  }));
-
-  const { error } = await client
-    .from("experiment_variants")
-    .insert(rows);
-
-  if (error) throw new Error(`insertVariants failed: ${error.message}`);
 }

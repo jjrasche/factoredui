@@ -5,8 +5,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CaptureHandle, Config, Platform, CaptureAdapter, DeviceMetadata } from "@factoredui/core";
+import type { FactoredStore, CaptureHandle, Config, Platform, CaptureAdapter, DeviceMetadata } from "@factoredui/core";
 import { initCapture } from "@factoredui/core";
 import type { ExperimentSummaryFilters } from "@factoredui/core";
 import {
@@ -22,7 +21,7 @@ import {
 // --- Context ---
 
 interface ContextValue {
-  supabase: SupabaseClient;
+  store: FactoredStore;
   platform: Platform;
   deviceMetadata: DeviceMetadata;
   captureHandle: CaptureHandle | null;
@@ -41,7 +40,7 @@ function useFactoredContext(): ContextValue {
 // --- Provider ---
 
 interface ProviderProps {
-  supabase: SupabaseClient;
+  store: FactoredStore;
   adapter?: CaptureAdapter;
   platform?: Platform;
   children: ReactNode;
@@ -51,7 +50,7 @@ interface ProviderProps {
 }
 
 export function Provider({
-  supabase,
+  store,
   adapter,
   platform = "web",
   children,
@@ -64,7 +63,7 @@ export function Provider({
 
   useEffect(() => {
     const config: Config = {
-      supabase,
+      store,
       adapter,
       platform,
       flushIntervalMs,
@@ -78,11 +77,11 @@ export function Provider({
       captureRef.current?.flushEvents();
       captureRef.current?.stopCapture();
     };
-  }, [supabase, adapter, platform, flushIntervalMs, flushBatchSize, sessionTimeoutMs]);
+  }, [store, adapter, platform, flushIntervalMs, flushBatchSize, sessionTimeoutMs]);
 
   return (
     <FactoredContext.Provider
-      value={{ supabase, platform, deviceMetadata: deviceMetadata.current, captureHandle: captureRef.current }}
+      value={{ store, platform, deviceMetadata: deviceMetadata.current, captureHandle: captureRef.current }}
     >
       {children}
     </FactoredContext.Provider>
@@ -92,38 +91,38 @@ export function Provider({
 // --- Context-aware hook wrappers ---
 
 export function useFlag(experimentName: string) {
-  const { supabase, platform, deviceMetadata } = useFactoredContext();
-  return useFlagCore(supabase, experimentName, platform, deviceMetadata);
+  const { store, platform, deviceMetadata } = useFactoredContext();
+  return useFlagCore(store, experimentName, platform, deviceMetadata);
 }
 
 export function useFactors(componentPath?: string) {
-  const { supabase } = useFactoredContext();
-  return useFactorsCore(supabase, componentPath);
+  const { store } = useFactoredContext();
+  return useFactorsCore(store, componentPath);
 }
 
 export function useGovernanceLog(experimentId: string) {
-  const { supabase } = useFactoredContext();
-  return useGovernanceLogCore(supabase, experimentId);
+  const { store } = useFactoredContext();
+  return useGovernanceLogCore(store, experimentId);
 }
 
 export function useRecentGovernanceLog(limit?: number) {
-  const { supabase } = useFactoredContext();
-  return useRecentGovernanceLogCore(supabase, limit);
+  const { store } = useFactoredContext();
+  return useRecentGovernanceLogCore(store, limit);
 }
 
 export function useComponentFactors(componentPath: string) {
-  const { supabase } = useFactoredContext();
-  return useComponentFactorsCore(supabase, componentPath);
+  const { store } = useFactoredContext();
+  return useComponentFactorsCore(store, componentPath);
 }
 
 export function useExperimentDashboard(filters?: ExperimentSummaryFilters) {
-  const { supabase } = useFactoredContext();
-  return useExperimentDashboardCore(supabase, filters);
+  const { store } = useFactoredContext();
+  return useExperimentDashboardCore(store, filters);
 }
 
 export function useExperimentResults(experimentId: string, factorNames: string[]) {
-  const { supabase } = useFactoredContext();
-  return useExperimentResultsCore(supabase, experimentId, factorNames);
+  const { store } = useFactoredContext();
+  return useExperimentResultsCore(store, experimentId, factorNames);
 }
 
 export function usePlatform(): Platform {

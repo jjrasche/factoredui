@@ -3,8 +3,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import type { SupabaseClient, RealtimeChannel } from "@supabase/supabase-js";
-import type { ExperimentAssignment, Factor, ComponentFactorAggregate, GovernanceLogRow, ExperimentSummaryRow, ExperimentSummaryFilters, VariantResult, Platform, DeviceMetadata } from "@factoredui/core";
+import type { FactoredStore, ExperimentAssignment, Factor, ComponentFactorAggregate, GovernanceLogRow, ExperimentSummaryRow, ExperimentSummaryFilters, VariantResult, Platform, DeviceMetadata } from "@factoredui/core";
 import { evaluateFlag, queryGovernanceLog, queryRecentGovernanceLog, queryExperimentSummaries, queryComponentFactors, queryExperimentResults } from "@factoredui/core";
 
 // --- useFlag ---
@@ -15,14 +14,14 @@ export interface UseFlagResult {
   isLoading: boolean;
 }
 
-export function useFlag(supabase: SupabaseClient, experimentName: string, platform?: Platform, deviceMetadata?: DeviceMetadata): UseFlagResult {
+export function useFlag(store: FactoredStore, experimentName: string, platform?: Platform, deviceMetadata?: DeviceMetadata): UseFlagResult {
   const [assignment, setAssignment] = useState<ExperimentAssignment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isCancelled = false;
 
-    evaluateFlag(supabase, experimentName, platform, deviceMetadata).then((result) => {
+    evaluateFlag(store, experimentName, platform, deviceMetadata).then((result) => {
       if (!isCancelled) {
         setAssignment(result);
         setIsLoading(false);
@@ -32,7 +31,7 @@ export function useFlag(supabase: SupabaseClient, experimentName: string, platfo
     });
 
     return () => { isCancelled = true; };
-  }, [supabase, experimentName, platform, deviceMetadata]);
+  }, [store, experimentName, platform, deviceMetadata]);
 
   return {
     variantKey: assignment?.variant_key ?? null,
@@ -48,14 +47,14 @@ export interface UseFactorsResult {
   isLoading: boolean;
 }
 
-export function useFactors(supabase: SupabaseClient, componentPath?: string): UseFactorsResult {
+export function useFactors(store: FactoredStore, componentPath?: string): UseFactorsResult {
   const [factors, setFactors] = useState<Factor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isCancelled = false;
 
-    fetchUserFactors(supabase, componentPath).then((result) => {
+    fetchUserFactors(store, componentPath).then((result) => {
       if (!isCancelled) {
         setFactors(result);
         setIsLoading(false);
@@ -65,30 +64,19 @@ export function useFactors(supabase: SupabaseClient, componentPath?: string): Us
     });
 
     return () => { isCancelled = true; };
-  }, [supabase, componentPath]);
+  }, [store, componentPath]);
 
   return { factors, isLoading };
 }
 
 async function fetchUserFactors(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   componentPath?: string,
 ): Promise<Factor[]> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+  const userId = await store.getCurrentUserId();
+  if (!userId) return [];
 
-  let query = supabase
-    .from("v_factors_current")
-    .select("*")
-    .eq("user_id", user.id);
-
-  if (componentPath) {
-    query = query.eq("component_path", componentPath);
-  }
-
-  const { data, error } = await query;
-  if (error || !data) return [];
-  return data as Factor[];
+  return store.queryFactors(userId, componentPath);
 }
 
 // --- useComponentFactors ---
@@ -98,14 +86,14 @@ export interface UseComponentFactorsResult {
   isLoading: boolean;
 }
 
-export function useComponentFactors(supabase: SupabaseClient, componentPath: string): UseComponentFactorsResult {
+export function useComponentFactors(store: FactoredStore, componentPath: string): UseComponentFactorsResult {
   const [aggregates, setAggregates] = useState<ComponentFactorAggregate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isCancelled = false;
 
-    queryComponentFactors(supabase, componentPath).then((result) => {
+    queryComponentFactors(store, componentPath).then((result) => {
       if (!isCancelled) {
         setAggregates(result);
         setIsLoading(false);
@@ -115,7 +103,7 @@ export function useComponentFactors(supabase: SupabaseClient, componentPath: str
     });
 
     return () => { isCancelled = true; };
-  }, [supabase, componentPath]);
+  }, [store, componentPath]);
 
   return { aggregates, isLoading };
 }
@@ -127,7 +115,7 @@ export interface UseGovernanceLogResult {
   isLoading: boolean;
 }
 
-export function useGovernanceLog(supabase: SupabaseClient, experimentId: string): UseGovernanceLogResult {
+export function useGovernanceLog(store: FactoredStore, experimentId: string): UseGovernanceLogResult {
   const [log, setLog] = useState<GovernanceLogRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -138,7 +126,7 @@ export function useGovernanceLog(supabase: SupabaseClient, experimentId: string)
   useEffect(() => {
     let isCancelled = false;
 
-    queryGovernanceLog(supabase, experimentId).then((rows) => {
+    queryGovernanceLog(store, experimentId).then((rows) => {
       if (!isCancelled) {
         setLog(rows);
         setIsLoading(false);
@@ -147,20 +135,25 @@ export function useGovernanceLog(supabase: SupabaseClient, experimentId: string)
       if (!isCancelled) setIsLoading(false);
     });
 
-    const channel = subscribeToGovernanceInserts(supabase, experimentId, prependRow);
+    const unsubscribe = store.subscribe?.(
+      `governance-log:${experimentId}`,
+      "governance_log",
+      `experiment_id=eq.${experimentId}`,
+      (row) => prependRow(row as GovernanceLogRow),
+    );
 
     return () => {
       isCancelled = true;
-      supabase.removeChannel(channel);
+      unsubscribe?.();
     };
-  }, [supabase, experimentId, prependRow]);
+  }, [store, experimentId, prependRow]);
 
   return { log, isLoading };
 }
 
 // --- useRecentGovernanceLog ---
 
-export function useRecentGovernanceLog(supabase: SupabaseClient, limit?: number): UseGovernanceLogResult {
+export function useRecentGovernanceLog(store: FactoredStore, limit?: number): UseGovernanceLogResult {
   const [log, setLog] = useState<GovernanceLogRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const effectiveLimit = limit ?? 50;
@@ -172,7 +165,7 @@ export function useRecentGovernanceLog(supabase: SupabaseClient, limit?: number)
   useEffect(() => {
     let isCancelled = false;
 
-    queryRecentGovernanceLog(supabase, effectiveLimit).then((rows) => {
+    queryRecentGovernanceLog(store, effectiveLimit).then((rows) => {
       if (!isCancelled) {
         setLog(rows);
         setIsLoading(false);
@@ -181,13 +174,18 @@ export function useRecentGovernanceLog(supabase: SupabaseClient, limit?: number)
       if (!isCancelled) setIsLoading(false);
     });
 
-    const channel = subscribeToAllGovernanceInserts(supabase, prependRow);
+    const unsubscribe = store.subscribe?.(
+      "governance-log:all",
+      "governance_log",
+      null,
+      (row) => prependRow(row as GovernanceLogRow),
+    );
 
     return () => {
       isCancelled = true;
-      supabase.removeChannel(channel);
+      unsubscribe?.();
     };
-  }, [supabase, effectiveLimit, prependRow]);
+  }, [store, effectiveLimit, prependRow]);
 
   return { log, isLoading };
 }
@@ -200,7 +198,7 @@ export interface UseExperimentDashboardResult {
 }
 
 export function useExperimentDashboard(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   filters?: ExperimentSummaryFilters,
 ): UseExperimentDashboardResult {
   const [summaries, setSummaries] = useState<ExperimentSummaryRow[]>([]);
@@ -209,15 +207,15 @@ export function useExperimentDashboard(
   const filterKey = JSON.stringify(filters ?? {});
 
   const refetchSummaries = useCallback(() => {
-    queryExperimentSummaries(supabase, filters).then((rows) => {
+    queryExperimentSummaries(store, filters).then((rows) => {
       setSummaries(rows);
     }).catch(() => {});
-  }, [supabase, filterKey]);
+  }, [store, filterKey]);
 
   useEffect(() => {
     let isCancelled = false;
 
-    queryExperimentSummaries(supabase, filters).then((rows) => {
+    queryExperimentSummaries(store, filters).then((rows) => {
       if (!isCancelled) {
         setSummaries(rows);
         setIsLoading(false);
@@ -226,13 +224,18 @@ export function useExperimentDashboard(
       if (!isCancelled) setIsLoading(false);
     });
 
-    const channel = subscribeToExperimentChanges(supabase, refetchSummaries);
+    const unsubscribe = store.subscribe?.(
+      "experiments:changes",
+      "experiments",
+      null,
+      () => refetchSummaries(),
+    );
 
     return () => {
       isCancelled = true;
-      supabase.removeChannel(channel);
+      unsubscribe?.();
     };
-  }, [supabase, filterKey, refetchSummaries]);
+  }, [store, filterKey, refetchSummaries]);
 
   return { summaries, isLoading };
 }
@@ -246,7 +249,7 @@ export interface UseExperimentResultsResult {
 }
 
 export function useExperimentResults(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   experimentId: string,
   factorNames: string[],
 ): UseExperimentResultsResult {
@@ -257,18 +260,18 @@ export function useExperimentResults(
 
   const refetch = useCallback(() => {
     setIsLoading(true);
-    queryExperimentResults(supabase, experimentId, factorNames).then((rows) => {
+    queryExperimentResults(store, experimentId, factorNames).then((rows) => {
       setResults(rows);
       setIsLoading(false);
     }).catch(() => {
       setIsLoading(false);
     });
-  }, [supabase, experimentId, factorKey]);
+  }, [store, experimentId, factorKey]);
 
   useEffect(() => {
     let isCancelled = false;
 
-    queryExperimentResults(supabase, experimentId, factorNames).then((rows) => {
+    queryExperimentResults(store, experimentId, factorNames).then((rows) => {
       if (!isCancelled) {
         setResults(rows);
         setIsLoading(false);
@@ -278,65 +281,7 @@ export function useExperimentResults(
     });
 
     return () => { isCancelled = true; };
-  }, [supabase, experimentId, factorKey]);
+  }, [store, experimentId, factorKey]);
 
   return { results, isLoading, refetch };
-}
-
-// --- Realtime subscription helpers ---
-
-function subscribeToGovernanceInserts(
-  supabase: SupabaseClient,
-  experimentId: string,
-  onInsert: (row: GovernanceLogRow) => void,
-): RealtimeChannel {
-  return supabase
-    .channel(`governance-log:${experimentId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "factoredui",
-        table: "governance_log",
-        filter: `experiment_id=eq.${experimentId}`,
-      },
-      (payload) => onInsert(payload.new as GovernanceLogRow),
-    )
-    .subscribe();
-}
-
-function subscribeToAllGovernanceInserts(
-  supabase: SupabaseClient,
-  onInsert: (row: GovernanceLogRow) => void,
-): RealtimeChannel {
-  return supabase
-    .channel("governance-log:all")
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "factoredui",
-        table: "governance_log",
-      },
-      (payload) => onInsert(payload.new as GovernanceLogRow),
-    )
-    .subscribe();
-}
-
-function subscribeToExperimentChanges(
-  supabase: SupabaseClient,
-  onChange: () => void,
-): RealtimeChannel {
-  return supabase
-    .channel("experiments:changes")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "factoredui",
-        table: "experiments",
-      },
-      () => onChange(),
-    )
-    .subscribe();
 }

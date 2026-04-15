@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore } from "../store.js";
 import type { CaptureHandle, Config, CaptureEvent } from "../types.js";
 import { createSessionManager } from "./session.js";
 import { createEventWriter } from "./writer.js";
@@ -14,19 +14,19 @@ export function initCapture(config: Config): CaptureHandle {
   const platform = config.platform ?? "web";
 
   const sessionManager = createSessionManager(
-    config.supabase,
+    config.store,
     adapter,
     platform,
     config.sessionTimeoutMs,
   );
   const writer = createEventWriter(
-    config.supabase,
+    config.store,
     config.flushIntervalMs,
     config.flushBatchSize,
   );
 
   const enqueueEvent = createEventEnqueuer(
-    config.supabase,
+    config.store,
     sessionManager,
     writer,
   );
@@ -62,14 +62,14 @@ export function initCapture(config: Config): CaptureHandle {
 }
 
 function createEventEnqueuer(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   sessionManager: ReturnType<typeof createSessionManager>,
   writer: ReturnType<typeof createEventWriter>,
 ): (event: CaptureEvent) => void {
   let cachedUserId: string | null = null;
 
   return (event: CaptureEvent) => {
-    resolveUserId(supabase, cachedUserId).then((userId) => {
+    resolveUserId(store, cachedUserId).then((userId) => {
       cachedUserId = userId;
       return sessionManager.ensureSession(userId).then((sessionId) => {
         writer.enqueue(sessionId, userId, event);
@@ -81,11 +81,11 @@ function createEventEnqueuer(
 }
 
 async function resolveUserId(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   cachedUserId: string | null,
 ): Promise<string> {
   if (cachedUserId) return cachedUserId;
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("factoredui: user not authenticated");
-  return user.id;
+  const userId = await store.getCurrentUserId();
+  if (!userId) throw new Error("factoredui: user not authenticated");
+  return userId;
 }

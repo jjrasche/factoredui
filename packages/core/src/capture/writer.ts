@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore, EventRow } from "../store.js";
 import type { CaptureEvent } from "../types.js";
 import type { CaptureAdapter } from "./adapter.js";
 
@@ -13,21 +13,13 @@ export interface EventWriter {
   drainPersistedQueue: () => void;
 }
 
-interface QueuedEvent {
-  user_id: string;
-  session_id: string;
-  event_type: string;
-  component_path: string;
-  payload: Record<string, unknown>;
-}
-
 export function createEventWriter(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   flushIntervalMs: number = DEFAULT_FLUSH_INTERVAL_MS,
   flushBatchSize: number = DEFAULT_FLUSH_BATCH_SIZE,
   adapter?: CaptureAdapter,
 ): EventWriter {
-  let queue: QueuedEvent[] = [];
+  let queue: EventRow[] = [];
   let flushTimer: ReturnType<typeof setInterval> | null = null;
   let isFlushing = false;
 
@@ -56,12 +48,7 @@ export function createEventWriter(
     const batch = queue.splice(0, flushBatchSize);
 
     try {
-      const { error } = await supabase.from("events").insert(batch);
-      if (error) {
-        queue.unshift(...batch);
-        persistQueueToAdapter();
-        console.error("factoredui: flush failed:", error.message);
-      }
+      await store.insertEvents(batch);
     } catch (err) {
       queue.unshift(...batch);
       persistQueueToAdapter();
@@ -86,7 +73,7 @@ export function createEventWriter(
       const serialized = adapter.loadQueue();
       if (!serialized) return;
 
-      const persisted = JSON.parse(serialized) as QueuedEvent[];
+      const persisted = JSON.parse(serialized) as EventRow[];
       if (persisted.length > 0) {
         queue.unshift(...persisted);
         // Clear persisted queue now that events are in memory

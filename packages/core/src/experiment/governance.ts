@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore } from "../store.js";
 import { queryExperimentResults } from "./results.js";
 import type { VariantResult } from "./results.js";
 import type { FactorDelta } from "../factors/snapshots.js";
@@ -35,15 +35,15 @@ export interface GovernanceVerdict {
  * based on factor deltas exceeding governance thresholds.
  */
 export async function evaluateExperimentThresholds(
-  client: SupabaseClient,
+  store: FactoredStore,
   experimentId: string,
   factorNames: string[],
 ): Promise<GovernanceVerdict> {
-  const componentPath = await fetchExperimentComponentPath(client, experimentId);
-  if (!componentPath) return buildEmptyVerdict();
+  const meta = await store.getExperimentMeta(experimentId);
+  if (!meta) return buildEmptyVerdict();
 
-  const results = await queryExperimentResults(client, experimentId, factorNames);
-  const thresholds = await fetchThresholds(client, factorNames, componentPath);
+  const results = await queryExperimentResults(store, experimentId, factorNames);
+  const thresholds = await store.queryThresholds(factorNames, meta.component_path);
 
   return computeGovernanceVerdict(results, thresholds);
 }
@@ -52,50 +52,11 @@ export async function evaluateExperimentThresholds(
  * Concludes an experiment: sets status to 'concluded' and records the winner.
  */
 export async function concludeExperiment(
-  client: SupabaseClient,
+  store: FactoredStore,
   experimentId: string,
   winningVariant: string,
 ): Promise<void> {
-  const { error } = await client
-    .from("experiments")
-    .update({
-      status: "concluded",
-      concluded_at: new Date().toISOString(),
-      winning_variant: winningVariant,
-    })
-    .eq("id", experimentId)
-    .eq("status", "running");
-
-  if (error) throw new Error(`concludeExperiment failed: ${error.message}`);
-}
-
-async function fetchExperimentComponentPath(
-  client: SupabaseClient,
-  experimentId: string,
-): Promise<string | null> {
-  const { data, error } = await client
-    .from("experiments")
-    .select("component_path")
-    .eq("id", experimentId)
-    .maybeSingle();
-
-  if (error || !data) return null;
-  return data.component_path as string;
-}
-
-async function fetchThresholds(
-  client: SupabaseClient,
-  factorNames: string[],
-  componentPath: string,
-): Promise<Threshold[]> {
-  const { data, error } = await client
-    .from("thresholds")
-    .select("id, factor_name, component_path, operator, value, action")
-    .in("factor_name", factorNames)
-    .or(`component_path.eq.${componentPath},component_path.is.null`);
-
-  if (error) throw new Error(`fetchThresholds failed: ${error.message}`);
-  return (data ?? []) as Threshold[];
+  await store.concludeExperiment(experimentId, winningVariant);
 }
 
 /**

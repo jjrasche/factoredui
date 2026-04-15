@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore } from "../store.js";
 
 export interface ExperimentSummaryRow {
   experiment_id: string;
@@ -26,56 +26,18 @@ export interface ExperimentSummaryFilters {
  * Each row is one variant of one experiment with assignment/exposure counts.
  */
 export async function queryExperimentSummaries(
-  client: SupabaseClient,
+  store: FactoredStore,
   filters?: ExperimentSummaryFilters,
 ): Promise<ExperimentSummaryRow[]> {
-  let query = client
-    .from("v_experiment_summary")
-    .select("*");
-
-  query = applyFilters(query, filters);
-
-  const { data, error } = await query;
-  if (error) throw new Error(`queryExperimentSummaries failed: ${error.message}`);
-  return (data ?? []) as ExperimentSummaryRow[];
+  return store.queryExperimentSummaries(filters);
 }
 
 /**
  * Queries a single experiment's summary rows (one per variant).
  */
 export async function queryExperimentSummary(
-  client: SupabaseClient,
+  store: FactoredStore,
   experimentId: string,
 ): Promise<ExperimentSummaryRow[]> {
-  const { data, error } = await client
-    .from("v_experiment_summary")
-    .select("*")
-    .eq("experiment_id", experimentId);
-
-  if (error) throw new Error(`queryExperimentSummary failed: ${error.message}`);
-  return (data ?? []) as ExperimentSummaryRow[];
-}
-
-type SupabaseQuery = ReturnType<ReturnType<SupabaseClient["from"]>["select"]>;
-
-function applyFilters(
-  query: SupabaseQuery,
-  filters?: ExperimentSummaryFilters,
-): SupabaseQuery {
-  if (!filters) return query;
-
-  if (filters.status) {
-    query = query.eq("status", filters.status);
-  }
-  if (filters.component_path) {
-    query = query.eq("component_path", filters.component_path);
-  }
-  if (filters.created_after) {
-    query = query.gte("created_at", filters.created_after);
-  }
-  if (filters.created_before) {
-    query = query.lte("created_at", filters.created_before);
-  }
-
-  return query;
+  return store.queryExperimentSummary(experimentId);
 }

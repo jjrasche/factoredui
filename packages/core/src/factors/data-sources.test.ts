@@ -20,11 +20,11 @@ const mockQueryFactors = vi.mocked(queryFactors);
 const mockQueryComponentFactors = vi.mocked(queryComponentFactors);
 const mockQueryFactorHistory = vi.mocked(queryFactorHistory);
 
-const fakeSupabase = {} as never;
+const fakeStore = {} as never;
 
 describe("factorSource", () => {
   it("returns a DataSourceConfig with local cache", () => {
-    const config = factorSource(fakeSupabase, "user-1", "checkout/form");
+    const config = factorSource(fakeStore, "user-1", "checkout/form");
 
     expect(config.cache).toBe("local");
     expect(typeof config.fetch).toBe("function");
@@ -41,17 +41,17 @@ describe("factorSource", () => {
     }];
     mockQueryFactors.mockResolvedValueOnce(expectedFactors);
 
-    const config = factorSource(fakeSupabase, "user-1", "checkout/form");
+    const config = factorSource(fakeStore, "user-1", "checkout/form");
     const result = await config.fetch();
 
-    expect(mockQueryFactors).toHaveBeenCalledWith(fakeSupabase, "user-1", "checkout/form");
+    expect(mockQueryFactors).toHaveBeenCalledWith(fakeStore, "user-1", "checkout/form");
     expect(result).toEqual(expectedFactors);
   });
 });
 
 describe("componentFactorSource", () => {
   it("returns a DataSourceConfig with local cache", () => {
-    const config = componentFactorSource(fakeSupabase, "checkout/form");
+    const config = componentFactorSource(fakeStore, "checkout/form");
 
     expect(config.cache).toBe("local");
     expect(typeof config.fetch).toBe("function");
@@ -72,10 +72,10 @@ describe("componentFactorSource", () => {
     }];
     mockQueryComponentFactors.mockResolvedValueOnce(expectedAggregates);
 
-    const config = componentFactorSource(fakeSupabase, "checkout/form");
+    const config = componentFactorSource(fakeStore, "checkout/form");
     const result = await config.fetch();
 
-    expect(mockQueryComponentFactors).toHaveBeenCalledWith(fakeSupabase, "checkout/form");
+    expect(mockQueryComponentFactors).toHaveBeenCalledWith(fakeStore, "checkout/form");
     expect(result).toEqual(expectedAggregates);
   });
 });
@@ -83,7 +83,7 @@ describe("componentFactorSource", () => {
 describe("factorHistorySource", () => {
   it("returns a DataSourceConfig with local cache", () => {
     const since = new Date("2026-03-01");
-    const config = factorHistorySource(fakeSupabase, "user-1", "checkout/form", "error_rate", since);
+    const config = factorHistorySource(fakeStore, "user-1", "checkout/form", "error_rate", since);
 
     expect(config.cache).toBe("local");
     expect(typeof config.fetch).toBe("function");
@@ -99,11 +99,11 @@ describe("factorHistorySource", () => {
     }];
     mockQueryFactorHistory.mockResolvedValueOnce(expectedSnapshots);
 
-    const config = factorHistorySource(fakeSupabase, "user-1", "checkout/form", "error_rate", since);
+    const config = factorHistorySource(fakeStore, "user-1", "checkout/form", "error_rate", since);
     const result = await config.fetch();
 
     expect(mockQueryFactorHistory).toHaveBeenCalledWith(
-      fakeSupabase, "user-1", "checkout/form", "error_rate", since,
+      fakeStore, "user-1", "checkout/form", "error_rate", since,
     );
     expect(result).toEqual(expectedSnapshots);
   });

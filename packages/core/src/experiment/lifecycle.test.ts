@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { createExperiment, startExperiment } from "./lifecycle.js";
 import type { ExperimentDefinition } from "./lifecycle.js";
+import type { FactoredStore } from "../store.js";
 
 function buildValidDefinition(overrides: Partial<ExperimentDefinition> = {}): ExperimentDefinition {
   return {
@@ -14,52 +15,40 @@ function buildValidDefinition(overrides: Partial<ExperimentDefinition> = {}): Ex
   };
 }
 
-function createMockSupabase(overrides: {
-  insertExperimentResult?: { data: Record<string, unknown> | null; error: { message: string } | null };
-  insertVariantsResult?: { error: { message: string } | null };
-  updateResult?: { error: { message: string } | null };
+function createMockStore(overrides: {
+  insertExperimentResult?: { id: string; name: string; status: string; component_path: string };
+  insertExperimentError?: Error;
+  insertVariantsError?: Error;
+  startExperimentError?: Error;
 } = {}) {
-  const insertVariantsMock = vi.fn().mockResolvedValue(
-    overrides.insertVariantsResult ?? { error: null },
-  );
+  const insertVariants = overrides.insertVariantsError
+    ? vi.fn().mockRejectedValue(overrides.insertVariantsError)
+    : vi.fn().mockResolvedValue(undefined);
 
-  return {
-    client: {
-      from: (table: string) => {
-        if (table === "experiments") {
-          return {
-            insert: () => ({
-              select: () => ({
-                single: () => Promise.resolve(
-                  overrides.insertExperimentResult ?? {
-                    data: { id: "exp-1", name: "cta-color-test", status: "draft", component_path: "checkout/cta" },
-                    error: null,
-                  },
-                ),
-              }),
-            }),
-            update: () => ({
-              eq: () => ({
-                eq: () => ({
-                  select: () => Promise.resolve(overrides.updateResult ?? { data: [{ id: "exp-1" }], error: null }),
-                }),
-              }),
-            }),
-          };
-        }
-        if (table === "experiment_variants") {
-          return { insert: insertVariantsMock };
-        }
-        return {};
-      },
-    } as never,
-    insertVariantsMock,
-  };
+  const insertExperiment = overrides.insertExperimentError
+    ? vi.fn().mockRejectedValue(overrides.insertExperimentError)
+    : vi.fn().mockResolvedValue(
+        overrides.insertExperimentResult ?? {
+          id: "exp-1", name: "cta-color-test", status: "draft", component_path: "checkout/cta",
+        },
+      );
+
+  const startExperimentFn = overrides.startExperimentError
+    ? vi.fn().mockRejectedValue(overrides.startExperimentError)
+    : vi.fn().mockResolvedValue(undefined);
+
+  const store = {
+    insertExperiment,
+    insertVariants,
+    startExperiment: startExperimentFn,
+  } as unknown as FactoredStore;
+
+  return { store, insertVariants };
 }
 
 describe("createExperiment", () => {
   it("validates traffic percentages sum to 100", async () => {
-    const { client } = createMockSupabase();
+    const { store } = createMockStore();
     const definition = buildValidDefinition({
       variants: [
         { variant_key: "control", config: {}, traffic_percentage: 50 },
@@ -67,13 +56,13 @@ describe("createExperiment", () => {
       ],
     });
 
-    await expect(createExperiment(client, definition)).rejects.toThrow(
+    await expect(createExperiment(store, definition)).rejects.toThrow(
       "Traffic percentages must sum to 100, got 90",
     );
   });
 
   it("requires a control variant", async () => {
-    const { client } = createMockSupabase();
+    const { store } = createMockStore();
     const definition = buildValidDefinition({
       variants: [
         { variant_key: "a", config: {}, traffic_percentage: 50 },
@@ -81,79 +70,69 @@ describe("createExperiment", () => {
       ],
     });
 
-    await expect(createExperiment(client, definition)).rejects.toThrow(
+    await expect(createExperiment(store, definition)).rejects.toThrow(
       "Experiment requires a 'control' variant",
     );
   });
 
   it("requires at least 2 variants", async () => {
-    const { client } = createMockSupabase();
+    const { store } = createMockStore();
     const definition = buildValidDefinition({
       variants: [
         { variant_key: "control", config: {}, traffic_percentage: 100 },
       ],
     });
 
-    await expect(createExperiment(client, definition)).rejects.toThrow(
+    await expect(createExperiment(store, definition)).rejects.toThrow(
       "Experiment requires at least 2 variants",
     );
   });
 
   it("inserts experiment and variants on valid definition", async () => {
-    const { client, insertVariantsMock } = createMockSupabase();
+    const { store, insertVariants } = createMockStore();
     const definition = buildValidDefinition();
 
-    const result = await createExperiment(client, definition);
+    const result = await createExperiment(store, definition);
 
     expect(result.id).toBe("exp-1");
     expect(result.status).toBe("draft");
-    expect(insertVariantsMock).toHaveBeenCalledOnce();
+    expect(insertVariants).toHaveBeenCalledOnce();
   });
 
   it("propagates experiment insert errors", async () => {
-    const { client } = createMockSupabase({
-      insertExperimentResult: { data: null, error: { message: "duplicate name" } },
+    const { store } = createMockStore({
+      insertExperimentError: new Error("duplicate name"),
     });
 
-    await expect(createExperiment(client, buildValidDefinition())).rejects.toThrow(
-      "insertExperiment failed: duplicate name",
+    await expect(createExperiment(store, buildValidDefinition())).rejects.toThrow(
+      "duplicate name",
     );
   });
 
   it("propagates variant insert errors", async () => {
-    const { client } = createMockSupabase({
-      insertVariantsResult: { error: { message: "fk violation" } },
+    const { store } = createMockStore({
+      insertVariantsError: new Error("fk violation"),
     });
 
-    await expect(createExperiment(client, buildValidDefinition())).rejects.toThrow(
-      "insertVariants failed: fk violation",
+    await expect(createExperiment(store, buildValidDefinition())).rejects.toThrow(
+      "fk violation",
     );
   });
 });
 
 describe("startExperiment", () => {
   it("transitions experiment to running", async () => {
-    const { client } = createMockSupabase();
+    const { store } = createMockStore();
 
-    await expect(startExperiment(client, "exp-1")).resolves.toBeUndefined();
+    await expect(startExperiment(store, "exp-1")).resolves.toBeUndefined();
   });
 
   it("propagates errors", async () => {
-    const { client } = createMockSupabase({
-      updateResult: { data: null, error: { message: "not found" } },
+    const { store } = createMockStore({
+      startExperimentError: new Error("not found or not in draft status"),
     });
 
-    await expect(startExperiment(client, "exp-1")).rejects.toThrow(
-      "startExperiment failed: not found",
-    );
-  });
-
-  it("throws when experiment not found or not in draft", async () => {
-    const { client } = createMockSupabase({
-      updateResult: { data: [], error: null },
-    });
-
-    await expect(startExperiment(client, "nonexistent")).rejects.toThrow(
+    await expect(startExperiment(store, "exp-1")).rejects.toThrow(
       "not found or not in draft status",
     );
   });

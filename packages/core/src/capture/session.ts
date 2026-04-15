@@ -1,5 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Session, Platform } from "../types.js";
+import type { FactoredStore } from "../store.js";
+import type { Platform } from "../types.js";
 import type { CaptureAdapter } from "./adapter.js";
 
 const DEFAULT_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -11,7 +11,7 @@ export interface SessionManager {
 }
 
 export function createSessionManager(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   adapter: CaptureAdapter,
   platform: Platform,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
@@ -29,14 +29,8 @@ export function createSessionManager(
       platform,
     };
 
-    const { data, error } = await supabase
-      .from("sessions")
-      .insert({ user_id: userId, metadata })
-      .select("id")
-      .single();
-
-    if (error) throw new Error(`Failed to create session: ${error.message}`);
-    return (data as Session).id;
+    const { id } = await store.insertSession(userId, metadata);
+    return id;
   }
 
   async function ensureSession(userId: string): Promise<string> {
@@ -54,10 +48,7 @@ export function createSessionManager(
   async function endSession(): Promise<void> {
     if (!currentSessionId) return;
 
-    await supabase
-      .from("sessions")
-      .update({ ended_at: new Date().toISOString() })
-      .eq("id", currentSessionId);
+    await store.endSession(currentSessionId);
 
     currentSessionId = null;
     adapter.clearSessionId();

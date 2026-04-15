@@ -1,49 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import { queryFactorHistory, queryFactorDelta } from "./snapshots";
+import type { FactoredStore } from "../store";
 
-function createHistoryMock(response: { data: unknown; error: unknown }) {
+function createMockStore(overrides: Partial<FactoredStore> = {}): FactoredStore {
   return {
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              gte: vi.fn().mockReturnValue({
-                order: vi.fn().mockResolvedValue(response),
-              }),
-            }),
-          }),
-        }),
-      }),
-    }),
-  } as never;
-}
-
-function createDeltaMock(responses: Array<{ data: unknown; error: unknown }>) {
-  let callIndex = 0;
-  return {
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              lte: vi.fn().mockReturnValue({
-                order: vi.fn().mockReturnValue({
-                  limit: vi.fn().mockReturnValue({
-                    maybeSingle: vi.fn().mockImplementation(() => {
-                      const resp = responses[callIndex] ?? responses[responses.length - 1];
-                      callIndex++;
-                      return Promise.resolve(resp);
-                    }),
-                  }),
-                }),
-              }),
-            }),
-          }),
-        }),
-      }),
-    }),
-  } as never;
+    queryFactorHistory: vi.fn().mockResolvedValue([]),
+    findClosestSnapshot: vi.fn().mockResolvedValue(null),
+    ...overrides,
+  } as unknown as FactoredStore;
 }
 
 describe("queryFactorHistory", () => {
@@ -52,21 +16,25 @@ describe("queryFactorHistory", () => {
       { factor_name: "error_rate", factor_tier: "alarm", value: 0.3, snapshot_at: "2026-03-10T02:00:00Z" },
       { factor_name: "error_rate", factor_tier: "alarm", value: 0.2, snapshot_at: "2026-03-11T02:00:00Z" },
     ];
-    const client = createHistoryMock({ data: snapshots, error: null });
+    const store = createMockStore({
+      queryFactorHistory: vi.fn().mockResolvedValue(snapshots),
+    });
     const since = new Date("2026-03-01");
 
-    const result = await queryFactorHistory(client, "user-1", "checkout/form", "error_rate", since);
+    const result = await queryFactorHistory(store, "user-1", "checkout/form", "error_rate", since);
 
     expect(result).toEqual(snapshots);
-    expect(client.from).toHaveBeenCalledWith("factor_snapshots");
+    expect(store.queryFactorHistory).toHaveBeenCalledWith("user-1", "checkout/form", "error_rate", since);
   });
 
-  it("throws on supabase error", async () => {
-    const client = createHistoryMock({ data: null, error: { message: "denied" } });
+  it("propagates store errors", async () => {
+    const store = createMockStore({
+      queryFactorHistory: vi.fn().mockRejectedValue(new Error("denied")),
+    });
     const since = new Date("2026-03-01");
 
-    await expect(queryFactorHistory(client, "user-1", "checkout/form", "error_rate", since))
-      .rejects.toThrow("queryFactorHistory failed: denied");
+    await expect(queryFactorHistory(store, "user-1", "checkout/form", "error_rate", since))
+      .rejects.toThrow("denied");
   });
 });
 
@@ -75,13 +43,14 @@ describe("queryFactorDelta", () => {
     const beforeSnapshot = { factor_name: "error_rate", factor_tier: "alarm", value: 0.3, snapshot_at: "2026-03-01T02:00:00Z" };
     const afterSnapshot = { factor_name: "error_rate", factor_tier: "alarm", value: 0.1, snapshot_at: "2026-04-01T02:00:00Z" };
 
-    const client = createDeltaMock([
-      { data: beforeSnapshot, error: null },
-      { data: afterSnapshot, error: null },
-    ]);
+    const findClosestSnapshot = vi.fn()
+      .mockResolvedValueOnce(beforeSnapshot)
+      .mockResolvedValueOnce(afterSnapshot);
+
+    const store = createMockStore({ findClosestSnapshot });
 
     const result = await queryFactorDelta(
-      client, "user-1", "checkout/form", "error_rate",
+      store, "user-1", "checkout/form", "error_rate",
       new Date("2026-03-01"), new Date("2026-04-01"),
     );
 
@@ -93,13 +62,15 @@ describe("queryFactorDelta", () => {
   });
 
   it("returns null when no before snapshot exists", async () => {
-    const client = createDeltaMock([
-      { data: null, error: null },
-      { data: { factor_name: "error_rate", factor_tier: "alarm", value: 0.1, snapshot_at: "2026-04-01T02:00:00Z" }, error: null },
-    ]);
+    const afterSnapshot = { factor_name: "error_rate", factor_tier: "alarm", value: 0.1, snapshot_at: "2026-04-01T02:00:00Z" };
+    const findClosestSnapshot = vi.fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(afterSnapshot);
+
+    const store = createMockStore({ findClosestSnapshot });
 
     const result = await queryFactorDelta(
-      client, "user-1", "checkout/form", "error_rate",
+      store, "user-1", "checkout/form", "error_rate",
       new Date("2026-03-01"), new Date("2026-04-01"),
     );
 
@@ -107,13 +78,15 @@ describe("queryFactorDelta", () => {
   });
 
   it("returns null when no after snapshot exists", async () => {
-    const client = createDeltaMock([
-      { data: { factor_name: "error_rate", factor_tier: "alarm", value: 0.3, snapshot_at: "2026-03-01T02:00:00Z" }, error: null },
-      { data: null, error: null },
-    ]);
+    const beforeSnapshot = { factor_name: "error_rate", factor_tier: "alarm", value: 0.3, snapshot_at: "2026-03-01T02:00:00Z" };
+    const findClosestSnapshot = vi.fn()
+      .mockResolvedValueOnce(beforeSnapshot)
+      .mockResolvedValueOnce(null);
+
+    const store = createMockStore({ findClosestSnapshot });
 
     const result = await queryFactorDelta(
-      client, "user-1", "checkout/form", "error_rate",
+      store, "user-1", "checkout/form", "error_rate",
       new Date("2026-03-01"), new Date("2026-04-01"),
     );
 

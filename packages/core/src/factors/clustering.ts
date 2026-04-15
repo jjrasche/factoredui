@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore } from "../store.js";
 
 export interface UserCluster {
   user_id: string;
@@ -10,33 +10,20 @@ export interface UserCluster {
  * Queries the cluster assignment for a specific user.
  */
 export async function queryUserCluster(
-  client: SupabaseClient,
+  store: FactoredStore,
   userId: string,
 ): Promise<UserCluster | null> {
-  const { data, error } = await client
-    .from("user_clusters")
-    .select("user_id, cluster_id, assigned_at")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (error) throw new Error(`queryUserCluster failed: ${error.message}`);
-  return data as UserCluster | null;
+  return store.queryUserCluster(userId);
 }
 
 /**
  * Queries all users in a specific cluster.
  */
 export async function queryClusterMembers(
-  client: SupabaseClient,
+  store: FactoredStore,
   clusterId: number,
 ): Promise<UserCluster[]> {
-  const { data, error } = await client
-    .from("user_clusters")
-    .select("user_id, cluster_id, assigned_at")
-    .eq("cluster_id", clusterId);
-
-  if (error) throw new Error(`queryClusterMembers failed: ${error.message}`);
-  return (data ?? []) as UserCluster[];
+  return store.queryClusterMembers(clusterId);
 }
 
 // --- Pure k-means algorithm (shared with edge function) ---

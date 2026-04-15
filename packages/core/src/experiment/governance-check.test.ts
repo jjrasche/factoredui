@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import { logGovernanceVerdict, runGovernanceCheck } from "./governance-check.js";
+import { logGovernanceVerdict } from "./governance-check.js";
 import type { GovernanceVerdict } from "./governance.js";
+import type { FactoredStore } from "../store.js";
 
 function buildConcludeVerdict(): GovernanceVerdict {
   return {
@@ -26,56 +27,47 @@ function buildContinueVerdict(): GovernanceVerdict {
   };
 }
 
-function createMockSupabase(overrides: {
-  insertResult?: { error: { message: string } | null };
+function createMockStore(overrides: {
+  insertError?: Error;
 } = {}) {
-  const insertMock = vi.fn().mockResolvedValue(
-    overrides.insertResult ?? { error: null },
-  );
+  const insertGovernanceVerdict = overrides.insertError
+    ? vi.fn().mockRejectedValue(overrides.insertError)
+    : vi.fn().mockResolvedValue(undefined);
 
-  return {
-    client: {
-      from: (table: string) => {
-        if (table === "governance_log") {
-          return { insert: insertMock };
-        }
-        return {};
-      },
-    } as never,
-    insertMock,
-  };
+  const store = { insertGovernanceVerdict } as unknown as FactoredStore;
+  return { store, insertGovernanceVerdict };
 }
 
 describe("logGovernanceVerdict", () => {
   it("inserts verdict into governance_log", async () => {
-    const { client, insertMock } = createMockSupabase();
+    const { store, insertGovernanceVerdict } = createMockStore();
     const verdict = buildConcludeVerdict();
 
-    await logGovernanceVerdict(client, "exp-1", verdict);
+    await logGovernanceVerdict(store, "exp-1", verdict);
 
-    expect(insertMock).toHaveBeenCalledWith({
-      experiment_id: "exp-1",
-      verdict: "conclude",
-      winning_variant: "treatment",
-      factor_verdicts: verdict.factor_verdicts,
-    });
+    expect(insertGovernanceVerdict).toHaveBeenCalledWith(
+      "exp-1",
+      "conclude",
+      "treatment",
+      verdict.factor_verdicts,
+    );
   });
 
   it("propagates insert errors", async () => {
-    const { client } = createMockSupabase({
-      insertResult: { error: { message: "permission denied" } },
+    const { store } = createMockStore({
+      insertError: new Error("permission denied"),
     });
 
     await expect(
-      logGovernanceVerdict(client, "exp-1", buildContinueVerdict()),
-    ).rejects.toThrow("logGovernanceVerdict failed: permission denied");
+      logGovernanceVerdict(store, "exp-1", buildContinueVerdict()),
+    ).rejects.toThrow("permission denied");
   });
 });
 
 describe("runGovernanceCheck", () => {
   it("evaluates, logs, and returns the verdict", async () => {
     // runGovernanceCheck is an orchestrator — full integration test
-    // requires real Supabase. Unit-testable parts (logGovernanceVerdict,
+    // requires real store. Unit-testable parts (logGovernanceVerdict,
     // computeGovernanceVerdict) are tested individually above and in
     // governance.test.ts. Orchestrator integration tested in
     // governance.integration.test.ts.

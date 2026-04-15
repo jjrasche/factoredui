@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore } from "../store.js";
 import { evaluateExperimentThresholds, concludeExperiment } from "./governance.js";
 import type { GovernanceVerdict } from "./governance.js";
 
@@ -6,20 +6,16 @@ import type { GovernanceVerdict } from "./governance.js";
  * Logs a governance verdict to the append-only audit log.
  */
 export async function logGovernanceVerdict(
-  client: SupabaseClient,
+  store: FactoredStore,
   experimentId: string,
   verdict: GovernanceVerdict,
 ): Promise<void> {
-  const { error } = await client
-    .from("governance_log")
-    .insert({
-      experiment_id: experimentId,
-      verdict: verdict.action,
-      winning_variant: verdict.winning_variant,
-      factor_verdicts: verdict.factor_verdicts,
-    });
-
-  if (error) throw new Error(`logGovernanceVerdict failed: ${error.message}`);
+  await store.insertGovernanceVerdict(
+    experimentId,
+    verdict.action,
+    verdict.winning_variant,
+    verdict.factor_verdicts,
+  );
 }
 
 /**
@@ -28,23 +24,23 @@ export async function logGovernanceVerdict(
  * Mirrors SQL cron evaluate_governance() but callable from TypeScript.
  */
 export async function runGovernanceCheck(
-  client: SupabaseClient,
+  store: FactoredStore,
   experimentId: string,
   factorNames: string[],
 ): Promise<GovernanceVerdict> {
-  const verdict = await evaluateExperimentThresholds(client, experimentId, factorNames);
-  await logGovernanceVerdict(client, experimentId, verdict);
-  await concludeIfWinner(client, experimentId, verdict);
+  const verdict = await evaluateExperimentThresholds(store, experimentId, factorNames);
+  await logGovernanceVerdict(store, experimentId, verdict);
+  await concludeIfWinner(store, experimentId, verdict);
 
   return verdict;
 }
 
 async function concludeIfWinner(
-  client: SupabaseClient,
+  store: FactoredStore,
   experimentId: string,
   verdict: GovernanceVerdict,
 ): Promise<void> {
   if (verdict.action === "conclude" && verdict.winning_variant) {
-    await concludeExperiment(client, experimentId, verdict.winning_variant);
+    await concludeExperiment(store, experimentId, verdict.winning_variant);
   }
 }

@@ -1,10 +1,10 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore } from "../store.js";
 import type { Spec, SignedSpec } from "./spec-types.js";
 import { RENDERER_VERSION } from "./spec-types.js";
 import { validateSpec } from "./spec-validator.js";
 
 /**
- * Spec loading: baseline (bundled) → active (local storage) → remote (Supabase).
+ * Spec loading: baseline (bundled) → active (local storage) → remote (store).
  * Signature verification is required. Fail closed on invalid signatures.
  *
  * The host app provides:
@@ -29,13 +29,13 @@ export interface LoadedSpec {
 }
 
 export async function loadSpec(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   platform: string,
   baseline: Spec,
   storage: SpecStorage,
   verifier: SignatureVerifier,
 ): Promise<LoadedSpec> {
-  const remote = await fetchRemoteSpec(supabase, platform);
+  const remote = await fetchRemoteSpec(store, platform);
   if (remote) {
     const validated = await validateSignedSpec(remote, verifier);
     if (validated) {
@@ -80,46 +80,14 @@ async function verifySpecHash(
 }
 
 async function fetchRemoteSpec(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   platform: string,
 ): Promise<SignedSpec | null> {
   try {
-    const { data, error } = await supabase
-      .from("ui_active")
-      .select("spec_id, ui_specs(*)")
-      .eq("platform", platform)
-      .single();
-
-    if (error || !data) return null;
-
-    return mapRowToSignedSpec(data);
+    return await store.loadActiveSpec(platform);
   } catch {
     return null;
   }
-}
-
-function mapRowToSignedSpec(data: unknown): SignedSpec {
-  const row = data as {
-    spec_id: string;
-    ui_specs: {
-      component_tree: unknown;
-      spec_version: number;
-      renderer_min: number;
-      spec_hash: string;
-      signature: string;
-    };
-  };
-
-  return {
-    spec: {
-      spec_version: row.ui_specs.spec_version,
-      renderer_min: row.ui_specs.renderer_min,
-      root: row.ui_specs.component_tree as Spec["root"],
-    },
-    signature: row.ui_specs.signature,
-    signed_at: "",
-    spec_hash: row.ui_specs.spec_hash,
-  };
 }
 
 async function loadActiveSpec(

@@ -2,17 +2,14 @@ import { describe, it, expect, vi } from "vitest";
 import { queryFactors, queryComponentFactors } from "./query";
 import type { Factor } from "../types";
 import type { ComponentFactorAggregate } from "./query";
+import type { FactoredStore } from "../store";
 
-function createMockSupabase(response: { data: unknown; error: unknown }) {
+function createMockStore(overrides: Partial<FactoredStore> = {}): FactoredStore {
   return {
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue(response),
-        }),
-      }),
-    }),
-  } as never;
+    queryFactors: vi.fn().mockResolvedValue([]),
+    queryComponentFactors: vi.fn().mockResolvedValue([]),
+    ...overrides,
+  } as unknown as FactoredStore;
 }
 
 describe("queryFactors", () => {
@@ -35,22 +32,23 @@ describe("queryFactors", () => {
         computed_at: "2026-04-13T00:00:00Z",
       },
     ];
-    const client = createMockSupabase({ data: expectedFactors, error: null });
-
-    const result = await queryFactors(client, "user-1", "checkout/form");
-
-    expect(result).toEqual(expectedFactors);
-    expect(client.from).toHaveBeenCalledWith("v_factors_current");
-  });
-
-  it("throws on supabase error", async () => {
-    const client = createMockSupabase({
-      data: null,
-      error: { message: "connection refused" },
+    const store = createMockStore({
+      queryFactors: vi.fn().mockResolvedValue(expectedFactors),
     });
 
-    await expect(queryFactors(client, "user-1", "checkout/form"))
-      .rejects.toThrow("queryFactors failed: connection refused");
+    const result = await queryFactors(store, "user-1", "checkout/form");
+
+    expect(result).toEqual(expectedFactors);
+    expect(store.queryFactors).toHaveBeenCalledWith("user-1", "checkout/form");
+  });
+
+  it("propagates store errors", async () => {
+    const store = createMockStore({
+      queryFactors: vi.fn().mockRejectedValue(new Error("connection refused")),
+    });
+
+    await expect(queryFactors(store, "user-1", "checkout/form"))
+      .rejects.toThrow("connection refused");
   });
 });
 
@@ -70,32 +68,21 @@ describe("queryComponentFactors", () => {
         stddev_value: 0.15,
       },
     ];
-    const client = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: expectedAggregates, error: null }),
-        }),
-      }),
-    } as never;
+    const store = createMockStore({
+      queryComponentFactors: vi.fn().mockResolvedValue(expectedAggregates),
+    });
 
-    const result = await queryComponentFactors(client, "checkout/form");
+    const result = await queryComponentFactors(store, "checkout/form");
 
     expect(result).toEqual(expectedAggregates);
   });
 
-  it("throws on supabase error", async () => {
-    const client = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: null,
-            error: { message: "timeout" },
-          }),
-        }),
-      }),
-    } as never;
+  it("propagates store errors", async () => {
+    const store = createMockStore({
+      queryComponentFactors: vi.fn().mockRejectedValue(new Error("timeout")),
+    });
 
-    await expect(queryComponentFactors(client, "checkout/form"))
-      .rejects.toThrow("queryComponentFactors failed: timeout");
+    await expect(queryComponentFactors(store, "checkout/form"))
+      .rejects.toThrow("timeout");
   });
 });

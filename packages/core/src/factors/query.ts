@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore } from "../store.js";
 import type { Factor, FactorTier } from "../types.js";
 
 export interface ComponentFactorAggregate {
@@ -15,31 +15,16 @@ export interface ComponentFactorAggregate {
 }
 
 export async function queryFactors(
-  client: SupabaseClient,
+  store: FactoredStore,
   userId: string,
   componentPath: string,
 ): Promise<Factor[]> {
-  const { data, error } = await client
-    .from("v_factors_current")
-    .select("user_id, component_path, factor_name, factor_tier, value, computed_at")
-    .eq("user_id", userId)
-    .eq("component_path", componentPath);
-
-  if (error) throw new Error(`queryFactors failed: ${error.message}`);
-  return data as Factor[];
+  return store.queryFactors(userId, componentPath);
 }
 
 export async function queryComponentFactors(
-  client: SupabaseClient,
+  store: FactoredStore,
   componentPath: string,
 ): Promise<ComponentFactorAggregate[]> {
-  const { data, error } = await client
-    .from("v_component_factors_agg")
-    .select(
-      "component_path, factor_name, factor_tier, user_count, avg_value, median_value, p95_value, min_value, max_value, stddev_value",
-    )
-    .eq("component_path", componentPath);
-
-  if (error) throw new Error(`queryComponentFactors failed: ${error.message}`);
-  return data as ComponentFactorAggregate[];
+  return store.queryComponentFactors(componentPath);
 }

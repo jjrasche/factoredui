@@ -1,116 +1,63 @@
 import { describe, it, expect, vi } from "vitest";
 import { evaluateFlag } from "./flags.js";
+import type { FactoredStore } from "../store.js";
 
-function createMockSupabase(overrides: {
+function createMockStore(overrides: {
   userId?: string | null;
-  existingAssignment?: Record<string, unknown> | null;
-  conflictingAssignments?: Record<string, unknown>[];
-  experiment?: Record<string, unknown> | null;
-  variants?: Record<string, unknown>[];
-}) {
-  const assignmentInsertMock = vi.fn().mockResolvedValue({ error: null });
-  const exposureInsertMock = vi.fn().mockResolvedValue({ error: null });
+  existingAssignment?: { experiment_id: string; variant_key: string; config: Record<string, unknown> } | null;
+  conflicting?: boolean;
+  experiment?: { id: string; name: string; component_path: string; targeting_rules: unknown[]; platforms: string[] } | null;
+  variants?: { variant_key: string; config: Record<string, unknown>; traffic_percentage: number }[];
+} = {}) {
+  const writeAssignment = vi.fn().mockResolvedValue(undefined);
+  const recordExposure = vi.fn().mockResolvedValue(undefined);
 
-  // Builds a chainable query mock where every method returns the same chain
-  // and terminal methods (maybeSingle, limit) resolve with the given data.
-  function buildChain(terminalData: { single?: unknown; list?: unknown[] }) {
-    const chain: Record<string, unknown> = {};
-    const self = () => chain;
-    chain.eq = self;
-    chain.neq = self;
-    chain.maybeSingle = () => Promise.resolve({ data: terminalData.single ?? null, error: null });
-    chain.limit = () => Promise.resolve({ data: terminalData.list ?? [], error: null });
-    return chain;
-  }
+  const store = {
+    getCurrentUserId: vi.fn().mockResolvedValue(overrides.userId ?? null),
+    getAssignment: vi.fn().mockResolvedValue(overrides.existingAssignment ?? null),
+    getRunningExperiment: vi.fn().mockResolvedValue(overrides.experiment ?? null),
+    hasConflictingAssignment: vi.fn().mockResolvedValue(overrides.conflicting ?? false),
+    getVariants: vi.fn().mockResolvedValue(overrides.variants ?? []),
+    writeAssignment,
+    recordExposure,
+    queryFactors: vi.fn().mockResolvedValue([]),
+  } as unknown as FactoredStore;
 
-  // Track which select call on experiment_assignments we're serving:
-  // first = fetchAssignment (maybeSingle), second = hasConflictingAssignment (limit)
-  let assignmentSelectCount = 0;
-
-  return {
-    client: {
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: overrides.userId ? { id: overrides.userId } : null },
-        }),
-      },
-      from: (table: string) => {
-        if (table === "experiment_assignments") {
-          return {
-            select: () => {
-              assignmentSelectCount++;
-              if (assignmentSelectCount === 1) {
-                return buildChain({ single: overrides.existingAssignment ?? null });
-              }
-              return buildChain({ list: overrides.conflictingAssignments ?? [] });
-            },
-            insert: assignmentInsertMock,
-          };
-        }
-        if (table === "experiments") {
-          return {
-            select: () => buildChain({ single: overrides.experiment ?? null }),
-          };
-        }
-        if (table === "experiment_variants") {
-          return {
-            select: () => ({
-              eq: () => ({
-                order: () =>
-                  Promise.resolve({
-                    data: overrides.variants ?? [],
-                    error: null,
-                  }),
-              }),
-            }),
-          };
-        }
-        if (table === "experiment_exposures") {
-          return { insert: exposureInsertMock };
-        }
-        if (table === "factors") {
-          return { select: () => buildChain({ list: [] }) };
-        }
-        return {};
-      },
-    } as never,
-    assignmentInsertMock,
-    exposureInsertMock,
-  };
+  return { store, writeAssignment, recordExposure };
 }
 
 describe("evaluateFlag", () => {
   it("returns null when user is not authenticated", async () => {
-    const { client } = createMockSupabase({ userId: null });
+    const { store } = createMockStore({ userId: null });
 
-    const result = await evaluateFlag(client, "test-experiment");
+    const result = await evaluateFlag(store, "test-experiment");
 
     expect(result).toBeNull();
   });
 
   it("returns existing assignment without re-assigning", async () => {
-    const { client, assignmentInsertMock, exposureInsertMock } = createMockSupabase({
+    const { store, writeAssignment, recordExposure } = createMockStore({
       userId: "user-123",
       existingAssignment: {
         experiment_id: "exp-1",
         variant_key: "variant-b",
-        experiment_variants: { config: { color: "blue" } },
+        config: { color: "blue" },
       },
     });
 
-    const result = await evaluateFlag(client, "button-color-test");
+    const result = await evaluateFlag(store, "button-color-test");
 
     expect(result).toEqual({
       experiment_id: "exp-1",
       variant_key: "variant-b",
       config: { color: "blue" },
     });
-    expect(assignmentInsertMock).not.toHaveBeenCalled();
-    expect(exposureInsertMock).toHaveBeenCalledOnce();
+    expect(writeAssignment).not.toHaveBeenCalled();
+    expect(recordExposure).toHaveBeenCalledOnce();
   });
 
   it("assigns and returns variant when no prior assignment exists", async () => {
-    const { client, assignmentInsertMock, exposureInsertMock } = createMockSupabase({
+    const { store, writeAssignment, recordExposure } = createMockStore({
       userId: "user-456",
       existingAssignment: null,
       experiment: { id: "exp-2", name: "cta-text", component_path: "test/cta", targeting_rules: [], platforms: [] },
@@ -120,28 +67,28 @@ describe("evaluateFlag", () => {
       ],
     });
 
-    const result = await evaluateFlag(client, "cta-text");
+    const result = await evaluateFlag(store, "cta-text");
 
     expect(result).not.toBeNull();
     expect(["control", "variant-a"]).toContain(result!.variant_key);
-    expect(assignmentInsertMock).toHaveBeenCalledOnce();
-    expect(exposureInsertMock).toHaveBeenCalledOnce();
+    expect(writeAssignment).toHaveBeenCalledOnce();
+    expect(recordExposure).toHaveBeenCalledOnce();
   });
 
   it("returns null when no running experiment matches", async () => {
-    const { client } = createMockSupabase({
+    const { store } = createMockStore({
       userId: "user-789",
       existingAssignment: null,
       experiment: null,
     });
 
-    const result = await evaluateFlag(client, "nonexistent");
+    const result = await evaluateFlag(store, "nonexistent");
 
     expect(result).toBeNull();
   });
 
   it("returns null when experiment targets a different platform", async () => {
-    const { client } = createMockSupabase({
+    const { store } = createMockStore({
       userId: "user-456",
       existingAssignment: null,
       experiment: {
@@ -156,13 +103,13 @@ describe("evaluateFlag", () => {
       ],
     });
 
-    const result = await evaluateFlag(client, "ios-only", "android");
+    const result = await evaluateFlag(store, "ios-only", "android");
 
     expect(result).toBeNull();
   });
 
   it("returns assignment when experiment targets the current platform", async () => {
-    const { client } = createMockSupabase({
+    const { store } = createMockStore({
       userId: "user-456",
       existingAssignment: null,
       experiment: {
@@ -177,14 +124,14 @@ describe("evaluateFlag", () => {
       ],
     });
 
-    const result = await evaluateFlag(client, "mobile-test", "ios");
+    const result = await evaluateFlag(store, "mobile-test", "ios");
 
     expect(result).not.toBeNull();
     expect(result!.variant_key).toBe("control");
   });
 
   it("returns assignment when experiment has empty platforms (all platforms)", async () => {
-    const { client } = createMockSupabase({
+    const { store } = createMockStore({
       userId: "user-456",
       existingAssignment: null,
       experiment: {
@@ -199,18 +146,16 @@ describe("evaluateFlag", () => {
       ],
     });
 
-    const result = await evaluateFlag(client, "all-platforms", "android");
+    const result = await evaluateFlag(store, "all-platforms", "android");
 
     expect(result).not.toBeNull();
   });
 
   it("returns null when user has a conflicting assignment on the same component_path", async () => {
-    const { client, assignmentInsertMock } = createMockSupabase({
+    const { store, writeAssignment } = createMockStore({
       userId: "user-conflict",
       existingAssignment: null,
-      conflictingAssignments: [
-        { experiment_id: "other-exp", experiments: { id: "other-exp", status: "running", component_path: "test/cta" } },
-      ],
+      conflicting: true,
       experiment: {
         id: "exp-new",
         name: "new-cta-test",
@@ -224,17 +169,17 @@ describe("evaluateFlag", () => {
       ],
     });
 
-    const result = await evaluateFlag(client, "new-cta-test");
+    const result = await evaluateFlag(store, "new-cta-test");
 
     expect(result).toBeNull();
-    expect(assignmentInsertMock).not.toHaveBeenCalled();
+    expect(writeAssignment).not.toHaveBeenCalled();
   });
 
   it("assigns when no conflicting assignment exists on the same component_path", async () => {
-    const { client, assignmentInsertMock } = createMockSupabase({
+    const { store, writeAssignment } = createMockStore({
       userId: "user-clean",
       existingAssignment: null,
-      conflictingAssignments: [],
+      conflicting: false,
       experiment: {
         id: "exp-clean",
         name: "clean-test",
@@ -247,9 +192,9 @@ describe("evaluateFlag", () => {
       ],
     });
 
-    const result = await evaluateFlag(client, "clean-test");
+    const result = await evaluateFlag(store, "clean-test");
 
     expect(result).not.toBeNull();
-    expect(assignmentInsertMock).toHaveBeenCalledOnce();
+    expect(writeAssignment).toHaveBeenCalledOnce();
   });
 });

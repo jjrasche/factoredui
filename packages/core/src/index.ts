@@ -1,3 +1,15 @@
+// --- Store interface ---
+export type {
+  FactoredStore,
+  EventRow,
+  RunningExperiment,
+  VariantWithTraffic,
+  ExperimentMeta,
+  ExperimentInsertRow,
+  BulkDeltaRow,
+  Unsubscribe,
+} from "./store.js";
+
 // --- Capture ---
 export { initCapture } from "./capture/index.js";
 export { resolveComponentPath } from "./capture/path.js";

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore } from "../store.js";
 import type { DataSourceConfig } from "../sdui/spec-types.js";
 import { queryFactors, queryComponentFactors } from "./query.js";
 import { queryFactorHistory } from "./snapshots.js";
@@ -9,35 +9,35 @@ import { queryFactorHistory } from "./snapshots.js";
  */
 
 export function factorSource(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   userId: string,
   componentPath: string,
 ): DataSourceConfig {
   return {
-    fetch: () => queryFactors(supabase, userId, componentPath),
+    fetch: () => queryFactors(store, userId, componentPath),
     cache: "local",
   };
 }
 
 export function componentFactorSource(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   componentPath: string,
 ): DataSourceConfig {
   return {
-    fetch: () => queryComponentFactors(supabase, componentPath),
+    fetch: () => queryComponentFactors(store, componentPath),
     cache: "local",
   };
 }
 
 export function factorHistorySource(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   userId: string,
   componentPath: string,
   factorName: string,
   since: Date,
 ): DataSourceConfig {
   return {
-    fetch: () => queryFactorHistory(supabase, userId, componentPath, factorName, since),
+    fetch: () => queryFactorHistory(store, userId, componentPath, factorName, since),
     cache: "local",
   };
 }

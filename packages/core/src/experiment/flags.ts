@@ -1,8 +1,8 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { FactoredStore, RunningExperiment, VariantWithTraffic } from "../store.js";
 import type { ExperimentAssignment, Platform } from "../types.js";
 import { queryFactors } from "../factors/query.js";
 import { evaluateTargeting } from "./targeting.js";
-import type { TargetingRule, DeviceMetadata } from "./targeting.js";
+import type { DeviceMetadata } from "./targeting.js";
 
 /**
  * Flag evaluation: reads experiment assignments for the current user.
@@ -11,99 +11,60 @@ import type { TargetingRule, DeviceMetadata } from "./targeting.js";
  */
 
 export async function evaluateFlag(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   experimentName: string,
   platform?: Platform,
   deviceMetadata?: DeviceMetadata,
 ): Promise<ExperimentAssignment | null> {
-  const userId = await resolveUserId(supabase);
+  const userId = await store.getCurrentUserId();
   if (!userId) return null;
 
-  const existingAssignment = await fetchAssignment(supabase, userId, experimentName);
+  const existingAssignment = await store.getAssignment(userId, experimentName);
   if (existingAssignment) {
-    await recordExposure(supabase, userId, existingAssignment);
+    await store.recordExposure(userId, existingAssignment.experiment_id, existingAssignment.variant_key);
     return existingAssignment;
   }
 
-  const newAssignment = await assignToExperiment(supabase, userId, experimentName, platform, deviceMetadata);
+  const newAssignment = await assignToExperiment(store, userId, experimentName, platform, deviceMetadata);
   if (newAssignment) {
-    await recordExposure(supabase, userId, newAssignment);
+    await store.recordExposure(userId, newAssignment.experiment_id, newAssignment.variant_key);
   }
   return newAssignment;
 }
 
-async function resolveUserId(supabase: SupabaseClient): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
-
-interface AssignmentJoinRow {
-  experiment_id: string;
-  variant_key: string;
-  experiment_variants: { config: Record<string, unknown> } | null;
-}
-
-async function fetchAssignment(
-  supabase: SupabaseClient,
-  userId: string,
-  experimentName: string,
-): Promise<ExperimentAssignment | null> {
-  const { data, error } = await supabase
-    .from("experiment_assignments")
-    .select(`
-      experiment_id,
-      variant_key,
-      experiments!inner ( name, status ),
-      experiment_variants!inner ( config )
-    `)
-    .eq("user_id", userId)
-    .eq("experiments.name", experimentName)
-    .eq("experiments.status", "running")
-    .maybeSingle();
-
-  if (error || !data) return null;
-
-  const row = data as unknown as AssignmentJoinRow;
-  return {
-    experiment_id: row.experiment_id,
-    variant_key: row.variant_key,
-    config: row.experiment_variants?.config ?? {},
-  };
-}
-
 async function assignToExperiment(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   userId: string,
   experimentName: string,
   platform?: Platform,
   deviceMetadata?: DeviceMetadata,
 ): Promise<ExperimentAssignment | null> {
-  const experiment = await fetchRunningExperiment(supabase, experimentName, platform);
+  const experiment = await store.getRunningExperiment(experimentName);
   if (!experiment) return null;
 
-  const hasConflict = await hasConflictingAssignment(
-    supabase, userId, experiment.component_path, experiment.id,
+  if (platform && experiment.platforms.length > 0 && !experiment.platforms.includes(platform)) {
+    return null;
+  }
+
+  const hasConflict = await store.hasConflictingAssignment(
+    userId, experiment.component_path, experiment.id,
   );
   if (hasConflict) return null;
 
-  const isTargeted = await checkTargeting(supabase, userId, experiment, deviceMetadata);
+  const isTargeted = await checkTargeting(store, userId, experiment, deviceMetadata);
   if (!isTargeted) return null;
 
-  const variants = await fetchExperimentVariants(supabase, experiment.id);
+  const variants = await store.getVariants(experiment.id);
   if (variants.length === 0) return null;
 
   const selectedVariant = selectVariantByHash(userId, experiment.id, variants);
   if (!selectedVariant) return null;
 
-  const { error } = await supabase
-    .from("experiment_assignments")
-    .insert({
-      user_id: userId,
-      experiment_id: experiment.id,
-      variant_key: selectedVariant.variant_key,
-    });
-
-  if (error) return null;
+  try {
+    await store.writeAssignment(userId, experiment.id, selectedVariant.variant_key);
+  } catch {
+    return null;
+  }
 
   return {
     experiment_id: experiment.id,
@@ -112,91 +73,16 @@ async function assignToExperiment(
   };
 }
 
-/**
- * Checks whether the user is already assigned to another running experiment
- * on the same component_path. Prevents conflicting experiment assignments
- * that would pollute factor data.
- */
-async function hasConflictingAssignment(
-  supabase: SupabaseClient,
-  userId: string,
-  componentPath: string,
-  currentExperimentId: string,
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("experiment_assignments")
-    .select("experiment_id, experiments!inner ( id, status, component_path )")
-    .eq("user_id", userId)
-    .eq("experiments.status", "running")
-    .eq("experiments.component_path", componentPath)
-    .neq("experiment_id", currentExperimentId)
-    .limit(1);
-
-  if (error) return false;
-  return (data?.length ?? 0) > 0;
-}
-
-interface RunningExperiment {
-  id: string;
-  name: string;
-  component_path: string;
-  targeting_rules: TargetingRule[];
-  platforms: string[];
-}
-
-async function fetchRunningExperiment(
-  supabase: SupabaseClient,
-  experimentName: string,
-  platform?: Platform,
-): Promise<RunningExperiment | null> {
-  const { data, error } = await supabase
-    .from("experiments")
-    .select("id, name, component_path, targeting_rules, platforms")
-    .eq("name", experimentName)
-    .eq("status", "running")
-    .maybeSingle();
-
-  if (error || !data) return null;
-
-  const experiment = data as RunningExperiment;
-
-  if (platform && experiment.platforms.length > 0 && !experiment.platforms.includes(platform)) {
-    return null;
-  }
-
-  return experiment;
-}
-
 async function checkTargeting(
-  supabase: SupabaseClient,
+  store: FactoredStore,
   userId: string,
   experiment: RunningExperiment,
   deviceMetadata?: DeviceMetadata,
 ): Promise<boolean> {
   if (!experiment.targeting_rules || experiment.targeting_rules.length === 0) return true;
 
-  const factors = await queryFactors(supabase, userId, experiment.component_path);
+  const factors = await queryFactors(store, userId, experiment.component_path);
   return evaluateTargeting(factors, experiment.targeting_rules, deviceMetadata);
-}
-
-interface VariantWithTraffic {
-  variant_key: string;
-  config: Record<string, unknown>;
-  traffic_percentage: number;
-}
-
-async function fetchExperimentVariants(
-  supabase: SupabaseClient,
-  experimentId: string,
-): Promise<VariantWithTraffic[]> {
-  const { data, error } = await supabase
-    .from("experiment_variants")
-    .select("variant_key, config, traffic_percentage")
-    .eq("experiment_id", experimentId)
-    .order("variant_key");
-
-  if (error || !data) return [];
-  return data as VariantWithTraffic[];
 }
 
 function selectVariantByHash(
@@ -225,16 +111,4 @@ function simpleHash(input: string): number {
     hash = ((hash << 5) + hash + input.charCodeAt(i)) >>> 0;
   }
   return hash;
-}
-
-async function recordExposure(
-  supabase: SupabaseClient,
-  userId: string,
-  assignment: ExperimentAssignment,
-): Promise<void> {
-  await supabase.from("experiment_exposures").insert({
-    user_id: userId,
-    experiment_id: assignment.experiment_id,
-    variant_key: assignment.variant_key,
-  });
 }
