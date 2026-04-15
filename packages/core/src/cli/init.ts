@@ -12,6 +12,7 @@ const DEFAULT_CONFIG = {
 export function runInit(): void {
   const targetDir = process.cwd();
   copyMigrations(targetDir);
+  copyEdgeFunction(targetDir);
   writeConfig(targetDir);
   printSetupInstructions();
 }
@@ -37,7 +38,7 @@ function copyMigrations(targetDir: string): void {
 
   for (const file of migrationFiles) {
     const sourcePath = path.join(migrationsSource, file);
-    const targetFilename = `${timestamp}_auxi_${file}`;
+    const targetFilename = `${timestamp}_factoredui_${file}`;
     const targetPath = path.join(migrationsTarget, targetFilename);
 
     if (fs.existsSync(targetPath)) {
@@ -67,6 +68,46 @@ function findMigrationsDir(): string {
   );
 }
 
+function copyEdgeFunction(targetDir: string): void {
+  const functionSource = findEdgeFunctionDir();
+  const functionTarget = path.join(targetDir, "supabase", "functions", "factoredui-cluster");
+
+  if (fs.existsSync(path.join(functionTarget, "index.ts"))) {
+    console.log("\nEdge function already exists — skipping.");
+    return;
+  }
+
+  fs.mkdirSync(functionTarget, { recursive: true });
+
+  const EDGE_FN_ALLOWED_FILES = new Set([".ts", ".json"]);
+  const files = fs.readdirSync(functionSource).filter(
+    (file) => EDGE_FN_ALLOWED_FILES.has(path.extname(file)),
+  );
+  for (const file of files) {
+    fs.copyFileSync(
+      path.join(functionSource, file),
+      path.join(functionTarget, file),
+    );
+  }
+
+  console.log(`\nCopied edge function to supabase/functions/factoredui-cluster/`);
+}
+
+function findEdgeFunctionDir(): string {
+  // npm package: dist/cli/init.cjs -> ../../supabase/functions/factoredui-cluster
+  const packageDir = path.resolve(__dirname, "..", "..", "supabase", "functions", "factoredui-cluster");
+  if (fs.existsSync(packageDir)) return packageDir;
+
+  // Development mode
+  const devDir = path.resolve(__dirname, "..", "supabase", "functions", "factoredui-cluster");
+  if (fs.existsSync(devDir)) return devDir;
+
+  throw new Error(
+    "Could not find factoredui-cluster edge function. " +
+    "Ensure @factoredui/core is installed correctly.",
+  );
+}
+
 function writeConfig(targetDir: string): void {
   const configPath = path.join(targetDir, CONFIG_FILENAME);
 
@@ -89,13 +130,32 @@ function printSetupInstructions(): void {
 Setup complete! Next steps:
 
   1. Update ${CONFIG_FILENAME} with your Supabase URL and anon key
-  2. Run: npx supabase db push
-  3. In your app:
+
+  2. Enable required Postgres extensions (if not already enabled):
+       - pg_cron    (scheduled clustering jobs)
+       - pg_net     (edge function invocation from pg_cron)
+       - vector     (pgvector for factor embeddings)
+
+  3. Add "factoredui" to your PostgREST schema config:
+     In supabase/config.toml:
+       [api]
+       schemas = ["public", "factoredui"]
+     Or set the env var: PGRST_DB_SCHEMAS=public,factoredui
+
+  4. Apply migrations:
+       npx supabase db push
+
+  5. Deploy the clustering edge function:
+       npx supabase functions deploy factoredui-cluster
+
+  6. In your app:
 
      import { initCapture } from '@factoredui/core'
      import { createClient } from '@supabase/supabase-js'
 
-     const supabase = createClient(url, anonKey)
+     const supabase = createClient(url, anonKey, {
+       db: { schema: 'factoredui' }
+     })
      const capture = initCapture({ supabase })
 
   For React Native / Expo:

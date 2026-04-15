@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const VECTOR_DIMENSIONS = 16;
 const DEFAULT_K = 5;
@@ -15,24 +15,44 @@ interface ClusterAssignment {
   cluster_id: number;
 }
 
+const MIN_K = 2;
+const MAX_K = 50;
+
 Deno.serve(async (req) => {
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  const body = await parseRequestBody(req);
-  const clusterCount = body.k ?? DEFAULT_K;
-
-  const vectors = await fetchVectors(supabase);
-  if (vectors.length < clusterCount) {
-    return jsonResponse({ clustered: 0, reason: "fewer vectors than clusters" });
+  const authHeader = req.headers.get("Authorization");
+  if (authHeader !== `Bearer ${serviceRoleKey}`) {
+    return jsonResponse({ error: "unauthorized" }, 401);
   }
 
-  const assignments = clusterVectors(vectors, clusterCount);
-  const upsertedCount = await writeAssignments(supabase, assignments);
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      serviceRoleKey,
+      { db: { schema: "factoredui" } },
+    );
 
-  return jsonResponse({ clustered: upsertedCount, k: clusterCount });
+    const body = await parseRequestBody(req);
+    const rawK = body.k ?? DEFAULT_K;
+
+    if (!Number.isInteger(rawK) || rawK < MIN_K || rawK > MAX_K) {
+      return jsonResponse({ error: `k must be integer between ${MIN_K} and ${MAX_K}` }, 400);
+    }
+
+    const vectors = await fetchVectors(supabase);
+    if (vectors.length < rawK) {
+      return jsonResponse({ clustered: 0, reason: "fewer vectors than clusters" });
+    }
+
+    const assignments = clusterVectors(vectors, rawK);
+    const upsertedCount = await writeAssignments(supabase, assignments);
+
+    return jsonResponse({ clustered: upsertedCount, k: rawK });
+  } catch (err) {
+    console.error("clustering failed:", err);
+    return jsonResponse({ error: "internal error" }, 500);
+  }
 });
 
 async function parseRequestBody(req: Request): Promise<{ k?: number }> {
