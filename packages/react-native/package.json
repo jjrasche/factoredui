@@ -1,6 +1,6 @@
 {
   "name": "@factoredui/react-native",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "React Native component registry for FactoredUI SDUI — 20 themed primitives",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -11,6 +11,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "require": "./dist/testing.cjs"
     }
   },
   "files": [
