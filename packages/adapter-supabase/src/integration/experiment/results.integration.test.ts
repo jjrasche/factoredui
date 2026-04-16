@@ -1,19 +1,22 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   createServiceClient,
+  createServiceStore,
   createTestUser,
   deleteTestUser,
-} from "../testing/supabase-harness.js";
-import { queryExperimentResults } from "./results.js";
+} from "../../testing/supabase-harness.js";
+import { queryExperimentResults } from "@factoredui/core";
 
 describe("queryExperimentResults", () => {
   let serviceClient: ReturnType<typeof createServiceClient>;
+  let store: ReturnType<typeof createServiceStore>;
   let userAId: string;
   let userBId: string;
   let experimentId: string;
 
   beforeAll(async () => {
     serviceClient = createServiceClient();
+    store = createServiceStore();
     const userA = await createTestUser(serviceClient);
     const userB = await createTestUser(serviceClient);
     userAId = userA.id;
@@ -90,7 +93,7 @@ describe("queryExperimentResults", () => {
 
   it("returns per-variant factor deltas averaged across users", async () => {
     const results = await queryExperimentResults(
-      serviceClient,
+      store,
       experimentId,
       ["error_rate"],
     );
@@ -119,7 +122,7 @@ describe("queryExperimentResults", () => {
 
   it("returns empty array for nonexistent experiment", async () => {
     const results = await queryExperimentResults(
-      serviceClient,
+      store,
       "00000000-0000-0000-0000-000000000000",
       ["error_rate"],
     );

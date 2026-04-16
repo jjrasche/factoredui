@@ -1,18 +1,20 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createServiceClient } from "../testing/supabase-harness.js";
+import { createServiceClient, createServiceStore } from "../../testing/supabase-harness.js";
 import {
   queryGovernanceLog,
   queryRecentGovernanceLog,
   queryGovernanceLogByVerdict,
-} from "./governance-log.js";
+} from "@factoredui/core";
 
 describe("governance-log integration", () => {
   let serviceClient: ReturnType<typeof createServiceClient>;
+  let store: ReturnType<typeof createServiceStore>;
   let experimentIdA: string;
   let experimentIdB: string;
 
   beforeAll(async () => {
     serviceClient = createServiceClient();
+    store = createServiceStore();
 
     const { data: expA } = await serviceClient
       .from("experiments")
@@ -70,7 +72,7 @@ describe("governance-log integration", () => {
   });
 
   it("queries governance log for a single experiment ordered by evaluated_at desc", async () => {
-    const rows = await queryGovernanceLog(serviceClient, experimentIdA);
+    const rows = await queryGovernanceLog(store, experimentIdA);
 
     expect(rows).toHaveLength(2);
     expect(rows[0].verdict).toBe("conclude");
@@ -80,13 +82,13 @@ describe("governance-log integration", () => {
   });
 
   it("returns empty array for experiment with no log entries", async () => {
-    const rows = await queryGovernanceLog(serviceClient, crypto.randomUUID());
+    const rows = await queryGovernanceLog(store, crypto.randomUUID());
 
     expect(rows).toHaveLength(0);
   });
 
   it("queries recent governance log across all experiments", async () => {
-    const rows = await queryRecentGovernanceLog(serviceClient, 10);
+    const rows = await queryRecentGovernanceLog(store, 10);
 
     const testRows = rows.filter(
       r => r.experiment_id === experimentIdA || r.experiment_id === experimentIdB,
@@ -98,26 +100,26 @@ describe("governance-log integration", () => {
   });
 
   it("respects limit parameter on recent log", async () => {
-    const rows = await queryRecentGovernanceLog(serviceClient, 1);
+    const rows = await queryRecentGovernanceLog(store, 1);
 
     expect(rows).toHaveLength(1);
   });
 
   it("filters governance log by verdict", async () => {
-    const concludeRows = await queryGovernanceLogByVerdict(serviceClient, "conclude");
+    const concludeRows = await queryGovernanceLogByVerdict(store, "conclude");
     const testConclude = concludeRows.filter(r => r.experiment_id === experimentIdA);
 
     expect(testConclude).toHaveLength(1);
     expect(testConclude[0].winning_variant).toBe("treatment");
 
-    const flagRows = await queryGovernanceLogByVerdict(serviceClient, "flag_review");
+    const flagRows = await queryGovernanceLogByVerdict(store, "flag_review");
     const testFlag = flagRows.filter(r => r.experiment_id === experimentIdB);
 
     expect(testFlag).toHaveLength(1);
   });
 
   it("preserves factor_verdicts jsonb structure", async () => {
-    const rows = await queryGovernanceLog(serviceClient, experimentIdA);
+    const rows = await queryGovernanceLog(store, experimentIdA);
     const concludeRow = rows.find(r => r.verdict === "conclude");
 
     expect(concludeRow).toBeDefined();

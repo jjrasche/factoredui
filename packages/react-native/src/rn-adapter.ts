@@ -1,33 +1,39 @@
 import { AppState, Platform, Dimensions } from "react-native";
 import type { AppStateStatus } from "react-native";
-import type { CaptureAdapter, CaptureEvent } from "@factoredui/core";
+import type { CaptureAdapter, CaptureEvent, KVStorage } from "@factoredui/core";
+
+declare const ErrorUtils: {
+  getGlobalHandler(): (error: Error, isFatal?: boolean) => void;
+  setGlobalHandler(handler: (error: Error, isFatal?: boolean) => void): void;
+};
 
 const SESSION_STORAGE_KEY = "factoredui:session_id";
 const QUEUE_STORAGE_KEY = "factoredui:offline_queue";
 
-interface AsyncStorageLike {
-  getItem(key: string): Promise<string | null>;
-  setItem(key: string, value: string): Promise<void>;
-  removeItem(key: string): Promise<void>;
+export interface RnAdapterOptions {
+  storage: KVStorage;
+  captureErrors?: boolean;
 }
 
 /**
  * React Native (Expo) implementation of CaptureAdapter.
  *
- * Uses AppState for lifecycle events, AsyncStorage for session persistence,
+ * Uses AppState for lifecycle events, KVStorage for session persistence,
  * and Platform/Dimensions for device metadata.
  *
- * Factory is async because AsyncStorage.getItem is async but the
+ * Factory is async because storage.getItem may be async but the
  * CaptureAdapter.loadSessionId contract is synchronous. The factory
  * preloads the cached session ID into memory at creation time.
  */
 export async function createRnAdapter(
-  asyncStorage: AsyncStorageLike,
+  options: RnAdapterOptions,
 ): Promise<CaptureAdapter> {
-  let cachedSessionId = await asyncStorage.getItem(SESSION_STORAGE_KEY);
-  let cachedQueue = await asyncStorage.getItem(QUEUE_STORAGE_KEY);
+  const { storage, captureErrors = false } = options;
+  let cachedSessionId = await storage.getItem(SESSION_STORAGE_KEY);
+  let cachedQueue = await storage.getItem(QUEUE_STORAGE_KEY);
   let appStateSubscription: ReturnType<typeof AppState.addEventListener> | null = null;
   let emitEvent: ((event: CaptureEvent) => void) | null = null;
+  let previousErrorHandler: ((error: Error, isFatal?: boolean) => void) | null = null;
 
   function startListening(onEvent: (event: CaptureEvent) => void): void {
     emitEvent = onEvent;
@@ -39,12 +45,32 @@ export async function createRnAdapter(
         payload: { visibility_state: nextState },
       });
     });
+
+    if (captureErrors) {
+      previousErrorHandler = ErrorUtils.getGlobalHandler();
+      ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+        emitEvent?.({
+          event_type: "error",
+          component_path: "/",
+          payload: {
+            error_message: error.message,
+            error_stack: error.stack,
+            is_fatal: isFatal ?? false,
+          },
+        });
+        previousErrorHandler?.(error, isFatal);
+      });
+    }
   }
 
   function stopListening(): void {
     appStateSubscription?.remove();
     appStateSubscription = null;
     emitEvent = null;
+    if (captureErrors && previousErrorHandler) {
+      ErrorUtils.setGlobalHandler(previousErrorHandler);
+      previousErrorHandler = null;
+    }
   }
 
   function collectSessionMetadata(): Record<string, unknown> {
@@ -62,9 +88,7 @@ export async function createRnAdapter(
 
   function storeSessionId(id: string): void {
     cachedSessionId = id;
-    asyncStorage.setItem(SESSION_STORAGE_KEY, id).catch(() => {
-      // Storage write failure — session lives in memory only
-    });
+    Promise.resolve(storage.setItem(SESSION_STORAGE_KEY, id)).catch(() => {});
   }
 
   function loadSessionId(): string | null {
@@ -73,9 +97,7 @@ export async function createRnAdapter(
 
   function clearSessionId(): void {
     cachedSessionId = null;
-    asyncStorage.removeItem(SESSION_STORAGE_KEY).catch(() => {
-      // Ignore storage errors
-    });
+    Promise.resolve(storage.removeItem(SESSION_STORAGE_KEY)).catch(() => {});
   }
 
   function registerUnloadHandler(onUnload: () => void): void {
@@ -87,9 +109,9 @@ export async function createRnAdapter(
   function persistQueue(serialized: string): void {
     cachedQueue = serialized || null;
     if (!serialized || serialized === "") {
-      asyncStorage.removeItem(QUEUE_STORAGE_KEY).catch(() => {});
+      Promise.resolve(storage.removeItem(QUEUE_STORAGE_KEY)).catch(() => {});
     } else {
-      asyncStorage.setItem(QUEUE_STORAGE_KEY, serialized).catch(() => {});
+      Promise.resolve(storage.setItem(QUEUE_STORAGE_KEY, serialized)).catch(() => {});
     }
   }
 

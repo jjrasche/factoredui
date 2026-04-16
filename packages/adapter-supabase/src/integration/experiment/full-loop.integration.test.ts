@@ -1,16 +1,21 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   createServiceClient,
+  createServiceStore,
+  createStoreFromClient,
   createAnonClient,
   createTestUser,
   deleteTestUser,
   signInTestUser,
-} from "../testing/supabase-harness.js";
-import { createExperiment, startExperiment } from "./lifecycle.js";
-import type { ExperimentDefinition } from "./lifecycle.js";
-import { evaluateFlag } from "./flags.js";
-import { runGovernanceCheck } from "./governance-check.js";
-import { queryGovernanceLog } from "./governance-log.js";
+} from "../../testing/supabase-harness.js";
+import {
+  createExperiment,
+  startExperiment,
+  evaluateFlag,
+  runGovernanceCheck,
+  queryGovernanceLog,
+} from "@factoredui/core";
+import type { ExperimentDefinition } from "@factoredui/core";
 
 /**
  * Full experiment lifecycle integration test.
@@ -30,6 +35,9 @@ describe("full experiment loop", () => {
   const componentPath = "full-loop-test/cta";
   const factorName = "engagement";
 
+  let store: ReturnType<typeof createServiceStore>;
+  let authedStore: ReturnType<typeof createStoreFromClient>;
+
   interface TestUserEntry {
     id: string;
     email: string;
@@ -43,11 +51,13 @@ describe("full experiment loop", () => {
   let primaryVariant: string;
 
   beforeAll(async () => {
+    store = createServiceStore();
     primaryUser = await createTestUser(serviceClient);
     secondaryUser = await createTestUser(serviceClient);
 
     const anonClient = createAnonClient();
     authedClient = await signInTestUser(anonClient, primaryUser);
+    authedStore = createStoreFromClient(authedClient);
   });
 
   afterAll(async () => {
@@ -79,14 +89,14 @@ describe("full experiment loop", () => {
       ],
     };
 
-    const created = await createExperiment(serviceClient, definition);
+    const created = await createExperiment(store, definition);
     experimentId = created.id;
 
     expect(created.status).toBe("draft");
     expect(created.name).toBe(definition.name);
 
     // --- Step 2: Start experiment (draft → running) ---
-    await startExperiment(serviceClient, experimentId);
+    await startExperiment(store, experimentId);
 
     const { data: running } = await serviceClient
       .from("experiments")
@@ -97,7 +107,7 @@ describe("full experiment loop", () => {
     expect(running!.status).toBe("running");
 
     // --- Step 3: Evaluate flag (assigns primary user, records exposure) ---
-    const assignment = await evaluateFlag(authedClient, definition.name);
+    const assignment = await evaluateFlag(authedStore, definition.name);
 
     expect(assignment).not.toBeNull();
     expect(assignment!.experiment_id).toBe(experimentId);
@@ -211,7 +221,7 @@ describe("full experiment loop", () => {
     if (thresholdError) throw new Error(`thresholds insert failed: ${thresholdError.message}`);
 
     // --- Step 7: Run governance check ---
-    const verdict = await runGovernanceCheck(serviceClient, experimentId, [factorName]);
+    const verdict = await runGovernanceCheck(store, experimentId, [factorName]);
 
     expect(verdict.action).toBe("conclude");
     expect(verdict.winning_variant).toBe("treatment");
@@ -231,7 +241,7 @@ describe("full experiment loop", () => {
     expect(concluded!.winning_variant).toBe("treatment");
 
     // --- Step 9: Verify governance audit log ---
-    const log = await queryGovernanceLog(serviceClient, experimentId);
+    const log = await queryGovernanceLog(store, experimentId);
 
     expect(log.length).toBeGreaterThanOrEqual(1);
     expect(log[0].verdict).toBe("conclude");

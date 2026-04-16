@@ -25,7 +25,7 @@ import type {
   Spec,
 } from "@factoredui/core";
 
-export function createSupabaseStore(client: SupabaseClient): FactoredStore {
+export function createSupabaseStore(client: SupabaseClient<any, any, any>): FactoredStore {
   return {
     // --- Auth ---
 

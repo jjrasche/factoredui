@@ -12,6 +12,10 @@ export type {
 
 // --- Capture ---
 export { initCapture } from "./capture/index.js";
+export { createEventWriter } from "./capture/writer.js";
+export type { EventWriter } from "./capture/writer.js";
+export { createSessionManager } from "./capture/session.js";
+export type { SessionManager } from "./capture/session.js";
 export { resolveComponentPath } from "./capture/path.js";
 export { createWebAdapter } from "./capture/web-adapter.js";
 
@@ -93,5 +97,5 @@ export type { FactorSnapshot, FactorDelta } from "./factors/snapshots.js";
 export type { TargetingRule, TargetingOperator, DeviceMetadata, MetadataTargetingRule, MetadataField, MetadataOperator, FactorTargetingRule } from "./experiment/targeting.js";
 export type { VariantResult } from "./experiment/results.js";
 export type { Threshold, GovernanceVerdict, GovernanceAction, FactorVerdict } from "./experiment/governance.js";
-export { queryGovernanceLog, queryRecentGovernanceLog, type GovernanceLogRow } from "./experiment/governance-log.js";
-export { queryExperimentSummaries, type ExperimentSummaryRow, type ExperimentSummaryFilters } from "./experiment/dashboard.js";
+export { queryGovernanceLog, queryRecentGovernanceLog, queryGovernanceLogByVerdict, type GovernanceLogRow } from "./experiment/governance-log.js";
+export { queryExperimentSummaries, queryExperimentSummary, type ExperimentSummaryRow, type ExperimentSummaryFilters } from "./experiment/dashboard.js";

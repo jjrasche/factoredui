@@ -5,13 +5,15 @@ import {
   createTestUser,
   deleteTestUser,
   signInTestUser,
-} from "../testing/supabase-harness.js";
-import { evaluateFlag } from "./flags.js";
-import type { TargetingRule } from "./targeting.js";
+  createStoreFromClient,
+} from "../../testing/supabase-harness.js";
+import { evaluateFlag } from "@factoredui/core";
+import type { TargetingRule } from "@factoredui/core";
 
 describe("evaluateFlag integration", () => {
   let serviceClient: ReturnType<typeof createServiceClient>;
   let authedClient: ReturnType<typeof createAnonClient>;
+  let store: ReturnType<typeof createStoreFromClient>;
   let testUserId: string;
   let experimentId: string;
 
@@ -22,6 +24,7 @@ describe("evaluateFlag integration", () => {
 
     const anonClient = createAnonClient();
     authedClient = await signInTestUser(anonClient, user);
+    store = createStoreFromClient(authedClient);
 
     const { data: experiment, error: expError } = await serviceClient
       .from("experiments")
@@ -78,7 +81,7 @@ describe("evaluateFlag integration", () => {
   });
 
   it("assigns user to a variant and records exposure", async () => {
-    const result = await evaluateFlag(authedClient, "integration-cta-test");
+    const result = await evaluateFlag(store, "integration-cta-test");
 
     expect(result).not.toBeNull();
     expect(result!.experiment_id).toBe(experimentId);
@@ -105,8 +108,8 @@ describe("evaluateFlag integration", () => {
   });
 
   it("returns existing assignment on re-evaluation", async () => {
-    const first = await evaluateFlag(authedClient, "integration-cta-test");
-    const second = await evaluateFlag(authedClient, "integration-cta-test");
+    const first = await evaluateFlag(store, "integration-cta-test");
+    const second = await evaluateFlag(store, "integration-cta-test");
 
     expect(second).not.toBeNull();
     expect(second!.variant_key).toBe(first!.variant_key);
@@ -122,7 +125,7 @@ describe("evaluateFlag integration", () => {
   });
 
   it("returns null for nonexistent experiment", async () => {
-    const result = await evaluateFlag(authedClient, "nonexistent-experiment");
+    const result = await evaluateFlag(store, "nonexistent-experiment");
     expect(result).toBeNull();
   });
 });
@@ -130,6 +133,7 @@ describe("evaluateFlag integration", () => {
 describe("evaluateFlag conflict guard", () => {
   let serviceClient: ReturnType<typeof createServiceClient>;
   let authedClient: ReturnType<typeof createAnonClient>;
+  let store: ReturnType<typeof createStoreFromClient>;
   let testUserId: string;
   let existingExpId: string;
   let conflictingExpId: string;
@@ -144,6 +148,7 @@ describe("evaluateFlag conflict guard", () => {
 
     const anonClient = createAnonClient();
     authedClient = await signInTestUser(anonClient, user);
+    store = createStoreFromClient(authedClient);
 
     // Existing running experiment on componentPath — user already assigned
     const { data: existingExp } = await serviceClient
@@ -214,7 +219,7 @@ describe("evaluateFlag conflict guard", () => {
   });
 
   it("blocks assignment when user is already in a running experiment on the same component_path", async () => {
-    const result = await evaluateFlag(authedClient, "conflicting-checkout-test");
+    const result = await evaluateFlag(store, "conflicting-checkout-test");
 
     expect(result).toBeNull();
 
@@ -228,7 +233,7 @@ describe("evaluateFlag conflict guard", () => {
   });
 
   it("allows assignment when user is in a running experiment on a different component_path", async () => {
-    const result = await evaluateFlag(authedClient, "unrelated-settings-test");
+    const result = await evaluateFlag(store, "unrelated-settings-test");
 
     expect(result).not.toBeNull();
     expect(result!.experiment_id).toBe(unrelatedExpId);
@@ -239,6 +244,7 @@ describe("evaluateFlag conflict guard", () => {
 describe("evaluateFlag with targeting rules", () => {
   let serviceClient: ReturnType<typeof createServiceClient>;
   let authedClient: ReturnType<typeof createAnonClient>;
+  let store: ReturnType<typeof createStoreFromClient>;
   let testUserId: string;
   let sessionId: string;
   let targetedExpId: string;
@@ -252,6 +258,7 @@ describe("evaluateFlag with targeting rules", () => {
 
     const anonClient = createAnonClient();
     authedClient = await signInTestUser(anonClient, user);
+    store = createStoreFromClient(authedClient);
 
     // Create session + events so factor views have data
     const { data: session } = await serviceClient
@@ -329,7 +336,7 @@ describe("evaluateFlag with targeting rules", () => {
   });
 
   it("assigns user when targeting rules match their factors", async () => {
-    const result = await evaluateFlag(authedClient, "targeted-error-test");
+    const result = await evaluateFlag(store, "targeted-error-test");
 
     expect(result).not.toBeNull();
     expect(result!.experiment_id).toBe(targetedExpId);
@@ -337,7 +344,7 @@ describe("evaluateFlag with targeting rules", () => {
   });
 
   it("returns null when targeting rules do not match", async () => {
-    const result = await evaluateFlag(authedClient, "strict-error-test");
+    const result = await evaluateFlag(store, "strict-error-test");
 
     expect(result).toBeNull();
 

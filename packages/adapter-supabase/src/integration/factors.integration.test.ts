@@ -74,7 +74,6 @@ describe("factor materialized views", () => {
 
     const errorRate = await queryFactor("error_rate");
     expect(errorRate).not.toBeNull();
-    // 1 error / 4 total = 0.25
     expect(errorRate).toBeCloseTo(0.25, 2);
   });
 
@@ -119,14 +118,10 @@ describe("factor materialized views", () => {
 
     const completionRate = await queryFactor("completion_rate");
     expect(completionRate).not.toBeNull();
-    // 1 session with completion / 1 session with impression = 1.0
     expect(completionRate).toBeCloseTo(1.0, 2);
   });
 
   it("computes drop_off_rate from sessions without navigation", async () => {
-    // All events so far include navigation events, so drop_off_rate reflects
-    // the mix of navigated vs non-navigated sessions. With one session that
-    // has navigation events, drop_off should be 0.
     await refreshAllViews();
 
     const dropOff = await queryFactor("drop_off_rate");
@@ -135,8 +130,6 @@ describe("factor materialized views", () => {
   });
 
   it("computes hesitation_ms from impression to first interaction", async () => {
-    // Hesitation requires a click AFTER an impression (created_at > impression.created_at).
-    // Insert impression, wait briefly, then insert click to guarantee ordering.
     await insertEvent("impression");
     await new Promise((resolve) => setTimeout(resolve, 50));
     await insertEvent("click");
@@ -145,7 +138,6 @@ describe("factor materialized views", () => {
 
     const hesitation = await queryFactor("hesitation_ms");
     expect(hesitation).not.toBeNull();
-    // Just verify it's a non-negative number (timing depends on insert speed)
     expect(hesitation).toBeGreaterThanOrEqual(0);
   });
 

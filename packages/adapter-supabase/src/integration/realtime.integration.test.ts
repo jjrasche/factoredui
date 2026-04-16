@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createServiceClient } from "../testing/supabase-harness.js";
-import type { GovernanceLogRow } from "./governance-log.js";
+import type { GovernanceLogRow } from "@factoredui/core";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 /**

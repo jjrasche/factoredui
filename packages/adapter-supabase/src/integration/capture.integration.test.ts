@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   createServiceClient,
+  createServiceStore,
   createTestUser,
   deleteTestUser,
 } from "../testing/supabase-harness.js";
-import { createEventWriter } from "./writer.js";
-import { createSessionManager } from "./session.js";
-import type { CaptureAdapter } from "./adapter.js";
+import { createEventWriter } from "@factoredui/core";
+import { createSessionManager } from "@factoredui/core";
+import type { CaptureAdapter } from "@factoredui/core";
 
 function createStubAdapter(): CaptureAdapter {
   let storedSessionId: string | null = null;
@@ -23,10 +24,12 @@ function createStubAdapter(): CaptureAdapter {
 
 describe("capture integration", () => {
   let serviceClient: ReturnType<typeof createServiceClient>;
+  let store: ReturnType<typeof createServiceStore>;
   let testUserId: string;
 
   beforeAll(async () => {
     serviceClient = createServiceClient();
+    store = createServiceStore();
     const user = await createTestUser(serviceClient);
     testUserId = user.id;
   });
@@ -58,7 +61,7 @@ describe("capture integration", () => {
     });
 
     it("flushes batched events to factoredui.events", async () => {
-      const writer = createEventWriter(serviceClient, 5000, 50);
+      const writer = createEventWriter(store, 5000, 50);
 
       writer.enqueue(writerSessionId, testUserId, {
         event_type: "navigation",
@@ -91,7 +94,7 @@ describe("capture integration", () => {
 
   describe("session lifecycle", () => {
     it("creates a session row and sets ended_at on end", async () => {
-      const sessionManager = createSessionManager(serviceClient, createStubAdapter(), "web");
+      const sessionManager = createSessionManager(store, createStubAdapter(), "web");
 
       const sessionId = await sessionManager.ensureSession(testUserId);
       expect(sessionId).toBeTruthy();
@@ -119,7 +122,7 @@ describe("capture integration", () => {
     });
 
     it("reuses session within timeout window", async () => {
-      const sessionManager = createSessionManager(serviceClient, createStubAdapter(), "web");
+      const sessionManager = createSessionManager(store, createStubAdapter(), "web");
 
       const firstId = await sessionManager.ensureSession(testUserId);
       const secondId = await sessionManager.ensureSession(testUserId);

@@ -35,6 +35,30 @@ export const Dimensions = {
   },
 };
 
+// ErrorUtils global (RN global error handler)
+type ErrorHandler = (error: Error, isFatal?: boolean) => void;
+let globalErrorHandler: ErrorHandler = () => {};
+
+export const ErrorUtils = {
+  getGlobalHandler(): ErrorHandler {
+    return globalErrorHandler;
+  },
+  setGlobalHandler(handler: ErrorHandler): void {
+    globalErrorHandler = handler;
+  },
+  /** Test helper: simulate an unhandled JS error */
+  _simulateError(error: Error, isFatal?: boolean): void {
+    globalErrorHandler(error, isFatal);
+  },
+  /** Test helper: reset to default */
+  _reset(): void {
+    globalErrorHandler = () => {};
+  },
+};
+
+// Make ErrorUtils available as a global (RN runtime provides it on globalThis)
+(globalThis as Record<string, unknown>).ErrorUtils = ErrorUtils;
+
 // Stubs for rn-components.tsx imports
 function createStubComponent(_name: string) {
   return function StubComponent() { return null; };

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { createSupabaseStore } from "../supabase-store.js";
 
 const LOCAL_SUPABASE_URL = "http://127.0.0.1:54321";
 const LOCAL_ANON_KEY =
@@ -61,4 +62,12 @@ export async function signInTestUser(
   });
   if (error) throw new Error(`Failed to sign in test user: ${error.message}`);
   return anonClient;
+}
+
+export function createServiceStore() {
+  return createSupabaseStore(createServiceClient());
+}
+
+export function createStoreFromClient(client: FactoredClient) {
+  return createSupabaseStore(client);
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createRnAdapter } from "./rn-adapter.js";
-import { AppState } from "react-native";
+import { AppState, ErrorUtils } from "react-native";
 import type { CaptureEvent } from "@factoredui/core";
 
 function createMockStorage(initial: Record<string, string> = {}) {
@@ -15,11 +15,12 @@ function createMockStorage(initial: Record<string, string> = {}) {
 describe("createRnAdapter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (ErrorUtils as unknown as { _reset: () => void })._reset();
   });
 
   it("preloads session ID from AsyncStorage", async () => {
     const storage = createMockStorage({ "factoredui:session_id": "existing-session" });
-    const adapter = await createRnAdapter(storage);
+    const adapter = await createRnAdapter({ storage });
 
     expect(adapter.loadSessionId()).toBe("existing-session");
     expect(storage.getItem).toHaveBeenCalledWith("factoredui:session_id");
@@ -27,14 +28,14 @@ describe("createRnAdapter", () => {
 
   it("returns null when no stored session ID", async () => {
     const storage = createMockStorage();
-    const adapter = await createRnAdapter(storage);
+    const adapter = await createRnAdapter({ storage });
 
     expect(adapter.loadSessionId()).toBeNull();
   });
 
   it("stores session ID to memory and AsyncStorage", async () => {
     const storage = createMockStorage();
-    const adapter = await createRnAdapter(storage);
+    const adapter = await createRnAdapter({ storage });
 
     adapter.storeSessionId("new-session-456");
 
@@ -44,7 +45,7 @@ describe("createRnAdapter", () => {
 
   it("clears session ID from memory and AsyncStorage", async () => {
     const storage = createMockStorage({ "factoredui:session_id": "to-clear" });
-    const adapter = await createRnAdapter(storage);
+    const adapter = await createRnAdapter({ storage });
 
     adapter.clearSessionId();
 
@@ -54,7 +55,7 @@ describe("createRnAdapter", () => {
 
   it("collects device metadata from Platform and Dimensions", async () => {
     const storage = createMockStorage();
-    const adapter = await createRnAdapter(storage);
+    const adapter = await createRnAdapter({ storage });
 
     const metadata = adapter.collectSessionMetadata();
 
@@ -70,7 +71,7 @@ describe("createRnAdapter", () => {
 
   it("emits visibility events on AppState changes", async () => {
     const storage = createMockStorage();
-    const adapter = await createRnAdapter(storage);
+    const adapter = await createRnAdapter({ storage });
     const events: CaptureEvent[] = [];
 
     adapter.startListening((event) => events.push(event));
@@ -87,14 +88,14 @@ describe("createRnAdapter", () => {
   it("preloads persisted queue from AsyncStorage", async () => {
     const queueData = JSON.stringify([{ event_type: "click" }]);
     const storage = createMockStorage({ "factoredui:offline_queue": queueData });
-    const adapter = await createRnAdapter(storage);
+    const adapter = await createRnAdapter({ storage });
 
     expect(adapter.loadQueue!()).toBe(queueData);
   });
 
   it("persists queue to AsyncStorage and updates cache", async () => {
     const storage = createMockStorage();
-    const adapter = await createRnAdapter(storage);
+    const adapter = await createRnAdapter({ storage });
 
     const serialized = JSON.stringify([{ event_type: "scroll" }]);
     adapter.persistQueue!(serialized);
@@ -105,7 +106,7 @@ describe("createRnAdapter", () => {
 
   it("clears persisted queue when given empty string", async () => {
     const storage = createMockStorage({ "factoredui:offline_queue": "[{}]" });
-    const adapter = await createRnAdapter(storage);
+    const adapter = await createRnAdapter({ storage });
 
     adapter.persistQueue!("");
 
@@ -115,7 +116,7 @@ describe("createRnAdapter", () => {
 
   it("stops emitting after stopListening", async () => {
     const storage = createMockStorage();
-    const adapter = await createRnAdapter(storage);
+    const adapter = await createRnAdapter({ storage });
     const events: CaptureEvent[] = [];
 
     adapter.startListening((event) => events.push(event));
@@ -124,5 +125,61 @@ describe("createRnAdapter", () => {
     (AppState as unknown as { _fireChange: (s: string) => void })._fireChange("active");
 
     expect(events).toHaveLength(0);
+  });
+
+  it("emits error events when captureErrors is true", async () => {
+    const storage = createMockStorage();
+    const adapter = await createRnAdapter({ storage, captureErrors: true });
+    const events: CaptureEvent[] = [];
+
+    adapter.startListening((event) => events.push(event));
+
+    const testError = new Error("test crash");
+    (ErrorUtils as unknown as { _simulateError: (e: Error, f?: boolean) => void })
+      ._simulateError(testError, true);
+
+    expect(events).toHaveLength(1);
+    expect(events[0].event_type).toBe("error");
+    expect(events[0].payload.error_message).toBe("test crash");
+    expect(events[0].payload.is_fatal).toBe(true);
+
+    adapter.stopListening();
+  });
+
+  it("chains to previous error handler when captureErrors is true", async () => {
+    const previousHandler = vi.fn();
+    (ErrorUtils as unknown as { setGlobalHandler: (h: Function) => void })
+      .setGlobalHandler(previousHandler);
+
+    const storage = createMockStorage();
+    const adapter = await createRnAdapter({ storage, captureErrors: true });
+    const events: CaptureEvent[] = [];
+
+    adapter.startListening((event) => events.push(event));
+
+    const testError = new Error("chained error");
+    (ErrorUtils as unknown as { _simulateError: (e: Error, f?: boolean) => void })
+      ._simulateError(testError, false);
+
+    expect(events).toHaveLength(1);
+    expect(previousHandler).toHaveBeenCalledWith(testError, false);
+
+    adapter.stopListening();
+  });
+
+  it("restores previous error handler on stopListening", async () => {
+    const originalHandler = vi.fn();
+    (ErrorUtils as unknown as { setGlobalHandler: (h: Function) => void })
+      .setGlobalHandler(originalHandler);
+
+    const storage = createMockStorage();
+    const adapter = await createRnAdapter({ storage, captureErrors: true });
+
+    adapter.startListening(() => {});
+    adapter.stopListening();
+
+    const currentHandler = (ErrorUtils as unknown as { getGlobalHandler: () => Function })
+      .getGlobalHandler();
+    expect(currentHandler).toBe(originalHandler);
   });
 });

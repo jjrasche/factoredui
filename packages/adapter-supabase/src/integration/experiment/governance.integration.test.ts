@@ -1,13 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   createServiceClient,
+  createServiceStore,
   createTestUser,
   deleteTestUser,
-} from "../testing/supabase-harness.js";
-import { evaluateExperimentThresholds, concludeExperiment } from "./governance.js";
+} from "../../testing/supabase-harness.js";
+import { evaluateExperimentThresholds, concludeExperiment } from "@factoredui/core";
 
 describe("governance integration", () => {
   let serviceClient: ReturnType<typeof createServiceClient>;
+  let store: ReturnType<typeof createServiceStore>;
   let userAId: string;
   let userBId: string;
   let governorId: string;
@@ -16,6 +18,7 @@ describe("governance integration", () => {
 
   beforeAll(async () => {
     serviceClient = createServiceClient();
+    store = createServiceStore();
     const userA = await createTestUser(serviceClient);
     const userB = await createTestUser(serviceClient);
     const governor = await createTestUser(serviceClient);
@@ -109,7 +112,7 @@ describe("governance integration", () => {
 
   it("evaluates thresholds and recommends conclude for clear winner", async () => {
     const verdict = await evaluateExperimentThresholds(
-      serviceClient,
+      store,
       experimentId,
       ["error_rate"],
     );
@@ -122,7 +125,7 @@ describe("governance integration", () => {
   });
 
   it("concludes experiment and records winning variant", async () => {
-    await concludeExperiment(serviceClient, experimentId, "treatment");
+    await concludeExperiment(store, experimentId, "treatment");
 
     const { data } = await serviceClient
       .from("experiments")
@@ -148,7 +151,7 @@ describe("governance integration", () => {
       .single();
 
     const verdict = await evaluateExperimentThresholds(
-      serviceClient,
+      store,
       exp2!.id,
       ["error_rate"],
     );

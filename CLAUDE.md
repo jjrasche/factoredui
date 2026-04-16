@@ -21,9 +21,10 @@ npx supabase start   # local Supabase (required for integration tests)
 ## Architecture
 
 ### Packages
-- `packages/core/` -- capture pipeline, factors, experiments, SDUI engine, types, CLI, migrations
+- `packages/core/` -- capture pipeline, factors, experiments, SDUI engine, types
+- `packages/adapter-supabase/` -- FactoredStore implementation, CLI, migrations, edge functions, integration tests
 - `packages/react/` -- Provider, hooks, path context, SDUI renderer, useSourceData
-- `packages/react-native/` -- 20 themed RN component primitives (createComponentRegistry)
+- `packages/react-native/` -- 20 themed RN component primitives (createComponentRegistry), RN capture adapter
 
 ### Build Notes
 - Build order matters: core must build first (react/react-native DTS resolve `@factoredui/core` via node_modules symlinks → `dist/index.d.ts`)

@@ -1,13 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   createServiceClient,
+  createServiceStore,
   createTestUser,
   deleteTestUser,
-} from "../testing/supabase-harness.js";
-import { queryExperimentSummaries, queryExperimentSummary } from "./dashboard.js";
+} from "../../testing/supabase-harness.js";
+import { queryExperimentSummaries, queryExperimentSummary } from "@factoredui/core";
 
 describe("dashboard integration", () => {
   let serviceClient: ReturnType<typeof createServiceClient>;
+  let store: ReturnType<typeof createServiceStore>;
   let userAId: string;
   let userBId: string;
   let runningExpId: string;
@@ -15,6 +17,7 @@ describe("dashboard integration", () => {
 
   beforeAll(async () => {
     serviceClient = createServiceClient();
+    store = createServiceStore();
     const userA = await createTestUser(serviceClient);
     const userB = await createTestUser(serviceClient);
     userAId = userA.id;
@@ -80,7 +83,7 @@ describe("dashboard integration", () => {
   });
 
   it("queries all experiment summaries", async () => {
-    const rows = await queryExperimentSummaries(serviceClient);
+    const rows = await queryExperimentSummaries(store);
 
     const runningRows = rows.filter(r => r.experiment_id === runningExpId);
     expect(runningRows).toHaveLength(2);
@@ -98,7 +101,7 @@ describe("dashboard integration", () => {
   });
 
   it("queries single experiment summary by id", async () => {
-    const rows = await queryExperimentSummary(serviceClient, runningExpId);
+    const rows = await queryExperimentSummary(store, runningExpId);
 
     expect(rows).toHaveLength(2);
     expect(rows.every(r => r.experiment_id === runningExpId)).toBe(true);
@@ -106,7 +109,7 @@ describe("dashboard integration", () => {
   });
 
   it("filters by status", async () => {
-    const runningRows = await queryExperimentSummaries(serviceClient, { status: "running" });
+    const runningRows = await queryExperimentSummaries(store, { status: "running" });
     const hasRunning = runningRows.some(r => r.experiment_id === runningExpId);
     const hasConcluded = runningRows.some(r => r.experiment_id === concludedExpId);
 
@@ -115,7 +118,7 @@ describe("dashboard integration", () => {
   });
 
   it("filters by component_path", async () => {
-    const rows = await queryExperimentSummaries(serviceClient, {
+    const rows = await queryExperimentSummaries(store, {
       component_path: "test-dash/page",
     });
 
@@ -124,7 +127,7 @@ describe("dashboard integration", () => {
   });
 
   it("concluded experiment shows winning_variant", async () => {
-    const rows = await queryExperimentSummary(serviceClient, concludedExpId);
+    const rows = await queryExperimentSummary(store, concludedExpId);
 
     expect(rows.length).toBeGreaterThan(0);
     expect(rows[0].status).toBe("concluded");
