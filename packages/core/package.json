@@ -1,6 +1,6 @@
 {
   "name": "@factoredui/core",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Capture, factors, experiments, SDUI engine — pure TypeScript, no framework deps",
   "type": "module",
   "main": "./dist/index.cjs",

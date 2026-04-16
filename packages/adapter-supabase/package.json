@@ -1,6 +1,6 @@
 {
   "name": "@factoredui/adapter-supabase",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Supabase adapter for FactoredUI — persistence, migrations, CLI, edge functions",
   "type": "module",
   "main": "./dist/index.cjs",
