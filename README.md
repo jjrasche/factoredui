@@ -2,13 +2,47 @@
 
 Capture user interactions, compute standardized behavioral factors, run LLM-driven experiments, and render server-driven UI — all from Supabase.
 
-Three packages, one pipeline:
+Three npm packages, one pipeline — plus a Kotlin Multiplatform rendering engine:
 
 | Package | Purpose | Install |
 |---|---|---|
 | `@factoredui/core` | Capture pipeline, factors, experiments, SDUI engine, CLI | `npm i @factoredui/core` |
 | `@factoredui/react` | Provider, hooks, path context, SDUI renderer | `npm i @factoredui/react` |
 | `@factoredui/react-native` | 20 themed RN component primitives | `npm i @factoredui/react-native` |
+| `kotlin-compose` | KMP + Compose Multiplatform renderer (Android, iOS, Desktop, Wasm) | Gradle — see below |
+
+## Kotlin Multiplatform / Compose Multiplatform
+
+`packages/kotlin-compose/` is a Gradle subproject consumed directly by KMP apps.
+It is **not** an npm package — it is not installed via npm.
+
+```kotlin
+// settings.gradle.kts in your KMP app
+includeBuild("path/to/factored-ui/packages/kotlin-compose")
+
+// build.gradle.kts
+dependencies {
+    commonMainImplementation("ai.factoredui:kotlin-compose")
+}
+```
+
+**What it provides:**
+- `schema/` — `Spec`, `SpecNode`, `SpecValue` data classes matching the TypeScript JSON format exactly
+- `renderer/` — `RenderSpec()` / `RenderNode()` Composables handling 15 of 20 primitives
+- `observability/` — `Observability` interface (`onRender` / `onInteraction`) + `LoggingObservability` default
+- `experiments/` — `Experiments` interface (`assignVariant` / `logExposure`) + `InMemoryExperiments` for tests
+- `adapter/` — `SpecAdapter` interface for the remote/cache/baseline spec loading contract
+
+**Targets:** Android, iOS (arm64/x64/simulatorArm64), JVM Desktop, Wasm (browser)
+
+**Build:**
+```bash
+cd packages/kotlin-compose
+./gradlew assemble     # build all targets
+./gradlew allTests     # run schema + binding + observability tests
+```
+
+See [`packages/kotlin-compose/README.md`](packages/kotlin-compose/README.md) for full usage docs.
 
 ## Quick Start
 
