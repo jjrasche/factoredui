@@ -1,6 +1,6 @@
 {
   "name": "@factoredui/kotlin-compose",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Kotlin Multiplatform + Compose Multiplatform rendering engine for FactoredUI SDUI specs. Not an npm package — consumed directly via Gradle.",
   "private": true,
   "keywords": [

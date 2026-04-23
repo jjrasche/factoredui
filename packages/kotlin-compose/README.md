@@ -83,7 +83,7 @@ fun AppShell(spec: Spec, context: RenderContext) {
 }
 ```
 
-## Schema nodes ported (Milestone 1)
+## Schema nodes ported
 
 All 20 SpecNodeType values are declared in the schema. The renderer handles:
 
@@ -93,18 +93,18 @@ All 20 SpecNodeType values are declared in the schema. The renderer handles:
 | `row` | `Row` with padding/gap |
 | `stack` | `Box` |
 | `scrollview` | `Column` + `verticalScroll` |
-| `grid` | Chunked rows (LazyVerticalGrid in Milestone 2) |
+| `grid` | Chunked rows (LazyVerticalGrid in a later milestone) |
 | `text` | `Text` with variant → MaterialTheme.typography mapping |
 | `button` | `Button` / `OutlinedButton` / `TextButton` per variant |
-| `image` | Placeholder Box (Coil wiring in Milestone 2) |
-| `icon` | Text placeholder (icon font wiring in Milestone 2) |
+| `image` | `AsyncImage` via Coil 3 KMP — URL loading, content scale, rounded corners |
+| `icon` | Text placeholder (icon font wiring in a later milestone) |
 | `divider` | `Divider` |
 | `spacer` | `Spacer` |
 | `list` | `LazyColumn` with per-item context injection |
 | `card` | `Card` |
-| `textinput` | `OutlinedTextField` stub (state hoisting in Milestone 2) |
+| `textinput` | `OutlinedTextField` with two-way binding — typed text flows to `RenderContext` |
 | `chip` | `FilterChip` |
-| `tabs`, `modal`, `toggle`, `select`, `slider` | Stub Box — Milestone 2 |
+| `tabs`, `modal`, `toggle`, `select`, `slider` | Stub Box — not yet implemented |
 
 ## Observability
 
@@ -134,12 +134,69 @@ InMemoryExperiments(mapOf("slot-id" to "treatment"))
 // Production: implement Experiments interface backed by PostHog / Supabase flags
 ```
 
-## Milestone 2 scope
+## Two-way bindings
 
-- Real image loading via expect/actual (Coil on Android, SDWebImage wrapper on iOS)
+The `textinput` primitive uses the binding path on its `value` prop to write typed
+text back into `RenderContext`:
+
+```json
+{ "type": "textinput", "props": { "value": "{shell.composeText}", "placeholder": "Type..." } }
+```
+
+As the user types, `context.setBinding("shell.composeText", typedText)` is called and
+the `dataFlow` emits; any node reading `{shell.composeText}` recomposes. Action
+handlers (`sendSms`, etc.) read the current value from `context.data["shell"]["composeText"]`.
+
+## Version 0.2.0 — what's new
+
+- **textinput** writes back to bindings (state hoisting done in commonMain).
+- **image** renders real URLs via Coil 3 KMP. Platform-agnostic — no expect/actual,
+  no per-target forks. Works on Android, iOS, JVM Desktop, and Wasm from `commonMain`.
+- `RenderContext.data` became reactive (`StateFlow`); `setBinding(path, value)` mutates
+  the reactive store and triggers recomposition.
+- Gradle `group`/`version` set; `publishToMavenLocal` now works out-of-the-box
+  (see "Consume from an Android app" below).
+
+## Remaining milestone scope
+
 - `LazyVerticalGrid` for grid nodes
 - Full `TABS`, `MODAL`, `TOGGLE`, `SELECT`, `SLIDER` implementations
 - Supabase `SpecAdapter` implementation for remote spec loading
 - OpenTelemetry `Observability` implementation
-- `TextInput` state hoisting pattern
 - Compose UI semantics tests with `createComposeRule()`
+
+## Consume from an Android app
+
+Artifacts are published to a **public static Maven repo on GitHub Pages** at
+`https://jjrasche.github.io/factoredui/`. No auth required.
+
+Push a tag named `kotlin-compose-v<version>` (e.g. `kotlin-compose-v0.2.0`)
+and CI ([.github/workflows/kotlin-compose-publish.yml](../../.github/workflows/kotlin-compose-publish.yml))
+builds artifacts, then commits them to the `gh-pages` branch which GitHub
+serves over HTTPS.
+
+In your consumer `settings.gradle.kts`:
+
+```kotlin
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://jjrasche.github.io/factoredui/")
+    }
+}
+```
+
+In your consumer `app/build.gradle.kts`:
+
+```kotlin
+dependencies {
+    implementation("ai.factoredui:kotlin-compose-android:0.2.0")
+}
+```
+
+That's the whole integration — no PAT, no credentials, no `.m2` tweaks.
+
+**One-time repo setup**: after the first CI run creates the `gh-pages` branch,
+enable GitHub Pages in the repo settings (Settings → Pages → Source: "Deploy
+from a branch", Branch: `gh-pages`, Folder: `/`).

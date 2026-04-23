@@ -1,14 +1,17 @@
 package ai.factoredui.compose.renderer
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -23,10 +26,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
@@ -36,6 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import ai.factoredui.compose.schema.BindingResolver
+import ai.factoredui.compose.schema.ImageFit
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
@@ -47,7 +54,9 @@ import ai.factoredui.compose.schema.asLayoutProps
 import ai.factoredui.compose.schema.asListProps
 import ai.factoredui.compose.schema.asSpacerProps
 import ai.factoredui.compose.schema.asTextProps
+import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.ButtonVariant
+import coil3.compose.AsyncImage
 
 /**
  * Top-level spec renderer entry point.
@@ -69,7 +78,9 @@ fun RenderSpec(root: SpecNode, context: RenderContext) {
  */
 @Composable
 fun RenderNode(node: SpecNode, context: RenderContext) {
-    val isVisible = BindingResolver.isVisible(node.visible, context.data)
+    // Subscribe to reactive data so binding updates drive recomposition
+    val liveData by context.dataFlow.collectAsState()
+    val isVisible = BindingResolver.isVisible(node.visible, liveData)
     if (!isVisible) return
 
     // Fire render observability hook — mirrors the path-context wrapping in the React renderer
@@ -77,8 +88,8 @@ fun RenderNode(node: SpecNode, context: RenderContext) {
         context.observability.onRender(node.id)
     }
 
-    val resolvedProps = remember(node.props, context.data) {
-        BindingResolver.resolveProps(node.props, context.data)
+    val resolvedProps = remember(node.props, liveData) {
+        BindingResolver.resolveProps(node.props, liveData)
     }
 
     RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context)
@@ -184,7 +195,8 @@ private fun RenderCard(node: SpecNode, context: RenderContext) {
 @Composable
 private fun RenderList(node: SpecNode, context: RenderContext) {
     val props = node.props.asListProps()
-    val rawData = context.data[props.data]
+    val liveData by context.dataFlow.collectAsState()
+    val rawData = liveData[props.data]
     val items = when (rawData) {
         is List<*> -> rawData.filterNotNull()
         else -> emptyList<Any>()
@@ -198,10 +210,8 @@ private fun RenderList(node: SpecNode, context: RenderContext) {
     LazyColumn {
         items(items) { item ->
             val itemTemplate = props.itemTemplate ?: return@items
-            // Merge item data into context so bindings within the template can reach it
-            val itemContext = context.copy(
-                data = context.data + mapOf("item" to item),
-            )
+            // Inject per-item overlay so bindings within the template can reach "item.x"
+            val itemContext = context.withAdditionalData(mapOf("item" to item))
             RenderNode(node = itemTemplate, context = itemContext)
         }
     }
@@ -278,14 +288,36 @@ private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, conte
 
 @Composable
 private fun RenderImage(node: SpecNode, resolvedProps: Map<String, Any?>) {
-    // Image loading requires a platform-specific loader (Coil, etc.).
-    // Stub with a placeholder Box — replace in Milestone 2 with expect/actual.
-    val alt = (resolvedProps["alt"] as? String) ?: ""
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp)
-            .semantics { contentDescription = alt.ifEmpty { node.id } },
+    val props = node.props.asImageProps()
+    val source = (resolvedProps["source"] as? String) ?: props.source
+    val alt = (resolvedProps["alt"] as? String) ?: props.alt
+    val cornerRadius = (resolvedProps["cornerRadius"] as? Double)?.toInt() ?: 0
+
+    val contentScale = when (props.fit) {
+        ImageFit.COVER -> ContentScale.Crop
+        ImageFit.CONTAIN -> ContentScale.Fit
+        ImageFit.FILL -> ContentScale.FillBounds
+    }
+
+    val shape = RoundedCornerShape(cornerRadius.dp)
+    val fallbackTint = MaterialTheme.colorScheme.surfaceVariant
+
+    val baseModifier = Modifier
+        .fillMaxWidth()
+        .let { mod -> if (props.aspectRatio != null) mod.aspectRatio(props.aspectRatio) else mod.height(200.dp) }
+        .clip(shape)
+        .semantics { contentDescription = alt.ifEmpty { node.id } }
+
+    if (source.isEmpty()) {
+        Box(modifier = baseModifier.then(Modifier.background(fallbackTint)))
+        return
+    }
+
+    AsyncImage(
+        model = source,
+        contentDescription = alt.ifEmpty { node.id },
+        contentScale = contentScale,
+        modifier = baseModifier.then(Modifier.background(fallbackTint)),
     )
 }
 
@@ -321,11 +353,23 @@ private fun RenderTextInput(
     context: RenderContext,
 ) {
     val placeholder = (resolvedProps["placeholder"] as? String) ?: ""
-    // Full stateful TextInput deferred to Milestone 2 (needs host state hoisting)
+    val multiline = (resolvedProps["multiline"] as? Boolean) ?: false
+    val maxLength = (resolvedProps["maxLength"] as? Double)?.toInt()
+
+    // The `value` prop is typically a binding ref like "{shell.composeText}".
+    // We read the raw (unresolved) prop to extract the binding path for write-back,
+    // and the resolved value for the current display text.
+    val writePath = node.props["value"]?.bindingPath()
+    val currentValue = (resolvedProps["value"] as? String) ?: ""
+
     androidx.compose.material3.OutlinedTextField(
-        value = "",
-        onValueChange = {},
+        value = currentValue,
+        onValueChange = { next ->
+            val capped = if (maxLength != null && next.length > maxLength) next.take(maxLength) else next
+            writePath?.let { context.setBinding(it, capped) }
+        },
         placeholder = { Text(placeholder) },
+        singleLine = !multiline,
         modifier = Modifier
             .fillMaxWidth()
             .semantics { contentDescription = node.id },
