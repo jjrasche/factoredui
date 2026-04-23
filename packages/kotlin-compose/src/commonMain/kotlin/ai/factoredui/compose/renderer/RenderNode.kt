@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import ai.factoredui.compose.schema.BindingResolver
 import ai.factoredui.compose.schema.ImageFit
+// BindingResolver used to support {ref} in list `data` prop (nested lists).
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
@@ -196,7 +197,14 @@ private fun RenderCard(node: SpecNode, context: RenderContext) {
 private fun RenderList(node: SpecNode, context: RenderContext) {
     val props = node.props.asListProps()
     val liveData by context.dataFlow.collectAsState()
-    val rawData = liveData[props.data]
+    // `data` may be a plain key ("threads") for top-level binding OR a binding
+    // ref ("{item.branches}") so nested lists can iterate over a field of the
+    // enclosing item's overlay.
+    val rawData = when {
+        props.data.isEmpty() -> null
+        BindingResolver.isBindingRef(props.data) -> BindingResolver.resolveBinding(props.data, liveData)
+        else -> liveData[props.data]
+    }
     val items = when (rawData) {
         is List<*> -> rawData.filterNotNull()
         else -> emptyList<Any>()

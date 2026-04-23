@@ -123,7 +123,12 @@ private class DerivedStateFlow(
 
 /**
  * Dispatch a named action from a spec node.
- * Logs the interaction through observability before invoking the handler.
+ *
+ * Resolves every action param against the current data snapshot before
+ * invoking the handler, so params like `{"phone": "{item.phone}"}` arrive
+ * as plain Kotlin primitives (String, Double, Boolean, null, Map, List).
+ * Host code should cast to its expected type — no SpecValue unwrapping
+ * needed at the handler site.
  */
 suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
     observability.onInteraction(nodeId, actionRef)
@@ -132,6 +137,7 @@ suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
         println("[factoredui] unknown action '${actionRef.action}' on node '$nodeId'")
         return
     }
-    val resolvedParams = actionRef.params.mapValues { it.value }
+    val resolvedParams = ai.factoredui.compose.schema.BindingResolver
+        .resolveProps(actionRef.params, data)
     handler(resolvedParams)
 }

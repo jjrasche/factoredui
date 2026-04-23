@@ -147,7 +147,17 @@ As the user types, `context.setBinding("shell.composeText", typedText)` is calle
 the `dataFlow` emits; any node reading `{shell.composeText}` recomposes. Action
 handlers (`sendSms`, etc.) read the current value from `context.data["shell"]["composeText"]`.
 
-## Version 0.2.0 — what's new
+## Version 0.2.1 — what's new
+
+- **Action params now resolve bindings before dispatch.** A spec like
+  `{"action": "reply", "params": {"phone": "{item.phone}"}}` arrives at the
+  handler as `{"phone": "+15551234567"}` — a plain `String`, not a raw
+  `SpecValue.StringValue("{item.phone}")`. Host code can cast directly.
+- **`list` `data` prop accepts binding refs.** Use `"data": "threads"` for a
+  top-level key, or `"data": "{item.branches}"` inside a nested list
+  template to iterate a field of the enclosing item.
+
+## Version 0.2.0
 
 - **textinput** writes back to bindings (state hoisting done in commonMain).
 - **image** renders real URLs via Coil 3 KMP. Platform-agnostic — no expect/actual,
@@ -191,7 +201,7 @@ In your consumer `app/build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("ai.factoredui:kotlin-compose-android:0.2.0")
+    implementation("ai.factoredui:kotlin-compose-android:0.2.1")
 }
 ```
 
