@@ -41,8 +41,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import ai.factoredui.compose.forcegraph.RenderForceGraph
 import ai.factoredui.compose.schema.BindingResolver
 import ai.factoredui.compose.schema.ImageFit
+import ai.factoredui.compose.schema.asForceGraphProps
 // BindingResolver used to support {ref} in list `data` prop (nested lists).
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
@@ -122,6 +124,7 @@ private fun RenderNodeByType(
         SpecNodeType.CARD -> RenderCard(node, context)
         SpecNodeType.TEXTINPUT -> RenderTextInput(node, resolvedProps, context)
         SpecNodeType.CHIP -> RenderChip(node, resolvedProps, context)
+        SpecNodeType.FORCE_GRAPH -> RenderForceGraph(node.props.asForceGraphProps())
         // TABS, MODAL, TOGGLE, SELECT, SLIDER — stubs; extend in Milestone 2
         SpecNodeType.TABS,
         SpecNodeType.MODAL,

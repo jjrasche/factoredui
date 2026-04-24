@@ -197,3 +197,34 @@ fun Map<String, SpecValue>.asGridProps(): GridProps = GridProps(
     columns = int("columns") ?: 2,
     gap = int("gap") ?: 0,
 )
+
+// --- ForceGraphProps ---
+// First "dense/semantic" primitive. See ForceGraphProps in spec-types.ts
+// for the full contract (topology URL, optional event stream, physics).
+
+data class ForceGraphProps(
+    val topologyUrl: String,
+    val eventStreamUrl: String? = null,
+    val physics: ForceGraphPhysics = ForceGraphPhysics(),
+)
+
+data class ForceGraphPhysics(
+    val repulsion: Double = 100.0,
+    val attraction: Double = 0.05,
+    val damping: Double = 0.9,
+    val domainAnchoring: Boolean = true,
+)
+
+fun Map<String, SpecValue>.asForceGraphProps(): ForceGraphProps {
+    val physicsMap = (get("physics") as? SpecValue.ObjectValue)?.value ?: emptyMap()
+    return ForceGraphProps(
+        topologyUrl = string("topology_url") ?: "",
+        eventStreamUrl = string("event_stream_url"),
+        physics = ForceGraphPhysics(
+            repulsion = physicsMap.double("repulsion") ?: 100.0,
+            attraction = physicsMap.double("attraction") ?: 0.05,
+            damping = physicsMap.double("damping") ?: 0.9,
+            domainAnchoring = physicsMap.boolean("domain_anchoring") ?: true,
+        ),
+    )
+}

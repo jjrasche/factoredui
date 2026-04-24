@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = "0.2.1"
+version = "0.3.0"
 
 kotlin {
     androidTarget {
@@ -60,6 +60,10 @@ kotlin {
                 implementation(compose.ui)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.coroutines.core)
+                // kotlinx-datetime: used by the forcegraph primitive for
+                // monotonic-ish wall clocks driving firing pulses + particle
+                // animations. Common across all targets.
+                implementation(libs.kotlinx.datetime)
                 // Coil 3 is KMP-native — no expect/actual needed. Supports
                 // Android, iOS, JVM Desktop, Wasm from commonMain.
                 implementation(libs.coil.compose)

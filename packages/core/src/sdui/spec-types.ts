@@ -42,7 +42,8 @@ export type SpecNodeType =
   | "list"
   | "tabs"
   | "modal"
-  | "chip";
+  | "chip"
+  | "forcegraph";
 
 export interface SpecNode {
   id: string;
@@ -217,6 +218,44 @@ export interface DividerProps {
 export interface SpacerProps {
   size?: number;
   flex?: number;
+}
+
+// --- ForceGraph props ---
+// First "dense/semantic" primitive: a force-directed graph of typed
+// nodes (with domain-grouping) connected by typed edges, with an
+// optional live event stream overlaying firing highlights + moving
+// particles. Used for signal-graph, memory-topology, and any view
+// where the shape is "nodes + edges with physics."
+//
+// Unlike container primitives (column/row/list), this takes data
+// URLs rather than child nodes. The renderer fetches + subscribes.
+
+export interface ForceGraphProps {
+  /**
+   * URL to fetch the current topology from. Expected response shape:
+   *   { nodes: [{ id, group?, label? }], edges: [{ from, to, kind? }] }
+   */
+  topology_url: string;
+
+  /**
+   * Optional SSE endpoint. Each event's `payload` drives overlays:
+   *   - { type: "firing_started",   payload: { function } }  → pulse node
+   *   - { type: "firing_completed", payload: { function } }  → fade pulse
+   *   - { type: "signal_emitted",   payload: { producer, consumers[], kind } }
+   *       → spawn a particle from producer to each consumer
+   */
+  event_stream_url?: string;
+
+  physics?: {
+    /** Node–node repulsion strength. Higher = more spread. Default 100. */
+    repulsion?: number;
+    /** Edge contraction strength. Higher = tighter graph. Default 0.05. */
+    attraction?: number;
+    /** Velocity damping per step. 0..1. Default 0.9. */
+    damping?: number;
+    /** Anchor nodes toward a center per domain/group. Default true. */
+    domain_anchoring?: boolean;
+  };
 }
 
 // --- Data source contract (implemented by the host app) ---

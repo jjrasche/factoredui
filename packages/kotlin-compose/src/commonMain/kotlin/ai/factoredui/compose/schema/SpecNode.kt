@@ -53,6 +53,7 @@ enum class SpecNodeType {
     @SerialName("tabs") TABS,
     @SerialName("modal") MODAL,
     @SerialName("chip") CHIP,
+    @SerialName("forcegraph") FORCE_GRAPH,
 }
 
 /**
