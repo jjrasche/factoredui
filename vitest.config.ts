@@ -1,49 +1,31 @@
 import { defineConfig } from "vitest/config";
 import * as path from "path";
 
+const coreAlias = {
+  "@factoredui/core": path.resolve(__dirname, "packages/core/src/index.ts"),
+};
+
 export default defineConfig({
-  resolve: {
-    alias: {
-      "@factoredui/core": path.resolve(__dirname, "packages/core/src/index.ts"),
-      "@factoredui/adapter-supabase": path.resolve(__dirname, "packages/adapter-supabase/src/index.ts"),
-      "@factoredui/react": path.resolve(__dirname, "packages/react/src/index.ts"),
-      "@factoredui/react-native": path.resolve(__dirname, "packages/react-native/src/index.ts"),
-    },
-  },
+  resolve: { alias: coreAlias },
   test: {
     globals: true,
     projects: [
       {
-        resolve: {
-          alias: {
-            "@factoredui/core": path.resolve(__dirname, "packages/core/src/index.ts"),
-            "@factoredui/adapter-supabase": path.resolve(__dirname, "packages/adapter-supabase/src/index.ts"),
-            "@factoredui/react": path.resolve(__dirname, "packages/react/src/index.ts"),
-            "@factoredui/react-native": path.resolve(__dirname, "packages/react-native/src/index.ts"),
-            "react-native": path.resolve(__dirname, "packages/react-native/src/__mocks__/react-native.ts"),
-          },
-        },
+        resolve: { alias: coreAlias },
         test: {
           name: "unit",
-          environment: "jsdom",
-          include: ["packages/*/src/**/*.test.ts", "packages/*/src/**/*.test.tsx"],
+          environment: "node",
+          include: ["packages/*/src/**/*.test.ts"],
           exclude: ["packages/*/src/**/*.integration.test.ts"],
           fileParallelism: true,
         },
       },
       {
-        resolve: {
-          alias: {
-            "@factoredui/core": path.resolve(__dirname, "packages/core/src/index.ts"),
-            "@factoredui/adapter-supabase": path.resolve(__dirname, "packages/adapter-supabase/src/index.ts"),
-            "@factoredui/react": path.resolve(__dirname, "packages/react/src/index.ts"),
-            "@factoredui/react-native": path.resolve(__dirname, "packages/react-native/src/index.ts"),
-          },
-        },
+        resolve: { alias: coreAlias },
         test: {
           name: "integration",
-          environment: "jsdom",
-          include: ["packages/*/src/**/*.integration.test.ts", "packages/*/src/**/*.integration.test.tsx"],
+          environment: "node",
+          include: ["packages/*/src/**/*.integration.test.ts"],
           fileParallelism: false,
         },
       },

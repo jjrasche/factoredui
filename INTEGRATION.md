@@ -1,256 +1,56 @@
-# Factored UI Integration Guide
+# FactoredUI Integration Guide
 
-All Factored UI apps are cross-platform. One codebase, one import, renders on iOS, Android, and web via React Native + Expo.
+> **Status**: 2026-04-24 — the old TS/React/RN integration story was removed. This guide is a placeholder until the Kotlin-Compose consumer story is written down fully. For now, integration is straightforward KMP Gradle + published maven artifact.
 
-```bash
-npm install @factoredui/react @factoredui/core @supabase/supabase-js
-```
+## Add the dependency
 
-Everything comes from one import:
-
-```tsx
-import { Provider, createComponentRegistry, renderSpec, useSourceData, ... } from '@factoredui/react'
-```
-
-## What Your App Provides
-
-Factored UI handles capture, factors, experiments, governance, rendering, spec loading, and storage. Your app provides three things:
-
-**1. Theme tokens** (how it looks)
-```tsx
-import { createComponentRegistry, type ThemeTokens } from '@factoredui/core'
-
-const theme: ThemeTokens = {
-  colors: {
-    background: '#ffffff', foreground: '#0a0a0a', card: '#ffffff',
-    primary: '#171717', primaryForeground: '#fafafa',
-    secondary: '#f5f5f5', secondaryForeground: '#171717',
-    mutedForeground: '#737373',
-    destructive: '#ef4444', destructiveForeground: '#fafafa',
-    border: '#e5e5e5', input: '#e5e5e5',
-  },
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24 },
-  fontSize: { xs: 12, sm: 14, base: 16, lg: 18 },
-  radius: { sm: 6, md: 8, lg: 12, full: 9999 },
+```kotlin
+// settings.gradle.kts (consuming app)
+dependencyResolutionManagement {
+    repositories {
+        maven("https://jjrasche.github.io/factoredui/")
+    }
 }
 
-export const componentRegistry = createComponentRegistry(theme)
-```
-
-**2. Action handlers** (what the buttons do)
-```tsx
-import type { ActionRegistry } from '@factoredui/core'
-
-export const actions: ActionRegistry = {
-  submit: async (params) => { /* your domain logic */ },
-  confirm: async () => { /* execute pending work */ },
-  navigate: async (params) => { router.push(params.route as string) },
+// build.gradle.kts (consuming app)
+kotlin {
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation("ai.factoredui:kotlin-compose:<latest>")
+            }
+        }
+    }
 }
 ```
 
-**3. Data source queries** (where the data comes from)
-```tsx
-import type { DataSourceRegistry } from '@factoredui/core'
+Or, during local development, `includeBuild("path/to/factored-ui/packages/kotlin-compose")` in the consumer's `settings.gradle.kts` and depend on `ai.factoredui:kotlin-compose` — Gradle substitutes the local project transparently.
 
-export function buildSourceRegistry(): DataSourceRegistry {
-  return {
-    items: {
-      fetch: async () => {
-        const { data } = await supabase.from('items').select('*')
-        return data ?? []
-      },
-      cache: 'local',
-    },
-  }
+## Render a spec
+
+```kotlin
+import ai.factoredui.compose.renderer.RenderSpec
+import ai.factoredui.compose.renderer.RenderContext
+import ai.factoredui.compose.schema.Spec
+
+@Composable
+fun MyApp(spec: Spec, context: RenderContext) {
+    RenderSpec(root = spec.root, context = context)
 }
 ```
 
----
+`RenderContext` bundles the live data flow (for `{binding.ref}` resolution), the action dispatcher, and an observability hook. Consumers construct it once at boot.
 
-## Setup
+## Targets supported
 
-### Provider
+Android · iOS (x64, arm64, simulator-arm64) · JVM desktop · WASM browser.
 
-Wrap your root in `Provider` with a `CaptureAdapter`:
+The WASM browser target is what agent-platform serves from `adapter:sdui:web` — a static bundle scp'd to the VPS. Native apps link the renderer at build time.
 
-```tsx
-import { Provider } from '@factoredui/react'
+## What's not here yet
 
-export default function Layout() {
-  return (
-    <Provider supabase={supabase} adapter={adapter} platform="android">
-      <Slot />
-    </Provider>
-  )
-}
-```
+- Action dispatch recipe (ActionRegistry patterns)
+- Observability hook wiring (for agent-platform signal emissions)
+- Capture/factor/experiment pipeline (see CLAUDE.md — deferred to a Kotlin port)
 
-`platform` accepts `"ios"`, `"android"`, or `"web"`. Expo handles web via `react-native-web`.
-
-### CaptureAdapter
-
-Your adapter implements platform-specific capture:
-
-```ts
-import type { CaptureAdapter } from '@factoredui/core'
-```
-
-| Method                   | Purpose                              |
-|--------------------------|--------------------------------------|
-| `startListening(onEvent)`| Capture JS errors, app state changes |
-| `stopListening()`        | Tear down listeners                  |
-| `collectSessionMetadata()` | Device info, screen size, app version |
-| `storeSessionId(id)`     | Persist session ID (AsyncStorage)    |
-| `loadSessionId()`        | Restore session ID                   |
-| `clearSessionId()`       | Clear on logout                      |
-| `registerUnloadHandler(fn)` | Flush on background/inactive      |
-
-### Path Context
-
-Wrap screens and components for structured event paths:
-
-```tsx
-import { Flow, Page, Component } from '@factoredui/react'
-
-<Flow name="my-app">
-  <Page name="dashboard">
-    <Component name="chart">
-      <MyChart />
-    </Component>
-  </Page>
-</Flow>
-```
-
-### Hooks
-
-```tsx
-import { useFlag, useFactors, useGovernanceLog, useExperimentDashboard } from '@factoredui/react'
-
-const { variantKey, config, isLoading } = useFlag('onboarding-v2')
-const { factors } = useFactors('my-app/dashboard/chart')
-const { log } = useGovernanceLog(experimentId)
-const { summaries } = useExperimentDashboard({ status: 'running' })
-```
-
----
-
-## SDUI
-
-The app is a shell. All UI comes from JSON specs.
-
-### Storage
-
-```tsx
-import { createSpecStorage, createDataSourceCache, type KVStorage } from '@factoredui/core'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-
-const kv: KVStorage = {
-  getItem: (key) => AsyncStorage.getItem(key),
-  setItem: (key, value) => AsyncStorage.setItem(key, value),
-  removeItem: (key) => AsyncStorage.removeItem(key),
-}
-
-export const specStorage = createSpecStorage(kv)
-export const dataSourceCache = createDataSourceCache(kv)
-```
-
-### Signature Verification
-
-```tsx
-import { devSignatureVerifier } from '@factoredui/core'  // dev only — always passes
-```
-
-For production, implement Ed25519 via the `SignatureVerifier` interface.
-
-### Spec Loading
-
-Fallback chain: remote (Supabase) > active (local storage) > baseline (bundled):
-
-```tsx
-import { loadSpec } from '@factoredui/core'
-
-const { spec, source } = await loadSpec(supabase, 'android', baselineSpec, specStorage, verifier)
-```
-
-### Rendering
-
-```tsx
-import { renderSpec, useSourceData, type RenderContext } from '@factoredui/react'
-
-const { sourceData, sourcesLoaded } = useSourceData(buildSourceRegistry, dataSourceCache)
-
-const context: RenderContext = {
-  components: componentRegistry,
-  actions,
-  data: { ...sourceData, shell: { isProcessing, inputText } },
-}
-
-return <View style={{ flex: 1 }}>{renderSpec(spec.root, context)}</View>
-```
-
-### Data Binding
-
-Specs reference data via `{path.to.value}`:
-
-```json
-{
-  "id": "status",
-  "type": "text",
-  "props": { "value": "{shell.inputText}", "variant": "body" },
-  "visible": "{shell.hasResult}"
-}
-```
-
-No expressions, no arithmetic, no conditionals beyond boolean visibility.
-
----
-
-## Spec Format
-
-```json
-{
-  "spec_version": 1,
-  "renderer_min": 1,
-  "root": { "id": "root", "type": "column", "props": { "padding": 16 }, "children": [] }
-}
-```
-
-| Field      | Required | Description                                |
-|------------|----------|--------------------------------------------|
-| `id`       | yes      | Unique identifier (React key + factoredui path)  |
-| `type`     | yes      | One of 20 primitives                       |
-| `props`    | no       | Component props, may contain binding refs  |
-| `children` | no       | Nested spec nodes                          |
-| `visible`  | no       | Binding ref, renders only when truthy      |
-| `action`   | no       | `{ "action": "name", "params": { ... } }` |
-
-The 20 primitives: `column`, `row`, `stack`, `scrollview`, `grid`, `text`, `image`, `icon`, `divider`, `spacer`, `textinput`, `button`, `toggle`, `select`, `slider`, `card`, `list`, `tabs`, `modal`, `chip`.
-
----
-
-## Minimal Shell
-
-```tsx
-import { View } from 'react-native'
-import { createComponentRegistry, renderSpec, useSourceData, type RenderContext } from '@factoredui/react'
-import { theme } from './theme'
-import { actions } from './actions'
-import { buildSourceRegistry } from './sources'
-import { dataSourceCache } from './storage'
-import baselineSpec from '../assets/baseline-spec.json'
-
-const componentRegistry = createComponentRegistry(theme)
-
-export default function ShellScreen() {
-  const { sourceData, sourcesLoaded } = useSourceData(buildSourceRegistry, dataSourceCache)
-  if (!sourcesLoaded) return null
-
-  const context: RenderContext = {
-    components: componentRegistry,
-    actions,
-    data: sourceData,
-  }
-
-  return <View style={{ flex: 1 }}>{renderSpec(baselineSpec.root, context)}</View>
-}
-```
+Those land as agent-platform exercises them and we learn the shape. This document grows with that work.

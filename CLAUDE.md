@@ -1,48 +1,62 @@
 # factoredui
 
-Factored UI. Three npm packages that capture user interactions, compute standardized behavioral factors, enable LLM-driven experimentation, and support democratic governance of app changes.
+The rendering half of agent-platform. Kotlin Multiplatform + Compose Multiplatform renderer for declarative UI specs. Targets Android, iOS (3 arches), JVM desktop, and browser (wasmJs). Published to Maven at `https://jjrasche.github.io/factoredui/`.
 
 ## Stack
-- Language: TypeScript (npm workspaces monorepo)
-- Packages: `@factoredui/core` (pure TS), `@factoredui/react` (React bindings), `@factoredui/react-native` (RN primitives)
-- Database: Supabase (Postgres with RLS, separate `factoredui` schema)
-- Factor engine: SQL materialized views
-- Flags/experiments: Client-side evaluation from Supabase-stored config
+
+- Language: Kotlin Multiplatform (KMP) + Compose Multiplatform
+- Build: Gradle (`packages/kotlin-compose/`)
+- Schema: declarative SDUI specs — a closed enum of primitives + typed props + `{binding.refs}` against a reactive data flow
+- Publish: gradle `publish` → local maven repo → deployed to gh-pages (`https://jjrasche.github.io/factoredui/`)
+
+## Packages (post-2026-04-24 cleanup)
+
+- `packages/kotlin-compose/` — **the live renderer.** All rendering work happens here.
+- `packages/core/` — TypeScript. Contains `src/sdui/spec-types.ts` (canonical spec schema source of truth, mirrored into Kotlin `SpecNode.kt`) plus capture/factor/experiment pipelines. Pipeline code is **deferred for a Kotlin port**, not actively used by any current consumer. See agent-platform's memory for the "AI-proactive UI improvement" thesis that motivates it.
+
+## What was deleted on 2026-04-24
+
+- `packages/react/` — React renderer (replaced by kotlin-compose WASM).
+- `packages/react-native/` — RN primitives (replaced by kotlin-compose Android/iOS).
+- `packages/adapter-supabase/` — Supabase-specific storage adapter (agent-platform uses SQLite; not relevant to the rendering role).
 
 ## Commands
+
 ```bash
-npm run build        # tsup: core → react → react-native (sequential, DTS depends on prior)
-npm test             # vitest run (unit + integration)
-npm run test:unit    # unit tests only
-npm run typecheck    # tsc --noEmit (root tsconfig with paths)
-npx supabase start   # local Supabase (required for integration tests)
+# Kotlin (the primary work)
+cd packages/kotlin-compose
+./gradlew build             # compile all targets
+./gradlew wasmJsBrowserDevelopmentExecutableDistribution   # browser bundle
+./gradlew publish           # publish to local maven repo
+
+# TS (spec-types + dormant pipeline)
+npm run build               # tsup: core
+npm test                    # vitest run
+npm run typecheck
 ```
 
 ## Architecture
 
-### Packages
-- `packages/core/` -- capture pipeline, factors, experiments, SDUI engine, types
-- `packages/adapter-supabase/` -- FactoredStore implementation, CLI, migrations, edge functions, integration tests
-- `packages/react/` -- Provider, hooks, path context, SDUI renderer, useSourceData
-- `packages/react-native/` -- 20 themed RN component primitives (createComponentRegistry), RN capture adapter
+### Renderer dispatch (kotlin-compose)
 
-### Build Notes
-- Build order matters: core must build first (react/react-native DTS resolve `@factoredui/core` via node_modules symlinks → `dist/index.d.ts`)
-- Root `tsconfig.json` has `paths` for all three packages → use for typecheck
-- Package `tsconfig.json` files have NO `paths` → used by tsup DTS generation, must resolve through node_modules
+`SpecNodeType` is a closed enum in `src/commonMain/.../schema/SpecNode.kt`, mirrored exactly with the TS union in `packages/core/src/sdui/spec-types.ts`. `RenderNode.kt` has a single `when (node.type)` dispatch to a private composable per primitive. To add a primitive: update both enum sites + add a renderer branch.
 
-### Data Flow
-Capture adapters emit `CaptureEvent` → batched writer flushes to `factoredui.events` → SQL materialized views compute factors → experiment system reads factors for targeting and governance.
+### Primitive classes
 
-### Cross-Platform Contract
-`CaptureAdapter` interface defines what each platform must implement. `Flow/Page/Component/Element` context providers define the shared path hierarchy.
+- **Container primitives** — column, row, stack, scrollview, grid, list, card, tabs, modal.
+- **Widget leaves** — text, button, image, icon, divider, spacer, textinput, toggle, select, slider, chip.
+- **Dense/semantic primitives** — new category. `forcegraph` is the first. Takes typed data (topology) + physics config; runs its own simulation loop; no child components. Future members: timeline, heatmap, flow-field, scatterplot3d.
 
-## Global References
+### Spec schema
 
-Read these from `~/.claude/references/` when relevant:
-- `coding-standards.md` -- read before writing any code
-- `supabase-local-dev.md` -- migration workflow, env switching
+`Spec { spec_version, renderer_min, root: SpecNode }`. `SpecNode { id, type, props, children, visible, action }`. Props are polymorphic `SpecValue` (string / number / bool / null / nested-node / array / object). Binding refs are `"{path.to.value}"` strings, resolved at render time from a `StateFlow<Map<String, Any?>>`.
+
+### Actions
+
+`ActionRef { action, params }` dispatched through the host app's `ActionRegistry`. Client-side only; the host resolves the action to either a local effect or an API call to the back-end.
 
 ## Project-Specific Notes
-- CONCEPT.md -- full concept brief, design decisions, three audiences
-- RESEARCH.md -- landscape analysis, prior art, novelty assessment
+
+- CONCEPT.md — original design brief (TS-era, partially stale; will be updated post-refactor)
+- RESEARCH.md — landscape analysis, prior art
+- packages/kotlin-compose/README.md — detailed setup / publish / consumer integration

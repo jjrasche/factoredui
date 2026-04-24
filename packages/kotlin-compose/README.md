@@ -2,21 +2,20 @@
 
 Kotlin Multiplatform + Compose Multiplatform rendering engine for FactoredUI SDUI specs.
 
-This package is the Kotlin counterpart of `@factoredui/core` + `@factoredui/react`. It lets
-KMP apps (Android, iOS, JVM Desktop, Wasm) consume server-driven UI specs produced by the
-FactoredUI TypeScript pipeline without any JavaScript bridge.
+The sole renderer in FactoredUI as of 2026-04-24 (React / React-Native packages were deleted). Targets Android, iOS, JVM Desktop, and Wasm browsers from one commonMain source set.
 
-## How it maps to the JS packages
+## Modules
 
-| JS | Kotlin |
-|----|--------|
-| `@factoredui/core` `Spec` / `SpecNode` types | `schema/SpecNode.kt` — identical JSON shape |
-| `@factoredui/core` `binding.ts` | `schema/BindingResolver.kt` |
-| `@factoredui/core` `action-dispatch.ts` | `renderer/RenderContext.kt` `dispatch()` |
-| `@factoredui/react` `renderSpec()` | `renderer/RenderNode.kt` `RenderSpec()` |
-| `@factoredui/core` `CaptureAdapter` | `observability/Observability.kt` |
-| `@factoredui/core` `evaluateFlag()` | `experiments/Experiments.kt` |
-| `@factoredui/core` `loadSpec()` | `adapter/SpecAdapter.kt` |
+| File | Purpose |
+|---|---|
+| `schema/SpecNode.kt` | Spec / SpecNode / SpecValue data classes; canonical Kotlin-side Spec schema. Mirrored (for now) by `packages/core/src/sdui/spec-types.ts`. |
+| `schema/BindingResolver.kt` | Resolves `{path.to.value}` binding refs against a live data map. |
+| `schema/SpecProps.kt` | Typed prop readers per primitive (`asButtonProps`, `asForceGraphProps`, ...). |
+| `renderer/RenderNode.kt` | `RenderSpec(root, context)` entry point and the `when(type)` dispatch to per-primitive composables. |
+| `renderer/RenderContext.kt` | Bundles `dataFlow`, `actions`, `observability`, `experiments`. |
+| `observability/Observability.kt` | `onRender` / `onInteraction` hook interface (+ default `LoggingObservability`). |
+| `experiments/Experiments.kt` | `assignVariant` / `logExposure` interface (+ `InMemoryExperiments` for tests). |
+| `adapter/SpecAdapter.kt` | Remote/cache/baseline Spec loading contract. |
 
 ## Supported targets
 
