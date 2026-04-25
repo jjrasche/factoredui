@@ -209,7 +209,7 @@ fun RenderForceGraph(props: ForceGraphProps, modifier: Modifier = Modifier) {
         while (true) {
             delay(ReplayController.DEFAULT_STEP_INTERVAL_MS)
             val crossed = replay.advance()
-            crossed.forEach { fireOverlaysFor(it, highlights, particles, coroutineScope) }
+            crossed.forEach { fireOverlaysFor(it, highlights, particles, coroutineScope, localTopology) }
         }
     }
 
@@ -238,7 +238,7 @@ fun RenderForceGraph(props: ForceGraphProps, modifier: Modifier = Modifier) {
                 // from the playback ticker; SSE-driven overlays would
                 // double-fire and break the illusion.
                 if (replay.isLive.value) {
-                    fireOverlaysFor(event, highlights, particles, coroutineScope)
+                    fireOverlaysFor(event, highlights, particles, coroutineScope, localTopology)
                 }
             },
             onError = { /* swallow — subscription is best-effort, retry happens on next composition */ },
@@ -301,6 +301,7 @@ private fun fireOverlaysFor(
     highlights: FiringHighlights,
     particles: SignalParticles,
     scope: kotlinx.coroutines.CoroutineScope,
+    topology: FunctionGraphTopology,
 ) {
     when (event.type) {
         "firing_started", "firing_completed" -> {
@@ -311,8 +312,38 @@ private fun fireOverlaysFor(
             val from = event.producer ?: return
             val kind = event.kind ?: ""
             scope.launch {
+                // Resolve `producer` against the topology. Servers may
+                // pass either a function name (functions emitting from
+                // their handler) or a domain/daemon name (heartbeats,
+                // ad-hoc /signal POSTs). Match function names exactly;
+                // if none match, treat `from` as a domain and pulse
+                // every node in that group. Empty result = unattributable
+                // emission, just no-op.
+                val nodes = topology.nodes
+                val matchedByName = nodes.filter { it.name == from }
+                val resolved = if (matchedByName.isNotEmpty()) {
+                    matchedByName.map { it.name }
+                } else {
+                    nodes.filter { it.domainName == from }.map { it.name }
+                }
+                // Pulse the producer (or its domain peers) on every
+                // emission, regardless of whether anyone consumes the
+                // kind. Without this, a platform with mostly-no-consumer
+                // kinds (heartbeats, ad-hoc /signal POSTs) looks dead
+                // even when traffic is flowing — particles only animate
+                // edges, and there are no edges for unconsumed kinds.
+                resolved.forEach { highlights.mark(it) }
                 event.consumers.forEach { to ->
-                    particles.spawn(fromFunction = from, toFunction = to, kind = kind, durationMs = 700L)
+                    // Particles need both endpoints to exist as nodes —
+                    // the producer might be a domain that maps to many,
+                    // so spawn one particle per (resolved-from, to) pair.
+                    val particleFrom = resolved.firstOrNull() ?: from
+                    particles.spawn(
+                        fromFunction = particleFrom,
+                        toFunction = to,
+                        kind = kind,
+                        durationMs = 700L,
+                    )
                 }
             }
         }
