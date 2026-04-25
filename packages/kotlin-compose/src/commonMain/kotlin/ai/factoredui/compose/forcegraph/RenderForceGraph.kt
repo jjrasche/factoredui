@@ -56,6 +56,7 @@ import ai.factoredui.compose.forcegraph.replay.ReplayControlBar
 import ai.factoredui.compose.forcegraph.replay.ReplayController
 import ai.factoredui.compose.forcegraph.replay.ReplayEvent
 import ai.factoredui.compose.schema.ForceGraphProps
+import ai.factoredui.compose.testing.DomShadow
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
@@ -160,6 +161,51 @@ fun RenderForceGraph(props: ForceGraphProps, modifier: Modifier = Modifier) {
     var hoveredNode by remember { mutableStateOf<PositionedFunctionNode?>(null) }
     var hoverPos by remember { mutableStateOf(Offset.Zero) }
 
+    // Shadow DOM mirror so external tools (Playwright, Claude Code,
+    // future a11y consumers) can introspect what's painted on the canvas
+    // without coordinate-hunting. One emit per topology + per node + per
+    // edge — the canvas remains the source of pixels; this is purely
+    // structural metadata.
+    DisposableEffect(localTopology) {
+        DomShadow.emit(
+            id = "forcegraph",
+            role = "graph",
+            attrs = mapOf(
+                "node-count" to localTopology.nodes.size.toString(),
+                "edge-count" to localTopology.edges.size.toString(),
+                "topology-url" to props.topologyUrl,
+                "stream-url" to (props.eventStreamUrl ?: ""),
+                "history-url" to (props.historyUrl ?: ""),
+            ),
+        )
+        localTopology.nodes.forEach { node ->
+            DomShadow.emit(
+                id = "forcegraph:node:${node.name}",
+                role = "graph-node",
+                attrs = mapOf(
+                    "name" to node.name,
+                    "domain" to node.domainName,
+                ),
+            )
+        }
+        localTopology.edges.forEachIndexed { i, edge ->
+            DomShadow.emit(
+                id = "forcegraph:edge:$i",
+                role = "graph-edge",
+                attrs = mapOf(
+                    "from" to edge.fromFunction,
+                    "to" to edge.toFunction,
+                    "kind" to edge.signalKind,
+                ),
+            )
+        }
+        onDispose {
+            DomShadow.remove("forcegraph")
+            localTopology.nodes.forEach { DomShadow.remove("forcegraph:node:${it.name}") }
+            localTopology.edges.forEachIndexed { i, _ -> DomShadow.remove("forcegraph:edge:$i") }
+        }
+    }
+
     // Visible event list:
     //   live mode → everything in the merged buffer (history + tail)
     //   replay mode → slice up to and including the cursor
@@ -169,6 +215,34 @@ fun RenderForceGraph(props: ForceGraphProps, modifier: Modifier = Modifier) {
             val needle = filterText.trim().lowercase()
             if (needle.isEmpty()) raw else raw.filter { it.matches(needle) }
         }
+    }
+
+    // Live-state DOM-shadow mirrors. Update whenever the underlying state
+    // moves; re-emitting with the same id is upsert.
+    LaunchedEffect(filterText, visibleEvents.size, replayEvents.size, isLive, isPlaying, replayCursor, hoveredNode) {
+        DomShadow.emit(
+            id = "forcegraph:filter",
+            role = "filter-input",
+            attrs = mapOf("value" to filterText, "match-count" to visibleEvents.size.toString()),
+        )
+        DomShadow.emit(
+            id = "forcegraph:scrub",
+            role = "scrub-bar",
+            attrs = mapOf(
+                "cursor" to replayCursor.toString(),
+                "total" to replayEvents.size.toString(),
+                "live" to isLive.toString(),
+                "playing" to isPlaying.toString(),
+            ),
+        )
+        DomShadow.emit(
+            id = "forcegraph:hover",
+            role = "node-hover",
+            attrs = mapOf(
+                "name" to (hoveredNode?.name ?: ""),
+                "domain" to (hoveredNode?.domainName ?: ""),
+            ),
+        )
     }
 
     // Physics + sweep loop. Particles + highlights expire on wall-clock,
