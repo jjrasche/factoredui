@@ -51,6 +51,13 @@ fun ForceGraphView(
     activeFunctionNames: Set<String> = emptySet(),
     particles: List<SignalParticle> = emptyList(),
     nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
+    /**
+     * Fired on every pointer move with (hovered-node-or-null, cursor offset
+     * within the canvas). The parent can use this to render a tooltip,
+     * highlight the node externally, etc. Hit-testing uses a generous 2x
+     * radius so users don't have to be pixel-perfect.
+     */
+    onPointerHover: (PositionedFunctionNode?, Offset) -> Unit = { _, _ -> },
 ) {
     var snapshot by remember {
         mutableStateOf(FunctionGraphSnapshot(nodes = emptyList(), edges = emptyList(), domainAnchors = emptyMap()))
@@ -77,11 +84,40 @@ fun ForceGraphView(
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
-                        if (event.type == PointerEventType.Scroll) {
-                            val scrollDeltaY = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
-                            camera.zoom(-scrollDeltaY)
-                            cameraGeneration++
-                            event.changes.forEach { it.consume() }
+                        when (event.type) {
+                            PointerEventType.Scroll -> {
+                                val scrollDeltaY = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                camera.zoom(-scrollDeltaY)
+                                cameraGeneration++
+                                event.changes.forEach { it.consume() }
+                            }
+                            PointerEventType.Move -> {
+                                val pos = event.changes.firstOrNull()?.position ?: continue
+                                val width = size.width.toFloat()
+                                val height = size.height.toFloat()
+                                if (width <= 0f || height <= 0f) continue
+                                val view = camera.viewMatrix()
+                                val proj = camera.projectionMatrix(aspect = width / height)
+                                val nearest = snapshot.nodes
+                                    .asSequence()
+                                    .map { node ->
+                                        val p = node.position.project(view, proj, width, height)
+                                        Triple(node, p, run {
+                                            val dx = p.x - pos.x
+                                            val dy = p.y - pos.y
+                                            dx * dx + dy * dy
+                                        })
+                                    }
+                                    .filter { (_, p, _) -> p.visible }
+                                    .filter { (_, _, d2) ->
+                                        // 2x base radius so the hit area is forgiving
+                                        d2 <= (BASE_RADIUS_PX * 2f) * (BASE_RADIUS_PX * 2f)
+                                    }
+                                    .minByOrNull { (_, _, d2) -> d2 }
+                                onPointerHover(nearest?.first, pos)
+                            }
+                            PointerEventType.Exit -> onPointerHover(null, Offset.Zero)
+                            else -> Unit
                         }
                     }
                 }
