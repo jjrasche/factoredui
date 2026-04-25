@@ -30,7 +30,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,9 +57,7 @@ import ai.factoredui.compose.schema.ForceGraphProps
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
-import io.ktor.utils.io.readUTF8Line
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -132,6 +132,7 @@ fun RenderForceGraph(props: ForceGraphProps, modifier: Modifier = Modifier) {
     val highlights = remember { FiringHighlights() }
     val particles = remember { SignalParticles() }
     val camera = remember { Camera() }
+    val coroutineScope = rememberCoroutineScope()
     val active by highlights.active.collectAsState()
     val activeParticles by particles.active.collectAsState()
 
@@ -160,46 +161,48 @@ fun RenderForceGraph(props: ForceGraphProps, modifier: Modifier = Modifier) {
         }
     }
 
-    LaunchedEffect(props.eventStreamUrl) {
+    DisposableEffect(props.eventStreamUrl) {
         val url = props.eventStreamUrl
-        if (url.isNullOrEmpty()) return@LaunchedEffect
-        runCatching {
-            httpClient.get(url) { /* default Accept: */ }.let { response ->
-                val channel = response.bodyAsChannel()
-                while (true) {
-                    val line = channel.readUTF8Line() ?: break
-                    if (!line.startsWith("data:")) continue
-                    val payloadText = line.removePrefix("data:").trim()
-                    if (payloadText.isEmpty()) continue
-                    val frame = runCatching {
-                        json.decodeFromString(ForceGraphStreamFrame.serializer(), payloadText)
-                    }.getOrNull() ?: continue
-                    val p = frame.payload ?: continue
+        if (url.isNullOrEmpty()) return@DisposableEffect onDispose { /* no-op */ }
+        val sub = startSseSubscription(
+            url = url,
+            onMessage = { payloadText ->
+                val frame = runCatching {
+                    json.decodeFromString(ForceGraphStreamFrame.serializer(), payloadText)
+                }.getOrNull() ?: return@startSseSubscription
+                val p = frame.payload ?: return@startSseSubscription
 
-                    // Mirror server-side observation events into the
-                    // sidebar log. Bounded to MAX_LOG_ROWS to keep
-                    // memory + render cost flat.
-                    val entry = EventEntry.from(frame, p)
-                    if (entry != null) {
-                        recentEvents.add(entry)
-                        while (recentEvents.size > MAX_LOG_ROWS) recentEvents.removeAt(0)
+                val entry = EventEntry.from(frame, p)
+                if (entry != null) {
+                    recentEvents.add(entry)
+                    while (recentEvents.size > MAX_LOG_ROWS) recentEvents.removeAt(0)
+                }
+
+                // highlights.mark / particles.spawn are suspend
+                // (StateFlow.update is suspend); EventSource fires this
+                // callback synchronously from JS, so we need a scope to
+                // launch the suspend work. The composable's scope cancels
+                // on disposal.
+                when (p.type) {
+                    "firing_started", "firing_completed" -> {
+                        val fn = p.function ?: return@startSseSubscription
+                        coroutineScope.launch { highlights.mark(fn) }
                     }
-
-                    when (p.type) {
-                        "firing_started", "firing_completed" -> {
-                            p.function?.let { highlights.mark(it) }
-                        }
-                        "signal_emitted" -> {
-                            val from = p.producer ?: return@let
-                            val kind = p.kind ?: ""
-                            p.consumers?.forEach { to ->
+                    "signal_emitted" -> {
+                        val from = p.producer ?: return@startSseSubscription
+                        val kind = p.kind ?: ""
+                        val consumers = p.consumers ?: return@startSseSubscription
+                        coroutineScope.launch {
+                            consumers.forEach { to ->
                                 particles.spawn(fromFunction = from, toFunction = to, kind = kind, durationMs = 700L)
                             }
                         }
                     }
                 }
-            }
-        }
+            },
+            onError = { /* swallow — subscription is best-effort, retry happens on next composition */ },
+        )
+        onDispose { sub.close() }
     }
 
     Row(modifier = modifier.fillMaxSize().background(Color(0xFF0A0A12))) {

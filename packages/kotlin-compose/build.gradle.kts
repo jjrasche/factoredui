@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = "0.4.0"
+version = "0.4.1"
 
 kotlin {
     androidTarget {
@@ -81,7 +81,18 @@ kotlin {
             }
         }
 
+        // Intermediate source set for everything that ISN'T wasmJs.
+        // Holds the ktor-based SSE subscription actual — works with
+        // okhttp / darwin engines but NOT with ktor-client-js's
+        // fetch-based engine on wasmJs (browser fetch buffers SSE
+        // responses until completion). The wasmJs target gets its
+        // own actual using the browser's native EventSource.
+        val nonWasmJsMain by creating {
+            dependsOn(commonMain)
+        }
+
         val androidMain by getting {
+            dependsOn(nonWasmJsMain)
             dependencies {
                 implementation(libs.androidx.activity.compose)
                 // Ktor engine for Coil network fetches on Android
@@ -90,6 +101,7 @@ kotlin {
         }
 
         val desktopMain by getting {
+            dependsOn(nonWasmJsMain)
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.client.okhttp)
@@ -99,7 +111,7 @@ kotlin {
         // Create iosMain explicitly (parent of all three iOS targets) so we can
         // add a single Ktor engine for the iOS platform.
         val iosMain by creating {
-            dependsOn(commonMain)
+            dependsOn(nonWasmJsMain)
             dependencies {
                 implementation(libs.ktor.client.darwin)
             }
