@@ -205,6 +205,7 @@ fun Map<String, SpecValue>.asGridProps(): GridProps = GridProps(
 data class ForceGraphProps(
     val topologyUrl: String,
     val eventStreamUrl: String? = null,
+    val historyUrl: String? = null,
     val physics: ForceGraphPhysics = ForceGraphPhysics(),
 )
 
@@ -220,6 +221,7 @@ fun Map<String, SpecValue>.asForceGraphProps(): ForceGraphProps {
     return ForceGraphProps(
         topologyUrl = string("topology_url") ?: "",
         eventStreamUrl = string("event_stream_url"),
+        historyUrl = string("history_url"),
         physics = ForceGraphPhysics(
             repulsion = physicsMap.double("repulsion") ?: 100.0,
             attraction = physicsMap.double("attraction") ?: 0.05,

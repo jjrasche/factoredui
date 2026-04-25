@@ -27,7 +27,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,6 +52,9 @@ import ai.factoredui.compose.forcegraph.graph.SignalParticles
 import ai.factoredui.compose.forcegraph.math.Camera
 import ai.factoredui.compose.forcegraph.render.ForceGraphView
 import ai.factoredui.compose.forcegraph.render.KindColor
+import ai.factoredui.compose.forcegraph.replay.ReplayControlBar
+import ai.factoredui.compose.forcegraph.replay.ReplayController
+import ai.factoredui.compose.forcegraph.replay.ReplayEvent
 import ai.factoredui.compose.schema.ForceGraphProps
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -61,15 +63,24 @@ import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * forcegraph primitive renderer.
  *
- * Three layers, all driven by data the primitive fetches itself:
+ * Four layers, all driven by data the primitive fetches itself:
  *  1. The 3D force-directed canvas — nodes, edges, firing pulses, particles.
- *  2. A side panel listing recent live events with a kind-substring filter.
+ *  2. A side panel listing recent events with a kind-substring filter.
+ *     In live mode, every SSE frame; in replay mode, events up to the cursor.
  *  3. A floating hover tooltip showing function + domain when the cursor
  *     is over a node.
+ *  4. A bottom timeline / replay control bar (visible iff `history_url`
+ *     is supplied) — play/pause, scrub slider, timestamp, counter, LIVE
+ *     toggle. Replay mode pauses the SSE-as-source-of-truth pipeline and
+ *     drives overlays from the cursor crossing historical events instead.
  *
  * Expected wire formats are documented on [ForceGraphProps] in
  * spec-types.ts and SpecProps.kt.
@@ -136,21 +147,32 @@ fun RenderForceGraph(props: ForceGraphProps, modifier: Modifier = Modifier) {
     val active by highlights.active.collectAsState()
     val activeParticles by particles.active.collectAsState()
 
-    // Recent-events ring + filter + hover state — all UI state, not exposed
-    // outside the primitive.
-    val recentEvents = remember { mutableStateListOf<EventEntry>() }
+    // Replay controller. Always created; control bar only shows when a
+    // history_url is configured. Live tail is bounded internally so a
+    // long replay session can't OOM.
+    val replay = remember { ReplayController() }
+    val replayEvents by replay.events.collectAsState()
+    val replayCursor by replay.cursor.collectAsState()
+    val isLive by replay.isLive.collectAsState()
+    val isPlaying by replay.isPlaying.collectAsState()
+
     var filterText by remember { mutableStateOf("") }
     var hoveredNode by remember { mutableStateOf<PositionedFunctionNode?>(null) }
     var hoverPos by remember { mutableStateOf(Offset.Zero) }
 
-    val filteredEvents by remember(filterText) {
+    // Visible event list:
+    //   live mode → everything in the merged buffer (history + tail)
+    //   replay mode → slice up to and including the cursor
+    val visibleEvents by remember(replayEvents, replayCursor, isLive, filterText) {
         derivedStateOf {
+            val raw = if (isLive) replayEvents else replay.visibleSlice()
             val needle = filterText.trim().lowercase()
-            if (needle.isEmpty()) recentEvents.toList()
-            else recentEvents.filter { it.matches(needle) }
+            if (needle.isEmpty()) raw else raw.filter { it.matches(needle) }
         }
     }
 
+    // Physics + sweep loop. Particles + highlights expire on wall-clock,
+    // so this runs continuously regardless of replay state.
     LaunchedEffect(state) {
         val dt = 33f / 1000f
         while (true) {
@@ -158,6 +180,36 @@ fun RenderForceGraph(props: ForceGraphProps, modifier: Modifier = Modifier) {
             highlights.sweep()
             particles.sweep()
             delay(33L)
+        }
+    }
+
+    // Lazy history fetch. Triggers only the first time a non-null
+    // history_url is provided. Re-fetching on toggle would be wasteful;
+    // the live-tail buffer covers what arrives after the snapshot.
+    LaunchedEffect(props.historyUrl) {
+        val url = props.historyUrl
+        if (url.isNullOrEmpty() || replay.hasHistory()) return@LaunchedEffect
+        runCatching {
+            val response: HttpResponse = httpClient.get(url)
+            val body = response.bodyAsText()
+            json.parseToJsonElement(body).jsonObject
+        }.onSuccess { obj ->
+            val parsed = obj["signals"]?.jsonArray.orEmpty().mapNotNull { node ->
+                runCatching { ReplayEvent.fromHistoryRow(node.jsonObject) }.getOrNull()
+            }
+            replay.loadHistory(parsed)
+        }
+        // Errors are swallowed deliberately: replay is a non-essential
+        // overlay, the live feed continues regardless.
+    }
+
+    // Replay playback ticker. Fires graph overlays each time the cursor
+    // crosses an event during playback. No-op when not playing.
+    LaunchedEffect(replay) {
+        while (true) {
+            delay(ReplayController.DEFAULT_STEP_INTERVAL_MS)
+            val crossed = replay.advance()
+            crossed.forEach { fireOverlaysFor(it, highlights, particles, coroutineScope) }
         }
     }
 
@@ -171,33 +223,22 @@ fun RenderForceGraph(props: ForceGraphProps, modifier: Modifier = Modifier) {
                     json.decodeFromString(ForceGraphStreamFrame.serializer(), payloadText)
                 }.getOrNull() ?: return@startSseSubscription
                 val p = frame.payload ?: return@startSseSubscription
+                val event = ReplayEvent.fromLiveFrame(frame, p) ?: return@startSseSubscription
 
-                val entry = EventEntry.from(frame, p)
-                if (entry != null) {
-                    recentEvents.add(entry)
-                    while (recentEvents.size > MAX_LOG_ROWS) recentEvents.removeAt(0)
-                }
+                // Always append to the replay buffer's live tail so
+                // toggling back to LIVE picks up reality, not the
+                // user's scrub position. appendLive is suspend
+                // (Mutex-guarded); the SSE callback is invoked from
+                // ktor's reader on JVM (Dispatchers.Default), so we
+                // must launch on the composable scope to suspend.
+                coroutineScope.launch { replay.appendLive(event) }
 
-                // highlights.mark / particles.spawn are suspend
-                // (StateFlow.update is suspend); EventSource fires this
-                // callback synchronously from JS, so we need a scope to
-                // launch the suspend work. The composable's scope cancels
-                // on disposal.
-                when (p.type) {
-                    "firing_started", "firing_completed" -> {
-                        val fn = p.function ?: return@startSseSubscription
-                        coroutineScope.launch { highlights.mark(fn) }
-                    }
-                    "signal_emitted" -> {
-                        val from = p.producer ?: return@startSseSubscription
-                        val kind = p.kind ?: ""
-                        val consumers = p.consumers ?: return@startSseSubscription
-                        coroutineScope.launch {
-                            consumers.forEach { to ->
-                                particles.spawn(fromFunction = from, toFunction = to, kind = kind, durationMs = 700L)
-                            }
-                        }
-                    }
+                // Live mode is the source of truth for graph overlays
+                // (highlights + particles). Replay mode drives those
+                // from the playback ticker; SSE-driven overlays would
+                // double-fire and break the illusion.
+                if (replay.isLive.value) {
+                    fireOverlaysFor(event, highlights, particles, coroutineScope)
                 }
             },
             onError = { /* swallow — subscription is best-effort, retry happens on next composition */ },
@@ -205,29 +246,76 @@ fun RenderForceGraph(props: ForceGraphProps, modifier: Modifier = Modifier) {
         onDispose { sub.close() }
     }
 
-    Row(modifier = modifier.fillMaxSize().background(Color(0xFF0A0A12))) {
-        // Canvas + tooltip overlay.
-        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            ForceGraphView(
-                graphState = state,
-                camera = camera,
-                modifier = Modifier.fillMaxSize(),
-                activeFunctionNames = active,
-                particles = activeParticles,
-                onPointerHover = { node, pos ->
-                    hoveredNode = node
-                    hoverPos = pos
+    Column(modifier = modifier.fillMaxSize().background(Color(0xFF0A0A12))) {
+        Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            // Canvas + tooltip overlay.
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                ForceGraphView(
+                    graphState = state,
+                    camera = camera,
+                    modifier = Modifier.fillMaxSize(),
+                    activeFunctionNames = active,
+                    particles = activeParticles,
+                    onPointerHover = { node, pos ->
+                        hoveredNode = node
+                        hoverPos = pos
+                    },
+                )
+                HoverTooltip(node = hoveredNode, position = hoverPos)
+            }
+            // Side panel: filter + scrolling event log.
+            SignalLogPanel(
+                events = visibleEvents,
+                filterText = filterText,
+                onFilterChange = { filterText = it },
+                totalCount = if (isLive) replayEvents.size else (replayCursor + 1).coerceAtLeast(0),
+                grandTotal = replayEvents.size,
+                isLive = isLive,
+            )
+        }
+        // Replay control bar — only when host wired a history endpoint.
+        // Mutators are suspend (Mutex-guarded) so each callback launches
+        // on the composable scope; cancellation cascades on disposal.
+        if (!props.historyUrl.isNullOrEmpty()) {
+            ReplayControlBar(
+                events = replayEvents,
+                cursor = replayCursor,
+                isLive = isLive,
+                isPlaying = isPlaying,
+                onTogglePlay = {
+                    coroutineScope.launch { replay.setPlaying(!replay.isPlaying.value) }
+                },
+                onSeek = { idx ->
+                    coroutineScope.launch { replay.seekTo(idx) }
+                },
+                onToggleLive = {
+                    coroutineScope.launch { replay.setLive(!replay.isLive.value) }
                 },
             )
-            HoverTooltip(node = hoveredNode, position = hoverPos)
         }
-        // Side panel: filter + scrolling event log.
-        SignalLogPanel(
-            events = filteredEvents,
-            filterText = filterText,
-            onFilterChange = { filterText = it },
-            totalCount = recentEvents.size,
-        )
+    }
+}
+
+private fun fireOverlaysFor(
+    event: ReplayEvent,
+    highlights: FiringHighlights,
+    particles: SignalParticles,
+    scope: kotlinx.coroutines.CoroutineScope,
+) {
+    when (event.type) {
+        "firing_started", "firing_completed" -> {
+            val fn = event.function ?: return
+            scope.launch { highlights.mark(fn) }
+        }
+        "signal_emitted" -> {
+            val from = event.producer ?: return
+            val kind = event.kind ?: ""
+            scope.launch {
+                event.consumers.forEach { to ->
+                    particles.spawn(fromFunction = from, toFunction = to, kind = kind, durationMs = 700L)
+                }
+            }
+        }
     }
 }
 
@@ -265,10 +353,12 @@ private fun HoverTooltip(node: PositionedFunctionNode?, position: Offset) {
 
 @Composable
 private fun SignalLogPanel(
-    events: List<EventEntry>,
+    events: List<ReplayEvent>,
     filterText: String,
     onFilterChange: (String) -> Unit,
     totalCount: Int,
+    grandTotal: Int,
+    isLive: Boolean,
 ) {
     val listState = rememberLazyListState()
     // Auto-scroll to the newest event when the list grows, but only if the
@@ -291,8 +381,13 @@ private fun SignalLogPanel(
             .background(Color(0xFF0F1116))
             .padding(8.dp),
     ) {
+        val header = if (isLive) {
+            "signals · $totalCount events"
+        } else {
+            "signals · $totalCount/$grandTotal (replay)"
+        }
         Text(
-            text = "signals · $totalCount events",
+            text = header,
             color = Color(0xFFA0A0B0),
             fontSize = 10.sp,
             fontFamily = FontFamily.Monospace,
@@ -329,7 +424,7 @@ private fun SignalLogPanel(
 }
 
 @Composable
-private fun EventRow(entry: EventEntry) {
+private fun EventRow(entry: ReplayEvent) {
     val typeColor = when (entry.type) {
         "firing_started" -> Color(0xFFFFA94D)
         "firing_completed" -> Color(0xFF8CE99A)
@@ -359,50 +454,7 @@ private fun EventRow(entry: EventEntry) {
     }
 }
 
-// --- State + DTOs ---
-
-private const val MAX_LOG_ROWS = 500
-
-private data class EventEntry(
-    val id: Long,
-    val timestamp: String,
-    val type: String,
-    val kind: String?,
-    val function: String?,
-    val producer: String?,
-    val label: String,
-) {
-    fun matches(needle: String): Boolean =
-        kind?.lowercase()?.contains(needle) == true ||
-        function?.lowercase()?.contains(needle) == true ||
-        producer?.lowercase()?.contains(needle) == true ||
-        type.lowercase().contains(needle)
-
-    companion object {
-        private var nextId: Long = 0
-        fun from(frame: ForceGraphStreamFrame, p: ForceGraphStreamPayload): EventEntry? {
-            val type = p.type ?: return null
-            val ts = (frame.created_at ?: "").let {
-                if (it.length >= 23) it.substring(11, 23) else "--:--:--.---"
-            }
-            val label = when (type) {
-                "firing_started" -> "▶ ${p.function ?: "?"}"
-                "firing_completed" -> "✓ ${p.function ?: "?"}"
-                "signal_emitted" -> "• ${p.kind ?: "?"} from=${p.producer ?: "?"}"
-                else -> "? $type"
-            }
-            return EventEntry(
-                id = nextId++,
-                timestamp = ts,
-                type = type,
-                kind = p.kind,
-                function = p.function,
-                producer = p.producer,
-                label = label,
-            )
-        }
-    }
-}
+// --- DTOs + ReplayEvent factories ---
 
 @Serializable
 private data class ForceGraphTopologyDto(
@@ -438,3 +490,77 @@ internal data class ForceGraphStreamPayload(
     val consumers: List<String>? = null,
     val kind: String? = null,
 )
+
+private fun ReplayEvent.matches(needle: String): Boolean =
+    kind?.lowercase()?.contains(needle) == true ||
+    function?.lowercase()?.contains(needle) == true ||
+    producer?.lowercase()?.contains(needle) == true ||
+    type.lowercase().contains(needle)
+
+private object ReplayEventIds {
+    private var next: Long = 0
+    fun nextId(): Long {
+        val id = next
+        next += 1
+        return id
+    }
+}
+
+private fun timestampFromIso(iso: String?): String =
+    (iso ?: "").let { if (it.length >= 23) it.substring(11, 23) else "--:--:--.---" }
+
+private fun labelFor(type: String, function: String?, producer: String?, kind: String?): String =
+    when (type) {
+        "firing_started" -> "▶ ${function ?: "?"}"
+        "firing_completed" -> "✓ ${function ?: "?"}"
+        "signal_emitted" -> "• ${kind ?: "?"} from=${producer ?: "?"}"
+        else -> "? $type"
+    }
+
+private fun ReplayEvent.Companion.fromLiveFrame(
+    frame: ForceGraphStreamFrame,
+    payload: ForceGraphStreamPayload,
+): ReplayEvent? {
+    val type = payload.type ?: return null
+    return ReplayEvent(
+        id = ReplayEventIds.nextId(),
+        timestamp = timestampFromIso(frame.created_at),
+        type = type,
+        kind = payload.kind,
+        function = payload.function,
+        producer = payload.producer,
+        consumers = payload.consumers ?: emptyList(),
+        label = labelFor(type, payload.function, payload.producer, payload.kind),
+    )
+}
+
+private fun ReplayEvent.Companion.fromHistoryRow(row: JsonObject): ReplayEvent? {
+    // History rows come from the storage layer: { id, kind: "signalgraph.event",
+    // payload: { type, function, producer, consumers, kind }, created_at, … }.
+    // The inner payload mirrors the live SSE frame.
+    val createdAt = row["created_at"]?.jsonPrimitive?.contentOrNullSafe()
+    val payload = row["payload"]?.jsonObject ?: return null
+    val type = payload["type"]?.jsonPrimitive?.contentOrNullSafe() ?: return null
+    val function = payload["function"]?.jsonPrimitive?.contentOrNullSafe()
+    val producer = payload["producer"]?.jsonPrimitive?.contentOrNullSafe()
+    val kind = payload["kind"]?.jsonPrimitive?.contentOrNullSafe()
+    val consumers = payload["consumers"]?.jsonArray
+        ?.mapNotNull { it.jsonPrimitive.contentOrNullSafe() }
+        ?: emptyList()
+    return ReplayEvent(
+        id = ReplayEventIds.nextId(),
+        timestamp = timestampFromIso(createdAt),
+        type = type,
+        kind = kind,
+        function = function,
+        producer = producer,
+        consumers = consumers,
+        label = labelFor(type, function, producer, kind),
+    )
+}
+
+// kotlinx-serialization's JsonPrimitive.contentOrNull was added later;
+// older versions only expose `content`. This shim keeps us compatible
+// either way and tolerates JsonNull gracefully.
+private fun kotlinx.serialization.json.JsonPrimitive.contentOrNullSafe(): String? =
+    if (this is kotlinx.serialization.json.JsonNull) null else content

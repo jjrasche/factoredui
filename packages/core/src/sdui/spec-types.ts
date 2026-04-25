@@ -246,6 +246,16 @@ export interface ForceGraphProps {
    */
   event_stream_url?: string;
 
+  /**
+   * Optional history endpoint for replay/scrubbing. Returns prior events
+   * so the user can DVR backwards through time. Expected response shape:
+   *   { signals: [{ id, kind, payload, produced_by?, triggered_by[], created_at }, …] }
+   * Each signal's `payload` mirrors a live SSE frame's payload (same
+   * `type`, `function`, `producer`, `consumers`, `kind` fields). Without
+   * this URL, the renderer hides the replay controls and runs live-only.
+   */
+  history_url?: string;
+
   physics?: {
     /** Node–node repulsion strength. Higher = more spread. Default 100. */
     repulsion?: number;
