@@ -1,15 +1,15 @@
 [versions]
-kotlin = "2.0.21"
-compose = "1.7.3"
-kotlinxSerializationJson = "1.7.3"
-kotlinxCoroutines = "1.9.0"
-kotlinxDatetime = "0.6.1"
-androidGradlePlugin = "8.5.2"
+kotlin = "2.3.21"
+compose = "1.10.3"
+kotlinxSerializationJson = "1.11.0"
+kotlinxCoroutines = "1.10.2"
+kotlinxDatetime = "0.7.1"
+androidGradlePlugin = "8.9.3"
 androidCompileSdk = "35"
 androidMinSdk = "24"
 androidxActivityCompose = "1.9.3"
-coil = "3.0.4"
-ktor = "3.0.3"
+coil = "3.2.0"
+ktor = "3.2.0"
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

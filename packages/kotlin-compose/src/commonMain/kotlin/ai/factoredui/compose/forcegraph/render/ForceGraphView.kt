@@ -26,7 +26,7 @@ import ai.factoredui.compose.forcegraph.math.Camera
 import ai.factoredui.compose.forcegraph.math.ProjectedPoint
 import ai.factoredui.compose.forcegraph.math.project
 import kotlinx.coroutines.delay
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 /**
  * 3D architectural graph renderer. Nodes = functions, grouped by domain
