@@ -8,5 +8,9 @@ build/
 *.tsbuildinfo
 .playwright-mcp/
 
+# Gradle
+.gradle/
+local.properties
+
 # Untracked screenshots from unrelated work-ontology project
 work-ontology-*.png

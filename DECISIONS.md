@@ -20,40 +20,48 @@ Today FactoredUI implements 1 of 5. Next port wave is **2 + 4 + the
 observability slice of 3** (every interaction documented). Then 3 in
 full, then 5.
 
-## Decision: one Kotlin package, two JVM targets
+## Decision: two gradle subprojects in one repo
 
-**Status:** decided 2026-05-08.
+**Status:** decided 2026-05-08, implemented 2026-05-08.
 
-The autonomy loop's frontend half (renderer + capture client) and
-backend half (factor engine + experiments + LLM hypothesis runner) ship
-as one published package. The frontend is only useful because it
-enables collection; splitting them into two packages would suggest
-they're independently usable, which they aren't.
-
-**KMP target structure (target end state):**
+Original intent (one KMP module with `jvm("desktop")` + `jvm("server")`)
+hit a hard constraint: Kotlin Multiplatform doesn't allow two `jvm()`
+targets in the same module. The replacement: two gradle subprojects
+under `packages/`, sharing one version catalog and one wrapper.
 
 ```
-jvm("desktop")        — Compose desktop renderer + frontend capture
-jvm("server")         — backend pipeline: Postgres JDBC, factor engine,
-                        experiment lifecycle, LLM hypothesis runner.
-                        New target alongside `desktop`.
-androidTarget         — frontend renderer + autocapture (Activity hooks)
-iosX64/Arm64/Sim      — frontend renderer + autocapture (UIKit hooks)
-wasmJs                — frontend renderer + DOM autocapture
-commonMain            — schema, RenderContext, BindingResolver, capture
-                        event types, network protocol for event flush
+factored-ui/                             ← multi-project gradle root
+├── settings.gradle.kts                  ← includes both subprojects
+├── gradle/libs.versions.toml            ← shared version catalog
+├── gradlew, gradle/wrapper/             ← shared wrapper
+└── packages/
+    ├── kotlin-compose/                  ← KMP renderer + frontend capture
+    │   ├── androidTarget                ← Compose UI + Android capture
+    │   ├── iosX64/Arm64/Sim             ← Compose UI + iOS capture
+    │   ├── jvm("desktop")               ← Compose desktop + capture
+    │   └── wasmJs                       ← Compose web + DOM capture
+    └── kotlin-server/                   ← JVM-only Kotlin library
+        └── (Postgres JDBC, ingest, factor engine, experiments,
+             LLM hypothesis runner). Depends on kotlin-compose for
+             shared types (Spec, CaptureEvent, Session).
 ```
 
-Each KMP target publishes its own artifact with a classifier; consumers
-pick which classifier they pull. A backend service depends on
-`factoredui-server-X.Y.Z.jar` (with Postgres deps); an Android app
-depends on `factoredui-android-X.Y.Z.aar` (no Postgres deps).
+Two published artifacts: `ai.factoredui:kotlin-compose` and
+`ai.factoredui:kotlin-server`. Conceptually one package — the user-
+facing experience is "depend on factoredui in your renderer, depend
+on factoredui in your backend, both ship from the same release" —
+but the gradle topology has to be two-project to satisfy KMP.
 
-The package directory `packages/kotlin-compose/` becomes a misnomer
-once the server target lands. **Pending rename:**
-`packages/kotlin-compose/` → `packages/kotlin/`. Defer until the server
-target work starts so commits don't mix mechanical rename with code
-changes.
+Why this is fine: nothing about the user-facing model changes. A
+consumer who only renders specs depends on kotlin-compose. A consumer
+who only ingests events depends on kotlin-server (which transitively
+pulls in kotlin-compose for the schema types). No one should depend
+on both manually; doing so works but is redundant.
+
+**Future rename**: `packages/kotlin-compose/` → `packages/kotlin/`
+once the rename can land cleanly. Now that the server lives in its
+own subproject, the `kotlin-compose` name is at least self-consistent
+again (it really is just the Compose renderer).
 
 ## Decision: storage is Postgres-specific on the server target
 
