@@ -315,7 +315,7 @@ private fun RenderImage(node: SpecNode, resolvedProps: Map<String, Any?>) {
 
     val baseModifier = Modifier
         .fillMaxWidth()
-        .let { mod -> if (props.aspectRatio != null) mod.aspectRatio(props.aspectRatio) else mod.height(200.dp) }
+        .let { mod -> if (props.aspectRatio != null) mod.aspectRatio(props.aspectRatio) else mod.height(RenderDefaults.IMAGE_FALLBACK_HEIGHT) }
         .clip(shape)
         .semantics { contentDescription = alt.ifEmpty { node.id } }
 
@@ -350,11 +350,8 @@ private fun RenderDivider(node: SpecNode) {
 @Composable
 private fun RenderSpacer(node: SpecNode) {
     val props = node.props.asSpacerProps()
-    if (props.size > 0) {
-        Spacer(modifier = Modifier.height(props.size.dp))
-    } else {
-        Spacer(modifier = Modifier.height(8.dp))
-    }
+    val height = if (props.size > 0) props.size.dp else RenderDefaults.SPACER_HEIGHT
+    Spacer(modifier = Modifier.height(height))
 }
 
 @Composable
