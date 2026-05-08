@@ -82,6 +82,33 @@ fun AppShell(spec: Spec, context: RenderContext) {
 }
 ```
 
+### 4. (Optional) Dark mode via `FactoredTheme`
+
+The renderer reads `MaterialTheme.colorScheme.*` and `MaterialTheme.typography.*`
+directly. Whatever `MaterialTheme { ... }` the host installs is what the
+renderer paints into. `FactoredTheme` is a one-liner convenience for hosts that
+don't want to own a palette:
+
+```kotlin
+import ai.factoredui.compose.renderer.FactoredTheme
+import ai.factoredui.compose.renderer.RenderSpec
+
+@Composable
+fun AppShell(spec: Spec, context: RenderContext, darkMode: Boolean? = null) {
+    FactoredTheme(darkMode = darkMode) {        // null = follow the OS
+        RenderSpec(root = spec.root, context = context)
+    }
+}
+```
+
+`darkMode = null` follows `isSystemInDarkTheme()`. Pass `true` / `false` to
+override (e.g. wire a user setting). Hosts with a brand palette should skip
+`FactoredTheme` and supply their own `MaterialTheme`.
+
+Theming is a host concern, not a spec field. A `Spec` describes content; the
+host picks the palette. The schema does not (and will not) carry a `darkMode`
+prop.
+
 ## Schema nodes ported
 
 All 20 SpecNodeType values are declared in the schema. The renderer handles:
@@ -146,6 +173,14 @@ As the user types, `context.setBinding("shell.composeText", typedText)` is calle
 the `dataFlow` emits; any node reading `{shell.composeText}` recomposes. Action
 handlers (`sendSms`, etc.) read the current value from `context.data["shell"]["composeText"]`.
 
+## Version 0.8.0 — what's new
+
+- **`FactoredTheme(darkMode)` wrapper.** Optional one-liner Material 3 theme
+  for hosts that don't want to own a palette. `darkMode = null` follows
+  `isSystemInDarkTheme()`; `true` / `false` overrides. Hosts with a brand
+  palette continue to wrap `RenderSpec` in their own `MaterialTheme` and
+  ignore this. The spec schema is unchanged: theming stays a host concern.
+
 ## Version 0.2.1 — what's new
 
 - **Action params now resolve bindings before dispatch.** A spec like
@@ -200,7 +235,7 @@ In your consumer `app/build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("ai.factoredui:kotlin-compose-android:0.2.1")
+    implementation("ai.factoredui:kotlin-compose-android:0.8.0")
 }
 ```
 
