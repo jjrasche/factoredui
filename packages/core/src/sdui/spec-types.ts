@@ -160,6 +160,13 @@ export interface TabsProps {
 export interface GridProps {
   columns: number;
   gap?: number;
+  /**
+   * Opt into LazyVerticalGrid for windowed rendering. Off by default because
+   * lazy grids require a bounded height — dropping one inside an unbounded
+   * scrollview throws at runtime. Use for large item counts (image galleries,
+   * product grids); leave off for small dashboards.
+   */
+  lazy?: boolean;
 }
 
 // --- Select props ---

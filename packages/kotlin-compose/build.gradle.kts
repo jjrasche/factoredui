@@ -68,6 +68,7 @@ kotlin {
                 // Android, iOS, JVM Desktop, Wasm from commonMain.
                 implementation(libs.coil.compose)
                 implementation(libs.coil.network.ktor3)
+                implementation(libs.coil.svg)
                 implementation(libs.ktor.client.core)
             }
         }

@@ -188,14 +188,23 @@ fun Map<String, SpecValue>.asSpacerProps(): SpacerProps = SpacerProps(
 
 // --- GridProps ---
 
+/**
+ * `lazy` opts into LazyVerticalGrid (windowed rendering, supports thousands of
+ * items). Off by default because LazyVerticalGrid requires a bounded height —
+ * dropping it inside an unbounded scrollview throws at runtime. Spec authors
+ * with large item counts should set `lazy: true` and ensure the grid sits in
+ * a height-bounded container (e.g. fillMaxSize, or a sized parent).
+ */
 data class GridProps(
     val columns: Int = 2,
     val gap: Int = 0,
+    val lazy: Boolean = false,
 )
 
 fun Map<String, SpecValue>.asGridProps(): GridProps = GridProps(
     columns = int("columns") ?: 2,
     gap = int("gap") ?: 0,
+    lazy = boolean("lazy") ?: false,
 )
 
 // --- ToggleProps ---

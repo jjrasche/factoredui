@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
@@ -59,7 +60,10 @@ import ai.factoredui.compose.schema.asSpacerProps
 import ai.factoredui.compose.schema.asTextProps
 import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.ButtonVariant
+import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.svg.SvgDecoder
 
 /**
  * Top-level spec renderer entry point.
@@ -174,8 +178,26 @@ private fun RenderScrollView(node: SpecNode, context: RenderContext) {
 @Composable
 private fun RenderGrid(node: SpecNode, context: RenderContext) {
     val props = node.props.asGridProps()
-    // Simple wrapping row — a proper LazyVerticalGrid requires androidMain; stub here works for commonTest
-    Column {
+    if (props.lazy) {
+        RenderLazyGrid(node, context, props)
+    } else {
+        RenderChunkedGrid(node, context, props)
+    }
+}
+
+/**
+ * Default grid renderer: composes every child up front in chunked rows.
+ * Works inside any container, including unbounded scrollviews. Right
+ * choice for small item counts (dashboards, controls). Use `lazy: true`
+ * for large data sets where windowed rendering matters.
+ */
+@Composable
+private fun RenderChunkedGrid(
+    node: SpecNode,
+    context: RenderContext,
+    props: ai.factoredui.compose.schema.GridProps,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(props.gap.dp)) {
         node.children.chunked(props.columns).forEach { rowItems ->
             Row(horizontalArrangement = Arrangement.spacedBy(props.gap.dp)) {
                 rowItems.forEach { child ->
@@ -183,6 +205,30 @@ private fun RenderGrid(node: SpecNode, context: RenderContext) {
                         RenderNode(node = child, context = context)
                     }
                 }
+                // Pad the trailing row so cells stay column-aligned.
+                repeat(props.columns - rowItems.size) {
+                    Box(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RenderLazyGrid(
+    node: SpecNode,
+    context: RenderContext,
+    props: ai.factoredui.compose.schema.GridProps,
+) {
+    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+        columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(props.columns),
+        verticalArrangement = Arrangement.spacedBy(props.gap.dp),
+        horizontalArrangement = Arrangement.spacedBy(props.gap.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        node.children.forEach { child ->
+            item(key = child.id) {
+                RenderNode(node = child, context = context)
             }
         }
     }
@@ -334,11 +380,42 @@ private fun RenderImage(node: SpecNode, resolvedProps: Map<String, Any?>) {
 @Composable
 private fun RenderIcon(node: SpecNode, resolvedProps: Map<String, Any?>) {
     val name = (resolvedProps["name"] as? String) ?: ""
-    // Icon resolution is font/library-specific; render accessible placeholder
-    Text(
-        text = name,
-        modifier = Modifier.semantics { contentDescription = node.id },
+    val sizeDp = ((resolvedProps["size"] as? Number)?.toInt() ?: 24).dp
+
+    if (name.isEmpty()) return
+
+    val (prefix, iconName) = parseIconifyName(name)
+    val url = "https://api.iconify.design/$prefix/$iconName.svg"
+
+    val platformContext = LocalPlatformContext.current
+    val imageLoader = remember(platformContext) {
+        ImageLoader.Builder(platformContext)
+            .components { add(SvgDecoder.Factory()) }
+            .build()
+    }
+
+    AsyncImage(
+        model = url,
+        imageLoader = imageLoader,
+        contentDescription = node.id,
+        modifier = Modifier
+            .size(sizeDp)
+            .semantics { contentDescription = node.id },
     )
+}
+
+/**
+ * Parse an Iconify icon name. Accepts `lucide:settings` (set:name) or just
+ * `settings` (defaults to lucide). Iconify hosts ~150 icon sets behind a
+ * single CDN — host apps don't need to bundle any icon font.
+ */
+private fun parseIconifyName(name: String): Pair<String, String> {
+    val colon = name.indexOf(':')
+    return if (colon > 0 && colon < name.length - 1) {
+        name.substring(0, colon) to name.substring(colon + 1)
+    } else {
+        "lucide" to name
+    }
 }
 
 @Composable
