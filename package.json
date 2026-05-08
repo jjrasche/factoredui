@@ -5,9 +5,11 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @factoredui/core",
+    "build": "npm run build:core && npm run build:kotlin",
     "build:core": "npm run build -w @factoredui/core",
+    "build:kotlin": "cd packages/kotlin-compose && ./gradlew assemble",
     "test": "vitest run",
+    "test:kotlin": "cd packages/kotlin-compose && ./gradlew allTests",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",
     "test:watch": "vitest",
