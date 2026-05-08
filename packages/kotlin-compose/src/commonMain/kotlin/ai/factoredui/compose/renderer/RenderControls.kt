@@ -56,9 +56,7 @@ internal fun RenderToggle(
     val scope = rememberCoroutineScope()
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { contentDescription = node.id },
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (props.label.isNotEmpty()) {
@@ -72,6 +70,7 @@ internal fun RenderToggle(
                 writePath?.let { context.setBinding(it, next) }
                 node.action?.let { ref -> scope.launch { context.dispatch(node.id, ref) } }
             },
+            modifier = Modifier.semantics { contentDescription = node.id },
         )
     }
 }
