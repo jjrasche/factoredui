@@ -53,13 +53,22 @@ object BindingResolver {
         context: Map<String, Any?>,
     ): Map<String, Any?> = props.mapValues { resolveValue(it.value, context) }
 
-    /** Walk a dot-separated path into a nested map structure. */
+    /**
+     * Walk a dot-separated path into a nested map / list structure.
+     *
+     * Numeric segments (`{items.0.name}`) index into Lists so list templates
+     * can reference positional items. Matches binding.ts which gets list
+     * indexing for free from JS bracket-access semantics.
+     */
     private fun resolvePath(path: String, context: Map<String, Any?>): Any? {
         val segments = path.split(".")
         var current: Any? = context
         for (segment in segments) {
             current = when (current) {
                 is Map<*, *> -> current[segment]
+                is List<*> -> segment.toIntOrNull()?.let { index ->
+                    if (index in current.indices) current[index] else null
+                }
                 else -> return null
             }
         }

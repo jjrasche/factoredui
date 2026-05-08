@@ -46,6 +46,24 @@ class BindingResolverTest {
     }
 
     @Test
+    fun resolveBindingIndexesIntoListByNumericSegment() {
+        val ctx = mapOf<String, Any?>(
+            "items" to listOf(
+                mapOf("name" to "first"),
+                mapOf("name" to "second"),
+            ),
+        )
+        assertEquals("first", BindingResolver.resolveBinding("{items.0.name}", ctx))
+        assertEquals("second", BindingResolver.resolveBinding("{items.1.name}", ctx))
+    }
+
+    @Test
+    fun resolveBindingReturnsNullForOutOfRangeIndex() {
+        val ctx = mapOf<String, Any?>("items" to listOf("a", "b"))
+        assertNull(BindingResolver.resolveBinding("{items.5}", ctx))
+    }
+
+    @Test
     fun isVisibleReturnsTrueWhenNoRef() {
         assertTrue(BindingResolver.isVisible(null, context))
     }

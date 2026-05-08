@@ -42,6 +42,15 @@ describe("resolveBinding", () => {
   it("returns the string unchanged if not a binding ref", () => {
     expect(resolveBinding("plain text", context)).toBe("plain text");
   });
+
+  it("indexes into arrays by numeric segment", () => {
+    expect(resolveBinding("{sources.pipeline.0.id}", context)).toBe(1);
+    expect(resolveBinding("{sources.pipeline.1.id}", context)).toBe(2);
+  });
+
+  it("returns undefined for out-of-range indices", () => {
+    expect(resolveBinding("{sources.pipeline.5}", context)).toBeUndefined();
+  });
 });
 
 describe("resolveTextWithBindings", () => {
