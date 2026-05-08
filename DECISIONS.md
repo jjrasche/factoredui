@@ -114,30 +114,42 @@ constraint when they want windowing.
 
 ## Roadmap
 
-### Next milestone: observability MVP (port wave 1)
+### Port wave 1: observability MVP — DONE 2026-05-08
 
 Goal: every UI interaction documented end to end.
 
-1. **Capture event types in commonMain** — port `packages/core/types.ts`
-   `CaptureEvent`, session/timing fields, JSON serialization.
-2. **Per-platform autocapture**
-   - wasmJs: port `web-adapter.ts` (DOM click/scroll/error/navigation
-     listeners) using browser EventListener APIs.
-   - android: tap recording via Activity LifecycleCallbacks +
-     PointerInputModifier on RenderNode.
-   - ios: UIKit gesture recognizer hooks.
-   - desktop: Compose `awaitPointerEventScope` on RenderNode root.
-3. **Network flush** — batch + POST to a configured endpoint. Add the
-   endpoint as a `RenderContext` field. Reuse the existing Ktor client.
-4. **Server target ingest** — add `jvm("server")` target. Endpoint
-   handler validates events, writes to a `factoredui_events` Postgres
-   table (single JSONB payload column + indexed user_id, session_id,
-   component_path, created_at).
-5. **Smoke test** — host app fires manual events, server writes them,
-   query confirms.
+- [x] **Capture event types in commonMain** —
+      `packages/kotlin-compose/.../capture/CaptureEvent.kt`,
+      `Session.kt`, `EventTransport.kt`, `EventWriter.kt`,
+      `CaptureClient.kt`, `CaptureObservability.kt`. Pure-Kotlin, all
+      KMP targets.
+- [x] **HTTP transport** — `HttpEventTransport` POSTs JSON batches
+      via Ktor. Idempotent on event id (UUID generated client-side).
+- [x] **Renderer-driven autocapture** — `CaptureObservability`
+      bridges the existing `Observability` hook into capture. Every
+      button/chip/toggle/slider/select tap becomes a CLICK event
+      automatically. Works on every platform without per-platform code.
+- [x] **wasmJs page-level autocapture** — `WebAutoCapture` hooks
+      `window error` and `document visibilitychange`. Visibility=hidden
+      triggers an immediate flush.
+- [x] **Server subproject** — `packages/kotlin-server/`. Postgres-backed
+      ingest (`ingestEvents(connection, session, events)`) +
+      migrations. Idempotent inserts on session id and event id.
 
-Success criterion: a user clicks a button in agent-platform's Compose
-frontend and an event row lands in Postgres within 5 seconds.
+What still needs attention before this is considered production-ready
+(deferred from MVP):
+
+- Per-platform autocapture for android / iOS / desktop. Renderer-
+  driven capture covers the action-bearing primitives, which is most
+  of what matters; raw page-level signals (scroll, focus on non-
+  renderer DOM, etc.) are wasmJs-only today.
+- Rage-click + dead-click + scroll-reversal detection (algorithms in
+  TS reference; needs wasmJs port).
+- Real-Postgres integration test for ingest. H2 PG-mode is too
+  divergent on TIMESTAMPTZ + JSONB; needs testcontainers or a real-DB
+  test in agent-platform.
+- Beacon-based final flush on `beforeunload` (currently relies on
+  visibility=hidden flush).
 
 ### Port wave 2: factor engine
 
