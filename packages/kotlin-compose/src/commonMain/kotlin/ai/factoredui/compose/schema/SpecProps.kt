@@ -198,6 +198,78 @@ fun Map<String, SpecValue>.asGridProps(): GridProps = GridProps(
     gap = int("gap") ?: 0,
 )
 
+// --- ToggleProps ---
+
+data class ToggleProps(
+    val label: String = "",
+)
+
+fun Map<String, SpecValue>.asToggleProps(): ToggleProps = ToggleProps(
+    label = string("label") ?: "",
+)
+
+// --- SliderProps ---
+
+data class SliderProps(
+    val min: Float = 0f,
+    val max: Float = 1f,
+    val step: Float? = null,
+)
+
+fun Map<String, SpecValue>.asSliderProps(): SliderProps = SliderProps(
+    min = double("min")?.toFloat() ?: 0f,
+    max = double("max")?.toFloat() ?: 1f,
+    step = double("step")?.toFloat(),
+)
+
+// --- SelectProps ---
+
+data class SelectOption(val label: String, val value: String)
+
+data class SelectProps(
+    val options: List<SelectOption> = emptyList(),
+    val placeholder: String = "",
+)
+
+fun Map<String, SpecValue>.asSelectProps(): SelectProps {
+    val rawOptions = (get("options") as? SpecValue.ArrayValue)?.value ?: emptyList()
+    val parsed = rawOptions.mapNotNull { item ->
+        val obj = (item as? SpecValue.ObjectValue)?.value ?: return@mapNotNull null
+        val label = obj.string("label") ?: return@mapNotNull null
+        val value = obj.string("value") ?: return@mapNotNull null
+        SelectOption(label = label, value = value)
+    }
+    return SelectProps(
+        options = parsed,
+        placeholder = string("placeholder") ?: "",
+    )
+}
+
+// --- TabsProps ---
+
+data class TabsProps(
+    val items: List<String> = emptyList(),
+)
+
+fun Map<String, SpecValue>.asTabsProps(): TabsProps {
+    val raw = (get("items") as? SpecValue.ArrayValue)?.value ?: emptyList()
+    return TabsProps(
+        items = raw.mapNotNull { (it as? SpecValue.StringValue)?.value },
+    )
+}
+
+// --- ModalProps ---
+
+data class ModalProps(
+    val title: String = "",
+    val dismissible: Boolean = true,
+)
+
+fun Map<String, SpecValue>.asModalProps(): ModalProps = ModalProps(
+    title = string("title") ?: "",
+    dismissible = boolean("dismissible") ?: true,
+)
+
 // --- ForceGraphProps ---
 // First "dense/semantic" primitive. See ForceGraphProps in spec-types.ts
 // for the full contract (topology URL, optional event stream, physics).

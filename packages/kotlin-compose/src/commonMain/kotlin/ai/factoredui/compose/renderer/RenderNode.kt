@@ -125,12 +125,11 @@ private fun RenderNodeByType(
         SpecNodeType.TEXTINPUT -> RenderTextInput(node, resolvedProps, context)
         SpecNodeType.CHIP -> RenderChip(node, resolvedProps, context)
         SpecNodeType.FORCE_GRAPH -> RenderForceGraph(node.props.asForceGraphProps())
-        // TABS, MODAL, TOGGLE, SELECT, SLIDER — stubs; extend in Milestone 2
-        SpecNodeType.TABS,
-        SpecNodeType.MODAL,
-        SpecNodeType.TOGGLE,
-        SpecNodeType.SELECT,
-        SpecNodeType.SLIDER -> RenderStub(node)
+        SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)
+        SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)
+        SpecNodeType.SELECT -> RenderSelect(node, resolvedProps, context)
+        SpecNodeType.TABS -> RenderTabs(node, resolvedProps, context)
+        SpecNodeType.MODAL -> RenderModal(node, resolvedProps, context)
     }
 }
 
@@ -402,13 +401,6 @@ private fun RenderChip(
         label = { Text(label) },
         modifier = Modifier.semantics { contentDescription = node.id },
     )
-}
-
-/** Placeholder for unimplemented node types — renders nothing but stays structurally present. */
-@Composable
-private fun RenderStub(node: SpecNode) {
-    // TODO(milestone-2): implement TABS, MODAL, TOGGLE, SELECT, SLIDER
-    Box(modifier = Modifier.semantics { contentDescription = "stub:${node.type.name.lowercase()}" })
 }
 
 // --- Helper: read resolved (Any?) props into typed data classes ---
