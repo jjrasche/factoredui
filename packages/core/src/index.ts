@@ -57,8 +57,6 @@ export {
   type DataSourceRegistry,
   type ActionHandler,
   type ActionRegistry,
-  type ComponentRenderer,
-  type ComponentRegistry,
   type ListProps,
   type LayoutProps,
   type TextProps,

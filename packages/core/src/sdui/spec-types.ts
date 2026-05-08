@@ -284,11 +284,6 @@ export type DataSourceRegistry = Record<string, DataSourceConfig>;
 export type ActionHandler = (params: Record<string, unknown>) => void | Promise<void>;
 export type ActionRegistry = Record<string, ActionHandler>;
 
-// --- Component contract (implemented by the host app) ---
-
-export type ComponentRenderer = (props: Record<string, unknown>, children?: React.ReactNode) => React.ReactNode;
-export type ComponentRegistry = Record<SpecNodeType, ComponentRenderer>;
-
 // --- Signing ---
 
 export interface SignedSpec {

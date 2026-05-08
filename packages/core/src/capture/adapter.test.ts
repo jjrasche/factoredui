@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
 import { createWebAdapter } from "./web-adapter.js";
 import type { CaptureEvent } from "../types.js";
