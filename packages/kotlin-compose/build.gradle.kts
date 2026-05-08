@@ -70,6 +70,8 @@ kotlin {
                 implementation(libs.coil.network.ktor3)
                 implementation(libs.coil.svg)
                 implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.ktor.serialization.kotlinx.json)
             }
         }
 
@@ -78,6 +80,7 @@ kotlin {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.ktor.client.mock)
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 implementation(compose.uiTest)
             }

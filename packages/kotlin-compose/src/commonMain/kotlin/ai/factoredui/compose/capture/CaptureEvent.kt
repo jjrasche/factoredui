@@ -1,6 +1,8 @@
 package ai.factoredui.compose.capture
 
 import kotlin.time.Clock
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -14,8 +16,10 @@ import kotlinx.serialization.json.JsonElement
  * experiment system mutates. One identity end-to-end is the project's
  * thesis (see CONCEPT.md).
  */
+@OptIn(ExperimentalUuidApi::class)
 @Serializable
 data class CaptureEvent(
+    val id: String = Uuid.random().toString(),
     @SerialName("event_type") val eventType: EventType,
     @SerialName("component_path") val componentPath: String,
     val payload: Map<String, JsonElement> = emptyMap(),
