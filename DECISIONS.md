@@ -156,13 +156,32 @@ Materialize via Postgres views. Expose a query API.
 Open question. Not solved by anyone in industry. Defer until 1–4 are
 real.
 
+## Decision: server target is embedded, not standalone
+
+**Status:** decided 2026-05-08.
+
+The `jvm("server")` artifact is a library, not a microservice. The
+host's existing backend framework (Ktor / Spring / Vert.x / whatever)
+imports it and mounts our handler functions on the host's own routes.
+The host configures the Postgres connection pool; we expose
+operations that take a `Connection` (or a connection-providing
+function). We ship SQL migrations as a resource file; the host runs
+them through whatever migration tool they already use (Flyway,
+Liquibase, hand-rolled).
+
+**Why:** consumers of factoredui are already running a backend. Adding
+a separate microservice doubles ops surface (deployment, monitoring,
+secrets, network policy) for no gain. As a library we plug in beside
+their existing code, share their connection pool, and inherit their
+auth/observability/error handling.
+
+**What this means for the API shape:** the server target exposes
+suspend functions (`ingestEvent`, `recomputeFactors`,
+`assignVariant`) that take whatever transactional context the host
+provides. We do not expose a Ktor `Application` or HTTP server.
+
 ## Open questions
 
-- **Server target deployment shape.** Is the server target an embedded
-  library in the host's backend (host serves the ingest endpoint,
-  imports our handlers) or a standalone microservice (we ship a
-  runnable JAR)? Embedded is simpler for the consumer; standalone is
-  easier to operate independently.
 - **Spec mutation safety.** When the LLM proposes a spec mutation, what
   prevents catastrophic outputs (broken layouts, removed CTAs)?
   BitsEvolve's answer was formal verification. Ours might be: every
