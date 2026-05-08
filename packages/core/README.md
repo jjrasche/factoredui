@@ -1,139 +1,103 @@
 # @factoredui/core
 
-Capture user interactions, compute behavioral factors, run experiments, and render server-driven UI. Pure TypeScript — no framework dependencies.
+The TypeScript half of [FactoredUI](https://github.com/jjrasche/factoredui).
 
-Part of the [FactoredUI](https://github.com/jjrasche/factoredui) monorepo.
+## What this package is
+
+Two things, with very different liveness:
+
+1. **`spec-types.ts` — the canonical SDUI schema mirror.** Single source of
+   truth for the spec format that the Kotlin renderer also implements (see
+   `packages/kotlin-compose/src/commonMain/.../schema/SpecNode.kt`). If the
+   Kotlin enum and this TS union ever diverge, this file is the reference.
+
+2. **Capture / factors / experiments / SDUI pipeline — dormant.** Pure-TS
+   implementations of the agent-platform autonomy loop (interaction capture,
+   factor computation, experiment lifecycle, signed-spec loading). These
+   built originally against a Supabase-backed store; today they target a
+   storage-agnostic `FactoredStore` interface and are pending a Kotlin port.
+   Not actively consumed by any current FactoredUI deployment.
+
+If you only need the schema, you only need the types — none of the runtime
+pipeline executes unless you call into it.
 
 ## Install
 
 ```bash
-npm install @factoredui/core @supabase/supabase-js
+npm install @factoredui/core
 ```
 
-## Setup
+No runtime dependencies; pure TypeScript.
 
-```bash
-npx factoredui init
-```
-
-Copies 27 SQL migrations + the clustering edge function into your Supabase project, then prints the remaining steps (extensions, PostgREST config, deploy).
-
-## Usage
-
-### Capture
+## Schema-only usage
 
 ```ts
-import { initCapture } from '@factoredui/core'
-import { createClient } from '@supabase/supabase-js'
+import type { Spec, SpecNode, SpecNodeType, SignedSpec } from "@factoredui/core";
 
-const supabase = createClient(url, anonKey, {
-  db: { schema: 'factoredui' }
-})
-
-const capture = initCapture({ supabase })
-
-// Track events manually (auto-capture handles clicks, scrolls, etc.)
-capture.trackNavigation('checkout/payment', 'mount')
-capture.trackImpression('checkout/payment/promo-banner')
-
-// Flush and stop
-await capture.flushEvents()
-capture.stopCapture()
+const spec: Spec = {
+  spec_version: 1,
+  renderer_min: 1,
+  root: { id: "hello", type: "text", props: { value: { type: "string", value: "hi" } } },
+};
 ```
 
-### Experiments
+The Kotlin renderer will accept this JSON over the wire and produce identical
+UI on Android, iOS, desktop, and the browser.
+
+## Pipeline usage (storage-agnostic)
+
+Every pipeline function takes a `FactoredStore` — an interface the caller
+implements over whatever persistence they use (Supabase, SQLite, Postgres,
+in-memory). The `FactoredStore` contract lives in `src/store.ts`.
 
 ```ts
-import { evaluateFlag, createExperiment, startExperiment } from '@factoredui/core'
+import { initCapture, evaluateFlag, queryFactors, loadSpec } from "@factoredui/core";
+import type { FactoredStore } from "@factoredui/core";
 
-// Assign user to a variant
-const assignment = await evaluateFlag(supabase, 'checkout-redesign', 'web', deviceMetadata)
-// → { experiment_id, variant_key, config }
+const store: FactoredStore = makeMyStore();
 
-// Create and start an experiment
-const exp = await createExperiment(supabase, {
-  name: 'checkout-redesign',
-  component_path: 'checkout/payment',
-  variants: [
-    { key: 'control', weight: 50 },
-    { key: 'treatment', weight: 50 },
-  ],
-})
-await startExperiment(supabase, exp.id)
+// Capture
+const capture = initCapture({ store, platform: "web" });
+capture.trackNavigation("checkout/payment", "mount");
+await capture.flushEvents();
+
+// Experiments
+const assignment = await evaluateFlag(store, "checkout-redesign", "web");
+// → { experiment_id, variant_key, config } | null
+
+// Factors
+const factors = await queryFactors(store, userId, "checkout/payment");
+
+// Signed specs
+const loaded = await loadSpec(store, "web", baselineSpec, storage, verifier);
 ```
 
-### Factors
+## API surface
 
-```ts
-import { queryFactors, queryComponentFactors } from '@factoredui/core'
+### Schema (the live, canonical part)
+- Types: `Spec`, `SpecNode`, `SpecNodeType`, `SpecValue`, `ActionRef`, `SignedSpec`
+- Per-primitive prop types: `LayoutProps`, `TextProps`, `ButtonProps`, `TextInputProps`, `ImageProps`, `IconProps`, `CardProps`, `TabsProps`, `GridProps`, `SelectProps`, `ChipProps`, `ModalProps`, `ScrollViewProps`, `ToggleProps`, `SliderProps`, `DividerProps`, `SpacerProps`, `ListProps`
+- `RENDERER_VERSION` constant
+- `validateSpec(spec)` — structural validation
+- `resolveBinding(ref, data)`, `resolveTextWithBindings(...)`, `resolveProps(...)`, `isBindingRef(ref)`
+- Spec signing: `createEd25519Verifier`, `createEd25519Signer`, `generateEd25519Keypair`, `devSignatureVerifier`
+- `loadSpec(store, platform, baseline, storage, verifier)`
+- `dispatchAction(action, handlers)`
 
-// User's factors
-const factors = await queryFactors(supabase, userId)
+### Pipeline (dormant, pending Kotlin port)
+- Capture: `initCapture(config)`, `createEventWriter`, `createSessionManager`, `createWebAdapter`, `resolveComponentPath`
+- Factors: `queryFactors(store, userId, componentPath)`, `queryComponentFactors(store, componentPath)`, `queryFactorHistory(...)`, `kMeans(...)`, `queryUserCluster(...)`
+- Experiments: `evaluateFlag(store, name, platform?, deviceMetadata?)`, `createExperiment(store, definition)`, `startExperiment(store, id)`, `evaluateTargeting(...)`, `evaluateExperimentThresholds(...)`, `concludeExperiment(...)`, `runGovernanceCheck(...)`
+- Storage helpers: `createSpecStorage()`, `createDataSourceCache()`
 
-// Aggregated factors for a component
-const agg = await queryComponentFactors(supabase, 'checkout/payment')
-```
+See `src/index.ts` for the full export list.
 
-### SDUI
+## Stability
 
-```ts
-import {
-  loadSpec,
-  validateSpec,
-  createSpecStorage,
-  devSignatureVerifier,
-  createEd25519Verifier,
-  generateEd25519Keypair,
-  createEd25519Signer,
-} from '@factoredui/core'
-
-// Load a signed spec from Supabase
-const storage = createSpecStorage()
-const spec = await loadSpec(supabase, 'home-hero', storage, devSignatureVerifier)
-
-// In production, verify signatures
-const { publicKey, privateKey } = await generateEd25519Keypair()
-const signer = createEd25519Signer(privateKey)
-const verifier = createEd25519Verifier(publicKey)
-```
-
-## API
-
-### Capture
-- `initCapture(config)` — start the capture pipeline, returns `CaptureHandle`
-- `createWebAdapter()` — DOM-based capture adapter
-- `resolveComponentPath(parts)` — build a `/`-separated path
-
-### Factors
-- `queryFactors(supabase, userId)` — user's computed factors
-- `queryComponentFactors(supabase, componentPath)` — aggregated component factors
-- `queryFactorHistory(supabase, userId, factorName, days)` — historical snapshots
-- `queryUserCluster(supabase, userId)` — user's cluster assignment
-
-### Experiments
-- `evaluateFlag(supabase, name, platform, deviceMetadata)` — get variant assignment
-- `createExperiment(supabase, definition)` — create an experiment
-- `startExperiment(supabase, id)` — start an experiment
-- `evaluateTargeting(rules, factors, metadata)` — check targeting rules
-- `evaluateExperimentThresholds(supabase, id)` — governance check
-- `concludeExperiment(supabase, id, winner)` — end an experiment
-
-### SDUI
-- `loadSpec(supabase, key, storage, verifier)` — load and verify a spec
-- `validateSpec(spec)` — validate spec structure
-- `resolveBinding(ref, data)` — resolve a data binding reference
-- `dispatchAction(action, handlers)` — dispatch a spec action
-
-### Types
-- `Config`, `CaptureHandle`, `CaptureEvent`, `CaptureAdapter`
-- `Factor`, `FactorTier`, `FactorSnapshot`, `FactorDelta`
-- `ExperimentAssignment`, `ExperimentDefinition`, `VariantDefinition`
-- `Spec`, `SpecNode`, `SignedSpec`, `ComponentRegistry`, `ActionRegistry`
-- `Platform` (`"web" | "ios" | "android"`)
-
-## Peer Dependencies
-
-- `@supabase/supabase-js ^2.0.0`
+- **Schema types: stable.** They mirror the Kotlin renderer; treat changes as
+  breaking on both sides simultaneously.
+- **Pipeline functions: dormant.** Internal API; no SemVer guarantee while
+  the Kotlin port is pending.
 
 ## License
 
