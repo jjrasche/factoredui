@@ -1,8 +1,12 @@
 node_modules/
 dist/
+build/
 .env
 .env.local
 .claude/
 *.tgz
 *.tsbuildinfo
 .playwright-mcp/
+
+# Untracked screenshots from unrelated work-ontology project
+work-ontology-*.png
