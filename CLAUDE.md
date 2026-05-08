@@ -57,6 +57,6 @@ npm run typecheck
 
 ## Project-Specific Notes
 
-- CONCEPT.md — original design brief (TS-era, partially stale; will be updated post-refactor)
-- RESEARCH.md — landscape analysis, prior art
+- CONCEPT.md — the thesis (5-piece autonomy loop, three-tier factor model, novelty)
+- DECISIONS.md — architectural decisions and the porting roadmap (current state of the loop, what comes next)
 - packages/kotlin-compose/README.md — detailed setup / publish / consumer integration

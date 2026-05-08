@@ -99,7 +99,12 @@ or open-source project combines: standardized component vocabulary as
 observation+change unit, multi-tier factor engine, LLM hypothesis generation,
 autonomous experimentation, democratic governance.
 
-Closest prior art: Booking.com combinatorial bandits, Karpathy autoresearch,
-Datadog BitsEvolve, Kameleoon PBX, Contentsquare Frustration Score, IBM MAPE-K.
-
-See RESEARCH.md for full landscape analysis.
+Closest prior art: Booking.com combinatorial bandits (component-level
+bandits, no LLM), Karpathy autoresearch (LLM hill-climbing, no factor
+engine), Datadog BitsEvolve (full autonomous loop, no UI vocabulary),
+Kameleoon PBX (LLM hypotheses, DOM-based not factor-based),
+Contentsquare Frustration Score (single composite, not multi-tier),
+IBM MAPE-K (the framework, never applied to UI). No system today
+combines a standardized component vocabulary, multi-tier factor engine,
+LLM hypothesis generation, autonomous experimentation, and democratic
+governance.
