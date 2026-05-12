@@ -42,6 +42,10 @@ implementation("ai.factoredui:kotlin-compose-schema:0.9.0")
 
 **Existing consumers on 0.8.0** continue to work without changes — the single bundled `kotlin-compose:0.8.0` artifact stays published as a frozen snapshot. No SemVer break.
 
+### Known not-blocking issues
+
+- [#1](https://github.com/jjrasche/factoredui/issues/1) — `RenderControlsTest` 6 tests NPE under `runComposeUiTest`. Pre-existing on the 0.8.0 baseline, reproduced on a clean stash; not introduced by the split. Tracked separately.
+
 ### Pinned dependency versions (unchanged from 0.8.0)
 
 - Kotlin `2.3.21`
