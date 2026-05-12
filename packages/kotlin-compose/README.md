@@ -4,14 +4,19 @@ Kotlin Multiplatform + Compose Multiplatform rendering engine for FactoredUI SDU
 
 The sole renderer in FactoredUI as of 2026-04-24 (React / React-Native packages were deleted). Targets Android, iOS, JVM Desktop, and Wasm browsers from one commonMain source set.
 
+As of 0.9.0 the schema types (Spec, SpecNode, capture wire types) live in a separate `ai.factoredui:kotlin-compose-schema` artifact so server-side engines can depend on them without dragging Compose Multiplatform. This artifact pulls them in via Gradle `api(...)`, so consumer source code is unchanged from 0.8.0.
+
 ## Modules
 
-| File | Purpose |
-|---|---|
-| `schema/SpecNode.kt` | Spec / SpecNode / SpecValue data classes; canonical Kotlin-side Spec schema. Mirrored (for now) by `packages/core/src/sdui/spec-types.ts`. |
-| `schema/BindingResolver.kt` | Resolves `{path.to.value}` binding refs against a live data map. |
-| `schema/SpecProps.kt` | Typed prop readers per primitive (`asButtonProps`, `asForceGraphProps`, ...). |
-| `renderer/RenderNode.kt` | `RenderSpec(root, context)` entry point and the `when(type)` dispatch to per-primitive composables. |
+| File | Artifact | Purpose |
+|---|---|---|
+| `schema/SpecNode.kt` | `kotlin-compose-schema` | Spec / SpecNode / SpecValue data classes; canonical Kotlin-side Spec schema. Mirrored (for now) by `packages/core/src/sdui/spec-types.ts`. |
+| `schema/BindingResolver.kt` | `kotlin-compose-schema` | Resolves `{path.to.value}` binding refs against a live data map. |
+| `schema/SpecProps.kt` | `kotlin-compose-schema` | Typed prop readers per primitive (`asButtonProps`, `asForceGraphProps`, ...). |
+| `capture/CaptureEvent.kt` | `kotlin-compose-schema` | `CaptureEvent` / `EventType` / `CapturePlatform` wire types. |
+| `capture/Session.kt` | `kotlin-compose-schema` | `Session` data class (wire format). |
+| `capture/SessionManager.kt` | `kotlin-compose` | Runtime session state — mints session ids, rotates on inactivity. |
+| `renderer/RenderNode.kt` | `kotlin-compose` | `RenderSpec(root, context)` entry point and the `when(type)` dispatch to per-primitive composables. |
 | `renderer/RenderContext.kt` | Bundles `dataFlow`, `actions`, `observability`, `experiments`. |
 | `observability/Observability.kt` | `onRender` / `onInteraction` hook interface (+ default `LoggingObservability`). |
 | `experiments/Experiments.kt` | `assignVariant` / `logExposure` interface (+ `InMemoryExperiments` for tests). |

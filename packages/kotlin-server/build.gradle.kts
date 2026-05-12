@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = "0.8.0"
+version = "0.9.0"
 
 kotlin {
     compilerOptions {
@@ -21,11 +21,10 @@ java {
 }
 
 dependencies {
-    // Shared types from the renderer: SpecNode schema, capture event types,
-    // session model. We pull the JVM artifact specifically — the server
-    // doesn't need Compose UI runtime, but co-locating shared types in
-    // kotlin-compose's commonMain means we get them via the JVM publication.
-    implementation(project(":kotlin-compose"))
+    // Shared wire types (SpecNode schema + capture event/session types).
+    // kotlin-compose-schema is the pure-Kotlin half of the renderer split —
+    // no Compose Multiplatform on the server's classpath.
+    implementation(project(":kotlin-compose-schema"))
 
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)

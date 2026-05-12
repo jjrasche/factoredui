@@ -358,9 +358,10 @@ private fun RenderImage(node: SpecNode, resolvedProps: Map<String, Any?>) {
     val shape = RoundedCornerShape(cornerRadius.dp)
     val fallbackTint = MaterialTheme.colorScheme.surfaceVariant
 
+    val aspectRatio = props.aspectRatio
     val baseModifier = Modifier
         .fillMaxWidth()
-        .let { mod -> if (props.aspectRatio != null) mod.aspectRatio(props.aspectRatio) else mod.height(RenderDefaults.IMAGE_FALLBACK_HEIGHT) }
+        .let { mod -> if (aspectRatio != null) mod.aspectRatio(aspectRatio) else mod.height(RenderDefaults.IMAGE_FALLBACK_HEIGHT) }
         .clip(shape)
         .semantics { contentDescription = alt.ifEmpty { node.id } }
 

@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = "0.8.0"
+version = "0.9.0"
 
 kotlin {
     androidTarget {
@@ -54,6 +54,12 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
+                // `api` so consumers of kotlin-compose transitively get the
+                // pure-Kotlin spec + capture wire types without having to
+                // declare kotlin-compose-schema separately. Server-side
+                // consumers depend on kotlin-compose-schema directly to
+                // avoid pulling Compose Multiplatform.
+                api(project(":kotlin-compose-schema"))
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)

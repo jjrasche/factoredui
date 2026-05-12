@@ -31,37 +31,86 @@ under `packages/`, sharing one version catalog and one wrapper.
 
 ```
 factored-ui/                             ← multi-project gradle root
-├── settings.gradle.kts                  ← includes both subprojects
+├── settings.gradle.kts                  ← includes all subprojects
 ├── gradle/libs.versions.toml            ← shared version catalog
 ├── gradlew, gradle/wrapper/             ← shared wrapper
 └── packages/
+    ├── kotlin-compose-schema/           ← pure-Kotlin wire types (added 0.9.0)
+    │   ├── jvm                          ← engine consumers
+    │   ├── androidTarget                ← device-side, no Compose
+    │   ├── iosX64/Arm64/Sim
+    │   ├── linuxX64                     ← Kotlin/Native server
+    │   └── wasmJs
     ├── kotlin-compose/                  ← KMP renderer + frontend capture
     │   ├── androidTarget                ← Compose UI + Android capture
     │   ├── iosX64/Arm64/Sim             ← Compose UI + iOS capture
     │   ├── jvm("desktop")               ← Compose desktop + capture
     │   └── wasmJs                       ← Compose web + DOM capture
+    │   (api-depends on kotlin-compose-schema)
     └── kotlin-server/                   ← JVM-only Kotlin library
         └── (Postgres JDBC, ingest, factor engine, experiments,
-             LLM hypothesis runner). Depends on kotlin-compose for
-             shared types (Spec, CaptureEvent, Session).
+             LLM hypothesis runner). Depends on kotlin-compose-schema
+             for shared wire types (Spec, CaptureEvent, Session).
 ```
 
-Two published artifacts: `ai.factoredui:kotlin-compose` and
-`ai.factoredui:kotlin-server`. Conceptually one package — the user-
+Three published artifacts (as of 0.9.0): `ai.factoredui:kotlin-compose-schema`,
+`ai.factoredui:kotlin-compose`, and `ai.factoredui:kotlin-server`. Conceptually one package — the user-
 facing experience is "depend on factoredui in your renderer, depend
 on factoredui in your backend, both ship from the same release" —
 but the gradle topology has to be two-project to satisfy KMP.
 
 Why this is fine: nothing about the user-facing model changes. A
 consumer who only renders specs depends on kotlin-compose. A consumer
-who only ingests events depends on kotlin-server (which transitively
-pulls in kotlin-compose for the schema types). No one should depend
-on both manually; doing so works but is redundant.
+who only ingests events depends on kotlin-server (which since 0.9.0
+transitively pulls in kotlin-compose-schema only — no Compose-MP). A
+consumer that just needs the wire types (e.g. an engine that emits or
+validates specs) depends on kotlin-compose-schema directly.
 
 **Future rename**: `packages/kotlin-compose/` → `packages/kotlin/`
 once the rename can land cleanly. Now that the server lives in its
 own subproject, the `kotlin-compose` name is at least self-consistent
 again (it really is just the Compose renderer).
+
+## Decision: split kotlin-compose into schema + renderer
+
+**Status:** decided 2026-05-12, implemented 2026-05-12 in 0.9.0.
+
+The 0.8.0 single artifact `ai.factoredui:kotlin-compose` bundled the
+SDUI schema (`Spec`, `SpecNode`, `SpecValue`, …), the capture wire-
+format types (`CaptureEvent`, `Session`), and the Compose Multiplatform
+renderer in one publication. 0.9.0 splits this into:
+
+- `ai.factoredui:kotlin-compose-schema` — pure Kotlin, no Compose-MP,
+  no Ktor, no androidx, no skiko. KMP targets `jvm`, `android`, iOS
+  (3 arches), `wasmJs`, `linuxX64`. Contains all `@Serializable` wire-
+  format types: SDUI schema, capture event types, the `Session` data
+  class. Pure data + serializers + binding resolver + typed prop
+  accessors.
+- `ai.factoredui:kotlin-compose` — Compose-MP renderer. Same coordinates
+  as before; depends on `kotlin-compose-schema` via Gradle `api(...)`
+  so existing consumers keep getting the schema types transitively.
+  Holds the runtime: `RenderNode`, `RenderContext`, `SessionManager`,
+  `CaptureClient`, `HttpEventTransport`, `CaptureObservability`,
+  observability, experiments, adapter, forcegraph, testing.
+
+**Why:** server-side engine consumers (agent-platform's factor / LLM
+hypothesis modules) need `SpecNode` to emit and validate specs without
+dragging Compose-MP onto their classpath. Compose-MP ABI bumps roughly
+every three months — coupling unrelated engine work to that cadence
+was forcing churn we don't want.
+
+The split rule is "wire format depends on nothing UI-related." Anything
+that exists to serialize over HTTP / JDBC moves to schema. Anything
+that holds runtime state, schedules work, opens sockets, or composes
+UI stays in the renderer. `Session` (data class) → schema. The
+`SessionManager` that owns the live session and rotates on inactivity
+→ renderer.
+
+**SemVer handling:** 0.8.0 stays published as the frozen bundled
+snapshot. 0.9.0 is the split. Package names are unchanged, so no
+import changes for existing consumers; only artifact-coordinate
+changes if a consumer wants to depend on schema directly. See
+`CHANGELOG.md` for migration steps.
 
 ## Decision: storage is Postgres-specific on the server target
 
