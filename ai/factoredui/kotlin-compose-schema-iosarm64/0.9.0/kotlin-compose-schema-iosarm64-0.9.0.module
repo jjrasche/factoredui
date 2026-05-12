@@ -1,0 +1,130 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../kotlin-compose-schema/0.9.0/kotlin-compose-schema-0.9.0.module",
+    "group": "ai.factoredui",
+    "module": "kotlin-compose-schema",
+    "version": "0.9.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "iosArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-schema-iosArm64Main-0.9.0.klib",
+          "url": "kotlin-compose-schema-iosarm64-0.9.0.klib",
+          "size": 95701,
+          "sha512": "e0400040b75635208582e847631c4d52c9a1def2f82a98388a40ea3a638598d7a7d24d361c14bad4121e6075b5f1186ac33eacba9bce774189605f90b5769b6a",
+          "sha256": "e4d4bcf0ca45af681655540428992d65a06ad8229f5d12e39293661875c1206c",
+          "sha1": "8cd9c1c2ef4c317202d80adc4d6d31663d940269",
+          "md5": "90fe1d67ed87ea026a16379ab9605573"
+        }
+      ]
+    },
+    {
+      "name": "iosArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "files": [
+        {
+          "name": "kotlin-compose-schema-iosarm64-0.9.0-sources.jar",
+          "url": "kotlin-compose-schema-iosarm64-0.9.0-sources.jar",
+          "size": 9238,
+          "sha512": "4affb9330a226168437bcad22a19f8f492f87332b9c51c96580c010ee95755cf8883c32b4ce9371c7e3c9c54c909a2e2a17dece57bd3fe38fb1c6e7adcfe5637",
+          "sha256": "e78bf3fee0afef260d2b7b9d2508411a3f75322d03950f74b61a4c43921cf425",
+          "sha1": "cf4b1509d3d93b4bfbb46c0419551f4cbc1df5ad",
+          "md5": "185746942c49e1f311e19e8f75d18e3e"
+        }
+      ]
+    },
+    {
+      "name": "iosArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-schema-iosarm64-0.9.0-metadata.jar",
+          "url": "kotlin-compose-schema-iosarm64-0.9.0-metadata.jar",
+          "size": 261,
+          "sha512": "51edc39fc17d73d9f1100b8220aa184296bf126dd4e0db22dc0892cf7ba962dceab7899c0d9cbfcadd1210b4ce0e2b35778fd3f497da5c852d9f5d25e901f8ef",
+          "sha256": "7a307e42277221e8aaad62eb40220d163924282ced3ef3b6a25f029c9024989f",
+          "sha1": "bb5b26335cb56ac6aed410dab7a31b45ccbdc8b4",
+          "md5": "b7034e138c0cf6c2bfcd9d5a5ad47c2a"
+        }
+      ]
+    }
+  ]
+}
