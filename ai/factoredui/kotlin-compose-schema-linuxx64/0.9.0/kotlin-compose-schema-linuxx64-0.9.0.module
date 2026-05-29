@@ -51,11 +51,11 @@
         {
           "name": "kotlin-compose-schema-linuxX64Main-0.9.0.klib",
           "url": "kotlin-compose-schema-linuxx64-0.9.0.klib",
-          "size": 99085,
-          "sha512": "c4018a7de104b9ff8aaeb0ec41fbf28c40d4a38438076c66451a3582d5f9da2167d77364278ef6db9ccbcac2320caccb5c1e5eb57d57ce958278ef5854054374",
-          "sha256": "8e028d4dc5cfb9ababbcda32e85e79f5fdc5ac2db09cdd036993bb331e0b69d3",
-          "sha1": "22474cbad2d6c9c7610b495a5391bb67c2c82265",
-          "md5": "8a97e36094bee63b88d6ea268bd584be"
+          "size": 95703,
+          "sha512": "3450c6ba6ee8b490daf292d3e38578c7a613a8dfccb5d142cb08763fcd7e150b5a8cd0a87d2d5ac87d6ac5ad54c4666acdf5ac0778b4f7431faad7f588e03217",
+          "sha256": "0e67d3fdfe94c263f67910de5b5227a7d5a8550f96e683a9e6760834e9c38582",
+          "sha1": "bd84f84416f2ddc02a3104fddb0da9482fba27f7",
+          "md5": "25b9618e449478d6898326b16589c40b"
         }
       ]
     },
@@ -74,11 +74,11 @@
         {
           "name": "kotlin-compose-schema-linuxx64-0.9.0-sources.jar",
           "url": "kotlin-compose-schema-linuxx64-0.9.0-sources.jar",
-          "size": 10001,
-          "sha512": "71cec9d5887d8c8550ef4f906682c9132c7f5c113b54a19b2cab1f702ab714693db442e4ec6308070795d47a25976d72d12638f368a0fb9b42b198d33e43d898",
-          "sha256": "f7c01cbaa1bdaea32adcfe422e834bd8a159d7552b9f210042929c82ad087f32",
-          "sha1": "f4b105061fc01c35414b5766a1200f469695849b",
-          "md5": "129b40ea92cc22a10556906f7c1ac502"
+          "size": 9238,
+          "sha512": "4affb9330a226168437bcad22a19f8f492f87332b9c51c96580c010ee95755cf8883c32b4ce9371c7e3c9c54c909a2e2a17dece57bd3fe38fb1c6e7adcfe5637",
+          "sha256": "e78bf3fee0afef260d2b7b9d2508411a3f75322d03950f74b61a4c43921cf425",
+          "sha1": "cf4b1509d3d93b4bfbb46c0419551f4cbc1df5ad",
+          "md5": "185746942c49e1f311e19e8f75d18e3e"
         }
       ]
     }

@@ -43,11 +43,11 @@
         {
           "name": "kotlin-compose-release.aar",
           "url": "kotlin-compose-android-0.9.0.aar",
-          "size": 385711,
-          "sha512": "60298c1e12fe1376b89e62d3131ebccff703e1ebce92fb3b9535b5082f4abfea5c4bc0964b3f94c79675d52893adec76e12bb3cd083e5f63d1d3c9e1078a4925",
-          "sha256": "e4f52bccb8befaea6e21bb8f58340f8b443e17dccf4978ead958c6d5c175d344",
-          "sha1": "2b42011a93c6596c5c8180ddf067abb99119ec02",
-          "md5": "a95ffb7c9245a80fd6dd6880fe47eb83"
+          "size": 367220,
+          "sha512": "60067eafc6e1a2e36059889fb881c3efc9175c37d05eaa6bdfa90c60e4aabc91e68f0616c21353410eb0f91fad06c357b4a08507f4870236e5ec85828b269da6",
+          "sha256": "fc4d3dd11f1160d6b3c77d10732a104b91ee206ab4e770f635395bc9ddc22836",
+          "sha1": "dbeb18fb3978c34cdf2bc48307564594cf0d9105",
+          "md5": "e740cc68013fc8ccb8621c3fa04b0ee9"
         }
       ]
     },
@@ -422,11 +422,11 @@
         {
           "name": "kotlin-compose-release.aar",
           "url": "kotlin-compose-android-0.9.0.aar",
-          "size": 385711,
-          "sha512": "60298c1e12fe1376b89e62d3131ebccff703e1ebce92fb3b9535b5082f4abfea5c4bc0964b3f94c79675d52893adec76e12bb3cd083e5f63d1d3c9e1078a4925",
-          "sha256": "e4f52bccb8befaea6e21bb8f58340f8b443e17dccf4978ead958c6d5c175d344",
-          "sha1": "2b42011a93c6596c5c8180ddf067abb99119ec02",
-          "md5": "a95ffb7c9245a80fd6dd6880fe47eb83"
+          "size": 367220,
+          "sha512": "60067eafc6e1a2e36059889fb881c3efc9175c37d05eaa6bdfa90c60e4aabc91e68f0616c21353410eb0f91fad06c357b4a08507f4870236e5ec85828b269da6",
+          "sha256": "fc4d3dd11f1160d6b3c77d10732a104b91ee206ab4e770f635395bc9ddc22836",
+          "sha1": "dbeb18fb3978c34cdf2bc48307564594cf0d9105",
+          "md5": "e740cc68013fc8ccb8621c3fa04b0ee9"
         }
       ]
     },
@@ -445,11 +445,11 @@
         {
           "name": "kotlin-compose-android-0.9.0-sources.jar",
           "url": "kotlin-compose-android-0.9.0-sources.jar",
-          "size": 60499,
-          "sha512": "1ffc7d1890b3410826f1a0e2659b4ac47ab9b33fa7a6b94bf0b1ab4b93fc17c37dd3f9a3278bba02f7912f42b8c30e8be1874b2c921ecc04cbb83876e563a714",
-          "sha256": "b94466f730d1ecb9a7f048dda06b628538c3553d7ac7ce957ca1850184fd9694",
-          "sha1": "de16c1cb347cd9ab2ddf6412e1daf234b380f9c9",
-          "md5": "912f9470c655d510e39c7797bfba0952"
+          "size": 56235,
+          "sha512": "a2fac415e6814a96dd04e038d2f1d50fe750c6d3132d31f51cdfcae2dddd1727cf9dda0cbf73ed8449ab043cdb2ab7eeac5ce0c136b45a4e5a4f41368874c5f2",
+          "sha256": "e56eeae4b3a67b34d41f45e284ee86f8c35e47b7a168e09a461b0d5d8811313c",
+          "sha1": "6aede6f30433299f71a66434cdde9800b6ee96a3",
+          "md5": "eec51c4ef0435812eff57c652b024b0c"
         }
       ]
     }

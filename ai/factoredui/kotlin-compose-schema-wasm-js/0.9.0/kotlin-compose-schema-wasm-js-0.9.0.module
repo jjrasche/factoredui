@@ -37,11 +37,11 @@
         {
           "name": "kotlin-compose-schema-wasm-js-0.9.0.klib",
           "url": "kotlin-compose-schema-wasm-js-0.9.0.klib",
-          "size": 95063,
-          "sha512": "d1cc24d63b49684685120aa537792ae284a091f281aee7b357203c872682e96654c9d8781c2ee838f3a6146498ef7ad4e5c2068f36902b9d5fc3960f5b12afa0",
-          "sha256": "f1369f5b22e9b4ea1c8cb86624f953618fd219d4ac72f4566176b6bc4b5ecfea",
-          "sha1": "d3d353a701752ffdc3440c769a40a67cc4ee77d3",
-          "md5": "5800561b2d338100c9dfce433dd2453a"
+          "size": 92458,
+          "sha512": "8dbcbc06b93899198069b31a91588dae64beb7a0407bcea1ab3a89a6ab2b25bb845ae163c490f38785a7dda81818c42bfcd4e59f3170823c1088a6add9ba574b",
+          "sha256": "d06ea11fc78e70aa62a6c154bdc638a83570ac14dc9f5255f2419d75766f3dcc",
+          "sha1": "94498b873876a58e32de5b6a2d7cf8a2a75b7fe0",
+          "md5": "0712d7632dfc43c0f7807e2d2ca22a03"
         }
       ]
     },
@@ -81,11 +81,11 @@
         {
           "name": "kotlin-compose-schema-wasm-js-0.9.0.klib",
           "url": "kotlin-compose-schema-wasm-js-0.9.0.klib",
-          "size": 95063,
-          "sha512": "d1cc24d63b49684685120aa537792ae284a091f281aee7b357203c872682e96654c9d8781c2ee838f3a6146498ef7ad4e5c2068f36902b9d5fc3960f5b12afa0",
-          "sha256": "f1369f5b22e9b4ea1c8cb86624f953618fd219d4ac72f4566176b6bc4b5ecfea",
-          "sha1": "d3d353a701752ffdc3440c769a40a67cc4ee77d3",
-          "md5": "5800561b2d338100c9dfce433dd2453a"
+          "size": 92458,
+          "sha512": "8dbcbc06b93899198069b31a91588dae64beb7a0407bcea1ab3a89a6ab2b25bb845ae163c490f38785a7dda81818c42bfcd4e59f3170823c1088a6add9ba574b",
+          "sha256": "d06ea11fc78e70aa62a6c154bdc638a83570ac14dc9f5255f2419d75766f3dcc",
+          "sha1": "94498b873876a58e32de5b6a2d7cf8a2a75b7fe0",
+          "md5": "0712d7632dfc43c0f7807e2d2ca22a03"
         }
       ]
     },
@@ -104,11 +104,11 @@
         {
           "name": "kotlin-compose-schema-wasm-js-0.9.0-sources.jar",
           "url": "kotlin-compose-schema-wasm-js-0.9.0-sources.jar",
-          "size": 10001,
-          "sha512": "71cec9d5887d8c8550ef4f906682c9132c7f5c113b54a19b2cab1f702ab714693db442e4ec6308070795d47a25976d72d12638f368a0fb9b42b198d33e43d898",
-          "sha256": "f7c01cbaa1bdaea32adcfe422e834bd8a159d7552b9f210042929c82ad087f32",
-          "sha1": "f4b105061fc01c35414b5766a1200f469695849b",
-          "md5": "129b40ea92cc22a10556906f7c1ac502"
+          "size": 9238,
+          "sha512": "4affb9330a226168437bcad22a19f8f492f87332b9c51c96580c010ee95755cf8883c32b4ce9371c7e3c9c54c909a2e2a17dece57bd3fe38fb1c6e7adcfe5637",
+          "sha256": "e78bf3fee0afef260d2b7b9d2508411a3f75322d03950f74b61a4c43921cf425",
+          "sha1": "cf4b1509d3d93b4bfbb46c0419551f4cbc1df5ad",
+          "md5": "185746942c49e1f311e19e8f75d18e3e"
         }
       ]
     }

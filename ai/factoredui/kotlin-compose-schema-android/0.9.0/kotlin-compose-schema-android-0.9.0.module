@@ -36,11 +36,11 @@
         {
           "name": "kotlin-compose-schema-release.aar",
           "url": "kotlin-compose-schema-android-0.9.0.aar",
-          "size": 134051,
-          "sha512": "e6099f3cd9cfad3296e11f4fd3a40a276b461ebf87e2a1ed0b842c571d7db4c1240b9fb80b79a89bd43c7c43247d297e39f315e7cd96e14b8386b651f208d003",
-          "sha256": "bdd6829ead348650b0b8734da1fdb583e79113a949fd244ea2bc2f3bdd8d8af8",
-          "sha1": "3cdaf1f91279a8d6bd8cecd0ea7b526e7569fd72",
-          "md5": "e8043cfdcd95886e7b0a88ebccd912f2"
+          "size": 129745,
+          "sha512": "8ed8a829e23c73bfc823d1b9c8d2ab2cf1d7d374d1e84c48a594fcb97098a116b3cd6b6923d07d44c1ba4bc5852ff571b1d75a25dce5464dda60ed929b910303",
+          "sha256": "def34c4102dd822c120ca4d8340d60fd0a94139ade31fc1154c25d19ea49f01b",
+          "sha1": "d56c2fa49d00a1240981b23d2a1eb9ab78f3060a",
+          "md5": "dbe9aeffc95dc8560d65153aa5a9be6e"
         }
       ]
     },
@@ -121,11 +121,11 @@
         {
           "name": "kotlin-compose-schema-release.aar",
           "url": "kotlin-compose-schema-android-0.9.0.aar",
-          "size": 134051,
-          "sha512": "e6099f3cd9cfad3296e11f4fd3a40a276b461ebf87e2a1ed0b842c571d7db4c1240b9fb80b79a89bd43c7c43247d297e39f315e7cd96e14b8386b651f208d003",
-          "sha256": "bdd6829ead348650b0b8734da1fdb583e79113a949fd244ea2bc2f3bdd8d8af8",
-          "sha1": "3cdaf1f91279a8d6bd8cecd0ea7b526e7569fd72",
-          "md5": "e8043cfdcd95886e7b0a88ebccd912f2"
+          "size": 129745,
+          "sha512": "8ed8a829e23c73bfc823d1b9c8d2ab2cf1d7d374d1e84c48a594fcb97098a116b3cd6b6923d07d44c1ba4bc5852ff571b1d75a25dce5464dda60ed929b910303",
+          "sha256": "def34c4102dd822c120ca4d8340d60fd0a94139ade31fc1154c25d19ea49f01b",
+          "sha1": "d56c2fa49d00a1240981b23d2a1eb9ab78f3060a",
+          "md5": "dbe9aeffc95dc8560d65153aa5a9be6e"
         }
       ]
     },
@@ -144,11 +144,11 @@
         {
           "name": "kotlin-compose-schema-android-0.9.0-sources.jar",
           "url": "kotlin-compose-schema-android-0.9.0-sources.jar",
-          "size": 10001,
-          "sha512": "71cec9d5887d8c8550ef4f906682c9132c7f5c113b54a19b2cab1f702ab714693db442e4ec6308070795d47a25976d72d12638f368a0fb9b42b198d33e43d898",
-          "sha256": "f7c01cbaa1bdaea32adcfe422e834bd8a159d7552b9f210042929c82ad087f32",
-          "sha1": "f4b105061fc01c35414b5766a1200f469695849b",
-          "md5": "129b40ea92cc22a10556906f7c1ac502"
+          "size": 9238,
+          "sha512": "4affb9330a226168437bcad22a19f8f492f87332b9c51c96580c010ee95755cf8883c32b4ce9371c7e3c9c54c909a2e2a17dece57bd3fe38fb1c6e7adcfe5637",
+          "sha256": "e78bf3fee0afef260d2b7b9d2508411a3f75322d03950f74b61a4c43921cf425",
+          "sha1": "cf4b1509d3d93b4bfbb46c0419551f4cbc1df5ad",
+          "md5": "185746942c49e1f311e19e8f75d18e3e"
         }
       ]
     }

@@ -140,11 +140,11 @@
         {
           "name": "kotlin-compose-metadata-0.9.0.jar",
           "url": "kotlin-compose-0.9.0.jar",
-          "size": 34773,
-          "sha512": "a05c54a9ccbcc0e8eed27d0ddc13a6ada2fd8d2efbe6addd65b23cbd919c6362634f91ca912699bb112d03cb6460ec186a4f9ef75cd4a6bd5f012d7169c3f8b1",
-          "sha256": "687205e70f92de716df51b733cb1271508ce444e9de19803c94ffb6d2c1c6bba",
-          "sha1": "865b91c7ee18fa9f38ac448920f67ba9ffe3d8d3",
-          "md5": "be2d580130da1534debfe56c21ae063b"
+          "size": 33620,
+          "sha512": "f09e0da1156bb1864ca034900d907a946eb83c4c6f5f31bd9b219ef3f4459005a668e3f582dbc1ca3a260a576b81ab192b25cf04134ffb42b245006a7af805a0",
+          "sha256": "073681fc8f0ebfee3618ff76d47c08a0a610823efc03d71fd91fd32b1ba7497e",
+          "sha1": "9f15ab05e46f4490529bf5c19f5fe130ec0ca204",
+          "md5": "3f69f3c315f8068a0b00ba777c3dbe09"
         }
       ]
     },
@@ -162,11 +162,11 @@
         {
           "name": "kotlin-compose-kotlin-0.9.0-sources.jar",
           "url": "kotlin-compose-0.9.0-sources.jar",
-          "size": 60499,
-          "sha512": "a0e34a874ce87742df5d3e24ea1745c9c0fbae15419a6fb49aaba4392b97e8e6597449ed44a048f24d34a41438a734541e060ab807f2a8ad7c8279f8dd537b7b",
-          "sha256": "e25ac07d8744cba9ffcd043a91c44aaeca51e33325df6da84dbd82a9736732be",
-          "sha1": "fc628efb1f7b5277ac12f1460749945237e8f843",
-          "md5": "e4e73851e3bea1b7940b3d1011d83547"
+          "size": 56235,
+          "sha512": "485ecac1494571779b668661a7f00798c5ee54c6351126392172cf56d7253b96ac7c9ad44786b2cdbb6ed50dcd5d181e64d987c6a160c5ebb42c73b8ea91e078",
+          "sha256": "41d90053c5ff9d2b0c8f2cb39a08e7668c69ecb5289dfffec11687fd1280777c",
+          "sha1": "d9871923b45e2432d87829835353b8f86ddaf1d5",
+          "md5": "17f648baf638cee96fa649cfdffb9dc5"
         }
       ]
     },
