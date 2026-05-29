@@ -15,7 +15,8 @@ dependencyResolutionManagement {
     }
 }
 
-include(":kotlin-compose-schema", ":kotlin-compose", ":kotlin-server")
+include(":kotlin-compose-schema", ":kotlin-engine", ":kotlin-compose", ":kotlin-server")
 project(":kotlin-compose-schema").projectDir = file("packages/kotlin-compose-schema")
+project(":kotlin-engine").projectDir = file("packages/kotlin-engine")
 project(":kotlin-compose").projectDir = file("packages/kotlin-compose")
 project(":kotlin-server").projectDir = file("packages/kotlin-server")
