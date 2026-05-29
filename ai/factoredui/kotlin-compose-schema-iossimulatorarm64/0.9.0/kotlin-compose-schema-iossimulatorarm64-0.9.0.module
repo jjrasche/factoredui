@@ -51,11 +51,11 @@
         {
           "name": "kotlin-compose-schema-iosSimulatorArm64Main-0.9.0.klib",
           "url": "kotlin-compose-schema-iossimulatorarm64-0.9.0.klib",
-          "size": 95766,
-          "sha512": "5fb5e7f405ef55d6e11bc48562c88fc150a9b754983a1bdc5ed073ae3973b020a2b60b6c196671016ea86b4a8eb5042e3262e32c7af7daabf439185f923165b0",
-          "sha256": "bd2aaddaf71f00274f17c46ba6497cc9d21193244717351f28108b865bddf2d6",
-          "sha1": "83c4f6cf70e8697d4f44326f2a011fcf5ff86ae4",
-          "md5": "0a5beedbd80f9c22c242e051f71d1e03"
+          "size": 99148,
+          "sha512": "b98aa40d4aad182d684b89418967fc58168d61bcf0f4e46268e903c14dbceb3066364035f14b12e2dde3d4b146c2b71354a787c50949ad9b50480c32c454d034",
+          "sha256": "1105f470fdf6b04277061e0b72a1dcd50d67dfc3d6b438551081f140422a7e87",
+          "sha1": "dea09510263f5f64f4c2d531687c76a88dd0270e",
+          "md5": "2cf3ea47603b06f8485d1c3df7eb0272"
         }
       ]
     },
@@ -74,11 +74,11 @@
         {
           "name": "kotlin-compose-schema-iossimulatorarm64-0.9.0-sources.jar",
           "url": "kotlin-compose-schema-iossimulatorarm64-0.9.0-sources.jar",
-          "size": 9238,
-          "sha512": "4affb9330a226168437bcad22a19f8f492f87332b9c51c96580c010ee95755cf8883c32b4ce9371c7e3c9c54c909a2e2a17dece57bd3fe38fb1c6e7adcfe5637",
-          "sha256": "e78bf3fee0afef260d2b7b9d2508411a3f75322d03950f74b61a4c43921cf425",
-          "sha1": "cf4b1509d3d93b4bfbb46c0419551f4cbc1df5ad",
-          "md5": "185746942c49e1f311e19e8f75d18e3e"
+          "size": 10001,
+          "sha512": "71cec9d5887d8c8550ef4f906682c9132c7f5c113b54a19b2cab1f702ab714693db442e4ec6308070795d47a25976d72d12638f368a0fb9b42b198d33e43d898",
+          "sha256": "f7c01cbaa1bdaea32adcfe422e834bd8a159d7552b9f210042929c82ad087f32",
+          "sha1": "f4b105061fc01c35414b5766a1200f469695849b",
+          "md5": "129b40ea92cc22a10556906f7c1ac502"
         }
       ]
     },
@@ -119,10 +119,10 @@
           "name": "kotlin-compose-schema-iossimulatorarm64-0.9.0-metadata.jar",
           "url": "kotlin-compose-schema-iossimulatorarm64-0.9.0-metadata.jar",
           "size": 261,
-          "sha512": "51edc39fc17d73d9f1100b8220aa184296bf126dd4e0db22dc0892cf7ba962dceab7899c0d9cbfcadd1210b4ce0e2b35778fd3f497da5c852d9f5d25e901f8ef",
-          "sha256": "7a307e42277221e8aaad62eb40220d163924282ced3ef3b6a25f029c9024989f",
-          "sha1": "bb5b26335cb56ac6aed410dab7a31b45ccbdc8b4",
-          "md5": "b7034e138c0cf6c2bfcd9d5a5ad47c2a"
+          "sha512": "81b4d158d76299baaf094bf7c0e1d5aa70c32f4fe4607111feae9d5eecaff0847f870c308f409e4f63eaae5dbfeeb12ef8f04f98e284be0508bcb22079a6f37d",
+          "sha256": "97e7555f56a28a3c94d114e0dc42a0b24d8cd70f5038b37077fa2d4cd750bdcf",
+          "sha1": "23bd70e7ec15f5c288a96a428671ae768b9fd224",
+          "md5": "ab20183b4a970d1208f99bf6d149b381"
         }
       ]
     }
