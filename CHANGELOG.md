@@ -2,6 +2,22 @@
 
 All notable changes to factoredui Kotlin artifacts. Format inspired by Keep a Changelog; versioning follows SemVer.
 
+## [0.10.0] — factor + experiment engine, reactive renderer features
+
+### Added
+
+- **`ai.factoredui:kotlin-engine:0.10.0`** — new pure-Kotlin, multiplatform module (`jvm`, `android`, `iosX64`, `iosArm64`, `iosSimulatorArm64`, `wasmJs`, `linuxX64`) holding the storage-free decision logic of the autonomy loop: factor types + k-means, DJB2 traffic bucketing, the targeting predicate engine, governance verdicts, `ExperimentValidationError` (sealed) + `findValidationError`, and the factor dashboard spec builder. Lets server/native/Android consumers run the engine's logic without Postgres or Compose.
+- **`ai.factoredui:kotlin-server:0.10.0`** — factor engine: five v1 factors (`error_rate`; `rage_click_rate`/`dead_click_rate`/`scroll_reversal_rate`; `hesitation_time_p50_ms`) as Postgres views over `factoredui_events`, plus `queryFactors` / `queryComponentFactors` taking a JDBC `Connection`. Depends on `kotlin-engine`.
+- **Renderer (`ai.factoredui:kotlin-compose:0.10.0`)**: reactive `LIST` `data_source` (live `HostDataSource` subscription + per-row `{row.*}` scoping); `RenderSpec(Flow<Spec>)` hot-swap; `Spec.keybindings: Map<ShortcutKey, ActionRef>` (closed key enum) via `KeybindingHost`.
+- **Schema (`ai.factoredui:kotlin-compose-schema:0.10.0`)**: `ListProps.data_source`, `Spec.keybindings` + `ShortcutKey`.
+
+### Changed
+
+- `Observability.onInteraction` now carries the resolved action params, which `CaptureObservability` nests under `payload.params` — captured interactions are anchored to the data they were about.
+- `Experiments.assignVariant` / `logExposure` gain an optional `subjectId`, so one instance buckets many workers (deterministic per `(slotId, subjectId)`).
+
+Backwards-compatible: existing specs and consumers are unaffected (new fields default to empty / null). Bump your dependency from `0.9.0` to `0.10.0`.
+
 ## [0.9.0] — schema / renderer split
 
 Single bundled `ai.factoredui:kotlin-compose:0.8.0` is now two artifacts.
