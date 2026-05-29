@@ -17,7 +17,10 @@ import java.sql.Connection
  * point this function's contract evolves.
  */
 fun runMigrations(connection: Connection) {
-    val resourceNames = listOf("factoredui/migrations/0001_init.sql")
+    val resourceNames = listOf(
+        "factoredui/migrations/0001_init.sql",
+        "factoredui/migrations/0002_factors.sql",
+    )
     val loader = Migrations::class.java.classLoader
     connection.createStatement().use { stmt ->
         for (name in resourceNames) {

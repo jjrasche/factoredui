@@ -26,6 +26,12 @@ dependencies {
     // no Compose Multiplatform on the server's classpath.
     implementation(project(":kotlin-compose-schema"))
 
+    // Pure factor + experiment logic (factor types, k-means, bucketing,
+    // targeting, governance, validation). The server adds only the Postgres
+    // I/O around it. kotlin-engine is multiplatform; agent-platform imports
+    // the same module for its Android target — single canonical implementation.
+    implementation(project(":kotlin-engine"))
+
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.datetime)
@@ -37,6 +43,13 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
+
+    // Real-Postgres integration tests for the factor SQL. H2's PG-compat mode
+    // diverges on exactly the features the factor engine leans on (TIMESTAMPTZ,
+    // JSONB, percentile_cont), so the SQL is verified against a throwaway
+    // Postgres container. Skips gracefully when Docker is unavailable.
+    testImplementation(libs.testcontainers)
+    testImplementation(libs.testcontainers.postgresql)
 }
 
 publishing {

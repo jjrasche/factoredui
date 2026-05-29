@@ -12,6 +12,7 @@ coil = "3.2.0"
 ktor = "3.2.0"
 postgresql = "42.7.4"
 hikariCp = "5.1.0"
+testcontainers = "1.20.4"
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -42,3 +43,5 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 hikari-cp = { module = "com.zaxxer:HikariCP", version.ref = "hikariCp" }
+testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
