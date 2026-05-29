@@ -1,6 +1,7 @@
 package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.adapter.ActionRegistry
+import ai.factoredui.compose.adapter.HostDataSource
 import ai.factoredui.compose.experiments.ControlExperiments
 import ai.factoredui.compose.experiments.Experiments
 import ai.factoredui.compose.observability.NoOpObservability
@@ -28,6 +29,12 @@ class RenderContext private constructor(
     val observability: Observability,
     /** A/B experiment slot resolver. */
     val experiments: Experiments,
+    /**
+     * Host-implemented live query source for `data_source`-bound LIST nodes.
+     * Null when the host wires no reactive data layer — lists then fall back
+     * to the static [data] path, so existing specs are unaffected.
+     */
+    val hostDataSource: HostDataSource?,
     private val store: MutableStateFlow<Map<String, Any?>>,
     private val overlay: Map<String, Any?>,
 ) {
@@ -36,10 +43,12 @@ class RenderContext private constructor(
         initialData: Map<String, Any?> = emptyMap(),
         observability: Observability = NoOpObservability,
         experiments: Experiments = ControlExperiments,
+        hostDataSource: HostDataSource? = null,
     ) : this(
         actions = actions,
         observability = observability,
         experiments = experiments,
+        hostDataSource = hostDataSource,
         store = MutableStateFlow(initialData),
         overlay = emptyMap(),
     )
@@ -77,6 +86,7 @@ class RenderContext private constructor(
         actions = actions,
         observability = observability,
         experiments = experiments,
+        hostDataSource = hostDataSource,
         store = store,
         overlay = overlay + extra,
     )
@@ -131,13 +141,17 @@ private class DerivedStateFlow(
  * needed at the handler site.
  */
 suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
-    observability.onInteraction(nodeId, actionRef)
+    // Resolve once, up front, so the observability hook witnesses the same
+    // resolved params the handler receives — capture anchors the event to the
+    // data it was about (e.g. {row.id} → the row's id) rather than the raw
+    // binding ref. Fires regardless of whether a handler is registered.
+    val resolvedParams = ai.factoredui.compose.schema.BindingResolver
+        .resolveProps(actionRef.params, data)
+    observability.onInteraction(nodeId, actionRef, resolvedParams)
     val handler = actions[actionRef.action]
     if (handler == null) {
         println("[factoredui] unknown action '${actionRef.action}' on node '$nodeId'")
         return
     }
-    val resolvedParams = ai.factoredui.compose.schema.BindingResolver
-        .resolveProps(actionRef.params, data)
     handler(resolvedParams)
 }

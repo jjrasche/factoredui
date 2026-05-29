@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -114,8 +115,64 @@ class SpecRoundTripTest {
 
         assertEquals("items", listProps.data)
         assertEquals("No items", listProps.emptyText)
+        assertNull(listProps.dataSource)
         assertNotNull(listProps.itemTemplate)
         assertEquals("item-row", listProps.itemTemplate!!.id)
+    }
+
+    @Test
+    fun listNodeWithDataSourceDeserializesCorrectly() {
+        val nodeJson = """
+            {
+              "id": "approvals",
+              "type": "list",
+              "props": {
+                "data_source": "query:automations:approved_at_ms IS NULL",
+                "maxItems": 50,
+                "itemTemplate": {
+                  "id": "approval-row",
+                  "type": "row",
+                  "props": {},
+                  "children": []
+                }
+              }
+            }
+        """.trimIndent()
+
+        val node = json.decodeFromString<SpecNode>(nodeJson)
+        val listProps = node.props.asListProps()
+
+        assertEquals("query:automations:approved_at_ms IS NULL", listProps.dataSource)
+        assertEquals(50, listProps.maxItems)
+        // `data` is absent when data_source drives the list.
+        assertEquals("", listProps.data)
+        assertNotNull(listProps.itemTemplate)
+    }
+
+    @Test
+    fun specWithKeybindingsDeserializesAndRoundTrips() {
+        val keybindingJson = """
+            {
+              "spec_version": 1,
+              "renderer_min": 1,
+              "root": { "id": "root", "type": "column", "props": {}, "children": [] },
+              "keybindings": {
+                "y": { "action": "verdict", "params": { "value": "Y" } },
+                "n": { "action": "verdict", "params": { "value": "N" } },
+                "space": { "action": "skip" }
+              }
+            }
+        """.trimIndent()
+
+        val spec = json.decodeFromString<Spec>(keybindingJson)
+        assertEquals(3, spec.keybindings.size)
+        assertEquals("verdict", spec.keybindings[ShortcutKey.Y]?.action)
+        assertEquals(SpecValue.StringValue("N"), spec.keybindings[ShortcutKey.N]?.params?.get("value"))
+        assertEquals("skip", spec.keybindings[ShortcutKey.SPACE]?.action)
+
+        // Enum-keyed map must round-trip as a JSON object, not an array.
+        val reEncoded = json.encodeToString(Spec.serializer(), spec)
+        assertEquals(spec, json.decodeFromString<Spec>(reEncoded))
     }
 
     @Test

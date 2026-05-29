@@ -24,16 +24,25 @@ data class Variant(
 interface Experiments {
 
     /**
-     * Return the variant assigned to [slotId] for the current user/session.
-     * Must be deterministic within a session — do not randomise on each call.
+     * Return the variant assigned to [slotId] for [subjectId] — the worker /
+     * user the UI is being rendered for. Null means "the ambient subject the
+     * implementation already knows" (e.g. an instance constructed per-worker).
+     *
+     * Must be deterministic per (slotId, subjectId): one implementation can
+     * serve many subjects without randomising on each call. A host typically
+     * backs this with the engine's
+     * `selectVariantByHash(subjectId, experimentId, variants)` and maps the
+     * resulting variant to a spec it pushes through a `Flow<Spec>`.
      */
-    fun assignVariant(slotId: String): Variant
+    fun assignVariant(slotId: String, subjectId: String? = null): Variant
 
     /**
-     * Record that the user was exposed to [variant] in slot [slotId].
-     * Call this once when the variant's UI becomes visible, not on every render.
+     * Record that [subjectId] was exposed to [variant] in slot [slotId]. Call
+     * once when the variant's UI becomes visible, not on every render. The
+     * subject is what lets exposure attribute to the right worker so the factor
+     * engine can compare per-variant outcomes.
      */
-    fun logExposure(slotId: String, variant: Variant)
+    fun logExposure(slotId: String, variant: Variant, subjectId: String? = null)
 }
 
 /**
@@ -41,10 +50,10 @@ interface Experiments {
  * Safe default for new integrations and tests.
  */
 object ControlExperiments : Experiments {
-    override fun assignVariant(slotId: String): Variant =
+    override fun assignVariant(slotId: String, subjectId: String?): Variant =
         Variant(slotId = slotId, variantKey = "control")
 
-    override fun logExposure(slotId: String, variant: Variant) = Unit
+    override fun logExposure(slotId: String, variant: Variant, subjectId: String?) = Unit
 }
 
 /**
@@ -62,13 +71,13 @@ class InMemoryExperiments(
 
     private val exposureLog = mutableListOf<Pair<String, Variant>>()
 
-    override fun assignVariant(slotId: String): Variant = Variant(
+    override fun assignVariant(slotId: String, subjectId: String?): Variant = Variant(
         slotId = slotId,
         variantKey = assignments[slotId] ?: "control",
         config = configs[slotId] ?: emptyMap(),
     )
 
-    override fun logExposure(slotId: String, variant: Variant) {
+    override fun logExposure(slotId: String, variant: Variant, subjectId: String?) {
         exposureLog.add(slotId to variant)
     }
 

@@ -18,6 +18,14 @@ export interface Spec {
   spec_version: number;
   renderer_min: number;
   root: SpecNode;
+  /**
+   * Optional spec-level keyboard shortcuts: key → action. A keypress dispatches
+   * the action exactly like a tap. Keys are a closed set — "y", "n", "space",
+   * "enter", "escape", "arrow_up", "arrow_down", "arrow_left", "arrow_right",
+   * "tab" — typed as a closed enum (ShortcutKey) on the Kotlin renderer; a
+   * string here for JSON friendliness.
+   */
+  keybindings?: Record<string, ActionRef>;
 }
 
 // --- Node types ---
@@ -78,7 +86,19 @@ export interface ActionRef {
 // --- List-specific props ---
 
 export interface ListProps {
-  data: string;
+  /**
+   * Static binding key resolved against the render context (e.g. "threads"),
+   * or a binding ref ("{row.branches}") for nested lists. Mutually exclusive
+   * with data_source.
+   */
+  data?: string;
+  /**
+   * Live query resolved by the host's HostDataSource (e.g.
+   * "query:automations:approved_at_ms IS NULL"). When set, the list subscribes
+   * to a stream of result sets and re-renders on every change. The string is
+   * opaque to the renderer; only the host's storage layer interprets it.
+   */
+  data_source?: string;
   itemTemplate: SpecNode;
   emptyText?: string;
   maxItems?: number;
@@ -285,6 +305,18 @@ export interface DataSourceConfig {
 }
 
 export type DataSourceRegistry = Record<string, DataSourceConfig>;
+
+/**
+ * Reactive sibling of DataSourceConfig, mirroring the Kotlin renderer's
+ * `HostDataSource`. Where DataSourceConfig.fetch is a one-shot pull, this is a
+ * live push: a `data_source`-bound LIST node subscribes to a query and the host
+ * invokes onResults with the full result set now and on every change. The query
+ * is opaque to the renderer. subscribe returns an unsubscribe function the
+ * renderer calls when the list leaves the tree.
+ */
+export interface HostDataSource {
+  subscribe(query: string, onResults: (rows: unknown[]) => void): () => void;
+}
 
 // --- Action handler contract (implemented by the host app) ---
 

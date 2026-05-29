@@ -89,6 +89,7 @@ class CaptureClientTest {
         observability.onInteraction(
             nodeId = "checkout-btn",
             action = ActionRef(action = "submit-order"),
+            resolvedParams = emptyMap(),
         )
         client.flush()
         advanceUntilIdle()

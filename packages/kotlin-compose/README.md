@@ -147,7 +147,9 @@ val obs = LoggingObservability()
 val obs = object : Observability {
     val renders = mutableListOf<String>()
     override fun onRender(nodeId: String) { renders.add(nodeId) }
-    override fun onInteraction(nodeId: String, action: ActionRef) = Unit
+    // resolvedParams = the action's params with bindings resolved against the
+    // current scope (e.g. {row.id} -> the row's id), for anchoring the event.
+    override fun onInteraction(nodeId: String, action: ActionRef, resolvedParams: Map<String, Any?>) = Unit
 }
 
 // Production: wire to OpenTelemetry span in Milestone 2

@@ -16,8 +16,16 @@ interface Observability {
     /** Called when a node is rendered for the first time (impression). */
     fun onRender(nodeId: String)
 
-    /** Called when the user interacts with a node (tap, submit, etc.). */
-    fun onInteraction(nodeId: String, action: ActionRef)
+    /**
+     * Called when the user interacts with a node (tap, submit, etc.).
+     *
+     * [resolvedParams] are the action's params with bindings already resolved
+     * against the current scope (e.g. `{row.id}` → the row's actual id) — so a
+     * capture implementation can anchor the event to the data it was about.
+     * Empty when the action declares no params. The unresolved [action] is
+     * still provided for its name and raw param shape.
+     */
+    fun onInteraction(nodeId: String, action: ActionRef, resolvedParams: Map<String, Any?>)
 }
 
 /**
@@ -30,13 +38,13 @@ class LoggingObservability : Observability {
         println("[factoredui] render: $nodeId")
     }
 
-    override fun onInteraction(nodeId: String, action: ActionRef) {
-        println("[factoredui] interaction: $nodeId -> ${action.action}(${action.params})")
+    override fun onInteraction(nodeId: String, action: ActionRef, resolvedParams: Map<String, Any?>) {
+        println("[factoredui] interaction: $nodeId -> ${action.action}($resolvedParams)")
     }
 }
 
 /** Silent observability for tests that only check side effects. */
 object NoOpObservability : Observability {
     override fun onRender(nodeId: String) = Unit
-    override fun onInteraction(nodeId: String, action: ActionRef) = Unit
+    override fun onInteraction(nodeId: String, action: ActionRef, resolvedParams: Map<String, Any?>) = Unit
 }

@@ -41,10 +41,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import ai.factoredui.compose.adapter.HostDataSource
 import ai.factoredui.compose.forcegraph.RenderForceGraph
 import ai.factoredui.compose.schema.BindingResolver
 import ai.factoredui.compose.schema.ImageFit
+import ai.factoredui.compose.schema.ListProps
+import ai.factoredui.compose.schema.Spec
 import ai.factoredui.compose.schema.asForceGraphProps
 // BindingResolver used to support {ref} in list `data` prop (nested lists).
 import ai.factoredui.compose.schema.SpecNode
@@ -75,6 +79,37 @@ import coil3.svg.SvgDecoder
 @Composable
 fun RenderSpec(root: SpecNode, context: RenderContext) {
     RenderNode(node = root, context = context)
+}
+
+/**
+ * Renders a full [Spec]: its root tree plus any spec-level keyboard shortcuts.
+ * When [Spec.keybindings] is empty this is just the root render — no focus
+ * machinery is installed.
+ */
+@Composable
+fun RenderSpec(spec: Spec, context: RenderContext) {
+    if (spec.keybindings.isEmpty()) {
+        RenderNode(node = spec.root, context = context)
+    } else {
+        KeybindingHost(keybindings = spec.keybindings, context = context) {
+            RenderNode(node = spec.root, context = context)
+        }
+    }
+}
+
+/**
+ * Hot-swapping entry point: renders whatever [Spec] the host currently holds,
+ * recomposing in place when [specFlow] emits a new one — no navigation boundary.
+ *
+ * This is how an experiment variant swap (or any live spec update) reaches the
+ * screen: the host pushes the new spec through the flow and the tree
+ * re-renders against the same [context] / data store. Use a [StateFlow] so
+ * there is always a current spec to show (a cold source can `.stateIn(...)`).
+ */
+@Composable
+fun RenderSpec(specFlow: StateFlow<Spec>, context: RenderContext) {
+    val spec by specFlow.collectAsState()
+    RenderSpec(spec = spec, context = context)
 }
 
 /**
@@ -244,31 +279,82 @@ private fun RenderCard(node: SpecNode, context: RenderContext) {
 @Composable
 private fun RenderList(node: SpecNode, context: RenderContext) {
     val props = node.props.asListProps()
+    val host = context.hostDataSource
+    val query = props.dataSource
+    // Live path: a `data_source` query plus a host that can serve it. The host
+    // streams result sets and we re-render on every emission. Falls back to the
+    // static `data` key whenever either piece is absent, so existing specs are
+    // unaffected.
+    if (host != null && !query.isNullOrEmpty()) {
+        RenderLiveList(props, context, host, query)
+    } else {
+        RenderStaticList(props, context)
+    }
+}
+
+/**
+ * `data_source`-bound list. Subscribes to the host's live query and re-renders
+ * the row template on every emission. `remember(query)` keeps the subscription
+ * stable across recompositions; `collectAsState` cancels it when the list
+ * leaves composition (releasing any host-side watch via the Flow's `awaitClose`).
+ */
+@Composable
+private fun RenderLiveList(
+    props: ListProps,
+    context: RenderContext,
+    host: HostDataSource,
+    query: String,
+) {
+    val resultsFlow = remember(query) { host.subscribe(query) }
+    val rows by resultsFlow.collectAsState(initial = emptyList())
+    RenderRows(rows, props, context)
+}
+
+/**
+ * Static list. `data` may be a plain key ("threads") for a top-level binding OR
+ * a binding ref ("{row.branches}" / "{item.branches}") so nested lists iterate
+ * over a field of the enclosing row's overlay.
+ */
+@Composable
+private fun RenderStaticList(props: ListProps, context: RenderContext) {
     val liveData by context.dataFlow.collectAsState()
-    // `data` may be a plain key ("threads") for top-level binding OR a binding
-    // ref ("{item.branches}") so nested lists can iterate over a field of the
-    // enclosing item's overlay.
     val rawData = when {
         props.data.isEmpty() -> null
         BindingResolver.isBindingRef(props.data) -> BindingResolver.resolveBinding(props.data, liveData)
         else -> liveData[props.data]
     }
-    val items = when (rawData) {
-        is List<*> -> rawData.filterNotNull()
-        else -> emptyList<Any>()
+    val rows: List<Any?> = (rawData as? List<*>) ?: emptyList<Any?>()
+    RenderRows(rows, props, context)
+}
+
+/**
+ * Shared row renderer for both the live and static list paths. Caps to
+ * `maxItems`, shows `emptyText` when there is nothing to render, and scopes
+ * each row so the template's bindings + action params resolve against it.
+ */
+@Composable
+private fun RenderRows(rows: List<Any?>, props: ListProps, context: RenderContext) {
+    val visibleRows = rows.filterNotNull().let { all ->
+        val cap = props.maxItems
+        if (cap != null && all.size > cap) all.take(cap) else all
     }
 
-    if (items.isEmpty() && props.emptyText.isNotEmpty()) {
+    if (visibleRows.isEmpty() && props.emptyText.isNotEmpty()) {
         Text(text = props.emptyText, style = MaterialTheme.typography.bodyMedium)
         return
     }
 
+    val itemTemplate = props.itemTemplate ?: return
     LazyColumn {
-        items(items) { item ->
-            val itemTemplate = props.itemTemplate ?: return@items
-            // Inject per-item overlay so bindings within the template can reach "item.x"
-            val itemContext = context.withAdditionalData(mapOf("item" to item))
-            RenderNode(node = itemTemplate, context = itemContext)
+        items(visibleRows) { row ->
+            // Scope the row under "row" (the requested "{row.x}" syntax) and
+            // "item" (legacy syntax used by existing static specs + nested
+            // lists). Both keys point at the same row, so "{row.id}" and
+            // "{item.id}" resolve identically — and because the template renders
+            // with this scoped context, action param interpolation in dispatch()
+            // picks up the same row overlay for free.
+            val rowContext = context.withAdditionalData(mapOf("row" to row, "item" to row))
+            RenderNode(node = itemTemplate, context = rowContext)
         }
     }
 }

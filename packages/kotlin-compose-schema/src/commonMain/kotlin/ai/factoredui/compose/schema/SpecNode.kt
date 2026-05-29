@@ -26,7 +26,37 @@ data class Spec(
     @SerialName("spec_version") val specVersion: Int,
     @SerialName("renderer_min") val rendererMin: Int,
     val root: SpecNode,
+    /**
+     * Optional spec-level keyboard shortcuts: a key fires its action exactly as
+     * a tap would (same [ActionRef] dispatch, same resolved-params → capture
+     * path). One spec-level map is the single source of truth for "what
+     * shortcuts this screen accepts" — cheaper to audit and render a help
+     * overlay than per-node bindings.
+     */
+    val keybindings: Map<ShortcutKey, ActionRef> = emptyMap(),
 )
+
+/**
+ * Closed set of keys bindable via [Spec.keybindings].
+ *
+ * A closed enum (not free strings) sidesteps cross-platform key-name drift
+ * ("Enter" vs "Return", "Esc" vs "Escape") and makes a typo fail at spec-parse
+ * time. Wire form is lowercase snake_case, matching [SpecNodeType] /
+ * capture event types. Add entries via a schema version bump.
+ */
+@Serializable
+enum class ShortcutKey {
+    @SerialName("y") Y,
+    @SerialName("n") N,
+    @SerialName("space") SPACE,
+    @SerialName("enter") ENTER,
+    @SerialName("escape") ESCAPE,
+    @SerialName("arrow_up") ARROW_UP,
+    @SerialName("arrow_down") ARROW_DOWN,
+    @SerialName("arrow_left") ARROW_LEFT,
+    @SerialName("arrow_right") ARROW_RIGHT,
+    @SerialName("tab") TAB,
+}
 
 /**
  * All 20 SDUI primitive types — matches SpecNodeType union in spec-types.ts.

@@ -162,6 +162,16 @@ fun Map<String, SpecValue>.asIconProps(): IconProps = IconProps(
 
 data class ListProps(
     val data: String,
+    /**
+     * Live query resolved by the host's HostDataSource, e.g.
+     * "query:automations:approved_at_ms IS NULL". When set (and the host wires
+     * a HostDataSource into the RenderContext), the list subscribes to a Flow
+     * of result sets and re-renders on every change. When null, the list reads
+     * the static [data] key against the render context — behaviour is unchanged.
+     * The string is opaque to the renderer; only the host's storage layer
+     * interprets it.
+     */
+    val dataSource: String?,
     val itemTemplate: SpecNode?,
     val emptyText: String = "",
     val maxItems: Int? = null,
@@ -169,6 +179,7 @@ data class ListProps(
 
 fun Map<String, SpecValue>.asListProps(): ListProps = ListProps(
     data = string("data") ?: "",
+    dataSource = string("data_source"),
     itemTemplate = (get("itemTemplate") as? SpecValue.NodeValue)?.value,
     emptyText = string("emptyText") ?: "",
     maxItems = int("maxItems"),

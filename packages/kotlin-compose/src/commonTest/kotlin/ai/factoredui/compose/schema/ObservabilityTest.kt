@@ -1,7 +1,9 @@
 package ai.factoredui.compose.schema
 
 import ai.factoredui.compose.experiments.ControlExperiments
+import ai.factoredui.compose.experiments.Experiments
 import ai.factoredui.compose.experiments.InMemoryExperiments
+import ai.factoredui.compose.experiments.Variant
 import ai.factoredui.compose.observability.Observability
 import ai.factoredui.compose.schema.ActionRef
 import kotlin.test.Test
@@ -18,10 +20,12 @@ class ObservabilityTest {
     private class RecordingObservability : Observability {
         val renders = mutableListOf<String>()
         val interactions = mutableListOf<Pair<String, String>>()
+        var lastResolvedParams: Map<String, Any?> = emptyMap()
 
         override fun onRender(nodeId: String) { renders.add(nodeId) }
-        override fun onInteraction(nodeId: String, action: ActionRef) {
+        override fun onInteraction(nodeId: String, action: ActionRef, resolvedParams: Map<String, Any?>) {
             interactions.add(nodeId to action.action)
+            lastResolvedParams = resolvedParams
         }
     }
 
@@ -33,10 +37,25 @@ class ObservabilityTest {
     }
 
     @Test
-    fun observabilityOnInteractionFiresWithNodeIdAndAction() {
+    fun observabilityOnInteractionFiresWithNodeIdActionAndResolvedParams() {
         val obs = RecordingObservability()
-        obs.onInteraction("submit-btn", ActionRef(action = "submit"))
+        obs.onInteraction("submit-btn", ActionRef(action = "submit"), mapOf("id" to 2))
         assertEquals(listOf("submit-btn" to "submit"), obs.interactions)
+        assertEquals(2, obs.lastResolvedParams["id"])
+    }
+
+    @Test
+    fun assignVariantCanBucketBySubject() {
+        // The per-worker contract: one Experiments instance serves many subjects,
+        // deterministic per (slotId, subjectId). A real host backs this with the
+        // engine's selectVariantByHash; this stub proves the param is honoured.
+        val experiments = object : Experiments {
+            override fun assignVariant(slotId: String, subjectId: String?): Variant =
+                Variant(slotId, if (subjectId == "worker-1") "treatment" else "control")
+            override fun logExposure(slotId: String, variant: Variant, subjectId: String?) = Unit
+        }
+        assertEquals("treatment", experiments.assignVariant("checkout", "worker-1").variantKey)
+        assertEquals("control", experiments.assignVariant("checkout", "worker-2").variantKey)
     }
 
     @Test
