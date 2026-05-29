@@ -200,25 +200,49 @@ What still needs attention before this is considered production-ready
 - Beacon-based final flush on `beforeunload` (currently relies on
   visibility=hidden flush).
 
-### Port wave 2: factor engine
+### Port wave 2: factor engine — v1 SHIPPED 2026-05-29
 
-Port `packages/core/factors/` to the server target as Kotlin. Reuse
-the SQL from the TS prototype (it stays Postgres-specific). Three-tier
-factor framework:
+Correction to the original plan: there was **no SQL to reuse**. The TS
+`packages/core/factors/` modules were pure delegators over a
+`FactoredStore` interface; the concrete Postgres SQL lived in
+`adapter-supabase`, deleted 2026-04-24. So wave 2 = port the surviving
+pure logic + write the factor SQL fresh.
 
-- Alarm: completion rate, drop-off, error rate per component_path.
-- Diagnostic: hesitation time, rage clicks, dead clicks, retry patterns.
-- Structural: from periodic Lighthouse runs against rendered specs.
+Shipped (`packages/kotlin-server/.../factors/`, `0002_factors.sql`):
 
-Materialize via Postgres views. Expose a query API.
+- **v1 factor taxonomy** — five factors, materialized as Postgres views
+  over `factoredui_events ⨝ factoredui_sessions`:
+  - `error_rate` (alarm) = errors / total events per component.
+  - `rage_click_rate`, `dead_click_rate`, `scroll_reversal_rate`
+    (diagnostic) = those event counts over clicks / scrolls.
+  - `hesitation_time_p50_ms` (diagnostic) = p50 of impression →
+    first-interaction latency per session, aggregated per user.
+- **Query API** — `queryFactors(conn, user, component)` +
+  `queryComponentFactors(conn, component)`, `Connection`-based like ingest.
+- **`kMeans`** (Mulberry32, bit-exact to the TS) for behavioural clustering.
+- Verified against real Postgres via testcontainers.
+
+Deferred (no consumer / no data source yet):
+
+- **Completion / drop-off** — needs a per-component funnel (which events
+  mark start vs success). The completion that matters for the labeling
+  case is session-level, which lives in agent-platform's `:session`
+  domain, not a per-component factor. Add when a funnel-using consumer asks.
+- **Structural tier** (Lighthouse/CLS/LCP) — separate offline ingest project.
 
 ### Port wave 3: experiments + LLM hypothesis
 
-- Port experiment lifecycle: targeting rules, traffic allocation,
-  exposure logging, governance verdicts.
-- New: LLM hypothesis runner. Reads factor deltas, calls Claude (or
-  similar) with the factor data + current spec, gets back a proposed
-  spec mutation, queues it as an experiment variant.
+Pure decision logic SHIPPED 2026-05-29 (`packages/kotlin-server/.../experiments/`):
+DJB2 traffic bucketing (bit-exact), targeting predicate engine, governance
+verdict logic, `validateDefinition` — all pure, unit-tested. Remaining:
+
+- **Experiment SQL + state** — tables for experiments/variants/assignments/
+  exposures/thresholds/governance-log, and `Connection`-based store ops
+  wiring the pure logic to Postgres. (But see the ownership boundary below —
+  experiment STATE is agent-platform's, not factored-ui's.)
+- **LLM hypothesis runner** — reads factor deltas, calls Claude with the
+  factor data + current spec, gets back a proposed spec mutation, queues it
+  as an experiment variant.
 
 ### Then: 5 (governance)
 
@@ -248,6 +272,36 @@ auth/observability/error handling.
 suspend functions (`ingestEvent`, `recomputeFactors`,
 `assignVariant`) that take whatever transactional context the host
 provides. We do not expose a Ktor `Application` or HTTP server.
+
+## Decision: factored-ui / agent-platform ownership boundary
+
+**Status:** decided 2026-05-29, with agent-platform.
+
+The Kotlin port sharpened a split that earlier framings had blurred. Three
+layers, three owners:
+
+1. **Pure experiment + factor logic** — factored-ui owns the code, in the
+   **`kotlin-engine` KMP module** (`ai.factoredui.engine.{factors,experiments}`:
+   Bucketing, Targeting, Governance, Lifecycle, KMeans, FactorDashboardSpec,
+   the domain models). No Postgres, no Compose, no JVM-only APIs — it compiles
+   to JVM / Android / iOS / wasmJs / native, so agent-platform's Android target
+   imports the *same module*. **Single canonical implementation**, no
+   reimplementation. (This is why it is a separate module and not part of
+   kotlin-server, which is JVM-only: the boundary is only buildable if the
+   pure logic is multiplatform.)
+2. **Postgres factor engine + ingest** — factored-ui owns
+   (`0001_init.sql`, `0002_factors.sql`, `Ingest.kt`, `Factors.kt`).
+   Multi-tenant consumers (e.g. illuminant's server) use it directly. Personal
+   agent-platform is SQLite, so it **reimplements the factor queries over
+   SQLite using the v1 factor taxonomy above as the spec** — not the SQL.
+3. **Experiment STATE** — who's exposed, current verdicts, the ratification
+   trail — **agent-platform owns**, as rows on its own SQLite. factored-ui
+   provides the decision functions; it does not store experiment state.
+
+**Consequence for the SQL stage (wave 3):** the experiment tables/store in
+factored-ui's server target are for multi-tenant Postgres consumers. Personal
+agent-platform does not use them. So "Stage C" is lower priority than wave-2
+factors were, and is gated on an actual multi-tenant consumer needing it.
 
 ## Open questions
 
