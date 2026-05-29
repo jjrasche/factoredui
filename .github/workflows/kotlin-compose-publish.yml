@@ -38,6 +38,9 @@ jobs:
       - name: Run schema tests (all targets via :build)
         run: ./gradlew :kotlin-compose-schema:build
 
+      - name: Build engine (all targets via :build)
+        run: ./gradlew :kotlin-engine:build
+
       # Excludes RenderControlsTest pending #1 (6 pre-existing NPEs under
       # runComposeUiTest, regressed sometime after kotlin-compose-v0.8.0).
       # Remove the --tests filter once #1 lands.
@@ -58,6 +61,7 @@ jobs:
         run: >
           ./gradlew
           :kotlin-compose-schema:publishAllPublicationsToLocalBuildRepoRepository
+          :kotlin-engine:publishAllPublicationsToLocalBuildRepoRepository
           :kotlin-compose:publishAllPublicationsToLocalBuildRepoRepository
           :kotlin-server:publishAllPublicationsToLocalBuildRepoRepository
 

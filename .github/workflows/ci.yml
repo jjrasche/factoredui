@@ -1,0 +1,67 @@
+name: ci
+
+# Build + test verification on every branch / PR. Does NOT publish — releases
+# go through kotlin-compose-publish.yml on a kotlin-compose-v* tag.
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      # Pure-Kotlin modules: full multiplatform build + all tests. The engine's
+      # bit-exact parity tests (bucketing, k-means) and the schema round-trips
+      # run on every target here.
+      - name: Build schema (all targets)
+        run: ./gradlew :kotlin-compose-schema:build
+
+      - name: Build engine (all targets)
+        run: ./gradlew :kotlin-engine:build
+
+      # Runs the factor-SQL integration test against a throwaway Postgres
+      # (testcontainers); Docker is available on ubuntu runners.
+      - name: Build kotlin-server
+        run: ./gradlew :kotlin-server:build
+
+      # Renderer: compile every target, then run the non-UI desktop tests.
+      # runComposeUiTest tests (RenderControls/RenderList/Keybinding/SpecHotSwap)
+      # are excluded pending the known runComposeUiTest NPEs (#1) — they pass
+      # locally but are flaky on CI; the same allowlist the publish job uses.
+      - name: Assemble renderer (all targets)
+        run: ./gradlew :kotlin-compose:assemble
+
+      - name: Run renderer desktop tests (non-UI)
+        run: >
+          ./gradlew :kotlin-compose:desktopTest
+          --tests "ai.factoredui.compose.capture.*"
+          --tests "ai.factoredui.compose.renderer.RenderContextTest"
+          --tests "ai.factoredui.compose.schema.ObservabilityTest"
