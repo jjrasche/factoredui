@@ -1,0 +1,38 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "example-form",
+    "type": "column",
+    "props": { "padding": 24, "gap": 16 },
+    "children": [
+      {
+        "id": "title",
+        "type": "text",
+        "props": { "value": "Demo Form", "variant": "heading" }
+      },
+      {
+        "id": "input",
+        "type": "textinput",
+        "props": {
+          "value": "{form.text}",
+          "placeholder": "Type something…"
+        }
+      },
+      {
+        "id": "submit",
+        "type": "button",
+        "props": { "label": "Submit" },
+        "action": {
+          "action": "submit",
+          "params": { "text": "{form.text}" }
+        }
+      },
+      {
+        "id": "status",
+        "type": "text",
+        "props": { "value": "Status: {status}", "variant": "caption" }
+      }
+    ]
+  }
+}
