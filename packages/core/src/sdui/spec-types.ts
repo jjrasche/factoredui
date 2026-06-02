@@ -51,7 +51,8 @@ export type SpecNodeType =
   | "tabs"
   | "modal"
   | "chip"
-  | "forcegraph";
+  | "forcegraph"
+  | "scene3d";
 
 export interface SpecNode {
   id: string;
@@ -293,6 +294,57 @@ export interface ForceGraphProps {
     /** Anchor nodes toward a center per domain/group. Default true. */
     domain_anchoring?: boolean;
   };
+}
+
+// --- Scene3d props ---
+// Second "dense/semantic" primitive: a 3D staging viewport. Renders typed
+// entities (characters) under an orbit camera with configurable lights —
+// the "thin Blender" surface for composing a shot. Like forcegraph it takes
+// data URLs rather than child nodes: it pulls world state, subscribes to a
+// stream of updates, and POSTs user intents (selection, camera moves, pose
+// prompts) back to an action endpoint that a host ActionRegistry services.
+//
+// Rendering is pure-Kotlin (Compose Canvas + a software painter's-algorithm
+// rasterizer reusing the forcegraph math layer) so the primitive stays
+// multiplatform-clean — no WebGL, no JS interop. The viewport is
+// preview-quality; final frames are produced downstream, not here.
+
+export interface Scene3dProps {
+  /**
+   * URL to fetch the current world state. Expected response shape:
+   *   {
+   *     entities: [{ id, mesh_url, position:[x,y,z], rotation:[x,y,z],
+   *                  scale?, selected? }],
+   *     camera:   { position:[x,y,z], target:[x,y,z], fov? },
+   *     lights:   [{ type:"key"|"fill"|"rim", position:[x,y,z],
+   *                  intensity?, color? }],
+   *     background?: string
+   *   }
+   */
+  world_state_url: string;
+
+  /**
+   * Optional SSE/WebSocket endpoint pushing world-state updates. Each frame
+   * is a full world-state snapshot in the same shape as world_state_url's
+   * response; the viewport swaps to it and re-rasterizes. Without this URL
+   * the viewport renders the initial pull and stays static.
+   */
+  world_stream_url?: string;
+
+  /**
+   * URL the viewport POSTs intents to as { action, params }. The action
+   * names mirror the host ActionRegistry handlers:
+   *   - select-entity   { entity_id }            → toggle selection
+   *   - camera-update    { camera }              → persist a camera move
+   *   - apply-pose       { entity_ids[], prompt } → text-to-pose the selection
+   * The handler mutates world state; the new state arrives back over
+   * world_stream_url, closing the loop. Without this URL the viewport is
+   * read-only (orbit + inspect, no edits).
+   */
+  action_url?: string;
+
+  /** Background tint for the viewport. Default "neutral-gray". */
+  background?: string;
 }
 
 // --- Data source contract (implemented by the host app) ---

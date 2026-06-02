@@ -45,11 +45,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import ai.factoredui.compose.adapter.HostDataSource
 import ai.factoredui.compose.forcegraph.RenderForceGraph
+import ai.factoredui.compose.scene3d.RenderScene3d
 import ai.factoredui.compose.schema.BindingResolver
 import ai.factoredui.compose.schema.ImageFit
 import ai.factoredui.compose.schema.ListProps
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.compose.schema.asForceGraphProps
+import ai.factoredui.compose.schema.asScene3dProps
 // BindingResolver used to support {ref} in list `data` prop (nested lists).
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
@@ -164,6 +166,7 @@ private fun RenderNodeByType(
         SpecNodeType.TEXTINPUT -> RenderTextInput(node, resolvedProps, context)
         SpecNodeType.CHIP -> RenderChip(node, resolvedProps, context)
         SpecNodeType.FORCE_GRAPH -> RenderForceGraph(node.props.asForceGraphProps())
+        SpecNodeType.SCENE3D -> RenderScene3d(node.props.asScene3dProps())
         SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)
         SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)
         SpecNodeType.SELECT -> RenderSelect(node, resolvedProps, context)

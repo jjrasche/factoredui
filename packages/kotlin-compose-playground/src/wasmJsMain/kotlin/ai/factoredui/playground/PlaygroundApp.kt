@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 @Composable
 fun PlaygroundApp() {
-    val context = remember { RenderContext(actions = playgroundActions()) }
+    val context = remember { RenderContext(actions = playgroundActions(actionUrlParam())) }
     val specFlow = remember { MutableStateFlow(placeholderSpec("Loading spec…")) }
     var editorText by remember { mutableStateOf("") }
     var parseError by remember { mutableStateOf<String?>(null) }

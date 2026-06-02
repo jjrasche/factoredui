@@ -322,3 +322,21 @@ fun Map<String, SpecValue>.asForceGraphProps(): ForceGraphProps {
         ),
     )
 }
+
+// --- Scene3dProps ---
+// Second "dense/semantic" primitive; full contract in spec-types.ts. Entities,
+// camera, and lights live in the fetched world state, not in spec props.
+
+data class Scene3dProps(
+    val worldStateUrl: String,
+    val worldStreamUrl: String? = null,
+    val actionUrl: String? = null,
+    val background: String = "neutral-gray",
+)
+
+fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
+    worldStateUrl = string("world_state_url") ?: "",
+    worldStreamUrl = string("world_stream_url"),
+    actionUrl = string("action_url"),
+    background = string("background") ?: "neutral-gray",
+)
