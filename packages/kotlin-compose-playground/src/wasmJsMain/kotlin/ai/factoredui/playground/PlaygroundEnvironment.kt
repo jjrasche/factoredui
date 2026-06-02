@@ -67,6 +67,8 @@ fun playgroundActions(actionUrl: String? = null): ActionRegistry {
         "apply-pose" to forwardAction("apply-pose", actionUrl),
         "select-entity" to forwardAction("select-entity", actionUrl),
         "move-entity" to forwardAction("move-entity", actionUrl),
+        "update-light" to forwardAction("update-light", actionUrl),
+        "set-joint-angle" to forwardAction("set-joint-angle", actionUrl),
     )
 }
 
