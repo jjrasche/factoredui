@@ -18,6 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import ai.factoredui.compose.forcegraph.math.Camera
 import ai.factoredui.compose.forcegraph.startSseSubscription
+import ai.factoredui.compose.observability.NoOpObservability
+import ai.factoredui.compose.observability.Observability
+import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.Scene3dProps
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -27,17 +30,30 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlin.math.abs
 import kotlin.math.asin
 import kotlin.math.atan2
 
+private const val CAMERA_SETTLE_MS = 150L
+
 @Composable
-fun RenderScene3d(props: Scene3dProps, modifier: Modifier = Modifier) {
+fun RenderScene3d(
+    props: Scene3dProps,
+    nodeId: String = "scene3d",
+    observability: Observability = NoOpObservability,
+    modifier: Modifier = Modifier,
+) {
     val json = remember { Json { ignoreUnknownKeys = true } }
     val httpClient = remember { HttpClient() }
     val scope = rememberCoroutineScope()
@@ -49,6 +65,9 @@ fun RenderScene3d(props: Scene3dProps, modifier: Modifier = Modifier) {
     var loadError by remember { mutableStateOf<String?>(null) }
     var cameraInitialized by remember { mutableStateOf(false) }
     val camera = remember { Camera() }
+    var cameraSettleJob by remember { mutableStateOf<Job?>(null) }
+    var localPositions by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
+    var moveSettleJob by remember { mutableStateOf<Job?>(null) }
 
     LaunchedEffect(props.worldStateUrl) {
         if (props.worldStateUrl.isEmpty()) {
@@ -99,8 +118,16 @@ fun RenderScene3d(props: Scene3dProps, modifier: Modifier = Modifier) {
         }
     }
 
-    fun postIntent(body: String) {
+    // One path for every settled intent: capture it as a factored-ui interaction
+    // event AND POST it to the server. Continuous gestures (camera) coalesce via
+    // emitCameraSettled; discrete intents (select, move) fire immediately.
+    fun emitIntent(action: String, params: Map<String, Any?>) {
+        observability.onInteraction(nodeId, ActionRef(action = action), params)
         val url = props.actionUrl ?: return
+        val body = buildJsonObject {
+            put("action", action)
+            put("params", anyToJson(params))
+        }.toString()
         scope.launch {
             runCatching {
                 httpClient.post(url) {
@@ -111,19 +138,84 @@ fun RenderScene3d(props: Scene3dProps, modifier: Modifier = Modifier) {
         }
     }
 
+    fun emitCameraSettled() {
+        cameraSettleJob?.cancel()
+        cameraSettleJob = scope.launch {
+            delay(CAMERA_SETTLE_MS)
+            emitIntent("camera-update", cameraParams(camera))
+        }
+    }
+
+    fun onMoveEntity(entityId: String, position: List<Float>) {
+        localPositions = localPositions + (entityId to position)
+        moveSettleJob?.cancel()
+        moveSettleJob = scope.launch {
+            delay(CAMERA_SETTLE_MS)
+            emitIntent("move-entity", mapOf("entity_id" to entityId, "position" to position))
+        }
+    }
+
+    LaunchedEffect(world) {
+        if (localPositions.isNotEmpty()) {
+            localPositions = localPositions.filterNot { (id, optimistic) ->
+                val confirmed = world.entities.firstOrNull { it.id == id }?.position
+                confirmed != null && positionsClose(confirmed, optimistic)
+            }
+        }
+    }
+
+    val effectiveWorld =
+        if (localPositions.isEmpty()) world
+        else world.copy(
+            entities = world.entities.map { entity ->
+                localPositions[entity.id]?.let { entity.copy(position = it) } ?: entity
+            },
+        )
+
     Box(modifier = modifier.fillMaxSize().background(Color(0xFF2B2B30))) {
         Scene3dView(
-            world = world,
+            world = effectiveWorld,
             camera = camera,
             meshes = meshes,
             modifier = Modifier.fillMaxSize(),
-            onSelectEntity = { entityId -> postIntent(selectIntent(entityId)) },
-            onCameraChange = { postIntent(cameraIntent(camera)) },
+            onSelectEntity = { entityId -> emitIntent("select-entity", mapOf("entity_id" to entityId)) },
+            onCameraChange = { emitCameraSettled() },
+            onMoveEntity = { entityId, position -> onMoveEntity(entityId, position) },
         )
         loadError?.let {
             Text(text = it, color = Color(0xFFE0A0A0), modifier = Modifier.padding(12.dp))
         }
     }
+}
+
+private fun positionsClose(a: List<Float>, b: List<Float>): Boolean {
+    if (a.size != b.size) return false
+    return a.indices.all { abs(a[it] - b[it]) < 1e-3f }
+}
+
+private fun cameraParams(camera: Camera): Map<String, Any?> {
+    val eye = camera.eyePosition()
+    val target = camera.target
+    return mapOf(
+        "camera" to mapOf(
+            "position" to listOf(eye.x, eye.y, eye.z),
+            "target" to listOf(target.x, target.y, target.z),
+            "fov" to camera.fovYRadians,
+        ),
+    )
+}
+
+private fun anyToJson(value: Any?): JsonElement = when (value) {
+    null -> JsonNull
+    is String -> JsonPrimitive(value)
+    is Boolean -> JsonPrimitive(value)
+    is Int -> JsonPrimitive(value)
+    is Long -> JsonPrimitive(value)
+    is Float -> JsonPrimitive(value)
+    is Double -> JsonPrimitive(value)
+    is Map<*, *> -> JsonObject(value.entries.associate { (key, item) -> key.toString() to anyToJson(item) })
+    is List<*> -> JsonArray(value.map { anyToJson(it) })
+    else -> JsonPrimitive(value.toString())
 }
 
 private fun resolveAssetUrl(worldStateUrl: String, assetUrl: String): String {
@@ -148,24 +240,4 @@ private fun applyCameraState(camera: Camera, state: Scene3dCameraState) {
         camera.yawRadians = atan2(direction.x, direction.z)
     }
     state.fov?.let { camera.fovYRadians = it }
-}
-
-private fun selectIntent(entityId: String): String = buildJsonObject {
-    put("action", "select-entity")
-    put("params", buildJsonObject { put("entity_id", entityId) })
-}.toString()
-
-private fun cameraIntent(camera: Camera): String {
-    val eye = camera.eyePosition()
-    val target = camera.target
-    return buildJsonObject {
-        put("action", "camera-update")
-        put("params", buildJsonObject {
-            put("camera", buildJsonObject {
-                put("position", buildJsonArray { add(JsonPrimitive(eye.x)); add(JsonPrimitive(eye.y)); add(JsonPrimitive(eye.z)) })
-                put("target", buildJsonArray { add(JsonPrimitive(target.x)); add(JsonPrimitive(target.y)); add(JsonPrimitive(target.z)) })
-                put("fov", camera.fovYRadians)
-            })
-        })
-    }.toString()
 }

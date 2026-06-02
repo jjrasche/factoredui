@@ -34,13 +34,20 @@ class Scene3dDesktopRenderTest {
             .decodeFromString(Scene3dMesh.serializer(), readMeshResource("heigl.json"))
             .prepare()
         val world = Scene3dWorldState(
-            entities = listOf(Scene3dEntity(id = "heigl", position = listOf(0f, 0f, 0f))),
+            entities = listOf(
+                Scene3dEntity(id = "heigl", position = listOf(-0.8f, 0f, 0f)),
+                Scene3dEntity(id = "guest", position = listOf(0.8f, 0f, 0f), selected = true),
+            ),
+            lights = listOf(
+                Scene3dLight(type = "key", position = listOf(2.5f, 3.0f, 2.0f), intensity = 1.2f),
+                Scene3dLight(type = "fill", position = listOf(-3.0f, 2.5f, 1.0f), intensity = 0.5f),
+            ),
         )
         val height = mesh.height
         val camera = Camera(
             yawRadians = (-PI / 4.0).toFloat(),
             pitchRadians = (PI / 9.0).toFloat(),
-            distance = height * 2.2f,
+            distance = height * 3.0f,
             target = Vec3(0f, height * 0.5f, 0f),
             fovYRadians = (PI / 3.0).toFloat(),
         )
@@ -51,7 +58,7 @@ class Scene3dDesktopRenderTest {
                     Scene3dView(
                         world = world,
                         camera = camera,
-                        meshes = mapOf("heigl" to mesh),
+                        meshes = mapOf("heigl" to mesh, "guest" to mesh),
                         modifier = Modifier.size(800.dp),
                     )
                 }

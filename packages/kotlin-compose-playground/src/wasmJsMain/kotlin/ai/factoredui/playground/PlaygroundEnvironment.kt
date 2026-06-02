@@ -63,12 +63,20 @@ fun playgroundActions(actionUrl: String? = null): ActionRegistry {
         "submit" to { params -> println("[playground] submit($params)") },
     )
     if (actionUrl == null) return base
-    return base + mapOf("apply-pose" to forwardAction("apply-pose", actionUrl))
+    return base + mapOf(
+        "apply-pose" to forwardAction("apply-pose", actionUrl),
+        "select-entity" to forwardAction("select-entity", actionUrl),
+        "move-entity" to forwardAction("move-entity", actionUrl),
+    )
 }
 
-fun actionUrlParam(): String? {
+fun actionUrlParam(): String? = deriveFromSpec("/action")
+
+fun worldStreamUrlParam(): String? = deriveFromSpec("/world/stream")
+
+private fun deriveFromSpec(suffix: String): String? {
     val spec = specUrlParam() ?: return null
-    return if (spec.endsWith("/spec")) spec.removeSuffix("/spec") + "/action" else null
+    return if (spec.endsWith("/spec")) spec.removeSuffix("/spec") + suffix else null
 }
 
 fun placeholderSpec(message: String): Spec = Spec(

@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -21,6 +22,7 @@ import ai.factoredui.compose.forcegraph.math.ProjectedPoint
 import ai.factoredui.compose.forcegraph.math.Vec3
 import ai.factoredui.compose.forcegraph.math.project
 import kotlin.math.abs
+import kotlin.math.tan
 
 private const val GRID_HALF_EXTENT = 5
 private const val PERSON_HALF_WIDTH = 0.3f
@@ -29,10 +31,11 @@ private const val PERSON_HEIGHT = 1.8f
 private const val SELECT_HIT_RADIUS_PX = 48f
 
 /**
- * Placeholder scene3d renderer. A standing box per entity on a ground grid,
- * orbit camera, click-to-select. The textured-mesh rasterizer replaces the
- * box-drawing in a later phase; everything else (camera, hit-test, depth
- * sort, intent callbacks) carries forward unchanged.
+ * scene3d software rasterizer. Renders a flat-shaded mesh (or a box placeholder
+ * while a mesh loads) per entity on a ground grid under an orbit camera. Tap to
+ * select; drag a selected entity to move it on the ground plane; drag elsewhere
+ * to orbit; scroll to zoom. Continuous gestures report via the callbacks; the
+ * host debounces them into settled intents.
  */
 @Composable
 fun Scene3dView(
@@ -42,25 +45,49 @@ fun Scene3dView(
     modifier: Modifier = Modifier,
     onSelectEntity: (String) -> Unit = {},
     onCameraChange: () -> Unit = {},
+    onMoveEntity: (String, List<Float>) -> Unit = { _, _ -> },
 ) {
     var cameraGeneration by remember { mutableStateOf(0) }
     val background = parseHexColor(world.background) ?: Color(0xFF2B2B30)
+    val latestWorld by rememberUpdatedState(world)
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(Unit) {
+                var draggingEntityId: String? = null
                 detectDragGestures(
-                    onDrag = { _, drag ->
-                        camera.drag(drag.x, drag.y)
-                        cameraGeneration++
+                    onDragStart = { start ->
+                        val width = size.width.toFloat()
+                        val height = size.height.toFloat()
+                        val hit = nearestEntity(latestWorld.entities, camera, width, height, start)
+                        draggingEntityId =
+                            if (hit != null && latestWorld.entities.any { it.id == hit && it.selected }) hit else null
                     },
-                    onDragEnd = { onCameraChange() },
+                    onDragEnd = { draggingEntityId = null },
+                    onDragCancel = { draggingEntityId = null },
+                    onDrag = { change, drag ->
+                        val moving = draggingEntityId
+                        if (moving == null) {
+                            camera.drag(drag.x, drag.y)
+                            cameraGeneration++
+                            onCameraChange()
+                        } else {
+                            val width = size.width.toFloat()
+                            val height = size.height.toFloat()
+                            val baseY = latestWorld.entities.firstOrNull { it.id == moving }
+                                ?.position?.toVec3()?.y ?: 0f
+                            val hit = groundHit(camera, width, height, change.position, baseY)
+                            if (hit != null) {
+                                onMoveEntity(moving, listOf(hit.x, baseY, hit.z))
+                            }
+                        }
+                    },
                 )
             }
             .pointerInput(Unit) {
                 detectTapGestures { tap ->
-                    val hit = nearestEntity(world.entities, camera, size.width.toFloat(), size.height.toFloat(), tap)
+                    val hit = nearestEntity(latestWorld.entities, camera, size.width.toFloat(), size.height.toFloat(), tap)
                     if (hit != null) onSelectEntity(hit)
                 }
             }
@@ -108,7 +135,24 @@ fun Scene3dView(
                     drawSelectionRing(entity, ::screen)
                 }
             }
+            drawLights(world.lights, ::screen)
         }
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLights(
+    lights: List<Scene3dLight>,
+    screen: (Vec3) -> ProjectedPoint,
+) {
+    for (light in lights) {
+        val projected = screen(light.position.toVec3())
+        if (!projected.visible) continue
+        val reach = 6f + 4f * light.intensity.coerceIn(0f, 2f)
+        val color = if (light.type == "key") Color(0xFFFFE08A) else Color(0xFF8AB4FF)
+        val center = Offset(projected.x, projected.y)
+        drawLine(color, Offset(center.x - reach, center.y), Offset(center.x + reach, center.y), strokeWidth = 2f)
+        drawLine(color, Offset(center.x, center.y - reach), Offset(center.x, center.y + reach), strokeWidth = 2f)
+        drawCircle(color, radius = 2.5f, center = center)
     }
 }
 
@@ -176,17 +220,47 @@ private fun nearestEntity(
     if (width <= 0f || height <= 0f) return null
     val view = camera.viewMatrix()
     val proj = camera.projectionMatrix(aspect = width / height)
+    // Among entities whose centre is under the tap, pick the frontmost (smallest
+    // depth) so overlapping characters disambiguate to the one nearest the camera,
+    // ties broken by screen distance.
     return entities
         .mapNotNull { entity ->
             val projected = personCenter(entity).project(view, proj, width, height)
             if (!projected.visible) return@mapNotNull null
             val dx = projected.x - tap.x
             val dy = projected.y - tap.y
-            entity.id to (dx * dx + dy * dy)
+            Triple(entity.id, dx * dx + dy * dy, projected.depth)
         }
-        .filter { (_, distanceSquared) -> distanceSquared <= SELECT_HIT_RADIUS_PX * SELECT_HIT_RADIUS_PX }
-        .minByOrNull { (_, distanceSquared) -> distanceSquared }
+        .filter { (_, distanceSquared, _) -> distanceSquared <= SELECT_HIT_RADIUS_PX * SELECT_HIT_RADIUS_PX }
+        .minWithOrNull(compareBy({ it.third }, { it.second }))
         ?.first
+}
+
+// Unproject a screen point to where its camera ray meets the y=planeY ground
+// plane. Pinhole-ray form matching Matrix4.lookAt/perspective so the dragged
+// entity tracks the cursor exactly. Null when the ray is parallel to / behind
+// the plane.
+private fun groundHit(
+    camera: Camera,
+    width: Float,
+    height: Float,
+    screen: Offset,
+    planeY: Float,
+): Vec3? {
+    if (width <= 0f || height <= 0f) return null
+    val eye = camera.eyePosition()
+    val zAxis = (eye - camera.target).normalize()
+    val xAxis = Vec3(0f, 1f, 0f).cross(zAxis).normalize()
+    val yAxis = zAxis.cross(xAxis)
+    val forward = -zAxis
+    val tanHalf = tan(camera.fovYRadians / 2f)
+    val ndcX = 2f * screen.x / width - 1f
+    val ndcY = 1f - 2f * screen.y / height
+    val direction = (forward + xAxis * (ndcX * tanHalf * (width / height)) + yAxis * (ndcY * tanHalf)).normalize()
+    if (abs(direction.y) < 1e-5f) return null
+    val t = (planeY - eye.y) / direction.y
+    if (t <= 0f) return null
+    return eye + direction * t
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGroundGrid(

@@ -21,6 +21,7 @@ data class Scene3dEntity(
     val rotation: List<Float> = listOf(0f, 0f, 0f),
     val scale: Float = 1f,
     val selected: Boolean = false,
+    val status: String = "ready",
 )
 
 @Serializable
