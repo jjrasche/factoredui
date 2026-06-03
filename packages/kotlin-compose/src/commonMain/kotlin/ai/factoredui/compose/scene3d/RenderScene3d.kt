@@ -206,14 +206,13 @@ fun RenderScene3d(
     // is the single source of truth) — NOT from refine-pose, which is no longer in the drag loop.
     // Faithful for POSE, not LOOK (different model than the T2 video finisher).
     fun requestPreview() {
-        val actionUrl = props.actionUrl
-        if (actionUrl == null) { previewStatus = "no server"; return }
+        val url = props.actionUrl
+        if (url == null) { previewStatus = "no server"; return }
         val poseBodies = clientPoses.mapNotNull { (entityId, pose) ->
             val rig = meshes[entityId]?.rig ?: return@mapNotNull null
             entityId to clientPoseToBodyVector(rig, pose)
         }.toMap()
         if (poseBodies.isEmpty()) { previewStatus = "no posed character yet"; return }
-        val url = actionUrl.removeSuffix("/action") + "/preview"
         previewImageUrl = null
         previewStatus = "rendering…"
         val resolution = previewResolution(viewportSize)
