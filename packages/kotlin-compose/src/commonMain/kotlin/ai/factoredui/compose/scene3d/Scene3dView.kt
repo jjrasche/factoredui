@@ -24,6 +24,7 @@ import ai.factoredui.compose.forcegraph.math.ProjectedPoint
 import ai.factoredui.compose.forcegraph.math.Vec3
 import ai.factoredui.compose.forcegraph.math.project
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.sqrt
 import kotlin.math.tan
 
@@ -34,6 +35,10 @@ private const val PERSON_HEIGHT = 1.8f
 private const val SELECT_HIT_RADIUS_PX = 48f
 private const val JOINT_HIT_RADIUS_PX = 20f
 private const val JOINT_GRAB_RADIUS_PX = 30f
+private const val BONE_GRAB_RADIUS_PX = 26f
+private const val REACH_IK_ITERATIONS = 6
+private const val REACH_IK_MAX_STEP = 0.5f
+private const val REACH_IK_FALLOFF = 0.6f
 
 /**
  * scene3d software rasterizer. Renders a flat-shaded mesh (or a box placeholder
@@ -76,7 +81,7 @@ fun Scene3dView(
                     var mode = DragKind.ORBIT
                     var dragEntity: String? = null
                     var dragJoint = -1
-                    val grab = jointUnderCursor(latestSelectedJoint, latestWorld, latestMeshes, latestPoses, camera, width, height, start)
+                    val grab = boneUnderCursor(latestWorld, latestMeshes, latestPoses, camera, width, height, start, BONE_GRAB_RADIUS_PX)
                     if (grab != null) {
                         mode = DragKind.JOINT; dragEntity = grab.first; dragJoint = grab.second
                     } else {
@@ -92,7 +97,7 @@ fun Scene3dView(
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         if (change.changedToUp()) {
                             if (!moved) {
-                                val jointHit = jointTap(latestWorld, latestMeshes, latestPoses, camera, width, height, change.position)
+                                val jointHit = boneUnderCursor(latestWorld, latestMeshes, latestPoses, camera, width, height, change.position, BONE_GRAB_RADIUS_PX)
                                 if (jointHit != null) {
                                     onSelectJoint(jointHit.first, jointHit.second)
                                 } else {
@@ -107,7 +112,7 @@ fun Scene3dView(
                         if (moved) {
                             when (mode) {
                                 DragKind.JOINT -> dragEntity?.let { id ->
-                                    solveJointAim(latestWorld, latestMeshes, latestPoses, id, dragJoint, camera, width, height, change.position)
+                                    solveReachIk(latestWorld, latestMeshes, latestPoses, id, dragJoint, camera, width, height, change.position)
                                         ?.let { onPoseChange(id, it) }
                                 }
                                 DragKind.MOVE -> dragEntity?.let { id ->
@@ -169,7 +174,7 @@ fun Scene3dView(
                     if (entity.selected && rig != null) {
                         val world3d = rig.worldJointTransforms(pose ?: rig.identityPose())
                         val selected = selectedJoint?.takeIf { it.first == entity.id }?.second ?: -1
-                        drawJointDots(rig, world3d, entity, selected, ::screen)
+                        drawBones(rig, world3d, entity, selected, ::screen)
                     }
                 } else {
                     drawPersonBox(entity, ::screen)
@@ -330,72 +335,130 @@ private fun jointScenePositions(world: Array<Matrix4>, entity: Scene3dEntity): L
     return jointOrigins(world).map { Vec3(base.x + it.x * scale, base.y + it.y * scale, base.z + it.z * scale) }
 }
 
-private fun nearestJoint(
-    positions: List<Vec3>,
+// The whole bone is the grab target: a fat, hoverless handle a thumb can hit where a 3px dot can't.
+private fun boneUnderCursor(
+    world: Scene3dWorldState,
+    meshes: Map<String, PreparedMesh>,
+    poses: Map<String, Array<Matrix4>>,
     camera: Camera,
     width: Float,
     height: Float,
     cursor: Offset,
     radiusPx: Float,
-): Int? {
+): Pair<String, Int>? {
+    if (width <= 0f || height <= 0f) return null
     val view = camera.viewMatrix()
     val proj = camera.projectionMatrix(width / height)
-    var best = -1
+    var best: Pair<String, Int>? = null
     var bestDistance = radiusPx * radiusPx
-    for (joint in positions.indices) {
-        val projected = positions[joint].project(view, proj, width, height)
-        if (!projected.visible) continue
-        val dx = projected.x - cursor.x
-        val dy = projected.y - cursor.y
-        val distance = dx * dx + dy * dy
-        if (distance <= bestDistance) {
-            bestDistance = distance
-            best = joint
-        }
-    }
-    return if (best >= 0) best else null
-}
-
-private fun jointTap(
-    world: Scene3dWorldState,
-    meshes: Map<String, PreparedMesh>,
-    poses: Map<String, Array<Matrix4>>,
-    camera: Camera,
-    width: Float,
-    height: Float,
-    cursor: Offset,
-): Pair<String, Int>? {
     for (entity in world.entities) {
         if (!entity.selected) continue
         val rig = meshes[entity.id]?.rig ?: continue
-        val transforms = rig.worldJointTransforms(poses[entity.id] ?: rig.identityPose())
-        val joint = nearestJoint(jointScenePositions(transforms, entity), camera, width, height, cursor, JOINT_HIT_RADIUS_PX)
-        if (joint != null) return entity.id to joint
+        val positions = jointScenePositions(rig.worldJointTransforms(poses[entity.id] ?: rig.identityPose()), entity)
+        for (joint in positions.indices) {
+            val parent = rig.parents.getOrElse(joint) { -1 }
+            if (parent < 0) continue
+            val a = positions[parent].project(view, proj, width, height)
+            val b = positions[joint].project(view, proj, width, height)
+            if (!a.visible || !b.visible) continue
+            val distance = pointSegmentDistanceSquared(cursor, a.x, a.y, b.x, b.y)
+            if (distance <= bestDistance) {
+                bestDistance = distance
+                best = entity.id to joint
+            }
+        }
     }
-    return null
+    return best
 }
 
-private fun jointUnderCursor(
-    selectedJoint: Pair<String, Int>?,
+private fun pointSegmentDistanceSquared(point: Offset, ax: Float, ay: Float, bx: Float, by: Float): Float {
+    val abx = bx - ax
+    val aby = by - ay
+    val lengthSquared = abx * abx + aby * aby
+    val t = if (lengthSquared < 1e-6f) 0f
+    else (((point.x - ax) * abx + (point.y - ay) * aby) / lengthSquared).coerceIn(0f, 1f)
+    val dx = point.x - (ax + abx * t)
+    val dy = point.y - (ay + aby * t)
+    return dx * dx + dy * dy
+}
+
+// CCD over the effector's ancestor chain: distal joints take most rotation, the spine engages only when reach runs out, so pulling a hand far brings the shoulders.
+internal fun solveReachIk(
     world: Scene3dWorldState,
     meshes: Map<String, PreparedMesh>,
     poses: Map<String, Array<Matrix4>>,
+    entityId: String,
+    effectorJoint: Int,
     camera: Camera,
     width: Float,
     height: Float,
     cursor: Offset,
-): Pair<String, Int>? {
-    val selected = selectedJoint ?: return null
-    val entity = world.entities.firstOrNull { it.id == selected.first } ?: return null
-    val rig = meshes[selected.first]?.rig ?: return null
-    val transforms = rig.worldJointTransforms(poses[selected.first] ?: rig.identityPose())
-    val positions = jointScenePositions(transforms, entity)
-    if (selected.second !in positions.indices) return null
-    return if (nearestJoint(listOf(positions[selected.second]), camera, width, height, cursor, JOINT_GRAB_RADIUS_PX) != null) {
-        selected
-    } else {
-        null
+): Array<Matrix4>? {
+    val entity = world.entities.firstOrNull { it.id == entityId } ?: return null
+    val rig = meshes[entityId]?.rig ?: return null
+    val pose = (poses[entityId] ?: rig.identityPose()).copyOf()
+    val chain = reachChain(rig, effectorJoint)
+    if (chain.isEmpty()) return null
+    val currentEffector = jointScenePositions(rig.worldJointTransforms(pose), entity).getOrNull(effectorJoint) ?: return null
+    val target = viewPlaneHit(camera, width, height, cursor, currentEffector) ?: return null
+    repeat(REACH_IK_ITERATIONS) {
+        for ((depth, joint) in chain.withIndex()) {
+            val transforms = rig.worldJointTransforms(pose)
+            val positions = jointScenePositions(transforms, entity)
+            val pivot = positions[joint]
+            val effector = positions[effectorJoint]
+            val toEffector = effector - pivot
+            val toTarget = target - pivot
+            if (toEffector.length() < 1e-5f || toTarget.length() < 1e-5f) continue
+            val damping = 1f / (1f + depth.toFloat() * REACH_IK_FALLOFF)
+            val delta = clampedRotationBetween(toEffector, toTarget, REACH_IK_MAX_STEP * damping)
+            val parent = rig.parents.getOrElse(joint) { -1 }
+            val parentRotation = if (parent < 0) Matrix4.identity() else transforms[parent].rotationPart()
+            pose[joint] = parentRotation.transposeRotation() * delta * transforms[joint].rotationPart()
+        }
     }
+    return pose
+}
+
+// Ancestors of the effector, nearest-first, stopping before the planted root so
+// the pelvis (and the feet) stay grounded while the limb and spine reach.
+private fun reachChain(rig: Scene3dRig, effectorJoint: Int): List<Int> {
+    val chain = ArrayList<Int>()
+    var joint = rig.parents.getOrElse(effectorJoint) { -1 }
+    while (joint >= 0) {
+        val parent = rig.parents.getOrElse(joint) { -1 }
+        if (parent < 0) break
+        chain.add(joint)
+        joint = parent
+    }
+    return chain
+}
+
+// Intersect the cursor ray with the screen-parallel plane through the effector —
+// the drag stays at the joint's current depth (no depth guessing), so on a phone
+// you push the limb around in the plane you're looking at. Orbit to a work angle
+// and the plane reorients to match.
+private fun viewPlaneHit(camera: Camera, width: Float, height: Float, screen: Offset, planePoint: Vec3): Vec3? {
+    if (width <= 0f || height <= 0f) return null
+    val (eye, direction) = cameraRay(camera, width, height, screen)
+    val normal = (camera.eyePosition() - camera.target).normalize()
+    val denominator = direction.dot(normal)
+    if (abs(denominator) < 1e-5f) return null
+    val t = (planePoint - eye).dot(normal) / denominator
+    if (t <= 0f) return null
+    return eye + direction * t
+}
+
+// Rotation taking `from` toward `to`, capped at maxRadians so a single CCD step
+// eases in instead of snapping — smoother frame-to-frame and naturally distal-first.
+private fun clampedRotationBetween(from: Vec3, to: Vec3, maxRadians: Float): Matrix4 {
+    val a = from.normalize()
+    val b = to.normalize()
+    val axis = a.cross(b)
+    val sine = axis.length()
+    if (sine < 1e-6f) return Matrix4.identity()
+    val angle = atan2(sine, a.dot(b).coerceIn(-1f, 1f))
+    return Matrix4.rotate(axis.normalize(), if (angle > maxRadians) maxRadians else angle)
 }
 
 internal fun solveJointAim(
@@ -430,7 +493,7 @@ internal fun solveJointAim(
     return newPose
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawJointDots(
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBones(
     rig: Scene3dRig,
     world: Array<Matrix4>,
     entity: Scene3dEntity,
@@ -438,16 +501,19 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawJointDots(
     screen: (Vec3) -> ProjectedPoint,
 ) {
     val positions = jointScenePositions(world, entity)
-    positions.forEachIndexed { joint, position ->
+    for (joint in positions.indices) {
+        val parent = rig.parents.getOrElse(joint) { -1 }
+        if (parent < 0) continue
+        val a = screen(positions[parent])
+        val b = screen(positions[joint])
+        if (!a.visible || !b.visible) continue
+        val isSelected = joint == selectedJoint
+        val color = if (isSelected) Color(0xFFFFC83D) else Color(0xCCBFC4D0)
+        drawLine(color, Offset(a.x, a.y), Offset(b.x, b.y), strokeWidth = if (isSelected) 6f else 3f)
+    }
+    for (position in positions) {
         val projected = screen(position)
-        if (!projected.visible) return@forEachIndexed
-        val center = Offset(projected.x, projected.y)
-        if (joint == selectedJoint) {
-            drawCircle(Color(0x55FFC83D), radius = 11f, center = center)
-            drawCircle(Color(0xFFFFC83D), radius = 6f, center = center)
-        } else {
-            drawCircle(Color(0xCCEFEFF5), radius = 3.5f, center = center)
-        }
+        if (projected.visible) drawCircle(Color(0xAAE6E6EC), radius = 2.5f, center = Offset(projected.x, projected.y))
     }
 }
 
