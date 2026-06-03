@@ -13,6 +13,11 @@ data class Scene3dMesh(
     val triangles: List<Int> = emptyList(),
     @SerialName("tri_colors") val triColors: List<String> = emptyList(),
     val height: Float = 1.7f,
+    // Optional rig (rig.py) → client-side FK+LBS posing; absent → static baked mesh.
+    @SerialName("rest_joints") val restJoints: List<Float> = emptyList(),
+    val parents: List<Int> = emptyList(),
+    @SerialName("weight_joints") val weightJoints: List<Int> = emptyList(),
+    @SerialName("weight_values") val weightValues: List<Float> = emptyList(),
 )
 
 class PreparedMesh(
@@ -20,6 +25,7 @@ class PreparedMesh(
     val triangles: List<Int>,
     val colors: List<Color>,
     val height: Float,
+    val rig: Scene3dRig? = null,
 )
 
 fun Scene3dMesh.prepare(): PreparedMesh {
@@ -34,6 +40,26 @@ fun Scene3dMesh.prepare(): PreparedMesh {
         triangles = triangles,
         colors = triColors.map { parseTriColor(it) },
         height = height,
+        rig = buildRig(points),
+    )
+}
+
+private fun Scene3dMesh.buildRig(restVerts: List<Vec3>): Scene3dRig? {
+    if (restJoints.isEmpty() || parents.isEmpty() || weightJoints.isEmpty()) return null
+    val joints = ArrayList<Vec3>(restJoints.size / 3)
+    var index = 0
+    while (index + 2 < restJoints.size) {
+        joints.add(Vec3(restJoints[index], restJoints[index + 1], restJoints[index + 2]))
+        index += 3
+    }
+    val perVertex = if (restVerts.isEmpty()) 0 else weightJoints.size / restVerts.size
+    return Scene3dRig(
+        restVertices = restVerts,
+        joints = joints,
+        parents = parents.toIntArray(),
+        weightJoints = weightJoints.toIntArray(),
+        weightValues = weightValues.toFloatArray(),
+        weightsPerVertex = perVertex,
     )
 }
 

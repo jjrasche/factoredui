@@ -18,10 +18,12 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import ai.factoredui.compose.forcegraph.math.Camera
+import ai.factoredui.compose.forcegraph.math.Matrix4
 import ai.factoredui.compose.forcegraph.math.ProjectedPoint
 import ai.factoredui.compose.forcegraph.math.Vec3
 import ai.factoredui.compose.forcegraph.math.project
 import kotlin.math.abs
+import kotlin.math.sqrt
 import kotlin.math.tan
 
 private const val GRID_HALF_EXTENT = 5
@@ -29,6 +31,8 @@ private const val PERSON_HALF_WIDTH = 0.3f
 private const val PERSON_HALF_DEPTH = 0.2f
 private const val PERSON_HEIGHT = 1.8f
 private const val SELECT_HIT_RADIUS_PX = 48f
+private const val JOINT_HIT_RADIUS_PX = 20f
+private const val JOINT_GRAB_RADIUS_PX = 30f
 
 /**
  * scene3d software rasterizer. Renders a flat-shaded mesh (or a box placeholder
@@ -42,44 +46,73 @@ fun Scene3dView(
     world: Scene3dWorldState,
     camera: Camera,
     meshes: Map<String, PreparedMesh> = emptyMap(),
+    poses: Map<String, Array<Matrix4>> = emptyMap(),
+    selectedJoint: Pair<String, Int>? = null,
     modifier: Modifier = Modifier,
     onSelectEntity: (String) -> Unit = {},
+    onSelectJoint: (String, Int) -> Unit = { _, _ -> },
     onCameraChange: () -> Unit = {},
     onMoveEntity: (String, List<Float>) -> Unit = { _, _ -> },
+    onPoseChange: (String, Array<Matrix4>) -> Unit = { _, _ -> },
+    onJointReleased: (String) -> Unit = {},
 ) {
     var cameraGeneration by remember { mutableStateOf(0) }
     val background = parseHexColor(world.background) ?: Color(0xFF2B2B30)
     val latestWorld by rememberUpdatedState(world)
+    val latestMeshes by rememberUpdatedState(meshes)
+    val latestPoses by rememberUpdatedState(poses)
+    val latestSelectedJoint by rememberUpdatedState(selectedJoint)
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                var draggingEntityId: String? = null
+                var mode = DragKind.ORBIT
+                var dragEntity: String? = null
+                var dragJoint = -1
                 detectDragGestures(
                     onDragStart = { start ->
                         val width = size.width.toFloat()
                         val height = size.height.toFloat()
-                        val hit = nearestEntity(latestWorld.entities, camera, width, height, start)
-                        draggingEntityId =
-                            if (hit != null && latestWorld.entities.any { it.id == hit && it.selected }) hit else null
+                        val grab = jointUnderCursor(latestSelectedJoint, latestWorld, latestMeshes, latestPoses, camera, width, height, start)
+                        when {
+                            grab != null -> {
+                                mode = DragKind.JOINT; dragEntity = grab.first; dragJoint = grab.second
+                            }
+                            else -> {
+                                val hit = nearestEntity(latestWorld.entities, camera, width, height, start)
+                                if (hit != null && latestWorld.entities.any { it.id == hit && it.selected }) {
+                                    mode = DragKind.MOVE; dragEntity = hit
+                                } else {
+                                    mode = DragKind.ORBIT; dragEntity = null
+                                }
+                            }
+                        }
                     },
-                    onDragEnd = { draggingEntityId = null },
-                    onDragCancel = { draggingEntityId = null },
+                    onDragEnd = {
+                        if (mode == DragKind.JOINT) dragEntity?.let { onJointReleased(it) }
+                        mode = DragKind.ORBIT; dragEntity = null; dragJoint = -1
+                    },
+                    onDragCancel = { mode = DragKind.ORBIT; dragEntity = null; dragJoint = -1 },
                     onDrag = { change, drag ->
-                        val moving = draggingEntityId
-                        if (moving == null) {
-                            camera.drag(drag.x, drag.y)
-                            cameraGeneration++
-                            onCameraChange()
-                        } else {
-                            val width = size.width.toFloat()
-                            val height = size.height.toFloat()
-                            val baseY = latestWorld.entities.firstOrNull { it.id == moving }
-                                ?.position?.toVec3()?.y ?: 0f
-                            val hit = groundHit(camera, width, height, change.position, baseY)
-                            if (hit != null) {
-                                onMoveEntity(moving, listOf(hit.x, baseY, hit.z))
+                        val width = size.width.toFloat()
+                        val height = size.height.toFloat()
+                        when (mode) {
+                            DragKind.JOINT -> {
+                                val id = dragEntity ?: return@detectDragGestures
+                                val newPose = solveJointAim(latestWorld, latestMeshes, latestPoses, id, dragJoint, camera, width, height, change.position)
+                                if (newPose != null) onPoseChange(id, newPose)
+                            }
+                            DragKind.MOVE -> {
+                                val id = dragEntity ?: return@detectDragGestures
+                                val baseY = latestWorld.entities.firstOrNull { it.id == id }?.position?.toVec3()?.y ?: 0f
+                                val hit = groundHit(camera, width, height, change.position, baseY)
+                                if (hit != null) onMoveEntity(id, listOf(hit.x, baseY, hit.z))
+                            }
+                            DragKind.ORBIT -> {
+                                camera.drag(drag.x, drag.y)
+                                cameraGeneration++
+                                onCameraChange()
                             }
                         }
                     },
@@ -87,8 +120,15 @@ fun Scene3dView(
             }
             .pointerInput(Unit) {
                 detectTapGestures { tap ->
-                    val hit = nearestEntity(latestWorld.entities, camera, size.width.toFloat(), size.height.toFloat(), tap)
-                    if (hit != null) onSelectEntity(hit)
+                    val width = size.width.toFloat()
+                    val height = size.height.toFloat()
+                    val jointHit = jointTap(latestWorld, latestMeshes, latestPoses, camera, width, height, tap)
+                    if (jointHit != null) {
+                        onSelectJoint(jointHit.first, jointHit.second)
+                    } else {
+                        val hit = nearestEntity(latestWorld.entities, camera, width, height, tap)
+                        if (hit != null) onSelectEntity(hit)
+                    }
                 }
             }
             .pointerInput(Unit) {
@@ -127,7 +167,15 @@ fun Scene3dView(
             for (entity in ordered) {
                 val mesh = meshes[entity.id]
                 if (mesh != null) {
-                    drawMesh(mesh, entity, ::screen)
+                    val rig = mesh.rig
+                    val pose = poses[entity.id]
+                    val displayVerts = if (rig != null && pose != null) rig.posedVertices(pose) else mesh.vertices
+                    drawMesh(mesh, displayVerts, entity, ::screen)
+                    if (entity.selected && rig != null) {
+                        val world3d = rig.worldJointTransforms(pose ?: rig.identityPose())
+                        val selected = selectedJoint?.takeIf { it.first == entity.id }?.second ?: -1
+                        drawJointDots(rig, world3d, entity, selected, ::screen)
+                    }
                 } else {
                     drawPersonBox(entity, ::screen)
                 }
@@ -139,6 +187,8 @@ fun Scene3dView(
         }
     }
 }
+
+private enum class DragKind { ORBIT, MOVE, JOINT }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLights(
     lights: List<Scene3dLight>,
@@ -158,12 +208,13 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLights(
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawMesh(
     mesh: PreparedMesh,
+    displayVertices: List<Vec3>,
     entity: Scene3dEntity,
     screen: (Vec3) -> ProjectedPoint,
 ) {
     val base = entity.position.toVec3()
     val scale = entity.scale
-    val projected = mesh.vertices.map { vertex ->
+    val projected = displayVertices.map { vertex ->
         screen(Vec3(base.x + vertex.x * scale, base.y + vertex.y * scale, base.z + vertex.z * scale))
     }
     val triangleCount = mesh.triangles.size / 3
@@ -236,18 +287,9 @@ private fun nearestEntity(
         ?.first
 }
 
-// Unproject a screen point to where its camera ray meets the y=planeY ground
-// plane. Pinhole-ray form matching Matrix4.lookAt/perspective so the dragged
-// entity tracks the cursor exactly. Null when the ray is parallel to / behind
-// the plane.
-private fun groundHit(
-    camera: Camera,
-    width: Float,
-    height: Float,
-    screen: Offset,
-    planeY: Float,
-): Vec3? {
-    if (width <= 0f || height <= 0f) return null
+// Pinhole ray (origin, direction) through a screen pixel, matching
+// Matrix4.lookAt/perspective so unprojection tracks the cursor exactly.
+private fun cameraRay(camera: Camera, width: Float, height: Float, screen: Offset): Pair<Vec3, Vec3> {
     val eye = camera.eyePosition()
     val zAxis = (eye - camera.target).normalize()
     val xAxis = Vec3(0f, 1f, 0f).cross(zAxis).normalize()
@@ -257,10 +299,161 @@ private fun groundHit(
     val ndcX = 2f * screen.x / width - 1f
     val ndcY = 1f - 2f * screen.y / height
     val direction = (forward + xAxis * (ndcX * tanHalf * (width / height)) + yAxis * (ndcY * tanHalf)).normalize()
+    return eye to direction
+}
+
+private fun groundHit(camera: Camera, width: Float, height: Float, screen: Offset, planeY: Float): Vec3? {
+    if (width <= 0f || height <= 0f) return null
+    val (eye, direction) = cameraRay(camera, width, height, screen)
     if (abs(direction.y) < 1e-5f) return null
     val t = (planeY - eye.y) / direction.y
     if (t <= 0f) return null
     return eye + direction * t
+}
+
+// Where the cursor ray meets the sphere of radius around center (the fixed bone
+// length around the pivot). Off-sphere cursors clamp to the nearest surface
+// point so the joint still tracks — the rigid bone resolves the depth.
+private fun sphereHit(camera: Camera, width: Float, height: Float, screen: Offset, center: Vec3, radius: Float): Vec3 {
+    val (eye, direction) = cameraRay(camera, width, height, screen)
+    val toCenter = eye - center
+    val b = toCenter.dot(direction)
+    val c = toCenter.dot(toCenter) - radius * radius
+    val discriminant = b * b - c
+    if (discriminant < 0f) {
+        val closest = eye + direction * (-b)
+        return center + (closest - center).normalize() * radius
+    }
+    val root = sqrt(discriminant)
+    val t = if (-b - root >= 0f) -b - root else -b + root
+    return eye + direction * t
+}
+
+private fun jointScenePositions(world: Array<Matrix4>, entity: Scene3dEntity): List<Vec3> {
+    val base = entity.position.toVec3()
+    val scale = entity.scale
+    return jointOrigins(world).map { Vec3(base.x + it.x * scale, base.y + it.y * scale, base.z + it.z * scale) }
+}
+
+private fun nearestJoint(
+    positions: List<Vec3>,
+    camera: Camera,
+    width: Float,
+    height: Float,
+    cursor: Offset,
+    radiusPx: Float,
+): Int? {
+    val view = camera.viewMatrix()
+    val proj = camera.projectionMatrix(width / height)
+    var best = -1
+    var bestDistance = radiusPx * radiusPx
+    for (joint in positions.indices) {
+        val projected = positions[joint].project(view, proj, width, height)
+        if (!projected.visible) continue
+        val dx = projected.x - cursor.x
+        val dy = projected.y - cursor.y
+        val distance = dx * dx + dy * dy
+        if (distance <= bestDistance) {
+            bestDistance = distance
+            best = joint
+        }
+    }
+    return if (best >= 0) best else null
+}
+
+private fun jointTap(
+    world: Scene3dWorldState,
+    meshes: Map<String, PreparedMesh>,
+    poses: Map<String, Array<Matrix4>>,
+    camera: Camera,
+    width: Float,
+    height: Float,
+    cursor: Offset,
+): Pair<String, Int>? {
+    for (entity in world.entities) {
+        if (!entity.selected) continue
+        val rig = meshes[entity.id]?.rig ?: continue
+        val transforms = rig.worldJointTransforms(poses[entity.id] ?: rig.identityPose())
+        val joint = nearestJoint(jointScenePositions(transforms, entity), camera, width, height, cursor, JOINT_HIT_RADIUS_PX)
+        if (joint != null) return entity.id to joint
+    }
+    return null
+}
+
+private fun jointUnderCursor(
+    selectedJoint: Pair<String, Int>?,
+    world: Scene3dWorldState,
+    meshes: Map<String, PreparedMesh>,
+    poses: Map<String, Array<Matrix4>>,
+    camera: Camera,
+    width: Float,
+    height: Float,
+    cursor: Offset,
+): Pair<String, Int>? {
+    val selected = selectedJoint ?: return null
+    val entity = world.entities.firstOrNull { it.id == selected.first } ?: return null
+    val rig = meshes[selected.first]?.rig ?: return null
+    val transforms = rig.worldJointTransforms(poses[selected.first] ?: rig.identityPose())
+    val positions = jointScenePositions(transforms, entity)
+    if (selected.second !in positions.indices) return null
+    return if (nearestJoint(listOf(positions[selected.second]), camera, width, height, cursor, JOINT_GRAB_RADIUS_PX) != null) {
+        selected
+    } else {
+        null
+    }
+}
+
+private fun solveJointAim(
+    world: Scene3dWorldState,
+    meshes: Map<String, PreparedMesh>,
+    poses: Map<String, Array<Matrix4>>,
+    entityId: String,
+    jointIndex: Int,
+    camera: Camera,
+    width: Float,
+    height: Float,
+    cursor: Offset,
+): Array<Matrix4>? {
+    val entity = world.entities.firstOrNull { it.id == entityId } ?: return null
+    val rig = meshes[entityId]?.rig ?: return null
+    val pose = poses[entityId] ?: rig.identityPose()
+    val parent = rig.parents.getOrElse(jointIndex) { -1 }
+    if (parent < 0) return null
+    val transforms = rig.worldJointTransforms(pose)
+    val positions = jointScenePositions(transforms, entity)
+    val pivot = positions[parent]
+    val handle = positions[jointIndex]
+    val boneLength = (handle - pivot).length()
+    if (boneLength < 1e-5f) return null
+    val target = sphereHit(camera, width, height, cursor, pivot, boneLength)
+    val delta = rotationFromTo((handle - pivot).normalize(), (target - pivot).normalize())
+    val grandparent = rig.parents.getOrElse(parent) { -1 }
+    val grandRotation = if (grandparent < 0) Matrix4.identity() else transforms[grandparent].rotationPart()
+    val newLocal = grandRotation.transposeRotation() * delta * transforms[parent].rotationPart()
+    val newPose = pose.copyOf()
+    newPose[parent] = newLocal
+    return newPose
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawJointDots(
+    rig: Scene3dRig,
+    world: Array<Matrix4>,
+    entity: Scene3dEntity,
+    selectedJoint: Int,
+    screen: (Vec3) -> ProjectedPoint,
+) {
+    val positions = jointScenePositions(world, entity)
+    positions.forEachIndexed { joint, position ->
+        val projected = screen(position)
+        if (!projected.visible) return@forEachIndexed
+        val center = Offset(projected.x, projected.y)
+        if (joint == selectedJoint) {
+            drawCircle(Color(0x55FFC83D), radius = 11f, center = center)
+            drawCircle(Color(0xFFFFC83D), radius = 6f, center = center)
+        } else {
+            drawCircle(Color(0xCCEFEFF5), radius = 3.5f, center = center)
+        }
+    }
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGroundGrid(

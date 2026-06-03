@@ -13,6 +13,7 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import ai.factoredui.compose.forcegraph.math.Camera
+import ai.factoredui.compose.forcegraph.math.Matrix4
 import ai.factoredui.compose.forcegraph.math.Vec3
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -20,9 +21,6 @@ import javax.imageio.ImageIO
 import kotlin.math.PI
 import kotlin.test.Test
 
-// Renders the decimated Heigl mesh through the real Scene3dView.drawMesh path on
-// the desktop Compose target and writes a PNG, proving the Kotlin rasterizer
-// produces the same image the numpy reference predicted. Headless, no browser.
 @OptIn(ExperimentalTestApi::class)
 class Scene3dDesktopRenderTest {
 
@@ -43,7 +41,37 @@ class Scene3dDesktopRenderTest {
                 Scene3dLight(type = "fill", position = listOf(-3.0f, 2.5f, 1.0f), intensity = 0.5f),
             ),
         )
-        val height = mesh.height
+        renderToPng(world, mapOf("heigl" to mesh, "guest" to mesh), mesh.height, "scene3d_desktop_heigl.png")
+    }
+
+    @Test
+    fun posesRiggedMeshViaForwardKinematics() = runComposeUiTest {
+        val mesh = json
+            .decodeFromString(Scene3dMesh.serializer(), readMeshResource("heigl_rigged.json"))
+            .prepare()
+        val rig = requireNotNull(mesh.rig) { "rigged mesh produced no rig" }
+        val pose = rig.identityPose()
+        // Bend both elbows (SMPL joints 18 = L_elbow, 19 = R_elbow) ~80 degrees.
+        pose[18] = Matrix4.rotate(Vec3(0f, 1f, 0f), (-1.4).toFloat())
+        pose[19] = Matrix4.rotate(Vec3(0f, 1f, 0f), 1.4f)
+        val posed = PreparedMesh(
+            vertices = rig.posedVertices(pose),
+            triangles = mesh.triangles,
+            colors = mesh.colors,
+            height = mesh.height,
+        )
+        val world = Scene3dWorldState(
+            entities = listOf(Scene3dEntity(id = "heigl", position = listOf(0f, 0f, 0f))),
+        )
+        renderToPng(world, mapOf("heigl" to posed), mesh.height, "scene3d_desktop_posed.png")
+    }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.renderToPng(
+        world: Scene3dWorldState,
+        meshes: Map<String, PreparedMesh>,
+        height: Float,
+        fileName: String,
+    ) {
         val camera = Camera(
             yawRadians = (-PI / 4.0).toFloat(),
             pitchRadians = (PI / 9.0).toFloat(),
@@ -51,21 +79,14 @@ class Scene3dDesktopRenderTest {
             target = Vec3(0f, height * 0.5f, 0f),
             fovYRadians = (PI / 3.0).toFloat(),
         )
-
         setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f)) {
                 Box(Modifier.size(800.dp)) {
-                    Scene3dView(
-                        world = world,
-                        camera = camera,
-                        meshes = mapOf("heigl" to mesh, "guest" to mesh),
-                        modifier = Modifier.size(800.dp),
-                    )
+                    Scene3dView(world = world, camera = camera, meshes = meshes, modifier = Modifier.size(800.dp))
                 }
             }
         }
-
-        val outFile = File(System.getProperty("user.dir"), "build/scene3d_desktop_heigl.png")
+        val outFile = File(System.getProperty("user.dir"), "build/$fileName")
         outFile.parentFile.mkdirs()
         ImageIO.write(onRoot().captureToImage().toAwtImage(), "PNG", outFile)
         println("[scene3d] wrote ${outFile.absolutePath}")
