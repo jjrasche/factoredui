@@ -1,9 +1,12 @@
 package ai.factoredui.compose.scene3d
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -13,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -66,7 +70,8 @@ fun RenderScene3d(
     var loadError by remember { mutableStateOf<String?>(null) }
     var cameraInitialized by remember { mutableStateOf(false) }
     val camera = remember { Camera() }
-    var cameraSettleJob by remember { mutableStateOf<Job?>(null) }
+    var shotCamera by remember { mutableStateOf<Scene3dCameraState?>(null) }
+    var cameraVersion by remember { mutableStateOf(0) }
     var localPositions by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
     var moveSettleJob by remember { mutableStateOf<Job?>(null) }
     var clientPoses by remember { mutableStateOf<Map<String, Array<Matrix4>>>(emptyMap()) }
@@ -85,6 +90,7 @@ fun RenderScene3d(
                 world = state
                 if (!cameraInitialized) {
                     state.camera?.let { applyCameraState(camera, it) }
+                    shotCamera = state.camera ?: cameraSnapshot(camera)
                     cameraInitialized = true
                 }
             },
@@ -145,14 +151,6 @@ fun RenderScene3d(
         }
     }
 
-    fun emitCameraSettled() {
-        cameraSettleJob?.cancel()
-        cameraSettleJob = scope.launch {
-            delay(CAMERA_SETTLE_MS)
-            emitIntent("camera-update", cameraParams(camera))
-        }
-    }
-
     fun onMoveEntity(entityId: String, position: List<Float>) {
         localPositions = localPositions + (entityId to position)
         moveSettleJob?.cancel()
@@ -186,13 +184,13 @@ fun RenderScene3d(
             meshes = meshes,
             poses = clientPoses,
             selectedJoint = selectedJoint,
+            cameraVersion = cameraVersion,
             modifier = Modifier.fillMaxSize(),
             onSelectEntity = { entityId ->
                 selectedJoint = null
                 emitIntent("select-entity", mapOf("entity_id" to entityId))
             },
             onSelectJoint = { entityId, joint -> selectedJoint = entityId to joint },
-            onCameraChange = { emitCameraSettled() },
             onMoveEntity = { entityId, position -> onMoveEntity(entityId, position) },
             onPoseChange = { entityId, pose -> clientPoses = clientPoses + (entityId to pose) },
             onJointReleased = { entityId ->
@@ -203,6 +201,20 @@ fun RenderScene3d(
                 )
             },
         )
+        Row(
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Button(onClick = { shotCamera?.let { applyCameraState(camera, it); cameraVersion++ } }) {
+                Text("Home")
+            }
+            Button(onClick = {
+                shotCamera = cameraSnapshot(camera)
+                emitIntent("camera-update", cameraParams(camera))
+            }) {
+                Text("Set Shot")
+            }
+        }
         loadError?.let {
             Text(text = it, color = Color(0xFFE0A0A0), modifier = Modifier.padding(12.dp))
         }
@@ -212,6 +224,16 @@ fun RenderScene3d(
 private fun positionsClose(a: List<Float>, b: List<Float>): Boolean {
     if (a.size != b.size) return false
     return a.indices.all { abs(a[it] - b[it]) < 1e-3f }
+}
+
+private fun cameraSnapshot(camera: Camera): Scene3dCameraState {
+    val eye = camera.eyePosition()
+    val target = camera.target
+    return Scene3dCameraState(
+        position = listOf(eye.x, eye.y, eye.z),
+        target = listOf(target.x, target.y, target.z),
+        fov = camera.fovYRadians,
+    )
 }
 
 private fun cameraParams(camera: Camera): Map<String, Any?> {

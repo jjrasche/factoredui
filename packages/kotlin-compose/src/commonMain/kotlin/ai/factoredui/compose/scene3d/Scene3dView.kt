@@ -57,6 +57,7 @@ fun Scene3dView(
     meshes: Map<String, PreparedMesh> = emptyMap(),
     poses: Map<String, Array<Matrix4>> = emptyMap(),
     selectedJoint: Pair<String, Int>? = null,
+    cameraVersion: Int = 0,
     modifier: Modifier = Modifier,
     onSelectEntity: (String) -> Unit = {},
     onSelectJoint: (String, Int) -> Unit = { _, _ -> },
@@ -154,6 +155,8 @@ fun Scene3dView(
         Canvas(modifier = Modifier.fillMaxSize()) {
             @Suppress("UNUSED_EXPRESSION")
             cameraGeneration
+            @Suppress("UNUSED_EXPRESSION")
+            cameraVersion
 
             val width = size.width
             val height = size.height
