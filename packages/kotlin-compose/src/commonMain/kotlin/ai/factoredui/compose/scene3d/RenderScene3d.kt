@@ -60,6 +60,7 @@ import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.asin
 import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -201,6 +202,41 @@ fun RenderScene3d(
         }
     }
 
+    // Interactive sit: hand the selected character + the seeded chair to the server's settle
+    // solver. It writes the seated equilibrium pose; the client fetches that pose, turns each
+    // joint's axis-angle into a local rotation, and re-skins the seated mesh instantly via the
+    // same client-LBS path as a drag (no render leg in this loop).
+    fun sitInChair(entityId: String) {
+        val actionUrl = props.actionUrl ?: return
+        val rig = meshes[entityId]?.rig ?: return
+        val body = buildJsonObject {
+            put("action", "sit")
+            put("params", anyToJson(mapOf("entity_id" to entityId, "prop_id" to "chair_1")))
+        }.toString()
+        scope.launch {
+            val text = runCatching {
+                httpClient.post(actionUrl) {
+                    contentType(ContentType.Application.Json)
+                    setBody(body)
+                }.bodyAsText()
+            }.getOrNull() ?: return@launch
+            val parsed = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return@launch
+            val poseRef = parsed["pose_ref"]?.jsonPrimitive?.contentOrNull
+            if (parsed["ok"]?.jsonPrimitive?.booleanOrNull != true || poseRef == null) return@launch
+            val poseFile = poseRef.substringAfterLast('/').substringAfterLast('\\')
+            val poseUrl = resolveAssetUrl(props.worldStateUrl, "/assets/poses/$poseFile")
+            val poseText = runCatching { httpClient.get(poseUrl).bodyAsText() }.getOrNull() ?: return@launch
+            val poseDoc = runCatching { json.parseToJsonElement(poseText).jsonObject }.getOrNull() ?: return@launch
+            val axisAngles = poseDoc["smpl_pose_body"]?.jsonArray?.map { it.jsonPrimitive.float } ?: return@launch
+            val seated = Array(rig.jointCount) { Matrix4.identity() }
+            for (joint in 1 until minOf(rig.jointCount, axisAngles.size / 3)) {
+                val base = joint * 3
+                seated[joint] = axisAngleToMatrix4(axisAngles[base], axisAngles[base + 1], axisAngles[base + 2])
+            }
+            clientPoses = clientPoses + (entityId to seated)
+        }
+    }
+
     // T1 preview: POST camera + the SMPL body vectors derived from the live client poses to /preview
     // and show the painted still. Body vectors come straight from the reach-IK rotations (clientPoses
     // is the single source of truth) — NOT from refine-pose, which is no longer in the drag loop.
@@ -324,6 +360,9 @@ fun RenderScene3d(
             selectedJoint?.first?.let { entityId ->
                 Button(onClick = { snapToPlausible(entityId) }) { Text("Snap") }
             }
+            effectiveWorld.entities.firstOrNull { it.selected && meshes[it.id]?.rig != null }?.id?.let { entityId ->
+                Button(onClick = { sitInChair(entityId) }) { Text("Sit") }
+            }
             Button(onClick = { shotCamera?.let { applyCameraState(camera, it); cameraVersion++ } }) {
                 Text("Home")
             }
@@ -420,6 +459,27 @@ private fun matrix4ToRotvec(rotation: Matrix4): List<Float> {
     }
     val scale = angle / (2f * sinAngle)
     return listOf((m[6] - m[9]) * scale, (m[8] - m[2]) * scale, (m[1] - m[4]) * scale)
+}
+
+// Axis-angle (Rodrigues) → column-major Matrix4 — the inverse of matrix4ToRotvec, used to apply a
+// server SMPL pose vector (per-joint axis-angle) onto the client rig's local rotations.
+private fun axisAngleToMatrix4(ax: Float, ay: Float, az: Float): Matrix4 {
+    val angle = sqrt(ax * ax + ay * ay + az * az)
+    if (angle < 1e-8f) return Matrix4.identity()
+    val x = ax / angle
+    val y = ay / angle
+    val z = az / angle
+    val c = cos(angle)
+    val s = sin(angle)
+    val t = 1f - c
+    return Matrix4(
+        floatArrayOf(
+            t * x * x + c, t * x * y + s * z, t * x * z - s * y, 0f,
+            t * x * y - s * z, t * y * y + c, t * y * z + s * x, 0f,
+            t * x * z + s * y, t * y * z - s * x, t * z * z + c, 0f,
+            0f, 0f, 0f, 1f,
+        ),
+    )
 }
 
 private fun rowMajorRotationToMatrix4(rowMajor: List<Float>): Matrix4 = Matrix4(
