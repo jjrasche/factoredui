@@ -19,7 +19,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import ai.factoredui.compose.forcegraph.math.Camera
 import ai.factoredui.compose.forcegraph.math.Matrix4
 import ai.factoredui.compose.forcegraph.startSseSubscription
@@ -44,7 +48,13 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.float
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlin.math.abs
 import kotlin.math.asin
@@ -74,9 +84,12 @@ fun RenderScene3d(
     var cameraVersion by remember { mutableStateOf(0) }
     var previewMode by remember { mutableStateOf(false) }
     var previewStatus by remember { mutableStateOf("") }
+    var previewImageUrl by remember { mutableStateOf<String?>(null) }
+    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var localPositions by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
     var moveSettleJob by remember { mutableStateOf<Job?>(null) }
     var clientPoses by remember { mutableStateOf<Map<String, Array<Matrix4>>>(emptyMap()) }
+    var cachedPoseBodies by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
     var selectedJoint by remember { mutableStateOf<Pair<String, Int>?>(null) }
 
     LaunchedEffect(props.worldStateUrl) {
@@ -153,30 +166,70 @@ fun RenderScene3d(
         }
     }
 
-    // T1 preview: POST the current blocking (camera + client poses) to /preview and show the
-    // painted still. Faithful for POSE, not LOOK (different model than the T2 video finisher) —
-    // it's "verify the staging before paying for the slow render," NOT a hands/identity judge.
-    fun requestPreview() {
-        val actionUrl = props.actionUrl
-        if (actionUrl == null) { previewStatus = "no server"; return }
-        val url = actionUrl.removeSuffix("/action") + "/preview"
-        previewStatus = "rendering…"
-        val posesPayload = clientPoses.mapValues { (_, frames) -> frames.map { it.m.toList() } }
+    // Move 2 payoff: on drag-release, hand the dragged FK joint positions to the server's
+    // VPoser-IK prior, which solves the nearest *plausible* full-body pose and returns local
+    // rotations (re-skinned instantly) plus the SMPL body vector the T1 preview wants.
+    fun refinePose(entityId: String) {
+        val url = props.actionUrl ?: return
+        val rig = meshes[entityId]?.rig ?: return
+        val pose = clientPoses[entityId] ?: rig.identityPose()
+        val targetJoints = jointOrigins(rig.worldJointTransforms(pose)).map { listOf(it.x, it.y, it.z) }
         val body = buildJsonObject {
-            put("camera", anyToJson(cameraParams(camera)["camera"]))
-            put("poses", anyToJson(posesPayload))
+            put("action", "refine-pose")
+            put("params", anyToJson(mapOf("entity_id" to entityId, "target_joints" to targetJoints)))
         }.toString()
         scope.launch {
-            val outcome = runCatching {
+            val text = runCatching {
                 httpClient.post(url) {
                     contentType(ContentType.Application.Json)
                     setBody(body)
                 }.bodyAsText()
+            }.getOrNull() ?: return@launch
+            val parsed = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return@launch
+            if (parsed["ok"]?.jsonPrimitive?.booleanOrNull != true) return@launch
+            val rotations = parsed["local_rotations"]?.jsonArray ?: return@launch
+            val refined = Array(rig.jointCount) { Matrix4.identity() }
+            for (joint in 0 until minOf(rig.jointCount, rotations.size)) {
+                refined[joint] = rowMajorRotationToMatrix4(rotations[joint].jsonArray.map { it.jsonPrimitive.float })
             }
-            previewStatus = outcome.fold(
-                onSuccess = { "ready — image-display wires next (got ${it.length}b)" },
-                onFailure = { "/preview not wired yet (render lane)" },
-            )
+            clientPoses = clientPoses + (entityId to refined)
+            parsed["smpl_pose_body"]?.jsonArray?.map { it.jsonPrimitive.float }?.let { poseBody ->
+                cachedPoseBodies = cachedPoseBodies + (entityId to poseBody)
+            }
+        }
+    }
+
+    // T1 preview: POST camera + the cached SMPL body vectors (from refine-pose) to /preview and
+    // show the painted still. Faithful for POSE, not LOOK (different model than the T2 video
+    // finisher) — it's "verify the staging before paying for the slow render," NOT an identity judge.
+    fun requestPreview() {
+        val actionUrl = props.actionUrl
+        if (actionUrl == null) { previewStatus = "no server"; return }
+        if (cachedPoseBodies.isEmpty()) { previewStatus = "drag a joint first (no refined pose yet)"; return }
+        val url = actionUrl.removeSuffix("/action") + "/preview"
+        previewImageUrl = null
+        previewStatus = "rendering…"
+        val resolution = previewResolution(viewportSize)
+        val body = buildJsonObject {
+            put("action", "preview")
+            put("params", anyToJson(mapOf("camera" to previewCameraParams(camera, resolution), "poses" to cachedPoseBodies)))
+        }.toString()
+        scope.launch {
+            val text = runCatching {
+                httpClient.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(body)
+                }.bodyAsText()
+            }.getOrNull()
+            if (text == null) { previewStatus = "preview request failed"; return@launch }
+            val parsed = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull()
+            val relativeUrl = parsed?.get("preview_url")?.jsonPrimitive?.contentOrNull
+            if (parsed?.get("ok")?.jsonPrimitive?.booleanOrNull == true && relativeUrl != null) {
+                previewImageUrl = resolveAssetUrl(props.worldStateUrl, relativeUrl)
+                previewStatus = ""
+            } else {
+                previewStatus = "preview unavailable: ${text.take(120)}"
+            }
         }
     }
 
@@ -206,7 +259,10 @@ fun RenderScene3d(
             },
         )
 
-    Box(modifier = modifier.fillMaxSize().background(Color(0xFF2B2B30))) {
+    Box(
+        modifier = modifier.fillMaxSize().background(Color(0xFF2B2B30))
+            .onSizeChanged { viewportSize = it },
+    ) {
         Scene3dView(
             world = effectiveWorld,
             camera = camera,
@@ -228,6 +284,7 @@ fun RenderScene3d(
                     ActionRef(action = "set-joint"),
                     mapOf("entity_id" to entityId, "joint" to (selectedJoint?.second ?: -1)),
                 )
+                refinePose(entityId)
             },
         )
         if (previewMode) {
@@ -235,11 +292,21 @@ fun RenderScene3d(
                 modifier = Modifier.fillMaxSize().background(Color(0xF01C1C20)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "T1 preview (blocking)\n$previewStatus",
-                    color = Color(0xFFD8D8E0),
-                    modifier = Modifier.padding(24.dp),
-                )
+                val image = previewImageUrl
+                if (image != null) {
+                    AsyncImage(
+                        model = image,
+                        contentDescription = "T1 staging preview",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                    )
+                } else {
+                    Text(
+                        text = "T1 preview (blocking)\n$previewStatus",
+                        color = Color(0xFFD8D8E0),
+                        modifier = Modifier.padding(24.dp),
+                    )
+                }
             }
         }
         Row(
@@ -291,6 +358,36 @@ private fun cameraParams(camera: Camera): Map<String, Any?> {
         ),
     )
 }
+
+private fun previewCameraParams(camera: Camera, resolution: List<Int>): Map<String, Any?> {
+    val eye = camera.eyePosition()
+    val target = camera.target
+    return mapOf(
+        "position" to listOf(eye.x, eye.y, eye.z),
+        "target" to listOf(target.x, target.y, target.z),
+        "up" to listOf(0f, 1f, 0f),
+        "fov" to camera.fovYRadians,
+        "resolution" to resolution,
+    )
+}
+
+// Cap the preview render to a sane pixel budget while preserving the live viewport's aspect,
+// so the staging still frames the body the same way the user sees it. Falls back to portrait.
+private fun previewResolution(viewport: IntSize): List<Int> {
+    if (viewport.width <= 0 || viewport.height <= 0) return listOf(768, 1024)
+    val longestEdge = 1024f
+    val scale = (longestEdge / maxOf(viewport.width, viewport.height)).coerceAtMost(1f)
+    return listOf((viewport.width * scale).toInt(), (viewport.height * scale).toInt())
+}
+
+private fun rowMajorRotationToMatrix4(rowMajor: List<Float>): Matrix4 = Matrix4(
+    floatArrayOf(
+        rowMajor[0], rowMajor[3], rowMajor[6], 0f,
+        rowMajor[1], rowMajor[4], rowMajor[7], 0f,
+        rowMajor[2], rowMajor[5], rowMajor[8], 0f,
+        0f, 0f, 0f, 1f,
+    ),
+)
 
 private fun anyToJson(value: Any?): JsonElement = when (value) {
     null -> JsonNull
