@@ -57,10 +57,15 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlin.math.abs
+import kotlin.math.acos
 import kotlin.math.asin
 import kotlin.math.atan2
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 private const val CAMERA_SETTLE_MS = 150L
+private const val SMPLH_POSE_LEN = 156
+private const val SMPLH_BODY_JOINTS = 22
 
 @Composable
 fun RenderScene3d(
@@ -89,7 +94,6 @@ fun RenderScene3d(
     var localPositions by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
     var moveSettleJob by remember { mutableStateOf<Job?>(null) }
     var clientPoses by remember { mutableStateOf<Map<String, Array<Matrix4>>>(emptyMap()) }
-    var cachedPoseBodies by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
     var selectedJoint by remember { mutableStateOf<Pair<String, Int>?>(null) }
 
     LaunchedEffect(props.worldStateUrl) {
@@ -166,10 +170,11 @@ fun RenderScene3d(
         }
     }
 
-    // Move 2 payoff: on drag-release, hand the dragged FK joint positions to the server's
-    // VPoser-IK prior, which solves the nearest *plausible* full-body pose and returns local
-    // rotations (re-skinned instantly) plus the SMPL body vector the T1 preview wants.
-    fun refinePose(entityId: String) {
+    // Explicit "snap to plausible" (NOT on every drag-release — see Fork B). The drag loop conveys
+    // exactly what the user dragged; T2/Wan is the plausibility finisher. This is the opt-in button
+    // for when the user WANTS VPoser to clean a pose up: it hands the current joint positions to the
+    // server prior and re-skins the nearest plausible full-body pose.
+    fun snapToPlausible(entityId: String) {
         val url = props.actionUrl ?: return
         val rig = meshes[entityId]?.rig ?: return
         val pose = clientPoses[entityId] ?: rig.identityPose()
@@ -188,31 +193,33 @@ fun RenderScene3d(
             val parsed = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return@launch
             if (parsed["ok"]?.jsonPrimitive?.booleanOrNull != true) return@launch
             val rotations = parsed["local_rotations"]?.jsonArray ?: return@launch
-            val refined = Array(rig.jointCount) { Matrix4.identity() }
+            val snapped = Array(rig.jointCount) { Matrix4.identity() }
             for (joint in 0 until minOf(rig.jointCount, rotations.size)) {
-                refined[joint] = rowMajorRotationToMatrix4(rotations[joint].jsonArray.map { it.jsonPrimitive.float })
+                snapped[joint] = rowMajorRotationToMatrix4(rotations[joint].jsonArray.map { it.jsonPrimitive.float })
             }
-            clientPoses = clientPoses + (entityId to refined)
-            parsed["smpl_pose_body"]?.jsonArray?.map { it.jsonPrimitive.float }?.let { poseBody ->
-                cachedPoseBodies = cachedPoseBodies + (entityId to poseBody)
-            }
+            clientPoses = clientPoses + (entityId to snapped)
         }
     }
 
-    // T1 preview: POST camera + the cached SMPL body vectors (from refine-pose) to /preview and
-    // show the painted still. Faithful for POSE, not LOOK (different model than the T2 video
-    // finisher) — it's "verify the staging before paying for the slow render," NOT an identity judge.
+    // T1 preview: POST camera + the SMPL body vectors derived from the live client poses to /preview
+    // and show the painted still. Body vectors come straight from the reach-IK rotations (clientPoses
+    // is the single source of truth) — NOT from refine-pose, which is no longer in the drag loop.
+    // Faithful for POSE, not LOOK (different model than the T2 video finisher).
     fun requestPreview() {
         val actionUrl = props.actionUrl
         if (actionUrl == null) { previewStatus = "no server"; return }
-        if (cachedPoseBodies.isEmpty()) { previewStatus = "drag a joint first (no refined pose yet)"; return }
+        val poseBodies = clientPoses.mapNotNull { (entityId, pose) ->
+            val rig = meshes[entityId]?.rig ?: return@mapNotNull null
+            entityId to clientPoseToBodyVector(rig, pose)
+        }.toMap()
+        if (poseBodies.isEmpty()) { previewStatus = "no posed character yet"; return }
         val url = actionUrl.removeSuffix("/action") + "/preview"
         previewImageUrl = null
         previewStatus = "rendering…"
         val resolution = previewResolution(viewportSize)
         val body = buildJsonObject {
             put("action", "preview")
-            put("params", anyToJson(mapOf("camera" to previewCameraParams(camera, resolution), "poses" to cachedPoseBodies)))
+            put("params", anyToJson(mapOf("camera" to previewCameraParams(camera, resolution), "poses" to poseBodies)))
         }.toString()
         scope.launch {
             val text = runCatching {
@@ -284,7 +291,6 @@ fun RenderScene3d(
                     ActionRef(action = "set-joint"),
                     mapOf("entity_id" to entityId, "joint" to (selectedJoint?.second ?: -1)),
                 )
-                refinePose(entityId)
             },
         )
         if (previewMode) {
@@ -315,6 +321,9 @@ fun RenderScene3d(
         ) {
             Button(onClick = { previewMode = !previewMode; if (previewMode) requestPreview() }) {
                 Text(if (previewMode) "3D" else "Preview")
+            }
+            selectedJoint?.first?.let { entityId ->
+                Button(onClick = { snapToPlausible(entityId) }) { Text("Snap") }
             }
             Button(onClick = { shotCamera?.let { applyCameraState(camera, it); cameraVersion++ } }) {
                 Text("Home")
@@ -378,6 +387,40 @@ private fun previewResolution(viewport: IntSize): List<Int> {
     val longestEdge = 1024f
     val scale = (longestEdge / maxOf(viewport.width, viewport.height)).coerceAtMost(1f)
     return listOf((viewport.width * scale).toInt(), (viewport.height * scale).toInt())
+}
+
+// Pack the live client pose (per-joint local rotations) into the SMPL-H body axis-angle vector the
+// preview action expects: joint j's rotvec lands at slot j*3, pelvis (j=0) stays the zero global orient.
+private fun clientPoseToBodyVector(rig: Scene3dRig, pose: Array<Matrix4>): List<Float> {
+    val bodyVector = MutableList(SMPLH_POSE_LEN) { 0f }
+    val jointLimit = minOf(rig.jointCount, SMPLH_BODY_JOINTS, pose.size)
+    for (joint in 1 until jointLimit) {
+        val rotvec = matrix4ToRotvec(pose[joint])
+        val slot = joint * 3
+        bodyVector[slot] = rotvec[0]
+        bodyVector[slot + 1] = rotvec[1]
+        bodyVector[slot + 2] = rotvec[2]
+    }
+    return bodyVector
+}
+
+// Rotation matrix → axis-angle (rotvec), the inverse of the server's axis-angle→matrot. Column-major
+// off-diagonals give the axis; the near-π branch recovers it from the diagonal when sin θ collapses.
+private fun matrix4ToRotvec(rotation: Matrix4): List<Float> {
+    val m = rotation.m
+    val cosAngle = (((m[0] + m[5] + m[10]) - 1f) * 0.5f).coerceIn(-1f, 1f)
+    val angle = acos(cosAngle)
+    if (angle < 1e-5f) return listOf(0f, 0f, 0f)
+    val sinAngle = sin(angle)
+    if (sinAngle < 1e-4f) {
+        val axisX = sqrt(((m[0] + 1f) * 0.5f).coerceAtLeast(0f))
+        val axisY = sqrt(((m[5] + 1f) * 0.5f).coerceAtLeast(0f))
+        val axisZ = sqrt(((m[10] + 1f) * 0.5f).coerceAtLeast(0f))
+        val norm = sqrt(axisX * axisX + axisY * axisY + axisZ * axisZ).coerceAtLeast(1e-6f)
+        return listOf(axisX / norm * angle, axisY / norm * angle, axisZ / norm * angle)
+    }
+    val scale = angle / (2f * sinAngle)
+    return listOf((m[6] - m[9]) * scale, (m[8] - m[2]) * scale, (m[1] - m[4]) * scale)
 }
 
 private fun rowMajorRotationToMatrix4(rowMajor: List<Float>): Matrix4 = Matrix4(
