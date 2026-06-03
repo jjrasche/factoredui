@@ -240,6 +240,37 @@ fun RenderScene3d(
         }
     }
 
+    // On-demand textured render of the character's CURRENT pose (the "see the real look" leg of the
+    // two-speed loop). The pose is already set by Sit/drag, so the ~10s bpy render is off the
+    // interactive path; the returned image shows in the same overlay as the T1 preview.
+    fun renderPose(entityId: String) {
+        val url = props.actionUrl ?: return
+        previewMode = true
+        previewImageUrl = null
+        previewStatus = "rendering textured…"
+        val body = buildJsonObject {
+            put("action", "render-pose")
+            put("params", anyToJson(mapOf("entity_id" to entityId)))
+        }.toString()
+        scope.launch {
+            val text = runCatching {
+                httpClient.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(body)
+                }.bodyAsText()
+            }.getOrNull()
+            if (text == null) { previewStatus = "render request failed"; return@launch }
+            val parsed = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull()
+            val relativeUrl = parsed?.get("preview_url")?.jsonPrimitive?.contentOrNull
+            if (parsed?.get("ok")?.jsonPrimitive?.booleanOrNull == true && !relativeUrl.isNullOrEmpty()) {
+                previewImageUrl = resolveAssetUrl(props.worldStateUrl, relativeUrl)
+                previewStatus = ""
+            } else {
+                previewStatus = "render unavailable: ${text.take(120)}"
+            }
+        }
+    }
+
     // T1 preview: POST camera + the SMPL body vectors derived from the live client poses to /preview
     // and show the painted still. Body vectors come straight from the reach-IK rotations (clientPoses
     // is the single source of truth) — NOT from refine-pose, which is no longer in the drag loop.
@@ -365,6 +396,7 @@ fun RenderScene3d(
             }
             effectiveWorld.entities.firstOrNull { it.selected && meshes[it.id]?.rig != null }?.id?.let { entityId ->
                 Button(onClick = { sitInChair(entityId) }) { Text("Sit") }
+                Button(onClick = { renderPose(entityId) }) { Text("Render") }
             }
             Button(onClick = { shotCamera?.let { applyCameraState(camera, it); cameraVersion++ } }) {
                 Text("Home")
