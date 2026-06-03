@@ -93,3 +93,6 @@ fun placeholderSpec(message: String): Spec = Spec(
 
 private fun rawSpecParam(): String =
     js("(new URLSearchParams(window.location.search).get('spec')) || ''")
+
+fun fullscreenParam(): Boolean =
+    js("(new URLSearchParams(window.location.search).get('full')) ? true : false")

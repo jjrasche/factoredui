@@ -78,25 +78,31 @@ fun PlaygroundApp() {
         )
     }
 
+    val fullscreen = remember { fullscreenParam() }
+
     MaterialTheme {
         Surface(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxSize()) {
-                SpecEditorPanel(
-                    editorText = editorText,
-                    parseError = parseError,
-                    onEditorChange = { editorText = it },
-                    onReload = { applySpec(editorText) },
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                )
-                RenderedSpecPanel(
-                    specFlow = specFlow,
-                    context = context,
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                )
-                BindingControlPanel(
-                    context = context,
-                    modifier = Modifier.width(300.dp).fillMaxHeight(),
-                )
+            if (fullscreen) {
+                RenderedSpecPanel(specFlow = specFlow, context = context, modifier = Modifier.fillMaxSize())
+            } else {
+                Row(Modifier.fillMaxSize()) {
+                    SpecEditorPanel(
+                        editorText = editorText,
+                        parseError = parseError,
+                        onEditorChange = { editorText = it },
+                        onReload = { applySpec(editorText) },
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    )
+                    RenderedSpecPanel(
+                        specFlow = specFlow,
+                        context = context,
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    )
+                    BindingControlPanel(
+                        context = context,
+                        modifier = Modifier.width(300.dp).fillMaxHeight(),
+                    )
+                }
             }
         }
     }

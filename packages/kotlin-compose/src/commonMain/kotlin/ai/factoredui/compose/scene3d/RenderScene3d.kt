@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import ai.factoredui.compose.forcegraph.math.Camera
+import ai.factoredui.compose.forcegraph.math.Matrix4
 import ai.factoredui.compose.forcegraph.startSseSubscription
 import ai.factoredui.compose.observability.NoOpObservability
 import ai.factoredui.compose.observability.Observability
@@ -68,6 +69,8 @@ fun RenderScene3d(
     var cameraSettleJob by remember { mutableStateOf<Job?>(null) }
     var localPositions by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
     var moveSettleJob by remember { mutableStateOf<Job?>(null) }
+    var clientPoses by remember { mutableStateOf<Map<String, Array<Matrix4>>>(emptyMap()) }
+    var selectedJoint by remember { mutableStateOf<Pair<String, Int>?>(null) }
 
     LaunchedEffect(props.worldStateUrl) {
         if (props.worldStateUrl.isEmpty()) {
@@ -114,6 +117,10 @@ fun RenderScene3d(
             if (prepared != null) {
                 loadedMeshUrls[entity.id] = meshUrl
                 meshes = meshes + (entity.id to prepared)
+                val rig = prepared.rig
+                if (rig != null && clientPoses[entity.id] == null) {
+                    clientPoses = clientPoses + (entity.id to rig.identityPose())
+                }
             }
         }
     }
@@ -177,10 +184,24 @@ fun RenderScene3d(
             world = effectiveWorld,
             camera = camera,
             meshes = meshes,
+            poses = clientPoses,
+            selectedJoint = selectedJoint,
             modifier = Modifier.fillMaxSize(),
-            onSelectEntity = { entityId -> emitIntent("select-entity", mapOf("entity_id" to entityId)) },
+            onSelectEntity = { entityId ->
+                selectedJoint = null
+                emitIntent("select-entity", mapOf("entity_id" to entityId))
+            },
+            onSelectJoint = { entityId, joint -> selectedJoint = entityId to joint },
             onCameraChange = { emitCameraSettled() },
             onMoveEntity = { entityId, position -> onMoveEntity(entityId, position) },
+            onPoseChange = { entityId, pose -> clientPoses = clientPoses + (entityId to pose) },
+            onJointReleased = { entityId ->
+                observability.onInteraction(
+                    nodeId,
+                    ActionRef(action = "set-joint"),
+                    mapOf("entity_id" to entityId, "joint" to (selectedJoint?.second ?: -1)),
+                )
+            },
         )
         loadError?.let {
             Text(text = it, color = Color(0xFFE0A0A0), modifier = Modifier.padding(12.dp))

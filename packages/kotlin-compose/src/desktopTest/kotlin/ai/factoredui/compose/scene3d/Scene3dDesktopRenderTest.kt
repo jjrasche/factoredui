@@ -10,16 +10,19 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import ai.factoredui.compose.forcegraph.math.Camera
 import ai.factoredui.compose.forcegraph.math.Matrix4
 import ai.factoredui.compose.forcegraph.math.Vec3
+import ai.factoredui.compose.forcegraph.math.project
 import kotlinx.serialization.json.Json
 import java.io.File
 import javax.imageio.ImageIO
 import kotlin.math.PI
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class Scene3dDesktopRenderTest {
@@ -64,6 +67,41 @@ class Scene3dDesktopRenderTest {
             entities = listOf(Scene3dEntity(id = "heigl", position = listOf(0f, 0f, 0f))),
         )
         renderToPng(world, mapOf("heigl" to posed), mesh.height, "scene3d_desktop_posed.png")
+    }
+
+    @Test
+    fun jointAimDragMovesJointTowardCursor() {
+        val mesh = json
+            .decodeFromString(Scene3dMesh.serializer(), readMeshResource("heigl_rigged.json"))
+            .prepare()
+        val rig = requireNotNull(mesh.rig)
+        val world = Scene3dWorldState(entities = listOf(Scene3dEntity(id = "heigl", position = listOf(0f, 0f, 0f))))
+        val meshes = mapOf("heigl" to mesh)
+        val poses = mapOf("heigl" to rig.identityPose())
+        val width = 800f
+        val height = 800f
+        val camera = Camera(
+            yawRadians = (-PI / 4.0).toFloat(),
+            pitchRadians = (PI / 9.0).toFloat(),
+            distance = mesh.height * 3.0f,
+            target = Vec3(0f, mesh.height * 0.5f, 0f),
+            fovYRadians = (PI / 3.0).toFloat(),
+        )
+        val wristJoint = 20
+        val view = camera.viewMatrix()
+        val proj = camera.projectionMatrix(width / height)
+        val before = jointOrigins(rig.worldJointTransforms(poses.getValue("heigl")))[wristJoint]
+            .project(view, proj, width, height)
+        val cursorBelow = Offset(before.x, before.y + 220f)
+
+        val newPose = requireNotNull(
+            solveJointAim(world, meshes, poses, "heigl", wristJoint, camera, width, height, cursorBelow),
+        ) { "aim-solve returned null" }
+        val after = jointOrigins(rig.worldJointTransforms(newPose))[wristJoint]
+            .project(view, proj, width, height)
+
+        println("[scene3d] wrist screen y: before=${before.y} after=${after.y} (dragged cursor to ${cursorBelow.y})")
+        assertTrue(after.y > before.y + 20f, "dragging the wrist down should move the joint down on screen")
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.renderToPng(
