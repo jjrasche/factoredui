@@ -24,6 +24,7 @@ import ai.factoredui.compose.forcegraph.math.ProjectedPoint
 import ai.factoredui.compose.forcegraph.math.Vec3
 import ai.factoredui.compose.forcegraph.math.project
 import kotlin.math.abs
+import kotlin.math.acos
 import kotlin.math.atan2
 import kotlin.math.sqrt
 import kotlin.math.tan
@@ -39,6 +40,8 @@ private const val BONE_GRAB_RADIUS_PX = 26f
 private const val REACH_IK_ITERATIONS = 6
 private const val REACH_IK_MAX_STEP = 0.5f
 private const val REACH_IK_FALLOFF = 0.6f
+private const val REACH_IK_MAX_JOINT = 1.6f
+private val SPINE_JOINTS = setOf(3, 6, 9)
 
 /**
  * scene3d software rasterizer. Renders a flat-shaded mesh (or a box placeholder
@@ -81,9 +84,11 @@ fun Scene3dView(
                     var mode = DragKind.ORBIT
                     var dragEntity: String? = null
                     var dragJoint = -1
+                    var dragBasePose: Array<Matrix4>? = null
                     val grab = boneUnderCursor(latestWorld, latestMeshes, latestPoses, camera, width, height, start, BONE_GRAB_RADIUS_PX)
                     if (grab != null) {
                         mode = DragKind.JOINT; dragEntity = grab.first; dragJoint = grab.second
+                        dragBasePose = latestPoses[grab.first]
                     } else {
                         val hit = nearestEntity(latestWorld.entities, camera, width, height, start)
                         if (hit != null && latestWorld.entities.any { it.id == hit && it.selected }) {
@@ -112,7 +117,7 @@ fun Scene3dView(
                         if (moved) {
                             when (mode) {
                                 DragKind.JOINT -> dragEntity?.let { id ->
-                                    solveReachIk(latestWorld, latestMeshes, latestPoses, id, dragJoint, camera, width, height, change.position)
+                                    solveReachIk(latestWorld, latestMeshes, latestPoses, id, dragJoint, dragBasePose, camera, width, height, change.position)
                                         ?.let { onPoseChange(id, it) }
                                 }
                                 DragKind.MOVE -> dragEntity?.let { id ->
@@ -382,13 +387,14 @@ private fun pointSegmentDistanceSquared(point: Offset, ax: Float, ay: Float, bx:
     return dx * dx + dy * dy
 }
 
-// CCD over the effector's ancestor chain: distal joints take most rotation, the spine engages only when reach runs out, so pulling a hand far brings the shoulders.
+// Absolute-target CCD: re-solve from the grab-time pose each event so it never compounds (the spiral cause); spine-excluded + per-joint clamped so it can't tear the mesh.
 internal fun solveReachIk(
     world: Scene3dWorldState,
     meshes: Map<String, PreparedMesh>,
     poses: Map<String, Array<Matrix4>>,
     entityId: String,
     effectorJoint: Int,
+    basePose: Array<Matrix4>?,
     camera: Camera,
     width: Float,
     height: Float,
@@ -396,11 +402,11 @@ internal fun solveReachIk(
 ): Array<Matrix4>? {
     val entity = world.entities.firstOrNull { it.id == entityId } ?: return null
     val rig = meshes[entityId]?.rig ?: return null
-    val pose = (poses[entityId] ?: rig.identityPose()).copyOf()
+    val pose = (basePose ?: poses[entityId] ?: rig.identityPose()).copyOf()
     val chain = reachChain(rig, effectorJoint)
     if (chain.isEmpty()) return null
-    val currentEffector = jointScenePositions(rig.worldJointTransforms(pose), entity).getOrNull(effectorJoint) ?: return null
-    val target = viewPlaneHit(camera, width, height, cursor, currentEffector) ?: return null
+    val grabEffector = jointScenePositions(rig.worldJointTransforms(pose), entity).getOrNull(effectorJoint) ?: return null
+    val target = viewPlaneHit(camera, width, height, cursor, grabEffector) ?: return null
     repeat(REACH_IK_ITERATIONS) {
         for ((depth, joint) in chain.withIndex()) {
             val transforms = rig.worldJointTransforms(pose)
@@ -417,15 +423,19 @@ internal fun solveReachIk(
             pose[joint] = parentRotation.transposeRotation() * delta * transforms[joint].rotationPart()
         }
     }
+    for (joint in chain) {
+        pose[joint] = clampRotationMagnitude(pose[joint], REACH_IK_MAX_JOINT)
+    }
     return pose
 }
 
-// Ancestors of the effector, nearest-first, stopping before the planted root so
-// the pelvis (and the feet) stay grounded while the limb and spine reach.
+// Ancestors of the effector up to the shoulder/hip — the spine is excluded so a limb
+// pull never folds the torso, and the planted root stays grounded.
 private fun reachChain(rig: Scene3dRig, effectorJoint: Int): List<Int> {
     val chain = ArrayList<Int>()
     var joint = rig.parents.getOrElse(effectorJoint) { -1 }
     while (joint >= 0) {
+        if (joint in SPINE_JOINTS) break
         val parent = rig.parents.getOrElse(joint) { -1 }
         if (parent < 0) break
         chain.add(joint)
@@ -459,6 +469,17 @@ private fun clampedRotationBetween(from: Vec3, to: Vec3, maxRadians: Float): Mat
     if (sine < 1e-6f) return Matrix4.identity()
     val angle = atan2(sine, a.dot(b).coerceIn(-1f, 1f))
     return Matrix4.rotate(axis.normalize(), if (angle > maxRadians) maxRadians else angle)
+}
+
+// Cap a joint's local rotation magnitude — the anti-explosion floor that keeps any
+// single solve out of the degenerate angles that tear the skin.
+private fun clampRotationMagnitude(rotation: Matrix4, maxRadians: Float): Matrix4 {
+    val m = rotation.m
+    val angle = acos(((m[0] + m[5] + m[10] - 1f) * 0.5f).coerceIn(-1f, 1f))
+    if (angle <= maxRadians) return rotation
+    val axis = Vec3(m[6] - m[9], m[8] - m[2], m[1] - m[4])
+    if (axis.length() < 1e-6f) return rotation
+    return Matrix4.rotate(axis.normalize(), maxRadians)
 }
 
 internal fun solveJointAim(
