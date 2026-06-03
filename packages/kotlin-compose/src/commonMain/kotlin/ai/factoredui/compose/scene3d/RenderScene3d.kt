@@ -72,6 +72,8 @@ fun RenderScene3d(
     val camera = remember { Camera() }
     var shotCamera by remember { mutableStateOf<Scene3dCameraState?>(null) }
     var cameraVersion by remember { mutableStateOf(0) }
+    var previewMode by remember { mutableStateOf(false) }
+    var previewStatus by remember { mutableStateOf("") }
     var localPositions by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
     var moveSettleJob by remember { mutableStateOf<Job?>(null) }
     var clientPoses by remember { mutableStateOf<Map<String, Array<Matrix4>>>(emptyMap()) }
@@ -151,6 +153,33 @@ fun RenderScene3d(
         }
     }
 
+    // T1 preview: POST the current blocking (camera + client poses) to /preview and show the
+    // painted still. Faithful for POSE, not LOOK (different model than the T2 video finisher) —
+    // it's "verify the staging before paying for the slow render," NOT a hands/identity judge.
+    fun requestPreview() {
+        val actionUrl = props.actionUrl
+        if (actionUrl == null) { previewStatus = "no server"; return }
+        val url = actionUrl.removeSuffix("/action") + "/preview"
+        previewStatus = "rendering…"
+        val posesPayload = clientPoses.mapValues { (_, frames) -> frames.map { it.m.toList() } }
+        val body = buildJsonObject {
+            put("camera", anyToJson(cameraParams(camera)["camera"]))
+            put("poses", anyToJson(posesPayload))
+        }.toString()
+        scope.launch {
+            val outcome = runCatching {
+                httpClient.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(body)
+                }.bodyAsText()
+            }
+            previewStatus = outcome.fold(
+                onSuccess = { "ready — image-display wires next (got ${it.length}b)" },
+                onFailure = { "/preview not wired yet (render lane)" },
+            )
+        }
+    }
+
     fun onMoveEntity(entityId: String, position: List<Float>) {
         localPositions = localPositions + (entityId to position)
         moveSettleJob?.cancel()
@@ -201,10 +230,25 @@ fun RenderScene3d(
                 )
             },
         )
+        if (previewMode) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color(0xF01C1C20)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "T1 preview (blocking)\n$previewStatus",
+                    color = Color(0xFFD8D8E0),
+                    modifier = Modifier.padding(24.dp),
+                )
+            }
+        }
         Row(
             modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            Button(onClick = { previewMode = !previewMode; if (previewMode) requestPreview() }) {
+                Text(if (previewMode) "3D" else "Preview")
+            }
             Button(onClick = { shotCamera?.let { applyCameraState(camera, it); cameraVersion++ } }) {
                 Text("Home")
             }
