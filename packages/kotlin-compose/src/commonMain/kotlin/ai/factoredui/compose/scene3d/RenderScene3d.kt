@@ -209,6 +209,9 @@ fun RenderScene3d(
     fun sitInChair(entityId: String) {
         val actionUrl = props.actionUrl ?: return
         val rig = meshes[entityId]?.rig ?: return
+        world.entities.firstOrNull { it.id == entityId }?.position?.let { seat ->
+            emitIntent("move-entity", mapOf("entity_id" to "chair_1", "position" to listOf(seat[0], 0f, seat[2])))
+        }
         val body = buildJsonObject {
             put("action", "sit")
             put("params", anyToJson(mapOf("entity_id" to entityId, "prop_id" to "chair_1")))
