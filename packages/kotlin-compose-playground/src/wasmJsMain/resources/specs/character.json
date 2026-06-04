@@ -11,7 +11,22 @@
         "props": { "padding": 8, "gap": 16 },
         "children": [
           { "id": "char-title", "type": "text", "props": { "value": "Character — Heigl", "variant": "heading" } },
-          { "id": "char-sub", "type": "text", "props": { "value": "Define who they are, how they look, and how they move. Confirm each gate to spend on the next.", "variant": "caption" } },
+          { "id": "char-sub", "type": "text", "props": { "value": "Speak who they are — describe them out loud, pause, and watch them take shape. Confirm each gate to spend on the next.", "variant": "caption" } },
+          {
+            "id": "live-card",
+            "type": "card",
+            "children": [
+              {
+                "id": "live-col",
+                "type": "column",
+                "props": { "padding": 16, "gap": 6 },
+                "children": [
+                  { "id": "live-q", "type": "text", "props": { "value": "{characterQuestion}", "variant": "subheading" } },
+                  { "id": "live-narr", "type": "text", "props": { "value": "{characterNarration}", "variant": "caption" } }
+                ]
+              }
+            ]
+          },
           {
             "id": "panes",
             "type": "row",
@@ -23,6 +38,8 @@
                 "props": { "gap": 14, "flex": 1 },
                 "children": [
                   { "id": "ap-h", "type": "text", "props": { "value": "Appearance", "variant": "subheading" } },
+                  { "id": "render-slot", "type": "image", "props": { "source": "{characterImage}", "aspectRatio": 0.8, "fit": "contain", "cornerRadius": 8, "alt": "generated character render" } },
+                  { "id": "render-hint", "type": "text", "props": { "value": "The first image lands here when the render leg is wired.", "variant": "caption" } },
                   {
                     "id": "ladder",
                     "type": "row",
@@ -65,7 +82,7 @@
                   { "id": "p-flow-l", "type": "text", "props": { "value": "Laban flow (free ↔ bound)", "variant": "caption" } },
                   { "id": "p-flow", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_flow}" } },
                   { "id": "p-amp-l", "type": "text", "props": { "value": "Amplitude (subtle ↔ large)", "variant": "caption" } },
-                  { "id": "p-amp", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.amplitude}" } },
+                  { "id": "p-amp", "type": "slider", "props": { "min": 0.4, "max": 2, "step": 0.05, "value": "{character.personality.amplitude}" } },
                   { "id": "p-supp-l", "type": "text", "props": { "value": "Suppression (expressive ↔ held)", "variant": "caption" } },
                   { "id": "p-supp", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.suppression_tendency}" } },
                   { "id": "p-rec-l", "type": "text", "props": { "value": "Recovery rate (slow ↔ quick)", "variant": "caption" } },

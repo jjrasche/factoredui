@@ -54,7 +54,7 @@ fun stageParam(): Boolean =
 
 enum class StageContext(val label: String, val specUrl: String?, val promptUrl: String?) {
     STORY("Story", "specs/story-spine.json", null),
-    CHARACTER("Character", "specs/character.json", "http://127.0.0.1:8765/character/prompt"),
+    CHARACTER("Character", "specs/character.json", "http://127.0.0.1:8770/character/prompt"),
     COMPOSER("Composer", "specs/composer.json", "http://127.0.0.1:8765/director/prompt"),
     REVIEW("Review", null, null),
 }
@@ -103,7 +103,8 @@ private suspend fun postCharacterPrompt(
     url: String,
     text: String,
     personality: Map<String, Float>,
-    apply: (String, Float) -> Unit,
+    applyFloat: (String, Float) -> Unit,
+    applyString: (String, String) -> Unit,
 ) {
     val payload = buildJsonObject {
         put("text", text)
@@ -120,11 +121,18 @@ private suspend fun postCharacterPrompt(
     }
     publishStageLastAction(body)
     runCatching {
-        val diff = Json.parseToJsonElement(body).jsonObject["diff"]?.jsonObject ?: return
-        diff.forEach { (field, value) ->
-            (value as? JsonPrimitive)?.content?.toFloatOrNull()?.let { apply(field, it) }
+        val response = Json.parseToJsonElement(body).jsonObject
+        response["diff"]?.jsonObject?.forEach { (field, value) ->
+            (value as? JsonPrimitive)?.content?.toFloatOrNull()?.let { applyFloat(field, it) }
         }
-    }.onFailure { pushStageLog("character endpoint not live yet (no diff): ${it.message}") }
+        (response["narration"] as? JsonPrimitive)?.content?.let { applyString("characterNarration", it) }
+        val answeredPrior = (response["answered_prior"] as? JsonPrimitive)?.content == "true"
+        val question = (response["question"] as? JsonPrimitive)?.content
+        when {
+            !question.isNullOrBlank() && question != "null" -> applyString("characterQuestion", question)
+            answeredPrior -> applyString("characterQuestion", "")
+        }
+    }.onFailure { pushStageLog("character response parse: ${it.message}") }
 }
 
 private suspend fun postPrompt(url: String, text: String) {
@@ -146,6 +154,9 @@ fun StageApp() {
                 "omnibox" to mapOf("text" to ""),
                 "characterEffort" to "—",
                 "characterNotes" to "",
+                "characterNarration" to "",
+                "characterQuestion" to "",
+                "characterImage" to "",
                 "character" to mapOf(
                     "personality" to mapOf(
                         "laban_weight" to 0.0f,
@@ -225,6 +236,7 @@ fun StageApp() {
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     StageOmnibox(
                         routed = active.promptUrl != null,
+                        continuous = active == StageContext.CHARACTER,
                         onSubmit = { entered ->
                             pushStageLog("omnibox[${active.label}] -> \"$entered\"")
                             val ctx = active
@@ -232,9 +244,13 @@ fun StageApp() {
                                 scope.launch {
                                     when (ctx) {
                                         StageContext.CHARACTER -> ctx.promptUrl?.let { url ->
-                                            postCharacterPrompt(url, entered, readPersonality(context.data)) { field, value ->
-                                                context.setBinding("character.personality.$field", value)
-                                            }
+                                            postCharacterPrompt(
+                                                url,
+                                                entered,
+                                                readPersonality(context.data),
+                                                applyFloat = { field, value -> context.setBinding("character.personality.$field", value) },
+                                                applyString = { key, value -> context.setBinding(key, value) },
+                                            )
                                         }
                                         else -> ctx.promptUrl?.let { url -> postPrompt(url, entered) }
                                     }
@@ -284,19 +300,35 @@ private fun StageNavItem(label: String, selected: Boolean, onClick: () -> Unit) 
 }
 
 @Composable
-private fun StageOmnibox(routed: Boolean, onSubmit: (String) -> Unit) {
+private fun StageOmnibox(routed: Boolean, continuous: Boolean, onSubmit: (String) -> Unit) {
     var text by remember { mutableStateOf("") }
-    val placeholder = if (routed) "Say what happens…" else "Type here — routing for this screen is coming"
+    val scope = rememberCoroutineScope()
+    var flushJob by remember { mutableStateOf<Job?>(null) }
+    val placeholder = when {
+        continuous -> "Speak — describe them; pause and they take shape…"
+        routed -> "Say what happens…"
+        else -> "Type here — routing for this screen is coming"
+    }
     Row(Modifier.fillMaxWidth().background(StageTokens.canvas).padding(StageTokens.gapMd)) {
         OutlinedTextField(
             value = text,
-            onValueChange = { text = it },
+            onValueChange = { entered ->
+                text = entered
+                if (continuous && entered.isNotBlank()) {
+                    flushJob?.cancel()
+                    flushJob = scope.launch {
+                        delay(2500)
+                        onSubmit(entered)
+                    }
+                }
+            },
             placeholder = { Text(placeholder, color = StageTokens.textMuted) },
-            singleLine = true,
+            singleLine = !continuous,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = {
+                flushJob?.cancel()
                 onSubmit(text)
-                text = ""
+                if (!continuous) text = ""
             }),
             modifier = Modifier.fillMaxWidth(),
         )
