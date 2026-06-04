@@ -12,6 +12,12 @@ fun pushStageLog(line: String): Unit =
 fun publishStageLastAction(json: String): Unit =
     js("window.__stageLastAction = json")
 
+fun pushStageTrainingRow(json: String): Unit =
+    js("(window.__stageTrainingRows = window.__stageTrainingRows || []).push(json)")
+
+fun nowMillis(): Double =
+    js("Date.now()")
+
 class StageDebugObservability : Observability {
     override fun onRender(nodeId: String) {}
 

@@ -50,6 +50,8 @@
               { "id": "p-space", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_space}" } },
               { "id": "p-flow-l", "type": "text", "props": { "value": "Laban flow (free ↔ bound)", "variant": "caption" } },
               { "id": "p-flow", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_flow}" } },
+              { "id": "effort-label", "type": "text", "props": { "value": "nearest effort: {characterEffort}", "variant": "subheading" } },
+              { "id": "effort-note", "type": "text", "props": { "value": "(the 8 named efforts are the corners of the weight×time×space cube; flow is the 4th axis)", "variant": "caption" } },
               { "id": "p-amp-l", "type": "text", "props": { "value": "Amplitude (subtle ↔ large)", "variant": "caption" } },
               { "id": "p-amp", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.amplitude}" } },
               { "id": "p-supp-l", "type": "text", "props": { "value": "Suppression (expressive ↔ held)", "variant": "caption" } },

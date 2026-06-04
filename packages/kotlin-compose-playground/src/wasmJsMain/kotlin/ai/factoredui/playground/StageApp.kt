@@ -54,6 +54,46 @@ enum class StageContext(val label: String, val specUrl: String?, val promptUrl: 
     REVIEW("Review", null, null),
 }
 
+private val PERSONALITY_FIELDS = listOf(
+    "laban_weight", "laban_time", "laban_space", "laban_flow",
+    "amplitude", "suppression_tendency", "recovery_rate", "emotional_regulation",
+)
+
+private fun readPersonality(data: Map<String, Any?>): Map<String, Float> {
+    val personality = (data["character"] as? Map<*, *>)?.get("personality") as? Map<*, *> ?: return emptyMap()
+    return PERSONALITY_FIELDS.associateWith { field -> (personality[field] as? Number)?.toFloat() ?: 0f }
+}
+
+private fun nearestEffort(personality: Map<String, Float>): String {
+    val strong = (personality["laban_weight"] ?: 0f) >= 0f
+    val sudden = (personality["laban_time"] ?: 0f) >= 0f
+    val direct = (personality["laban_space"] ?: 0f) >= 0f
+    return when {
+        strong && sudden && direct -> "Punch"
+        strong && sudden && !direct -> "Slash"
+        strong && !sudden && direct -> "Press"
+        strong && !sudden && !direct -> "Wring"
+        !strong && sudden && direct -> "Dab"
+        !strong && sudden && !direct -> "Flick"
+        !strong && !sudden && direct -> "Glide"
+        else -> "Float"
+    }
+}
+
+private fun emitPersonalityTrainingRow(field: String, old: Float, current: Float) {
+    val stamp = nowMillis()
+    val row = buildJsonObject {
+        put("event_type", "input")
+        put("component_path", "character.personality.$field")
+        put("character_id", "heigl")
+        put("correlation_id", "char::heigl::${stamp.toLong()}")
+        put("old", old)
+        put("new", current)
+        put("occurred_at", stamp)
+    }.toString()
+    pushStageTrainingRow(row)
+}
+
 private suspend fun postPrompt(url: String, text: String) {
     val payload = buildJsonObject { put("text", text) }.toString()
     val body = HttpClient().post(url) {
@@ -71,6 +111,7 @@ fun StageApp() {
             observability = StageDebugObservability(),
             initialData = mapOf(
                 "omnibox" to mapOf("text" to ""),
+                "characterEffort" to "—",
                 "character" to mapOf(
                     "personality" to mapOf(
                         "laban_weight" to 0.0f,
@@ -91,7 +132,24 @@ fun StageApp() {
     val specFlow = remember { MutableStateFlow(placeholderSpec("Loading…")) }
 
     LaunchedEffect(Unit) {
-        context.dataFlow.collect { publishStageBindings(it.toString()) }
+        var previous: Map<String, Float> = emptyMap()
+        context.dataFlow.collect { data ->
+            publishStageBindings(data.toString())
+            val personality = readPersonality(data)
+            if (personality.isNotEmpty()) {
+                val effort = nearestEffort(personality)
+                if ((data["characterEffort"] as? String) != effort) {
+                    context.setBinding("characterEffort", effort)
+                }
+                if (previous.isNotEmpty()) {
+                    personality.forEach { (field, value) ->
+                        val old = previous[field]
+                        if (old != null && old != value) emitPersonalityTrainingRow(field, old, value)
+                    }
+                }
+                previous = personality
+            }
+        }
     }
 
     LaunchedEffect(active) {
