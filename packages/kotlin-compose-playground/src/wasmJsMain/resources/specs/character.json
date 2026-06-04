@@ -1,0 +1,67 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "character",
+    "type": "scrollview",
+    "children": [
+      {
+        "id": "char-col",
+        "type": "column",
+        "props": { "padding": 8, "gap": 20 },
+        "children": [
+          { "id": "char-title", "type": "text", "props": { "value": "Character — Heigl", "variant": "heading" } },
+          { "id": "char-sub", "type": "text", "props": { "value": "Appearance ladder — confirm each gate to spend on the next.", "variant": "caption" } },
+          {
+            "id": "ladder",
+            "type": "row",
+            "props": { "gap": 12 },
+            "children": [
+              { "id": "g-schema", "type": "chip", "props": { "label": "schema ✓ locked" } },
+              { "id": "g-1view", "type": "chip", "props": { "label": "1 view ✓" } },
+              { "id": "g-4views", "type": "chip", "props": { "label": "4 views ·" } },
+              { "id": "g-poses", "type": "chip", "props": { "label": "poses ·" } },
+              { "id": "g-mesh", "type": "chip", "props": { "label": "3D mesh ·" } }
+            ]
+          },
+          {
+            "id": "views",
+            "type": "row",
+            "props": { "gap": 12 },
+            "children": [
+              { "id": "v-front", "type": "card", "children": [ { "id": "v-front-t", "type": "text", "props": { "value": "front", "variant": "caption" } } ] },
+              { "id": "v-right", "type": "card", "children": [ { "id": "v-right-t", "type": "text", "props": { "value": "right", "variant": "caption" } } ] },
+              { "id": "v-back", "type": "card", "children": [ { "id": "v-back-t", "type": "text", "props": { "value": "back", "variant": "caption" } } ] },
+              { "id": "v-left", "type": "card", "children": [ { "id": "v-left-t", "type": "text", "props": { "value": "left", "variant": "caption" } } ] }
+            ]
+          },
+          { "id": "aud-title", "type": "text", "props": { "value": "Audition — tune the personality, watch it move", "variant": "subheading" } },
+          { "id": "aud-note", "type": "text", "props": { "value": "Bones-react playback lands when the audition solver ships; tune the signature here now.", "variant": "caption" } },
+          {
+            "id": "personality",
+            "type": "column",
+            "props": { "gap": 14 },
+            "children": [
+              { "id": "p-weight-l", "type": "text", "props": { "value": "Laban weight (light ↔ strong)", "variant": "caption" } },
+              { "id": "p-weight", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_weight}" } },
+              { "id": "p-time-l", "type": "text", "props": { "value": "Laban time (sustained ↔ sudden)", "variant": "caption" } },
+              { "id": "p-time", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_time}" } },
+              { "id": "p-space-l", "type": "text", "props": { "value": "Laban space (indirect ↔ direct)", "variant": "caption" } },
+              { "id": "p-space", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_space}" } },
+              { "id": "p-flow-l", "type": "text", "props": { "value": "Laban flow (free ↔ bound)", "variant": "caption" } },
+              { "id": "p-flow", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_flow}" } },
+              { "id": "p-amp-l", "type": "text", "props": { "value": "Amplitude (subtle ↔ large)", "variant": "caption" } },
+              { "id": "p-amp", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.amplitude}" } },
+              { "id": "p-supp-l", "type": "text", "props": { "value": "Suppression (expressive ↔ held)", "variant": "caption" } },
+              { "id": "p-supp", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.suppression_tendency}" } },
+              { "id": "p-rec-l", "type": "text", "props": { "value": "Recovery rate (slow ↔ quick)", "variant": "caption" } },
+              { "id": "p-rec", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.recovery_rate}" } },
+              { "id": "p-reg-l", "type": "text", "props": { "value": "Emotional regulation (volatile ↔ steady)", "variant": "caption" } },
+              { "id": "p-reg", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.emotional_regulation}" } }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

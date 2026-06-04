@@ -49,7 +49,7 @@ fun stageParam(): Boolean =
 
 enum class StageContext(val label: String, val specUrl: String?, val promptUrl: String?) {
     STORY("Story", "specs/story-spine.json", null),
-    CHARACTER("Character", null, null),
+    CHARACTER("Character", "specs/character.json", null),
     COMPOSER("Composer", "specs/composer.json", "http://127.0.0.1:8765/director/prompt"),
     REVIEW("Review", null, null),
 }
@@ -69,7 +69,21 @@ fun StageApp() {
         RenderContext(
             actions = playgroundActions(actionUrlParam()),
             observability = StageDebugObservability(),
-            initialData = mapOf("omnibox" to mapOf("text" to "")),
+            initialData = mapOf(
+                "omnibox" to mapOf("text" to ""),
+                "character" to mapOf(
+                    "personality" to mapOf(
+                        "laban_weight" to 0.0f,
+                        "laban_time" to 0.0f,
+                        "laban_space" to 0.0f,
+                        "laban_flow" to 0.0f,
+                        "amplitude" to 0.5f,
+                        "suppression_tendency" to 0.4f,
+                        "recovery_rate" to 0.5f,
+                        "emotional_regulation" to 0.5f,
+                    ),
+                ),
+            ),
         )
     }
     val scope = rememberCoroutineScope()
