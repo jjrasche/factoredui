@@ -16,6 +16,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,11 +32,14 @@ import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
 import kotlinx.coroutines.flow.MutableStateFlow
 
-enum class StageContext(val label: String) {
-    STORY("Story"),
-    CHARACTER("Character"),
-    COMPOSER("Composer"),
-    REVIEW("Review"),
+fun stageParam(): Boolean =
+    js("(new URLSearchParams(window.location.search).get('app')) === 'stage'")
+
+enum class StageContext(val label: String, val specUrl: String?) {
+    STORY("Story", "specs/story-spine.json"),
+    CHARACTER("Character", null),
+    COMPOSER("Composer", "specs/composer.json"),
+    REVIEW("Review", null),
 }
 
 @Composable
@@ -48,7 +52,24 @@ fun StageApp() {
         )
     }
     var active by remember { mutableStateOf(StageContext.STORY) }
-    val specFlow = remember { MutableStateFlow(placeholderSpec("Story spine")) }
+    val specFlow = remember { MutableStateFlow(placeholderSpec("Loading…")) }
+
+    LaunchedEffect(active) {
+        val url = active.specUrl
+        if (url == null) {
+            specFlow.value = placeholderSpec("${active.label} — coming soon")
+        } else {
+            runCatching { loadSpecText(url) }.fold(
+                onSuccess = { text ->
+                    parseSpec(text).fold(
+                        onSuccess = { specFlow.value = it },
+                        onFailure = { specFlow.value = placeholderSpec("parse failed: ${it.message}") },
+                    )
+                },
+                onFailure = { specFlow.value = placeholderSpec("load failed for $url: ${it.message}") },
+            )
+        }
+    }
 
     StageTheme {
         Surface(Modifier.fillMaxSize(), color = StageTokens.canvas) {

@@ -7,7 +7,7 @@ import org.w3c.dom.HTMLElement
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     ComposeViewport(documentBody()) {
-        PlaygroundApp()
+        if (stageParam()) StageApp() else PlaygroundApp()
     }
 }
 
