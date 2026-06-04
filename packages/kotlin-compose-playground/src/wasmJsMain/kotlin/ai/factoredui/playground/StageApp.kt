@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
 import io.ktor.client.HttpClient
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -44,8 +45,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 
@@ -62,6 +65,11 @@ enum class StageContext(val label: String, val specUrl: String?, val promptUrl: 
 private val PERSONALITY_FIELDS = listOf(
     "laban_weight", "laban_time", "laban_space", "laban_flow",
     "amplitude", "suppression_tendency", "recovery_rate", "emotional_regulation",
+)
+
+private val NEUTRAL_PERSONALITY: Map<String, Float> = mapOf(
+    "laban_weight" to 0.0f, "laban_time" to 0.0f, "laban_space" to 0.0f, "laban_flow" to 0.0f,
+    "amplitude" to 1.0f, "suppression_tendency" to 0.5f, "recovery_rate" to 0.5f, "emotional_regulation" to 0.5f,
 )
 
 private fun readPersonality(data: Map<String, Any?>): Map<String, Float> {
@@ -135,6 +143,35 @@ private suspend fun postCharacterPrompt(
     }.onFailure { pushStageLog("character response parse: ${it.message}") }
 }
 
+private const val CHARACTER_READ_BASE = "http://127.0.0.1:8770/character"
+
+private suspend fun loadCharacter(id: String, context: RenderContext) {
+    val body = runCatching {
+        HttpClient().get("$CHARACTER_READ_BASE/$id").bodyAsText()
+    }.getOrElse { failure ->
+        pushStageLog("character read failed for $id: ${failure.message}")
+        return
+    }
+    runCatching {
+        val model = Json.parseToJsonElement(body).jsonObject
+        (model["display_name"] as? JsonPrimitive)?.content?.let { context.setBinding("characterDisplayName", it) }
+        (model["appearance_description"] as? JsonPrimitive)?.content?.let { context.setBinding("characterAppearance", it) }
+        val personality = model["personality"] as? JsonObject
+        val floats = if (personality == null) {
+            NEUTRAL_PERSONALITY
+        } else {
+            PERSONALITY_FIELDS.associateWith { field ->
+                (personality[field] as? JsonPrimitive)?.content?.toFloatOrNull() ?: 0f
+            }
+        }
+        context.setBinding("character.personality", floats)
+        val identityImage = (model["visual"] as? JsonObject)
+            ?.get("reference_images")?.jsonArray?.firstOrNull()?.jsonObject
+            ?.let { (it["url"] as? JsonPrimitive)?.content } ?: ""
+        context.setBinding("characterImage", identityImage)
+    }.onFailure { pushStageLog("character read parse for $id: ${it.message}") }
+}
+
 private suspend fun postPrompt(url: String, text: String) {
     val payload = buildJsonObject { put("text", text) }.toString()
     val body = HttpClient().post(url) {
@@ -152,6 +189,9 @@ fun StageApp() {
             observability = StageDebugObservability(),
             initialData = mapOf(
                 "omnibox" to mapOf("text" to ""),
+                "characterId" to "heigl",
+                "characterDisplayName" to "heigl",
+                "characterAppearance" to "",
                 "characterEffort" to "—",
                 "characterNotes" to "",
                 "characterNarration" to "",
@@ -180,8 +220,18 @@ fun StageApp() {
         var previous: Map<String, Float> = emptyMap()
         val pending = mutableMapOf<String, Pair<Float, Float>>()
         var flushJob: Job? = null
+        var loadedCharacterId: String? = null
         context.dataFlow.collect { data ->
             publishStageBindings(data.toString())
+            val selectedCharacterId = data["characterId"] as? String
+            if (selectedCharacterId != null && selectedCharacterId != loadedCharacterId) {
+                loadedCharacterId = selectedCharacterId
+                previous = emptyMap()
+                pending.clear()
+                flushJob?.cancel()
+                loadCharacter(selectedCharacterId, context)
+                return@collect
+            }
             val personality = readPersonality(data)
             if (personality.isNotEmpty()) {
                 val effort = nearestEffort(personality)
