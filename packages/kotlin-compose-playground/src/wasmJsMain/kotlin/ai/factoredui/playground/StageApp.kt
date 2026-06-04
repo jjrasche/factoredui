@@ -39,6 +39,8 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.buildJsonObject
@@ -133,6 +135,8 @@ fun StageApp() {
 
     LaunchedEffect(Unit) {
         var previous: Map<String, Float> = emptyMap()
+        val pending = mutableMapOf<String, Pair<Float, Float>>()
+        var flushJob: Job? = null
         context.dataFlow.collect { data ->
             publishStageBindings(data.toString())
             val personality = readPersonality(data)
@@ -144,7 +148,20 @@ fun StageApp() {
                 if (previous.isNotEmpty()) {
                     personality.forEach { (field, value) ->
                         val old = previous[field]
-                        if (old != null && old != value) emitPersonalityTrainingRow(field, old, value)
+                        if (old != null && old != value) {
+                            val firstOld = pending[field]?.first ?: old
+                            pending[field] = firstOld to value
+                            flushJob?.cancel()
+                            flushJob = scope.launch {
+                                delay(400)
+                                pending.forEach { (changedField, change) ->
+                                    if (change.first != change.second) {
+                                        emitPersonalityTrainingRow(changedField, change.first, change.second)
+                                    }
+                                }
+                                pending.clear()
+                            }
+                        }
                     }
                 }
                 previous = personality
