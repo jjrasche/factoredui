@@ -55,6 +55,7 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.float
+import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -101,6 +102,7 @@ fun RenderScene3d(
     var selectedJoint by remember { mutableStateOf<Pair<String, Int>?>(null) }
     var promptText by remember { mutableStateOf("") }
     var promptStatus by remember { mutableStateOf("") }
+    var promptTotalMs by remember { mutableStateOf(0f) }
     var appliedPoseRefs by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     LaunchedEffect(props.worldStateUrl) {
@@ -348,10 +350,20 @@ fun RenderScene3d(
             val parsed = runCatching { json.parseToJsonElement(response).jsonObject }.getOrNull()
             val narration = parsed?.get("narration")?.jsonPrimitive?.contentOrNull
             val ok = parsed?.get("ok")?.jsonPrimitive?.booleanOrNull == true
-            promptStatus = when {
+            val base = when {
                 !narration.isNullOrEmpty() -> narration
                 ok -> "done"
                 else -> parsed?.get("error")?.jsonPrimitive?.contentOrNull ?: "couldn't do that"
+            }
+            val timings = parsed?.get("timings")?.jsonObject
+            promptTotalMs = timings?.get("total_ms")?.jsonPrimitive?.floatOrNull ?: 0f
+            promptStatus = if (timings != null) {
+                val provider = timings["provider"]?.jsonPrimitive?.contentOrNull ?: "?"
+                val llm = timings["llm_ms"]?.jsonPrimitive?.floatOrNull ?: 0f
+                val dispatch = timings["dispatch_ms"]?.jsonPrimitive?.floatOrNull ?: 0f
+                "$base   ($provider · llm ${llm}ms · dispatch ${dispatch}ms · total ${promptTotalMs}ms)"
+            } else {
+                base
             }
             promptText = ""
         }
@@ -457,7 +469,11 @@ fun RenderScene3d(
             if (promptStatus.isNotEmpty()) {
                 Text(
                     text = promptStatus,
-                    color = Color(0xFFD8D8E0),
+                    color = when {
+                        promptTotalMs > 3000f -> Color(0xFFE08A8A)
+                        promptTotalMs > 1500f -> Color(0xFFE0C080)
+                        else -> Color(0xFFD8D8E0)
+                    },
                     modifier = Modifier.padding(bottom = 4.dp),
                 )
             }
