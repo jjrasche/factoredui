@@ -395,7 +395,7 @@ fun RenderScene3d(
         )
 
     Box(
-        modifier = modifier.fillMaxSize().background(Color(0xFF2B2B30))
+        modifier = modifier.fillMaxSize().background(backgroundColor(effectiveWorld.background))
             .onSizeChanged { viewportSize = it },
     ) {
         Scene3dView(
@@ -495,6 +495,11 @@ fun RenderScene3d(
             Text(text = it, color = Color(0xFFE0A0A0), modifier = Modifier.padding(12.dp))
         }
     }
+}
+
+private fun backgroundColor(hex: String?): Color {
+    val value = hex?.removePrefix("#")?.toLongOrNull(16) ?: return Color(0xFF2B2B30)
+    return Color(0xFF000000L or value)
 }
 
 private fun positionsClose(a: List<Float>, b: List<Float>): Boolean {
