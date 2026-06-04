@@ -114,6 +114,7 @@ fun StageApp() {
             initialData = mapOf(
                 "omnibox" to mapOf("text" to ""),
                 "characterEffort" to "—",
+                "characterNotes" to "",
                 "character" to mapOf(
                     "personality" to mapOf(
                         "laban_weight" to 0.0f,
