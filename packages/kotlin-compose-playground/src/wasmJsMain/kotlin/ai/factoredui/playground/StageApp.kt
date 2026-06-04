@@ -31,12 +31,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ai.factoredui.compose.observability.LoggingObservability
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
 import io.ktor.client.HttpClient
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.coroutines.launch
@@ -56,10 +56,11 @@ enum class StageContext(val label: String, val specUrl: String?, val promptUrl: 
 
 private suspend fun postPrompt(url: String, text: String) {
     val payload = buildJsonObject { put("text", text) }.toString()
-    HttpClient().post(url) {
+    val body = HttpClient().post(url) {
         contentType(ContentType.Application.Json)
         setBody(payload)
-    }
+    }.bodyAsText()
+    publishStageLastAction(body)
 }
 
 @Composable
@@ -67,13 +68,17 @@ fun StageApp() {
     val context = remember {
         RenderContext(
             actions = playgroundActions(actionUrlParam()),
-            observability = LoggingObservability(),
+            observability = StageDebugObservability(),
             initialData = mapOf("omnibox" to mapOf("text" to "")),
         )
     }
     val scope = rememberCoroutineScope()
     var active by remember { mutableStateOf(StageContext.STORY) }
     val specFlow = remember { MutableStateFlow(placeholderSpec("Loading…")) }
+
+    LaunchedEffect(Unit) {
+        context.dataFlow.collect { publishStageBindings(it.toString()) }
+    }
 
     LaunchedEffect(active) {
         val url = active.specUrl
@@ -95,12 +100,13 @@ fun StageApp() {
     StageTheme {
         Surface(Modifier.fillMaxSize(), color = StageTokens.canvas) {
             Row(Modifier.fillMaxSize()) {
-                StageNavRail(active = active, onSelect = { active = it })
+                StageNavRail(active = active, onSelect = { pushStageLog("nav -> ${it.label}"); active = it })
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     StageOmnibox(
                         enabled = active.promptUrl != null,
                         onSubmit = { entered ->
                             val target = active.promptUrl
+                            pushStageLog("omnibox[${active.label}] -> \"$entered\"")
                             if (target != null && entered.isNotBlank()) {
                                 scope.launch { postPrompt(target, entered) }
                             }
