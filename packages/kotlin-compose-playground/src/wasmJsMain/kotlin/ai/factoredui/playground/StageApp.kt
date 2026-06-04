@@ -43,7 +43,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 
 fun stageParam(): Boolean =
@@ -51,7 +54,7 @@ fun stageParam(): Boolean =
 
 enum class StageContext(val label: String, val specUrl: String?, val promptUrl: String?) {
     STORY("Story", "specs/story-spine.json", null),
-    CHARACTER("Character", "specs/character.json", null),
+    CHARACTER("Character", "specs/character.json", "http://127.0.0.1:8765/character/prompt"),
     COMPOSER("Composer", "specs/composer.json", "http://127.0.0.1:8765/director/prompt"),
     REVIEW("Review", null, null),
 }
@@ -94,6 +97,34 @@ private fun emitPersonalityTrainingRow(field: String, old: Float, current: Float
         put("occurred_at", stamp)
     }.toString()
     pushStageTrainingRow(row)
+}
+
+private suspend fun postCharacterPrompt(
+    url: String,
+    text: String,
+    personality: Map<String, Float>,
+    apply: (String, Float) -> Unit,
+) {
+    val payload = buildJsonObject {
+        put("text", text)
+        put("personality", buildJsonObject { personality.forEach { (key, value) -> put(key, value) } })
+    }.toString()
+    val body = runCatching {
+        HttpClient().post(url) {
+            contentType(ContentType.Application.Json)
+            setBody(payload)
+        }.bodyAsText()
+    }.getOrElse { failure ->
+        pushStageLog("character endpoint not reachable yet: ${failure.message}")
+        return
+    }
+    publishStageLastAction(body)
+    runCatching {
+        val diff = Json.parseToJsonElement(body).jsonObject["diff"]?.jsonObject ?: return
+        diff.forEach { (field, value) ->
+            (value as? JsonPrimitive)?.content?.toFloatOrNull()?.let { apply(field, it) }
+        }
+    }.onFailure { pushStageLog("character endpoint not live yet (no diff): ${it.message}") }
 }
 
 private suspend fun postPrompt(url: String, text: String) {
@@ -195,10 +226,19 @@ fun StageApp() {
                     StageOmnibox(
                         routed = active.promptUrl != null,
                         onSubmit = { entered ->
-                            val target = active.promptUrl
                             pushStageLog("omnibox[${active.label}] -> \"$entered\"")
-                            if (target != null && entered.isNotBlank()) {
-                                scope.launch { postPrompt(target, entered) }
+                            val ctx = active
+                            if (entered.isNotBlank()) {
+                                scope.launch {
+                                    when (ctx) {
+                                        StageContext.CHARACTER -> ctx.promptUrl?.let { url ->
+                                            postCharacterPrompt(url, entered, readPersonality(context.data)) { field, value ->
+                                                context.setBinding("character.personality.$field", value)
+                                            }
+                                        }
+                                        else -> ctx.promptUrl?.let { url -> postPrompt(url, entered) }
+                                    }
+                                }
                             }
                         },
                     )
