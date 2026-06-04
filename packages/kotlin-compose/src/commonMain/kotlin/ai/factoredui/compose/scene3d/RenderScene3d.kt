@@ -3,10 +3,13 @@ package ai.factoredui.compose.scene3d
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -96,6 +99,9 @@ fun RenderScene3d(
     var moveSettleJob by remember { mutableStateOf<Job?>(null) }
     var clientPoses by remember { mutableStateOf<Map<String, Array<Matrix4>>>(emptyMap()) }
     var selectedJoint by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    var promptText by remember { mutableStateOf("") }
+    var promptStatus by remember { mutableStateOf("") }
+    var appliedPoseRefs by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     LaunchedEffect(props.worldStateUrl) {
         if (props.worldStateUrl.isEmpty()) {
@@ -202,13 +208,27 @@ fun RenderScene3d(
         }
     }
 
-    // Interactive sit: hand the selected character + the seeded chair to the server's settle
-    // solver. It writes the seated equilibrium pose; the client fetches that pose, turns each
-    // joint's axis-angle into a local rotation, and re-skins the seated mesh instantly via the
-    // same client-LBS path as a drag (no render leg in this loop).
+    // Re-skin an entity from a server pose_ref via the client LBS — shared by the Sit button + SSE.
+    fun applyPoseFromRef(entityId: String, poseRef: String) {
+        val rig = meshes[entityId]?.rig ?: return
+        val poseFile = poseRef.substringAfterLast('/').substringAfterLast('\\')
+        val poseUrl = resolveAssetUrl(props.worldStateUrl, "/assets/poses/$poseFile")
+        scope.launch {
+            val poseText = runCatching { httpClient.get(poseUrl).bodyAsText() }.getOrNull() ?: return@launch
+            val poseDoc = runCatching { json.parseToJsonElement(poseText).jsonObject }.getOrNull() ?: return@launch
+            val axisAngles = poseDoc["smpl_pose_body"]?.jsonArray?.map { it.jsonPrimitive.float } ?: return@launch
+            val posed = Array(rig.jointCount) { Matrix4.identity() }
+            for (joint in 1 until minOf(rig.jointCount, axisAngles.size / 3)) {
+                val base = joint * 3
+                posed[joint] = axisAngleToMatrix4(axisAngles[base], axisAngles[base + 1], axisAngles[base + 2])
+            }
+            clientPoses = clientPoses + (entityId to posed)
+        }
+    }
+
+    // Interactive sit: move the chair under the character + ask the settle solver to seat them.
     fun sitInChair(entityId: String) {
         val actionUrl = props.actionUrl ?: return
-        val rig = meshes[entityId]?.rig ?: return
         world.entities.firstOrNull { it.id == entityId }?.position?.let { seat ->
             emitIntent("move-entity", mapOf("entity_id" to "chair_1", "position" to listOf(seat[0], 0f, seat[2])))
         }
@@ -225,18 +245,9 @@ fun RenderScene3d(
             }.getOrNull() ?: return@launch
             val parsed = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return@launch
             val poseRef = parsed["pose_ref"]?.jsonPrimitive?.contentOrNull
-            if (parsed["ok"]?.jsonPrimitive?.booleanOrNull != true || poseRef == null) return@launch
-            val poseFile = poseRef.substringAfterLast('/').substringAfterLast('\\')
-            val poseUrl = resolveAssetUrl(props.worldStateUrl, "/assets/poses/$poseFile")
-            val poseText = runCatching { httpClient.get(poseUrl).bodyAsText() }.getOrNull() ?: return@launch
-            val poseDoc = runCatching { json.parseToJsonElement(poseText).jsonObject }.getOrNull() ?: return@launch
-            val axisAngles = poseDoc["smpl_pose_body"]?.jsonArray?.map { it.jsonPrimitive.float } ?: return@launch
-            val seated = Array(rig.jointCount) { Matrix4.identity() }
-            for (joint in 1 until minOf(rig.jointCount, axisAngles.size / 3)) {
-                val base = joint * 3
-                seated[joint] = axisAngleToMatrix4(axisAngles[base], axisAngles[base + 1], axisAngles[base + 2])
+            if (parsed["ok"]?.jsonPrimitive?.booleanOrNull == true && poseRef != null) {
+                applyPoseFromRef(entityId, poseRef)
             }
-            clientPoses = clientPoses + (entityId to seated)
         }
     }
 
@@ -318,12 +329,46 @@ fun RenderScene3d(
         }
     }
 
+    // Prompt loop: sentence -> /director/prompt -> action dispatch -> SSE re-skin; we show narration.
+    fun submitPrompt() {
+        val actionUrl = props.actionUrl ?: return
+        val text = promptText.trim()
+        if (text.isEmpty()) return
+        val url = actionUrl.removeSuffix("/action") + "/director/prompt"
+        promptStatus = "thinking…"
+        val body = buildJsonObject { put("text", text) }.toString()
+        scope.launch {
+            val response = runCatching {
+                httpClient.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(body)
+                }.bodyAsText()
+            }.getOrNull()
+            if (response == null) { promptStatus = "request failed"; return@launch }
+            val parsed = runCatching { json.parseToJsonElement(response).jsonObject }.getOrNull()
+            val narration = parsed?.get("narration")?.jsonPrimitive?.contentOrNull
+            val ok = parsed?.get("ok")?.jsonPrimitive?.booleanOrNull == true
+            promptStatus = when {
+                !narration.isNullOrEmpty() -> narration
+                ok -> "done"
+                else -> parsed?.get("error")?.jsonPrimitive?.contentOrNull ?: "couldn't do that"
+            }
+            promptText = ""
+        }
+    }
+
     LaunchedEffect(world) {
         if (localPositions.isNotEmpty()) {
             localPositions = localPositions.filterNot { (id, optimistic) ->
                 val confirmed = world.entities.firstOrNull { it.id == id }?.position
                 confirmed != null && positionsClose(confirmed, optimistic)
             }
+        }
+        for (entity in world.entities) {
+            val poseRef = entity.poseRef ?: continue
+            if (appliedPoseRefs[entity.id] == poseRef || meshes[entity.id]?.rig == null) continue
+            appliedPoseRefs = appliedPoseRefs + (entity.id to poseRef)
+            applyPoseFromRef(entity.id, poseRef)
         }
     }
 
@@ -406,6 +451,25 @@ fun RenderScene3d(
                 emitIntent("camera-update", cameraParams(camera))
             }) {
                 Text("Set Shot")
+            }
+        }
+        Column(modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)) {
+            if (promptStatus.isNotEmpty()) {
+                Text(
+                    text = promptStatus,
+                    color = Color(0xFFD8D8E0),
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedTextField(
+                    value = promptText,
+                    onValueChange = { promptText = it },
+                    placeholder = { Text("Tell the scene what to do…") },
+                    singleLine = true,
+                    modifier = Modifier.width(360.dp),
+                )
+                Button(onClick = { submitPrompt() }) { Text("Go") }
             }
         }
         loadError?.let {

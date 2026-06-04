@@ -22,6 +22,7 @@ data class Scene3dEntity(
     val scale: Float = 1f,
     val selected: Boolean = false,
     val status: String = "ready",
+    @SerialName("pose_ref") val poseRef: String? = null,
 )
 
 @Serializable
