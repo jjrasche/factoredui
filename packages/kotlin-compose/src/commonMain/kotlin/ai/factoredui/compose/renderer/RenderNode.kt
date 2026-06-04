@@ -191,11 +191,22 @@ private fun RenderColumn(node: SpecNode, context: RenderContext) {
 @Composable
 private fun RenderRow(node: SpecNode, context: RenderContext) {
     val props = node.props.asLayoutProps()
+    val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
+    val rowModifier = Modifier.padding(props.padding.dp).let { base ->
+        if (hasFlexChild) base.fillMaxWidth() else base
+    }
     Row(
-        modifier = Modifier.padding(props.padding.dp),
+        modifier = rowModifier,
         horizontalArrangement = Arrangement.spacedBy(props.gap.dp),
     ) {
-        node.children.forEach { child -> RenderNode(node = child, context = context) }
+        node.children.forEach { child ->
+            val childFlex = child.props.asLayoutProps().flex
+            if (childFlex > 0f) {
+                Box(modifier = Modifier.weight(childFlex)) { RenderNode(node = child, context = context) }
+            } else {
+                RenderNode(node = child, context = context)
+            }
+        }
     }
 }
 
