@@ -1,0 +1,77 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "story-spine",
+    "type": "column",
+    "props": { "padding": 8, "gap": 16 },
+    "children": [
+      {
+        "id": "arc-title",
+        "type": "text",
+        "props": { "value": "Arc — The AI sits down to dinner", "variant": "heading" }
+      },
+      {
+        "id": "arc-objective",
+        "type": "text",
+        "props": { "value": "By arc end the AI is treated as ordinary — no one announces it, it is simply present at the table.", "variant": "caption" }
+      },
+      {
+        "id": "scenes",
+        "type": "column",
+        "props": { "gap": 12 },
+        "children": [
+          {
+            "id": "scene-1",
+            "type": "card",
+            "children": [
+              {
+                "id": "scene-1-body",
+                "type": "column",
+                "props": { "padding": 16, "gap": 8 },
+                "children": [
+                  { "id": "scene-1-title", "type": "text", "props": { "value": "Scene 1 — Arrival", "variant": "subheading" } },
+                  { "id": "scene-1-obj", "type": "text", "props": { "value": "Heigl opens the door expecting a guest; the guest is the AI.", "variant": "body" } },
+                  {
+                    "id": "scene-1-beats",
+                    "type": "row",
+                    "props": { "gap": 8 },
+                    "children": [
+                      { "id": "s1b1", "type": "chip", "props": { "label": "beat: knock" } },
+                      { "id": "s1b2", "type": "chip", "props": { "label": "but: it's the AI" } },
+                      { "id": "s1b3", "type": "chip", "props": { "label": "therefore: he hesitates" } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "scene-2",
+            "type": "card",
+            "children": [
+              {
+                "id": "scene-2-body",
+                "type": "column",
+                "props": { "padding": 16, "gap": 8 },
+                "children": [
+                  { "id": "scene-2-title", "type": "text", "props": { "value": "Scene 2 — The table", "variant": "subheading" } },
+                  { "id": "scene-2-obj", "type": "text", "props": { "value": "The family negotiates whether the AI gets a chair.", "variant": "body" } },
+                  {
+                    "id": "scene-2-beats",
+                    "type": "row",
+                    "props": { "gap": 8 },
+                    "children": [
+                      { "id": "s2b1", "type": "chip", "props": { "label": "beat: the empty chair" } },
+                      { "id": "s2b2", "type": "chip", "props": { "label": "therefore: it sits" } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
