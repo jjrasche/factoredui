@@ -193,7 +193,7 @@ fun StageApp() {
                 StageNavRail(active = active, onSelect = { pushStageLog("nav -> ${it.label}"); active = it })
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     StageOmnibox(
-                        enabled = active.promptUrl != null,
+                        routed = active.promptUrl != null,
                         onSubmit = { entered ->
                             val target = active.promptUrl
                             pushStageLog("omnibox[${active.label}] -> \"$entered\"")
@@ -244,16 +244,15 @@ private fun StageNavItem(label: String, selected: Boolean, onClick: () -> Unit) 
 }
 
 @Composable
-private fun StageOmnibox(enabled: Boolean, onSubmit: (String) -> Unit) {
+private fun StageOmnibox(routed: Boolean, onSubmit: (String) -> Unit) {
     var text by remember { mutableStateOf("") }
-    val placeholder = if (enabled) "Say what happens…" else "Omnibox routing lands with this context…"
+    val placeholder = if (routed) "Say what happens…" else "Type here — routing for this screen is coming"
     Row(Modifier.fillMaxWidth().background(StageTokens.canvas).padding(StageTokens.gapMd)) {
         OutlinedTextField(
             value = text,
             onValueChange = { text = it },
             placeholder = { Text(placeholder, color = StageTokens.textMuted) },
             singleLine = true,
-            enabled = enabled,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = {
                 onSubmit(text)
