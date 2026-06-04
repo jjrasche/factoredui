@@ -103,6 +103,7 @@ fun RenderScene3d(
     var promptText by remember { mutableStateOf("") }
     var promptStatus by remember { mutableStateOf("") }
     var promptTotalMs by remember { mutableStateOf(0f) }
+    var promptOk by remember { mutableStateOf(true) }
     var appliedPoseRefs by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     LaunchedEffect(props.worldStateUrl) {
@@ -350,6 +351,7 @@ fun RenderScene3d(
             val parsed = runCatching { json.parseToJsonElement(response).jsonObject }.getOrNull()
             val narration = parsed?.get("narration")?.jsonPrimitive?.contentOrNull
             val ok = parsed?.get("ok")?.jsonPrimitive?.booleanOrNull == true
+            promptOk = ok
             val base = when {
                 !narration.isNullOrEmpty() -> narration
                 ok -> "done"
@@ -470,6 +472,7 @@ fun RenderScene3d(
                 Text(
                     text = promptStatus,
                     color = when {
+                        !promptOk -> Color(0xFFE08A8A)
                         promptTotalMs > 3000f -> Color(0xFFE08A8A)
                         promptTotalMs > 1500f -> Color(0xFFE0C080)
                         else -> Color(0xFFD8D8E0)
