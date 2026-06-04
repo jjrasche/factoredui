@@ -165,11 +165,28 @@ private suspend fun loadCharacter(id: String, context: RenderContext) {
             }
         }
         context.setBinding("character.personality", floats)
-        val identityImage = (model["visual"] as? JsonObject)
-            ?.get("reference_images")?.jsonArray?.firstOrNull()?.jsonObject
+        val visual = model["visual"] as? JsonObject
+        val referenceImages = visual?.get("reference_images")?.jsonArray
+        val identityImage = referenceImages?.firstOrNull()?.jsonObject
             ?.let { (it["url"] as? JsonPrimitive)?.content } ?: ""
         context.setBinding("characterImage", identityImage)
+        publishCharacterGates(context, personality, referenceImages?.size ?: 0, visual)
     }.onFailure { pushStageLog("character read parse for $id: ${it.message}") }
+}
+
+private fun publishCharacterGates(
+    context: RenderContext,
+    personality: JsonObject?,
+    referenceImageCount: Int,
+    visual: JsonObject?,
+) {
+    val poseCount = personality?.get("defining_poses")?.jsonArray?.size ?: 0
+    val loraPath = (visual?.get("lora") as? JsonObject)?.let { (it["path"] as? JsonPrimitive)?.content } ?: ""
+    val hasAnyView = referenceImageCount > 0 || poseCount > 0
+    context.setBinding("gate1view", if (hasAnyView) "1 view · done" else "1 view · open")
+    context.setBinding("gate4views", if (poseCount >= 4) "4 views · done" else "4 views · open")
+    context.setBinding("gatePoses", if (poseCount > 0) "poses · $poseCount" else "poses · open")
+    context.setBinding("gateMesh", if (loraPath.isNotEmpty()) "3D mesh · done" else "3D mesh · open")
 }
 
 private suspend fun postPrompt(url: String, text: String) {
@@ -197,6 +214,11 @@ fun StageApp() {
                 "characterNarration" to "",
                 "characterQuestion" to "",
                 "characterImage" to "",
+                "autoRegenerate" to false,
+                "gate1view" to "1 view",
+                "gate4views" to "4 views",
+                "gatePoses" to "poses",
+                "gateMesh" to "3D mesh",
                 "character" to mapOf(
                     "personality" to mapOf(
                         "laban_weight" to 0.0f,

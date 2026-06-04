@@ -38,6 +38,7 @@
                 "type": "column",
                 "props": { "padding": 16, "gap": 6 },
                 "children": [
+                  { "id": "live-hint", "type": "text", "props": { "value": "Speak to shape them — appearance, temperament, how they move. A question may surface here, one at a time.", "variant": "caption" } },
                   { "id": "live-q", "type": "text", "props": { "value": "{characterQuestion}", "variant": "subheading" } },
                   { "id": "live-narr", "type": "text", "props": { "value": "{characterNarration}", "variant": "caption" } }
                 ]
@@ -59,16 +60,17 @@
                   { "id": "render-hint", "type": "text", "props": { "value": "Identity reference now; fresh renders land here when the render leg is wired.", "variant": "caption" } },
                   { "id": "ap-desc-h", "type": "text", "props": { "value": "Look", "variant": "subheading" } },
                   { "id": "ap-desc", "type": "text", "props": { "value": "{characterAppearance}", "variant": "body" } },
+                  { "id": "regen-toggle", "type": "toggle", "props": { "label": "Auto-regenerate the image as I speak", "value": "{autoRegenerate}" } },
                   {
                     "id": "ladder",
                     "type": "row",
                     "props": { "gap": 8 },
                     "children": [
                       { "id": "g-schema", "type": "chip", "props": { "label": "schema · locked" } },
-                      { "id": "g-1view", "type": "chip", "props": { "label": "1 view · done" } },
-                      { "id": "g-4views", "type": "chip", "props": { "label": "4 views · next" } },
-                      { "id": "g-poses", "type": "chip", "props": { "label": "poses" } },
-                      { "id": "g-mesh", "type": "chip", "props": { "label": "3D mesh" } }
+                      { "id": "g-1view", "type": "chip", "props": { "label": "{gate1view}" } },
+                      { "id": "g-4views", "type": "chip", "props": { "label": "{gate4views}" } },
+                      { "id": "g-poses", "type": "chip", "props": { "label": "{gatePoses}" } },
+                      { "id": "g-mesh", "type": "chip", "props": { "label": "{gateMesh}" } }
                     ]
                   },
                   {
