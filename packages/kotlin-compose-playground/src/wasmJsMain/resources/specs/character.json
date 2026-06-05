@@ -18,6 +18,7 @@
               "value": "{characterId}",
               "placeholder": "Pick a character",
               "options": [
+                { "value": "grandfather", "label": "grandfather" },
                 { "value": "heigl", "label": "heigl" },
                 { "value": "eli", "label": "Eli" },
                 { "value": "kai", "label": "Kai" },
@@ -30,23 +31,6 @@
           },
           { "id": "char-sub", "type": "text", "props": { "value": "Speak who they are — describe them out loud, pause, and watch them take shape. Confirm each gate to spend on the next.", "variant": "caption" } },
           { "id": "create-status", "type": "text", "props": { "value": "{createStatus}", "variant": "caption" } },
-          {
-            "id": "live-card",
-            "type": "column",
-            "children": [
-              {
-                "id": "live-col",
-                "type": "column",
-                "props": { "padding": 4, "gap": 6 },
-                "children": [
-                  { "id": "live-hint", "type": "text", "props": { "value": "Speak to shape them — appearance, temperament, how they move. A question may surface here; you're never obliged to answer it.", "variant": "caption" } },
-                  { "id": "live-q", "type": "text", "props": { "value": "{characterQuestion}", "variant": "subheading" } },
-                  { "id": "live-narr", "type": "text", "props": { "value": "{characterNarration}", "variant": "body" } },
-                  { "id": "live-look", "type": "text", "props": { "value": "{characterRenderPrompt}", "variant": "caption" } }
-                ]
-              }
-            ]
-          },
           {
             "id": "hero",
             "type": "row",
@@ -71,6 +55,17 @@
                   { "id": "ap-desc", "type": "text", "props": { "value": "{characterAppearance}", "variant": "body" } }
                 ]
               }
+            ]
+          },
+          {
+            "id": "live-card",
+            "type": "column",
+            "props": { "padding": 4, "gap": 6 },
+            "children": [
+              { "id": "live-hint", "type": "text", "props": { "value": "Speak to shape them — appearance, temperament, how they move. A question may surface here; you're never obliged to answer it.", "variant": "caption" } },
+              { "id": "live-q", "type": "text", "props": { "value": "{characterQuestion}", "variant": "subheading" } },
+              { "id": "live-narr", "type": "text", "props": { "value": "{characterNarration}", "variant": "body" } },
+              { "id": "live-look", "type": "text", "props": { "value": "{characterRenderPrompt}", "variant": "caption" } }
             ]
           },
           {

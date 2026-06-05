@@ -58,6 +58,9 @@ import kotlinx.serialization.json.put
 fun stageParam(): Boolean =
     js("(new URLSearchParams(window.location.search).get('app')) === 'stage'")
 
+fun urlParam(name: String): String =
+    js("(new URLSearchParams(window.location.search).get(name)) || ''")
+
 enum class StageContext(val label: String, val specUrl: String?, val promptUrl: String?) {
     STORY("Story", "specs/story-spine.json", null),
     CHARACTER("Character", "specs/character.json", "http://127.0.0.1:8770/character/prompt"),
@@ -207,9 +210,11 @@ private suspend fun loadCharacter(id: String, context: RenderContext) {
         context.setBinding("character.personality", floats)
         val visual = model["visual"] as? JsonObject
         val referenceImages = visual?.get("reference_images")?.jsonArray
-        val identityImage = referenceImages?.lastOrNull()?.jsonObject
-            ?.let { (it["url"] as? JsonPrimitive)?.content } ?: ""
-        context.setBinding("characterImage", identityImage)
+        val renderedHeadshot = (model["rendered"] as? JsonObject)
+            ?.let { (it["headshot_url"] as? JsonPrimitive)?.content }?.takeIf { it.isNotBlank() }
+        val lastReference = referenceImages?.lastOrNull()?.jsonObject
+            ?.let { (it["url"] as? JsonPrimitive)?.content }
+        context.setBinding("characterImage", renderedHeadshot ?: lastReference ?: "")
         publishCharacterGates(context, personality, referenceImages?.size ?: 0, visual)
     }.onFailure { pushStageLog("character read parse for $id: ${it.message}") }
 }
@@ -337,8 +342,18 @@ fun StageApp() {
         )
     }
     val scope = rememberCoroutineScope()
-    var active by remember { mutableStateOf(StageContext.STORY) }
+    var active by remember { mutableStateOf(if (urlParam("character").isNotBlank()) StageContext.CHARACTER else StageContext.STORY) }
     val specFlow = remember { MutableStateFlow(placeholderSpec("Loading…")) }
+
+    LaunchedEffect(Unit) {
+        val deepLinkedCharacter = urlParam("character")
+        if (deepLinkedCharacter.isNotBlank()) context.setBinding("characterId", deepLinkedCharacter)
+        val heroImage = urlParam("heroImage")
+        if (heroImage.isNotBlank()) {
+            delay(2800)
+            context.setBinding("characterImage", heroImage)
+        }
+    }
 
     LaunchedEffect(Unit) {
         var previous: Map<String, Float> = emptyMap()
