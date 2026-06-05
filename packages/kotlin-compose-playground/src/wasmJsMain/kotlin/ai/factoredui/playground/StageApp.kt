@@ -134,12 +134,9 @@ private suspend fun postCharacterPrompt(
             (value as? JsonPrimitive)?.content?.toFloatOrNull()?.let { applyFloat(field, it) }
         }
         (response["narration"] as? JsonPrimitive)?.content?.let { applyString("characterNarration", it) }
-        val answeredPrior = (response["answered_prior"] as? JsonPrimitive)?.content == "true"
+        (response["render_prompt"] as? JsonPrimitive)?.content?.let { applyString("characterRenderPrompt", it) }
         val question = (response["question"] as? JsonPrimitive)?.content
-        when {
-            !question.isNullOrBlank() && question != "null" -> applyString("characterQuestion", question)
-            answeredPrior -> applyString("characterQuestion", "")
-        }
+        applyString("characterQuestion", if (question == null || question == "null") "" else question)
     }.onFailure { pushStageLog("character response parse: ${it.message}") }
 }
 
@@ -189,6 +186,61 @@ private fun publishCharacterGates(
     context.setBinding("gateMesh", if (loraPath.isNotEmpty()) "3D mesh · done" else "3D mesh · open")
 }
 
+private const val RENDER_BASE = "http://127.0.0.1:8775"
+private const val RENDER_POLL_ATTEMPTS = 40
+
+private suspend fun requestRender(characterId: String, context: RenderContext) {
+    context.setBinding("renderStatus", "requesting render…")
+    val livePrompt = (context.data["characterRenderPrompt"] as? String)?.takeIf { it.isNotBlank() }
+    val payload = buildJsonObject {
+        if (livePrompt != null) put("render_prompt", livePrompt) else put("character_id", characterId)
+        put("view", "front")
+        put("kind", "image")
+    }.toString()
+    val jobId = runCatching {
+        val accepted = HttpClient().post("$RENDER_BASE/render") {
+            contentType(ContentType.Application.Json)
+            setBody(payload)
+        }.bodyAsText()
+        (Json.parseToJsonElement(accepted).jsonObject["job_id"] as? JsonPrimitive)?.content
+    }.getOrElse {
+        context.setBinding("renderStatus", "render leg not live yet")
+        pushStageLog("render request failed: ${it.message}")
+        return
+    }
+    if (jobId.isNullOrBlank()) {
+        context.setBinding("renderStatus", "render returned no job id")
+        return
+    }
+    pollRenderUntilSettled(jobId, context)
+}
+
+private suspend fun pollRenderUntilSettled(jobId: String, context: RenderContext) {
+    repeat(RENDER_POLL_ATTEMPTS) {
+        delay(1500)
+        val statusBody = runCatching {
+            HttpClient().get("$RENDER_BASE/render/status/$jobId").bodyAsText()
+        }.getOrNull() ?: return
+        val status = runCatching { Json.parseToJsonElement(statusBody).jsonObject }.getOrNull() ?: return
+        val state = (status["status"] as? JsonPrimitive)?.content ?: ""
+        val detail = (status["detail"] as? JsonPrimitive)?.content ?: state
+        when (state) {
+            "done" -> {
+                (status["url"] as? JsonPrimitive)?.content?.let { context.setBinding("characterImage", it) }
+                context.setBinding("renderStatus", "")
+                return
+            }
+            "failed" -> {
+                val error = (status["error"] as? JsonPrimitive)?.content ?: "unknown"
+                context.setBinding("renderStatus", "render failed: $error")
+                return
+            }
+            else -> context.setBinding("renderStatus", detail)
+        }
+    }
+    context.setBinding("renderStatus", "render still running…")
+}
+
 private suspend fun postPrompt(url: String, text: String) {
     val payload = buildJsonObject { put("text", text) }.toString()
     val body = HttpClient().post(url) {
@@ -213,8 +265,10 @@ fun StageApp() {
                 "characterNotes" to "",
                 "characterNarration" to "",
                 "characterQuestion" to "",
+                "characterRenderPrompt" to "",
                 "characterImage" to "",
                 "autoRegenerate" to false,
+                "renderStatus" to "",
                 "gate1view" to "1 view",
                 "gate4views" to "4 views",
                 "gatePoses" to "poses",
@@ -323,6 +377,10 @@ fun StageApp() {
                                                 applyFloat = { field, value -> context.setBinding("character.personality.$field", value) },
                                                 applyString = { key, value -> context.setBinding(key, value) },
                                             )
+                                            if (context.data["autoRegenerate"] == true) {
+                                                val renderingCharacter = context.data["characterId"] as? String ?: "heigl"
+                                                scope.launch { requestRender(renderingCharacter, context) }
+                                            }
                                         }
                                         else -> ctx.promptUrl?.let { url -> postPrompt(url, entered) }
                                     }
@@ -386,11 +444,10 @@ private fun StageOmnibox(routed: Boolean, continuous: Boolean, onSubmit: (String
             value = text,
             onValueChange = { entered ->
                 text = entered
-                if (continuous && entered.isNotBlank()) {
-                    flushJob?.cancel()
+                if (continuous && entered.isNotBlank() && flushJob?.isActive != true) {
                     flushJob = scope.launch {
-                        delay(2500)
-                        onSubmit(entered)
+                        delay(10_000)
+                        onSubmit(text)
                     }
                 }
             },

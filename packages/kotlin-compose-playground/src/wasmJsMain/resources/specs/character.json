@@ -38,9 +38,10 @@
                 "type": "column",
                 "props": { "padding": 16, "gap": 6 },
                 "children": [
-                  { "id": "live-hint", "type": "text", "props": { "value": "Speak to shape them — appearance, temperament, how they move. A question may surface here, one at a time.", "variant": "caption" } },
+                  { "id": "live-hint", "type": "text", "props": { "value": "Speak to shape them — appearance, temperament, how they move. A question may surface here; you're never obliged to answer it.", "variant": "caption" } },
                   { "id": "live-q", "type": "text", "props": { "value": "{characterQuestion}", "variant": "subheading" } },
-                  { "id": "live-narr", "type": "text", "props": { "value": "{characterNarration}", "variant": "caption" } }
+                  { "id": "live-narr", "type": "text", "props": { "value": "{characterNarration}", "variant": "body" } },
+                  { "id": "live-look", "type": "text", "props": { "value": "{characterRenderPrompt}", "variant": "caption" } }
                 ]
               }
             ]
@@ -57,7 +58,8 @@
                 "children": [
                   { "id": "ap-h", "type": "text", "props": { "value": "Appearance", "variant": "subheading" } },
                   { "id": "render-slot", "type": "image", "props": { "source": "{characterImage}", "aspectRatio": 0.8, "fit": "contain", "cornerRadius": 8, "alt": "generated character render" } },
-                  { "id": "render-hint", "type": "text", "props": { "value": "Identity reference now; fresh renders land here when the render leg is wired.", "variant": "caption" } },
+                  { "id": "render-status", "type": "text", "props": { "value": "{renderStatus}", "variant": "caption" } },
+                  { "id": "render-hint", "type": "text", "props": { "value": "Identity reference now; speak with auto-regenerate on to refresh the image as you talk.", "variant": "caption" } },
                   { "id": "ap-desc-h", "type": "text", "props": { "value": "Look", "variant": "subheading" } },
                   { "id": "ap-desc", "type": "text", "props": { "value": "{characterAppearance}", "variant": "body" } },
                   { "id": "regen-toggle", "type": "toggle", "props": { "label": "Auto-regenerate the image as I speak", "value": "{autoRegenerate}" } },
