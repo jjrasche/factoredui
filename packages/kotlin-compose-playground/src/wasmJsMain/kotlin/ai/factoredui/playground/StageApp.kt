@@ -235,15 +235,15 @@ private const val RENDER_POLL_ATTEMPTS = 40
 private suspend fun requestRender(
     characterId: String,
     context: RenderContext,
-    view: String = "front",
+    rung: String = "headshot",
     targetBinding: String = "characterImage",
 ) {
-    context.setBinding("renderStatus", "rendering ${view}…")
+    context.setBinding("renderStatus", "rendering ${rung.replace('_', ' ')}…")
     val livePrompt = (context.data["characterRenderPrompt"] as? String)?.takeIf { it.isNotBlank() }
     val payload = buildJsonObject {
-        if (livePrompt != null) put("render_prompt", livePrompt) else put("character_id", characterId)
-        put("view", view)
-        put("kind", "image")
+        put("character_id", characterId)
+        if (livePrompt != null) put("render_prompt", livePrompt)
+        put("rung", rung)
     }.toString()
     val jobId = runCatching {
         val accepted = HttpClient().post("$RENDER_BASE/render") {
@@ -290,12 +290,7 @@ private suspend fun pollRenderUntilSettled(jobId: String, context: RenderContext
 }
 
 private suspend fun produceRung(rung: String, characterId: String, context: RenderContext) {
-    when (rung) {
-        "headshot" -> requestRender(characterId, context, "front", "characterImage")
-        "4views" -> context.setBinding("renderStatus", "4-view turnaround — render rung coming")
-        "poses" -> context.setBinding("renderStatus", "defining poses — render rung coming")
-        "mesh" -> context.setBinding("renderStatus", "3D model + LoRA — GPU run, wallet-gated, coming")
-    }
+    requestRender(characterId, context, rung, "characterImage")
 }
 
 private suspend fun postPrompt(url: String, text: String) {
@@ -464,7 +459,9 @@ fun StageApp() {
                             },
                             onUploadReference = {
                                 val targetCharacter = context.data["characterId"] as? String ?: ""
-                                if (targetCharacter.isNotBlank()) {
+                                if (targetCharacter.isBlank()) {
+                                    setReferenceUploadStatus("Create or pick a character first, then upload their photo.")
+                                } else {
                                     triggerReferenceUpload("$CHARACTER_READ_BASE/$targetCharacter/reference-images?role=identity")
                                 }
                             },
@@ -553,10 +550,6 @@ private fun StageProductionLadder(context: RenderContext, onProduce: (String) ->
     val spoke = (data["characterRenderPrompt"] as? String).orEmpty().isNotBlank() ||
         (data["characterNarration"] as? String).orEmpty().isNotBlank()
     val hasHeadshot = (data["characterImage"] as? String).orEmpty().isNotBlank()
-    val hasFourViews = (data["gate4views"] as? String).orEmpty().contains("done")
-    val posesGate = (data["gatePoses"] as? String).orEmpty()
-    val hasPoses = posesGate.contains("·") && !posesGate.contains("open")
-    val hasMesh = (data["gateMesh"] as? String).orEmpty().contains("done")
     val renderStatus = (data["renderStatus"] as? String).orEmpty()
 
     Column(
@@ -566,13 +559,13 @@ private fun StageProductionLadder(context: RenderContext, onProduce: (String) ->
         Row(horizontalArrangement = Arrangement.spacedBy(StageTokens.gapSm)) {
             LadderRung("Speech", spoke)
             LadderRung("Headshot", hasHeadshot)
-            LadderRung("4 views", hasFourViews)
-            LadderRung("Poses", hasPoses)
-            LadderRung("3D model", hasMesh)
+            LadderRung("Full body", false)
+            LadderRung("3D", false)
+            LadderRung("Splat", false)
         }
         when {
             renderStatus.isNotBlank() -> Text("● $renderStatus", color = StageTokens.accent)
-            !spoke -> Text("▲ Describe them in the box above — speak who they are.", color = StageTokens.textMuted)
+            !spoke && !hasHeadshot -> Text("▲ Describe them in the box above, or upload a photo.", color = StageTokens.textMuted)
             !hasHeadshot -> Button(onClick = { onProduce("headshot") }) { Text("Render headshot ▶") }
             else -> Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -580,7 +573,7 @@ private fun StageProductionLadder(context: RenderContext, onProduce: (String) ->
             ) {
                 Text("Looks like them?", color = StageTokens.textPrimary)
                 Button(onClick = { onProduce("headshot") }) { Text("Re-render") }
-                Button(onClick = { onProduce("4views") }) { Text("Next: 4-view turnaround ▶") }
+                Button(onClick = { onProduce("full_body") }) { Text("Next: full body ▶") }
             }
         }
     }
