@@ -206,7 +206,7 @@ private suspend fun loadCharacter(id: String, context: RenderContext) {
         context.setBinding("character.personality", floats)
         val visual = model["visual"] as? JsonObject
         val referenceImages = visual?.get("reference_images")?.jsonArray
-        val identityImage = referenceImages?.firstOrNull()?.jsonObject
+        val identityImage = referenceImages?.lastOrNull()?.jsonObject
             ?.let { (it["url"] as? JsonPrimitive)?.content } ?: ""
         context.setBinding("characterImage", identityImage)
         publishCharacterGates(context, personality, referenceImages?.size ?: 0, visual)

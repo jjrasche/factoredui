@@ -32,12 +32,12 @@
           { "id": "create-status", "type": "text", "props": { "value": "{createStatus}", "variant": "caption" } },
           {
             "id": "live-card",
-            "type": "card",
+            "type": "column",
             "children": [
               {
                 "id": "live-col",
                 "type": "column",
-                "props": { "padding": 16, "gap": 6 },
+                "props": { "padding": 4, "gap": 6 },
                 "children": [
                   { "id": "live-hint", "type": "text", "props": { "value": "Speak to shape them — appearance, temperament, how they move. A question may surface here; you're never obliged to answer it.", "variant": "caption" } },
                   { "id": "live-q", "type": "text", "props": { "value": "{characterQuestion}", "variant": "subheading" } },
@@ -58,7 +58,7 @@
                 "props": { "gap": 14, "flex": 1 },
                 "children": [
                   { "id": "ap-h", "type": "text", "props": { "value": "Appearance", "variant": "subheading" } },
-                  { "id": "render-slot", "type": "image", "props": { "source": "{characterImage}", "aspectRatio": 0.8, "fit": "contain", "cornerRadius": 8, "alt": "generated character render" } },
+                  { "id": "render-slot", "type": "image", "props": { "source": "{characterImage}", "aspectRatio": 0.8, "maxHeight": 380, "fit": "contain", "cornerRadius": 8, "alt": "generated character render" } },
                   { "id": "render-status", "type": "text", "props": { "value": "{renderStatus}", "variant": "caption" } },
                   { "id": "ref-status", "type": "text", "props": { "value": "{referenceUploadStatus}", "variant": "caption" } },
                   { "id": "render-hint", "type": "text", "props": { "value": "Identity reference now; speak with auto-regenerate on to refresh the image as you talk.", "variant": "caption" } },

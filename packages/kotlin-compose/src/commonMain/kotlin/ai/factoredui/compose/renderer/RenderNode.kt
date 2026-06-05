@@ -459,9 +459,13 @@ private fun RenderImage(node: SpecNode, resolvedProps: Map<String, Any?>) {
     val fallbackTint = MaterialTheme.colorScheme.surfaceVariant
 
     val aspectRatio = props.aspectRatio
-    val baseModifier = Modifier
-        .fillMaxWidth()
-        .let { mod -> if (aspectRatio != null) mod.aspectRatio(aspectRatio) else mod.height(RenderDefaults.IMAGE_FALLBACK_HEIGHT) }
+    val maxHeight = (resolvedProps["maxHeight"] as? Double)?.toInt()
+    val sizeModifier = when {
+        maxHeight != null && aspectRatio != null -> Modifier.height(maxHeight.dp).aspectRatio(aspectRatio)
+        aspectRatio != null -> Modifier.fillMaxWidth().aspectRatio(aspectRatio)
+        else -> Modifier.fillMaxWidth().height(RenderDefaults.IMAGE_FALLBACK_HEIGHT)
+    }
+    val baseModifier = sizeModifier
         .clip(shape)
         .semantics { contentDescription = alt.ifEmpty { node.id } }
 
