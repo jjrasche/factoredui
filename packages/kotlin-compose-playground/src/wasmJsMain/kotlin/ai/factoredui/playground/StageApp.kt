@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -151,6 +153,31 @@ private suspend fun postCharacterPrompt(
 }
 
 private const val CHARACTER_READ_BASE = "http://127.0.0.1:8770/character"
+private const val CHARACTER_CREATE_URL = "http://127.0.0.1:8770/character"
+
+private suspend fun createCharacter(name: String, context: RenderContext) {
+    context.setBinding("createStatus", "creating ${name}…")
+    val payload = buildJsonObject { put("name", name) }.toString()
+    val responseBody = runCatching {
+        HttpClient().post(CHARACTER_CREATE_URL) {
+            contentType(ContentType.Application.Json)
+            setBody(payload)
+        }.bodyAsText()
+    }.getOrElse {
+        context.setBinding("createStatus", "create endpoint not live yet")
+        pushStageLog("create character failed: ${it.message}")
+        return
+    }
+    val createdId = runCatching {
+        (Json.parseToJsonElement(responseBody).jsonObject["id"] as? JsonPrimitive)?.content
+    }.getOrNull()
+    if (createdId.isNullOrBlank()) {
+        context.setBinding("createStatus", "create returned no id")
+        return
+    }
+    context.setBinding("createStatus", "")
+    context.setBinding("characterId", createdId)
+}
 
 private suspend fun loadCharacter(id: String, context: RenderContext) {
     val body = runCatching {
@@ -273,6 +300,7 @@ fun StageApp() {
             initialData = mapOf(
                 "omnibox" to mapOf("text" to ""),
                 "characterId" to "heigl",
+                "createStatus" to "",
                 "characterDisplayName" to "heigl",
                 "characterAppearance" to "",
                 "characterEffort" to "—",
@@ -403,6 +431,11 @@ fun StageApp() {
                             }
                         },
                     )
+                    if (active == StageContext.CHARACTER) {
+                        StageNewCharacter(onCreate = { name ->
+                            if (name.isNotBlank()) scope.launch { createCharacter(name.trim(), context) }
+                        })
+                    }
                     Box(Modifier.weight(1f).fillMaxWidth().padding(StageTokens.gapMd)) {
                         RenderSpec(specFlow = specFlow, context = context)
                     }
@@ -441,6 +474,25 @@ private fun StageNavItem(label: String, selected: Boolean, onClick: () -> Unit) 
             .padding(horizontal = StageTokens.gapMd, vertical = StageTokens.gapSm),
     ) {
         Text(label, color = foreground, fontSize = 14.sp)
+    }
+}
+
+@Composable
+private fun StageNewCharacter(onCreate: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = StageTokens.gapMd),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(StageTokens.gapSm),
+    ) {
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            placeholder = { Text("New character name — e.g. grandfather", color = StageTokens.textMuted) },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        Button(onClick = { onCreate(name); name = "" }) { Text("Create") }
     }
 }
 

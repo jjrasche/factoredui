@@ -29,6 +29,7 @@
             }
           },
           { "id": "char-sub", "type": "text", "props": { "value": "Speak who they are — describe them out loud, pause, and watch them take shape. Confirm each gate to spend on the next.", "variant": "caption" } },
+          { "id": "create-status", "type": "text", "props": { "value": "{createStatus}", "variant": "caption" } },
           {
             "id": "live-card",
             "type": "card",
