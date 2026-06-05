@@ -48,6 +48,32 @@
             ]
           },
           {
+            "id": "hero",
+            "type": "row",
+            "props": { "gap": 20 },
+            "children": [
+              {
+                "id": "hero-col",
+                "type": "column",
+                "props": { "gap": 6 },
+                "children": [
+                  { "id": "render-slot", "type": "image", "props": { "source": "{characterImage}", "aspectRatio": 0.8, "maxHeight": 460, "fit": "contain", "cornerRadius": 8, "alt": "character headshot" } },
+                  { "id": "render-status", "type": "text", "props": { "value": "{renderStatus}", "variant": "caption" } },
+                  { "id": "ref-status", "type": "text", "props": { "value": "{referenceUploadStatus}", "variant": "caption" } }
+                ]
+              },
+              {
+                "id": "hero-look",
+                "type": "column",
+                "props": { "gap": 6, "flex": 1 },
+                "children": [
+                  { "id": "ap-desc-h", "type": "text", "props": { "value": "Look", "variant": "subheading" } },
+                  { "id": "ap-desc", "type": "text", "props": { "value": "{characterAppearance}", "variant": "body" } }
+                ]
+              }
+            ]
+          },
+          {
             "id": "panes",
             "type": "row",
             "props": { "gap": 24 },
@@ -57,13 +83,7 @@
                 "type": "column",
                 "props": { "gap": 14, "flex": 1 },
                 "children": [
-                  { "id": "ap-h", "type": "text", "props": { "value": "Appearance", "variant": "subheading" } },
-                  { "id": "render-slot", "type": "image", "props": { "source": "{characterImage}", "aspectRatio": 0.8, "maxHeight": 380, "fit": "contain", "cornerRadius": 8, "alt": "generated character render" } },
-                  { "id": "render-status", "type": "text", "props": { "value": "{renderStatus}", "variant": "caption" } },
-                  { "id": "ref-status", "type": "text", "props": { "value": "{referenceUploadStatus}", "variant": "caption" } },
-                  { "id": "render-hint", "type": "text", "props": { "value": "Identity reference now; speak with auto-regenerate on to refresh the image as you talk.", "variant": "caption" } },
-                  { "id": "ap-desc-h", "type": "text", "props": { "value": "Look", "variant": "subheading" } },
-                  { "id": "ap-desc", "type": "text", "props": { "value": "{characterAppearance}", "variant": "body" } },
+                  { "id": "ap-h", "type": "text", "props": { "value": "Views & gates", "variant": "subheading" } },
                   { "id": "regen-toggle", "type": "toggle", "props": { "label": "Auto-regenerate the image as I speak", "value": "{autoRegenerate}" } },
                   {
                     "id": "ladder",

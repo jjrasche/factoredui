@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -104,13 +105,13 @@ private fun nearestEffort(personality: Map<String, Float>): String {
     }
 }
 
-private fun emitPersonalityTrainingRow(field: String, old: Float, current: Float) {
+private fun emitPersonalityTrainingRow(characterId: String, field: String, old: Float, current: Float) {
     val stamp = nowMillis()
     val row = buildJsonObject {
         put("event_type", "input")
         put("component_path", "character.personality.$field")
-        put("character_id", "heigl")
-        put("correlation_id", "char::heigl::${stamp.toLong()}")
+        put("character_id", characterId)
+        put("correlation_id", "char::$characterId::${stamp.toLong()}")
         put("old", old)
         put("new", current)
         put("occurred_at", stamp)
@@ -231,12 +232,17 @@ private fun publishCharacterGates(
 private const val RENDER_BASE = "http://127.0.0.1:8775"
 private const val RENDER_POLL_ATTEMPTS = 40
 
-private suspend fun requestRender(characterId: String, context: RenderContext) {
-    context.setBinding("renderStatus", "requesting render…")
+private suspend fun requestRender(
+    characterId: String,
+    context: RenderContext,
+    view: String = "front",
+    targetBinding: String = "characterImage",
+) {
+    context.setBinding("renderStatus", "rendering ${view}…")
     val livePrompt = (context.data["characterRenderPrompt"] as? String)?.takeIf { it.isNotBlank() }
     val payload = buildJsonObject {
         if (livePrompt != null) put("render_prompt", livePrompt) else put("character_id", characterId)
-        put("view", "front")
+        put("view", view)
         put("kind", "image")
     }.toString()
     val jobId = runCatching {
@@ -254,10 +260,10 @@ private suspend fun requestRender(characterId: String, context: RenderContext) {
         context.setBinding("renderStatus", "render returned no job id")
         return
     }
-    pollRenderUntilSettled(jobId, context)
+    pollRenderUntilSettled(jobId, context, targetBinding)
 }
 
-private suspend fun pollRenderUntilSettled(jobId: String, context: RenderContext) {
+private suspend fun pollRenderUntilSettled(jobId: String, context: RenderContext, targetBinding: String) {
     repeat(RENDER_POLL_ATTEMPTS) {
         delay(1500)
         val statusBody = runCatching {
@@ -268,7 +274,7 @@ private suspend fun pollRenderUntilSettled(jobId: String, context: RenderContext
         val detail = (status["detail"] as? JsonPrimitive)?.content ?: state
         when (state) {
             "done" -> {
-                (status["url"] as? JsonPrimitive)?.content?.let { context.setBinding("characterImage", it) }
+                (status["url"] as? JsonPrimitive)?.content?.let { context.setBinding(targetBinding, it) }
                 context.setBinding("renderStatus", "")
                 return
             }
@@ -281,6 +287,15 @@ private suspend fun pollRenderUntilSettled(jobId: String, context: RenderContext
         }
     }
     context.setBinding("renderStatus", "render still running…")
+}
+
+private suspend fun produceRung(rung: String, characterId: String, context: RenderContext) {
+    when (rung) {
+        "headshot" -> requestRender(characterId, context, "front", "characterImage")
+        "4views" -> context.setBinding("renderStatus", "4-view turnaround — render rung coming")
+        "poses" -> context.setBinding("renderStatus", "defining poses — render rung coming")
+        "mesh" -> context.setBinding("renderStatus", "3D model + LoRA — GPU run, wallet-gated, coming")
+    }
 }
 
 private suspend fun postPrompt(url: String, text: String) {
@@ -300,10 +315,10 @@ fun StageApp() {
             observability = StageDebugObservability(),
             initialData = mapOf(
                 "omnibox" to mapOf("text" to ""),
-                "characterId" to "heigl",
+                "characterId" to "",
                 "createStatus" to "",
                 "referenceUploadStatus" to "",
-                "characterDisplayName" to "heigl",
+                "characterDisplayName" to "—",
                 "characterAppearance" to "",
                 "characterEffort" to "—",
                 "characterNotes" to "",
@@ -312,24 +327,17 @@ fun StageApp() {
                 "characterRenderPrompt" to "",
                 "characterAttr" to emptyAttributes(),
                 "characterImage" to "",
-                "autoRegenerate" to true,
+                "viewFront" to "",
+                "viewRight" to "",
+                "viewBack" to "",
+                "viewLeft" to "",
+                "autoRegenerate" to false,
                 "renderStatus" to "",
                 "gate1view" to "1 view",
                 "gate4views" to "4 views",
                 "gatePoses" to "poses",
                 "gateMesh" to "3D mesh",
-                "character" to mapOf(
-                    "personality" to mapOf(
-                        "laban_weight" to 0.0f,
-                        "laban_time" to 0.0f,
-                        "laban_space" to 0.0f,
-                        "laban_flow" to 0.0f,
-                        "amplitude" to 0.5f,
-                        "suppression_tendency" to 0.4f,
-                        "recovery_rate" to 0.5f,
-                        "emotional_regulation" to 0.5f,
-                    ),
-                ),
+                "character" to mapOf("personality" to NEUTRAL_PERSONALITY),
             ),
         )
     }
@@ -368,9 +376,10 @@ fun StageApp() {
                             flushJob?.cancel()
                             flushJob = scope.launch {
                                 delay(400)
+                                val trainingCharacterId = context.data["characterId"] as? String ?: ""
                                 pending.forEach { (changedField, change) ->
                                     if (change.first != change.second) {
-                                        emitPersonalityTrainingRow(changedField, change.first, change.second)
+                                        emitPersonalityTrainingRow(trainingCharacterId, changedField, change.first, change.second)
                                     }
                                 }
                                 pending.clear()
@@ -438,8 +447,8 @@ fun StageApp() {
                                                 applyString = { key, value -> context.setBinding(key, value) },
                                             )
                                             if (context.data["autoRegenerate"] == true) {
-                                                val renderingCharacter = context.data["characterId"] as? String ?: "heigl"
-                                                scope.launch { requestRender(renderingCharacter, context) }
+                                                val renderingCharacter = context.data["characterId"] as? String ?: ""
+                                                if (renderingCharacter.isNotBlank()) scope.launch { requestRender(renderingCharacter, context) }
                                             }
                                         }
                                         else -> ctx.promptUrl?.let { url -> postPrompt(url, entered) }
@@ -454,8 +463,17 @@ fun StageApp() {
                                 if (name.isNotBlank()) scope.launch { createCharacter(name.trim(), context) }
                             },
                             onUploadReference = {
-                                val targetCharacter = context.data["characterId"] as? String ?: "heigl"
-                                triggerReferenceUpload("$CHARACTER_READ_BASE/$targetCharacter/reference-images?role=identity")
+                                val targetCharacter = context.data["characterId"] as? String ?: ""
+                                if (targetCharacter.isNotBlank()) {
+                                    triggerReferenceUpload("$CHARACTER_READ_BASE/$targetCharacter/reference-images?role=identity")
+                                }
+                            },
+                        )
+                        StageProductionLadder(
+                            context = context,
+                            onProduce = { rung ->
+                                val target = context.data["characterId"] as? String ?: ""
+                                if (target.isNotBlank()) scope.launch { produceRung(rung, target, context) }
                             },
                         )
                     }
@@ -517,6 +535,66 @@ private fun StageNewCharacter(onCreate: (String) -> Unit, onUploadReference: () 
         )
         Button(onClick = { onCreate(name); name = "" }) { Text("Create") }
         Button(onClick = onUploadReference) { Text("Upload photo") }
+    }
+}
+
+@Composable
+private fun StageProductionLadder(context: RenderContext, onProduce: (String) -> Unit) {
+    val data by context.dataFlow.collectAsState()
+    val characterId = (data["characterId"] as? String).orEmpty()
+    if (characterId.isBlank()) {
+        Text(
+            "Create or pick a character to begin.",
+            color = StageTokens.textMuted,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = StageTokens.gapMd),
+        )
+        return
+    }
+    val spoke = (data["characterRenderPrompt"] as? String).orEmpty().isNotBlank() ||
+        (data["characterNarration"] as? String).orEmpty().isNotBlank()
+    val hasHeadshot = (data["characterImage"] as? String).orEmpty().isNotBlank()
+    val hasFourViews = (data["gate4views"] as? String).orEmpty().contains("done")
+    val posesGate = (data["gatePoses"] as? String).orEmpty()
+    val hasPoses = posesGate.contains("·") && !posesGate.contains("open")
+    val hasMesh = (data["gateMesh"] as? String).orEmpty().contains("done")
+    val renderStatus = (data["renderStatus"] as? String).orEmpty()
+
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = StageTokens.gapMd),
+        verticalArrangement = Arrangement.spacedBy(StageTokens.gapSm),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(StageTokens.gapSm)) {
+            LadderRung("Speech", spoke)
+            LadderRung("Headshot", hasHeadshot)
+            LadderRung("4 views", hasFourViews)
+            LadderRung("Poses", hasPoses)
+            LadderRung("3D model", hasMesh)
+        }
+        when {
+            renderStatus.isNotBlank() -> Text("● $renderStatus", color = StageTokens.accent)
+            !spoke -> Text("▲ Describe them in the box above — speak who they are.", color = StageTokens.textMuted)
+            !hasHeadshot -> Button(onClick = { onProduce("headshot") }) { Text("Render headshot ▶") }
+            else -> Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(StageTokens.gapSm),
+            ) {
+                Text("Looks like them?", color = StageTokens.textPrimary)
+                Button(onClick = { onProduce("headshot") }) { Text("Re-render") }
+                Button(onClick = { onProduce("4views") }) { Text("Next: 4-view turnaround ▶") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LadderRung(label: String, done: Boolean) {
+    val background = if (done) StageTokens.accentMuted else StageTokens.surface
+    val foreground = if (done) StageTokens.textPrimary else StageTokens.textMuted
+    Box(
+        Modifier.clip(RoundedCornerShape(StageTokens.radius)).background(background)
+            .padding(horizontal = StageTokens.gapMd, vertical = StageTokens.gapXs),
+    ) {
+        Text((if (done) "✓ " else "○ ") + label, color = foreground, fontSize = 13.sp)
     }
 }
 
