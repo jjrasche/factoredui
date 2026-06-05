@@ -67,6 +67,14 @@ private val PERSONALITY_FIELDS = listOf(
     "amplitude", "suppression_tendency", "recovery_rate", "emotional_regulation",
 )
 
+private val ATTR_FIELDS = listOf(
+    "apparent_age", "build", "height_impression", "hair", "skin", "eyes",
+    "distinguishing_features", "grooming", "wardrobe", "posture", "baseline_affect",
+    "role", "origin", "motivation", "fear", "relationships", "voice", "name",
+)
+
+private fun emptyAttributes(): Map<String, Any?> = ATTR_FIELDS.associateWith { "" }
+
 private val NEUTRAL_PERSONALITY: Map<String, Float> = mapOf(
     "laban_weight" to 0.0f, "laban_time" to 0.0f, "laban_space" to 0.0f, "laban_flow" to 0.0f,
     "amplitude" to 1.0f, "suppression_tendency" to 0.5f, "recovery_rate" to 0.5f, "emotional_regulation" to 0.5f,
@@ -131,7 +139,9 @@ private suspend fun postCharacterPrompt(
     runCatching {
         val response = Json.parseToJsonElement(body).jsonObject
         response["diff"]?.jsonObject?.forEach { (field, value) ->
-            (value as? JsonPrimitive)?.content?.toFloatOrNull()?.let { applyFloat(field, it) }
+            val content = (value as? JsonPrimitive)?.content ?: return@forEach
+            val numeric = content.toFloatOrNull()
+            if (numeric != null) applyFloat(field, numeric) else applyString("characterAttr.$field", content)
         }
         (response["narration"] as? JsonPrimitive)?.content?.let { applyString("characterNarration", it) }
         (response["render_prompt"] as? JsonPrimitive)?.content?.let { applyString("characterRenderPrompt", it) }
@@ -151,6 +161,10 @@ private suspend fun loadCharacter(id: String, context: RenderContext) {
     }
     runCatching {
         val model = Json.parseToJsonElement(body).jsonObject
+        context.setBinding("characterAttr", emptyAttributes())
+        context.setBinding("characterRenderPrompt", "")
+        context.setBinding("characterNarration", "")
+        context.setBinding("characterQuestion", "")
         (model["display_name"] as? JsonPrimitive)?.content?.let { context.setBinding("characterDisplayName", it) }
         (model["appearance_description"] as? JsonPrimitive)?.content?.let { context.setBinding("characterAppearance", it) }
         val personality = model["personality"] as? JsonObject
@@ -266,6 +280,7 @@ fun StageApp() {
                 "characterNarration" to "",
                 "characterQuestion" to "",
                 "characterRenderPrompt" to "",
+                "characterAttr" to emptyAttributes(),
                 "characterImage" to "",
                 "autoRegenerate" to false,
                 "renderStatus" to "",

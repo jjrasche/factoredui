@@ -117,6 +117,45 @@
             ]
           },
           {
+            "id": "sheet-card",
+            "type": "card",
+            "children": [
+              {
+                "id": "sheet-col",
+                "type": "column",
+                "props": { "padding": 16, "gap": 8 },
+                "children": [
+                  { "id": "sheet-h", "type": "text", "props": { "value": "Character sheet — fills in as you speak", "variant": "subheading" } },
+                  {
+                    "id": "sheet-grid",
+                    "type": "grid",
+                    "props": { "columns": 3, "gap": 8 },
+                    "children": [
+                      { "id": "a-age", "type": "text", "props": { "value": "Age — {characterAttr.apparent_age}", "variant": "caption" } },
+                      { "id": "a-build", "type": "text", "props": { "value": "Build — {characterAttr.build}", "variant": "caption" } },
+                      { "id": "a-height", "type": "text", "props": { "value": "Height — {characterAttr.height_impression}", "variant": "caption" } },
+                      { "id": "a-hair", "type": "text", "props": { "value": "Hair — {characterAttr.hair}", "variant": "caption" } },
+                      { "id": "a-skin", "type": "text", "props": { "value": "Skin — {characterAttr.skin}", "variant": "caption" } },
+                      { "id": "a-eyes", "type": "text", "props": { "value": "Eyes — {characterAttr.eyes}", "variant": "caption" } },
+                      { "id": "a-features", "type": "text", "props": { "value": "Features — {characterAttr.distinguishing_features}", "variant": "caption" } },
+                      { "id": "a-grooming", "type": "text", "props": { "value": "Grooming — {characterAttr.grooming}", "variant": "caption" } },
+                      { "id": "a-wardrobe", "type": "text", "props": { "value": "Wardrobe — {characterAttr.wardrobe}", "variant": "caption" } },
+                      { "id": "a-posture", "type": "text", "props": { "value": "Posture — {characterAttr.posture}", "variant": "caption" } },
+                      { "id": "a-affect", "type": "text", "props": { "value": "Affect — {characterAttr.baseline_affect}", "variant": "caption" } },
+                      { "id": "a-role", "type": "text", "props": { "value": "Role — {characterAttr.role}", "variant": "caption" } },
+                      { "id": "a-origin", "type": "text", "props": { "value": "Origin — {characterAttr.origin}", "variant": "caption" } },
+                      { "id": "a-motivation", "type": "text", "props": { "value": "Motivation — {characterAttr.motivation}", "variant": "caption" } },
+                      { "id": "a-fear", "type": "text", "props": { "value": "Fear — {characterAttr.fear}", "variant": "caption" } },
+                      { "id": "a-relationships", "type": "text", "props": { "value": "Bonds — {characterAttr.relationships}", "variant": "caption" } },
+                      { "id": "a-voice", "type": "text", "props": { "value": "Voice — {characterAttr.voice}", "variant": "caption" } },
+                      { "id": "a-name", "type": "text", "props": { "value": "Name — {characterAttr.name}", "variant": "caption" } }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
             "id": "history-card",
             "type": "card",
             "children": [
