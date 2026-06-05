@@ -70,8 +70,9 @@ private val PERSONALITY_FIELDS = listOf(
 )
 
 private val ATTR_FIELDS = listOf(
-    "apparent_age", "build", "height_impression", "hair", "skin", "eyes",
-    "distinguishing_features", "grooming", "wardrobe", "posture", "baseline_affect",
+    "apparent_age", "build", "height_impression", "physical_condition", "hair", "skin", "eyes",
+    "distinguishing_features", "accessories", "grooming", "wardrobe", "posture", "gait",
+    "demeanor", "baseline_affect", "palette", "era",
     "role", "origin", "motivation", "fear", "relationships", "voice", "name",
 )
 
@@ -310,7 +311,7 @@ fun StageApp() {
                 "characterRenderPrompt" to "",
                 "characterAttr" to emptyAttributes(),
                 "characterImage" to "",
-                "autoRegenerate" to false,
+                "autoRegenerate" to true,
                 "renderStatus" to "",
                 "gate1view" to "1 view",
                 "gate4views" to "4 views",
