@@ -302,6 +302,7 @@ fun StageApp() {
                 "omnibox" to mapOf("text" to ""),
                 "characterId" to "heigl",
                 "createStatus" to "",
+                "referenceUploadStatus" to "",
                 "characterDisplayName" to "heigl",
                 "characterAppearance" to "",
                 "characterEffort" to "—",
@@ -382,6 +383,21 @@ fun StageApp() {
         }
     }
 
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(500)
+            val uploadStatus = readReferenceUploadStatus()
+            if ((context.data["referenceUploadStatus"] as? String) != uploadStatus) {
+                context.setBinding("referenceUploadStatus", uploadStatus)
+            }
+            val uploadedReference = consumePendingReferenceUrl()
+            if (uploadedReference.isNotBlank()) {
+                context.setBinding("characterImage", uploadedReference)
+                context.setBinding("autoRegenerate", false)
+            }
+        }
+    }
+
     LaunchedEffect(active) {
         val url = active.specUrl
         if (url == null) {
@@ -433,9 +449,15 @@ fun StageApp() {
                         },
                     )
                     if (active == StageContext.CHARACTER) {
-                        StageNewCharacter(onCreate = { name ->
-                            if (name.isNotBlank()) scope.launch { createCharacter(name.trim(), context) }
-                        })
+                        StageNewCharacter(
+                            onCreate = { name ->
+                                if (name.isNotBlank()) scope.launch { createCharacter(name.trim(), context) }
+                            },
+                            onUploadReference = {
+                                val targetCharacter = context.data["characterId"] as? String ?: "heigl"
+                                triggerReferenceUpload("$CHARACTER_READ_BASE/$targetCharacter/reference-images?role=identity")
+                            },
+                        )
                     }
                     Box(Modifier.weight(1f).fillMaxWidth().padding(StageTokens.gapMd)) {
                         RenderSpec(specFlow = specFlow, context = context)
@@ -479,7 +501,7 @@ private fun StageNavItem(label: String, selected: Boolean, onClick: () -> Unit) 
 }
 
 @Composable
-private fun StageNewCharacter(onCreate: (String) -> Unit) {
+private fun StageNewCharacter(onCreate: (String) -> Unit, onUploadReference: () -> Unit) {
     var name by remember { mutableStateOf("") }
     Row(
         Modifier.fillMaxWidth().padding(horizontal = StageTokens.gapMd),
@@ -494,6 +516,7 @@ private fun StageNewCharacter(onCreate: (String) -> Unit) {
             modifier = Modifier.weight(1f),
         )
         Button(onClick = { onCreate(name); name = "" }) { Text("Create") }
+        Button(onClick = onUploadReference) { Text("Upload photo") }
     }
 }
 

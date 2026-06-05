@@ -60,6 +60,7 @@
                   { "id": "ap-h", "type": "text", "props": { "value": "Appearance", "variant": "subheading" } },
                   { "id": "render-slot", "type": "image", "props": { "source": "{characterImage}", "aspectRatio": 0.8, "fit": "contain", "cornerRadius": 8, "alt": "generated character render" } },
                   { "id": "render-status", "type": "text", "props": { "value": "{renderStatus}", "variant": "caption" } },
+                  { "id": "ref-status", "type": "text", "props": { "value": "{referenceUploadStatus}", "variant": "caption" } },
                   { "id": "render-hint", "type": "text", "props": { "value": "Identity reference now; speak with auto-regenerate on to refresh the image as you talk.", "variant": "caption" } },
                   { "id": "ap-desc-h", "type": "text", "props": { "value": "Look", "variant": "subheading" } },
                   { "id": "ap-desc", "type": "text", "props": { "value": "{characterAppearance}", "variant": "body" } },

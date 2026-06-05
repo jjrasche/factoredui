@@ -18,6 +18,15 @@ fun pushStageTrainingRow(json: String): Unit =
 fun nowMillis(): Double =
     js("Date.now()")
 
+fun triggerReferenceUpload(uploadUrl: String): Unit =
+    js("(function(){ window.__pendingReferenceUrl=''; window.__referenceUploadStatus='choosing photo…'; var input=document.createElement('input'); input.type='file'; input.accept='image/*'; input.onchange=function(ev){ var file=ev.target.files&&ev.target.files[0]; if(!file){window.__referenceUploadStatus=''; return;} window.__referenceUploadStatus='uploading '+file.name+'…'; var form=new FormData(); form.append('file', file); fetch(uploadUrl,{method:'POST',body:form}).then(function(r){return r.json();}).then(function(d){ if(d&&d.url){window.__pendingReferenceUrl=d.url; window.__referenceUploadStatus='';} else {window.__referenceUploadStatus='upload failed';} }).catch(function(e){window.__referenceUploadStatus='upload error';}); }; input.click(); })()")
+
+fun consumePendingReferenceUrl(): String =
+    js("(function(){ var u=window.__pendingReferenceUrl||''; window.__pendingReferenceUrl=''; return u; })()")
+
+fun readReferenceUploadStatus(): String =
+    js("window.__referenceUploadStatus || ''")
+
 class StageDebugObservability : Observability {
     override fun onRender(nodeId: String) {}
 
