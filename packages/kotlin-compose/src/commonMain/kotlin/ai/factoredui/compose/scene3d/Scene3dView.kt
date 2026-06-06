@@ -120,9 +120,7 @@ fun Scene3dView(
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         if (change.changedToUp()) {
                             if (!moved) {
-                                val jointHit = if (latestPoseMode != PoseMode.MOVE)
-                                    boneUnderCursor(latestWorld, latestMeshes, latestPoses, camera, width, height, change.position, BONE_GRAB_RADIUS_PX)
-                                else null
+                                val jointHit = boneUnderCursor(latestWorld, latestMeshes, latestPoses, camera, width, height, change.position, BONE_GRAB_RADIUS_PX)
                                 if (jointHit != null) {
                                     onSelectJoint(jointHit.first, jointHit.second)
                                 } else {
