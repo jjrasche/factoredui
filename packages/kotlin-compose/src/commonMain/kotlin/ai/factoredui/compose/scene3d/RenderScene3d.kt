@@ -330,6 +330,24 @@ fun RenderScene3d(
         }
     }
 
+    // Ask the substrate to settle the body's POSE — server reaction_sim streams the damped
+    // trajectory back as pose_refs (SSE re-skins it). Root fall is the client's; this is the limbs.
+    fun settle(entityId: String, impact: Float, toRest: Boolean) {
+        val url = props.actionUrl ?: return
+        val body = buildJsonObject {
+            put("action", "settle")
+            put("params", anyToJson(mapOf("entity_id" to entityId, "impact" to impact, "to_rest" to toRest)))
+        }.toString()
+        scope.launch {
+            runCatching {
+                httpClient.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(body)
+                }
+            }
+        }
+    }
+
     fun onMoveEntity(entityId: String, position: List<Float>) {
         movePrevPos?.let { prev ->
             if (prev.size >= 3 && position.size >= 3) {
@@ -358,6 +376,8 @@ fun RenderScene3d(
             ?: world.entities.firstOrNull { it.id == entityId }?.position ?: return
         if (start.size < 3) return
         val launch = releaseVelocity
+        val speed = sqrt(launch.first * launch.first + launch.second * launch.second + launch.third * launch.third)
+        settle(entityId, (0.5f + speed * 0.15f).coerceIn(0.5f, 2.5f), false)
         moveSettleJob?.cancel()
         moveSettleJob = scope.launch {
             var x = start[0]; var y = start[1]; var z = start[2]
@@ -518,6 +538,7 @@ fun RenderScene3d(
                 Button(onClick = { snapToPlausible(entityId) }) { Text("Snap") }
             }
             effectiveWorld.entities.firstOrNull { it.selected && meshes[it.id]?.rig != null }?.id?.let { entityId ->
+                Button(onClick = { settle(entityId, 1.2f, true) }) { Text("Settle") }
                 Button(onClick = { sitInChair(entityId) }) { Text("Sit") }
                 Button(onClick = { renderPose(entityId) }) { Text("Render") }
             }
