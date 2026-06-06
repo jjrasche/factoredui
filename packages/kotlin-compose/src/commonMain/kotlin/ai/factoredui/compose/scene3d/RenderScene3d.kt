@@ -72,6 +72,9 @@ import kotlin.math.sqrt
 private const val CAMERA_SETTLE_MS = 150L
 private const val SMPLH_POSE_LEN = 156
 private const val SMPLH_BODY_JOINTS = 22
+private const val GRAVITY = -9.8f
+private const val GROUND_FRICTION = 0.7f
+private const val MOVE_FRAME_DT = 1f / 60f
 
 @Composable
 fun RenderScene3d(
@@ -102,6 +105,8 @@ fun RenderScene3d(
     var clientPoses by remember { mutableStateOf<Map<String, Array<Matrix4>>>(emptyMap()) }
     var selectedJoint by remember { mutableStateOf<Pair<String, Int>?>(null) }
     var poseMode by remember { mutableStateOf(PoseMode.MOVE) }
+    var movePrevPos by remember { mutableStateOf<List<Float>?>(null) }
+    var releaseVelocity by remember { mutableStateOf(Triple(0f, 0f, 0f)) }
     var promptText by remember { mutableStateOf("") }
     var promptStatus by remember { mutableStateOf("") }
     var promptTotalMs by remember { mutableStateOf(0f) }
@@ -326,6 +331,16 @@ fun RenderScene3d(
     }
 
     fun onMoveEntity(entityId: String, position: List<Float>) {
+        movePrevPos?.let { prev ->
+            if (prev.size >= 3 && position.size >= 3) {
+                releaseVelocity = Triple(
+                    (position[0] - prev[0]) / MOVE_FRAME_DT,
+                    (position[1] - prev[1]) / MOVE_FRAME_DT,
+                    (position[2] - prev[2]) / MOVE_FRAME_DT,
+                )
+            }
+        }
+        movePrevPos = position
         localPositions = localPositions + (entityId to position)
         moveSettleJob?.cancel()
         moveSettleJob = scope.launch {
@@ -334,16 +349,37 @@ fun RenderScene3d(
         }
     }
 
-    // Release of a picked-up body: drop it back to the floor (y=0) at its lifted x,z — the
-    // whole-object equilibrium. The richer sim settle (balance/landing) layers on here later.
-    fun settleToGround(entityId: String) {
-        val lifted = localPositions[entityId]
+    // Release of a picked-up body: a real ballistic drop, not a teleport. Carry the throw
+    // velocity from the drag, integrate under gravity until the floor, damp with ground
+    // friction to rest. Whole-body free-fall is the substrate's simplest release-to-equilibrium;
+    // the limb/balance reaction during the fall is the server reaction_sim layer that lands next.
+    fun dropAndSettle(entityId: String) {
+        val start = localPositions[entityId]
             ?: world.entities.firstOrNull { it.id == entityId }?.position ?: return
-        if (lifted.size < 3) return
-        val grounded = listOf(lifted[0], 0f, lifted[2])
+        if (start.size < 3) return
+        val launch = releaseVelocity
         moveSettleJob?.cancel()
-        localPositions = localPositions + (entityId to grounded)
-        emitIntent("move-entity", mapOf("entity_id" to entityId, "position" to grounded))
+        moveSettleJob = scope.launch {
+            var x = start[0]; var y = start[1]; var z = start[2]
+            var vx = launch.first.coerceIn(-6f, 6f)
+            var vy = launch.second.coerceIn(-6f, 6f)
+            var vz = launch.third.coerceIn(-6f, 6f)
+            while (true) {
+                vy += GRAVITY * MOVE_FRAME_DT
+                x += vx * MOVE_FRAME_DT; y += vy * MOVE_FRAME_DT; z += vz * MOVE_FRAME_DT
+                if (y <= 0f) {
+                    y = 0f; vy = 0f; vx *= GROUND_FRICTION; vz *= GROUND_FRICTION
+                }
+                localPositions = localPositions + (entityId to listOf(x, y, z))
+                delay(16)
+                if (y <= 0f && abs(vx) < 0.1f && abs(vz) < 0.1f) break
+            }
+            val grounded = listOf(x, 0f, z)
+            localPositions = localPositions + (entityId to grounded)
+            emitIntent("move-entity", mapOf("entity_id" to entityId, "position" to grounded))
+            movePrevPos = null
+            releaseVelocity = Triple(0f, 0f, 0f)
+        }
     }
 
     // Prompt loop: sentence -> /director/prompt -> action dispatch -> SSE re-skin; we show narration.
@@ -435,7 +471,7 @@ fun RenderScene3d(
                     mapOf("entity_id" to entityId, "joint" to (selectedJoint?.second ?: -1)),
                 )
             },
-            onPickReleased = { entityId -> settleToGround(entityId) },
+            onPickReleased = { entityId -> dropAndSettle(entityId) },
         )
         if (previewMode) {
             Box(
