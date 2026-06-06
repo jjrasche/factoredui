@@ -332,11 +332,30 @@ fun RenderScene3d(
 
     // Ask the substrate to settle the body's POSE — server reaction_sim streams the damped
     // trajectory back as pose_refs (SSE re-skins it). Root fall is the client's; this is the limbs.
-    fun settle(entityId: String, impact: Float, toRest: Boolean) {
+    fun settle(entityId: String, impact: Float, toRest: Boolean, damping: Float = 4.0f) {
         val url = props.actionUrl ?: return
         val body = buildJsonObject {
             put("action", "settle")
-            put("params", anyToJson(mapOf("entity_id" to entityId, "impact" to impact, "to_rest" to toRest)))
+            put("params", anyToJson(mapOf("entity_id" to entityId, "impact" to impact, "to_rest" to toRest, "damping" to damping)))
+        }.toString()
+        scope.launch {
+            runCatching {
+                httpClient.post(url) {
+                    contentType(ContentType.Application.Json)
+                    setBody(body)
+                }
+            }
+        }
+    }
+
+    // Server-driven drop: the substrate streams the fall (root) + landing buckle (pose). Clear the
+    // optimistic overlay first so the streamed world positions are what shows.
+    fun dropFromHeight(entityId: String, height: Float) {
+        val url = props.actionUrl ?: return
+        localPositions = localPositions - entityId
+        val body = buildJsonObject {
+            put("action", "drop")
+            put("params", anyToJson(mapOf("entity_id" to entityId, "height" to height)))
         }.toString()
         scope.launch {
             runCatching {
@@ -376,23 +395,28 @@ fun RenderScene3d(
             ?: world.entities.firstOrNull { it.id == entityId }?.position ?: return
         if (start.size < 3) return
         val launch = releaseVelocity
-        val speed = sqrt(launch.first * launch.first + launch.second * launch.second + launch.third * launch.third)
-        settle(entityId, (0.5f + speed * 0.15f).coerceIn(0.5f, 2.5f), false)
         moveSettleJob?.cancel()
         moveSettleJob = scope.launch {
             var x = start[0]; var y = start[1]; var z = start[2]
             var vx = launch.first.coerceIn(-6f, 6f)
             var vy = launch.second.coerceIn(-6f, 6f)
             var vz = launch.third.coerceIn(-6f, 6f)
+            var landed = false
             while (true) {
                 vy += GRAVITY * MOVE_FRAME_DT
                 x += vx * MOVE_FRAME_DT; y += vy * MOVE_FRAME_DT; z += vz * MOVE_FRAME_DT
                 if (y <= 0f) {
+                    if (!landed) {
+                        landed = true
+                        // Fire the body's landing reaction the instant the feet hit: knees buckle to
+                        // absorb the impact (scaled by fall speed), low damping = a real give-and-recover.
+                        settle(entityId, (abs(vy) * 0.35f).coerceIn(1.0f, 3.0f), true, 2.5f)
+                    }
                     y = 0f; vy = 0f; vx *= GROUND_FRICTION; vz *= GROUND_FRICTION
                 }
                 localPositions = localPositions + (entityId to listOf(x, y, z))
                 delay(16)
-                if (y <= 0f && abs(vx) < 0.1f && abs(vz) < 0.1f) break
+                if (landed && abs(vx) < 0.1f && abs(vz) < 0.1f) break
             }
             val grounded = listOf(x, 0f, z)
             localPositions = localPositions + (entityId to grounded)
@@ -539,6 +563,7 @@ fun RenderScene3d(
             }
             effectiveWorld.entities.firstOrNull { it.selected && meshes[it.id]?.rig != null }?.id?.let { entityId ->
                 Button(onClick = { settle(entityId, 1.2f, true) }) { Text("Settle") }
+                Button(onClick = { dropFromHeight(entityId, 1.6f) }) { Text("Drop") }
                 Button(onClick = { sitInChair(entityId) }) { Text("Sit") }
                 Button(onClick = { renderPose(entityId) }) { Text("Render") }
             }
