@@ -65,6 +65,7 @@ enum class StageContext(val label: String, val specUrl: String?, val promptUrl: 
     STORY("Story", "specs/story-spine.json", null),
     CHARACTER("Character", "specs/character.json", "http://127.0.0.1:8770/character/prompt"),
     COMPOSER("Composer", "specs/composer.json", "http://127.0.0.1:8765/director/prompt"),
+    AGENTS("Agents", "specs/agents.json", null),
     REVIEW("Review", null, null),
 }
 
@@ -333,6 +334,8 @@ fun StageApp() {
                 "viewLeft" to "",
                 "autoRegenerate" to false,
                 "renderStatus" to "",
+                "agentOutputStream" to "No brother selected — pick one to watch their outputs land.",
+                "agentDirective" to "",
                 "gate1view" to "1 view",
                 "gate4views" to "4 views",
                 "gatePoses" to "poses",
