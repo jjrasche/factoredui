@@ -200,6 +200,11 @@ private suspend fun loadCharacter(id: String, context: RenderContext) {
         context.setBinding("characterQuestion", "")
         (model["display_name"] as? JsonPrimitive)?.content?.let { context.setBinding("characterDisplayName", it) }
         (model["appearance_description"] as? JsonPrimitive)?.content?.let { context.setBinding("characterAppearance", it) }
+        (model["appearance"] as? JsonObject)?.forEach { (field, value) ->
+            (value as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }?.let { context.setBinding("characterAttr.$field", it) }
+        }
+        (model["render_prompt"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+            ?.let { context.setBinding("characterRenderPrompt", it) }
         val personality = model["personality"] as? JsonObject
         val floats = if (personality == null) {
             NEUTRAL_PERSONALITY

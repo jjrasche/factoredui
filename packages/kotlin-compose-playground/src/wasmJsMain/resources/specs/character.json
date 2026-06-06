@@ -3,12 +3,13 @@
   "renderer_min": 1,
   "root": {
     "id": "character",
-    "type": "scrollview",
+    "type": "column",
+    "props": { "padding": 8, "gap": 10 },
     "children": [
       {
-        "id": "char-col",
-        "type": "column",
-        "props": { "padding": 8, "gap": 16 },
+        "id": "head-row",
+        "type": "row",
+        "props": { "gap": 12 },
         "children": [
           { "id": "char-title", "type": "text", "props": { "value": "Character — {characterDisplayName}", "variant": "heading" } },
           {
@@ -28,170 +29,123 @@
                 { "value": "thea", "label": "Thea" }
               ]
             }
-          },
-          { "id": "char-sub", "type": "text", "props": { "value": "Speak who they are — describe them out loud, pause, and watch them take shape. Confirm each gate to spend on the next.", "variant": "caption" } },
-          { "id": "create-status", "type": "text", "props": { "value": "{createStatus}", "variant": "caption" } },
+          }
+        ]
+      },
+      { "id": "live-q", "type": "text", "props": { "value": "{characterQuestion}", "variant": "subheading" } },
+      { "id": "live-narr", "type": "text", "props": { "value": "{characterNarration}", "variant": "caption" } },
+      { "id": "create-status", "type": "text", "props": { "value": "{createStatus}", "variant": "caption" } },
+      {
+        "id": "dash",
+        "type": "row",
+        "props": { "gap": 16 },
+        "children": [
           {
-            "id": "hero",
-            "type": "row",
-            "props": { "gap": 20 },
+            "id": "dash-identity",
+            "type": "column",
+            "props": { "gap": 6 },
             "children": [
+              { "id": "id-img", "type": "image", "props": { "source": "{characterImage}", "aspectRatio": 0.8, "maxHeight": 300, "fit": "contain", "cornerRadius": 8, "alt": "character headshot" } },
+              { "id": "id-status", "type": "text", "props": { "value": "{renderStatus}", "variant": "caption" } },
+              { "id": "id-refstatus", "type": "text", "props": { "value": "{referenceUploadStatus}", "variant": "caption" } },
+              { "id": "id-look", "type": "text", "props": { "value": "{characterRenderPrompt}", "variant": "caption" } }
+            ]
+          },
+          {
+            "id": "dash-look",
+            "type": "column",
+            "props": { "gap": 4, "flex": 1 },
+            "children": [
+              { "id": "look-h", "type": "text", "props": { "value": "Look", "variant": "subheading" } },
+              { "id": "look-desc", "type": "text", "props": { "value": "{characterAppearance}", "variant": "caption" } },
               {
-                "id": "hero-col",
-                "type": "column",
-                "props": { "gap": 6 },
+                "id": "look-grid",
+                "type": "grid",
+                "props": { "columns": 2, "gap": 4 },
                 "children": [
-                  { "id": "render-slot", "type": "image", "props": { "source": "{characterImage}", "aspectRatio": 0.8, "maxHeight": 460, "fit": "contain", "cornerRadius": 8, "alt": "character headshot" } },
-                  { "id": "render-status", "type": "text", "props": { "value": "{renderStatus}", "variant": "caption" } },
-                  { "id": "ref-status", "type": "text", "props": { "value": "{referenceUploadStatus}", "variant": "caption" } }
-                ]
-              },
-              {
-                "id": "hero-look",
-                "type": "column",
-                "props": { "gap": 6, "flex": 1 },
-                "children": [
-                  { "id": "ap-desc-h", "type": "text", "props": { "value": "Look", "variant": "subheading" } },
-                  { "id": "ap-desc", "type": "text", "props": { "value": "{characterAppearance}", "variant": "body" } }
+                  { "id": "la-age", "type": "text", "props": { "value": "Age · {characterAttr.apparent_age}", "variant": "caption" } },
+                  { "id": "la-build", "type": "text", "props": { "value": "Build · {characterAttr.build}", "variant": "caption" } },
+                  { "id": "la-height", "type": "text", "props": { "value": "Height · {characterAttr.height_impression}", "variant": "caption" } },
+                  { "id": "la-cond", "type": "text", "props": { "value": "Condition · {characterAttr.physical_condition}", "variant": "caption" } },
+                  { "id": "la-hair", "type": "text", "props": { "value": "Hair · {characterAttr.hair}", "variant": "caption" } },
+                  { "id": "la-skin", "type": "text", "props": { "value": "Skin · {characterAttr.skin}", "variant": "caption" } },
+                  { "id": "la-eyes", "type": "text", "props": { "value": "Eyes · {characterAttr.eyes}", "variant": "caption" } },
+                  { "id": "la-feat", "type": "text", "props": { "value": "Features · {characterAttr.distinguishing_features}", "variant": "caption" } },
+                  { "id": "la-acc", "type": "text", "props": { "value": "Accessories · {characterAttr.accessories}", "variant": "caption" } },
+                  { "id": "la-ward", "type": "text", "props": { "value": "Wardrobe · {characterAttr.wardrobe}", "variant": "caption" } },
+                  { "id": "la-groom", "type": "text", "props": { "value": "Grooming · {characterAttr.grooming}", "variant": "caption" } },
+                  { "id": "la-posture", "type": "text", "props": { "value": "Posture · {characterAttr.posture}", "variant": "caption" } },
+                  { "id": "la-gait", "type": "text", "props": { "value": "Gait · {characterAttr.gait}", "variant": "caption" } },
+                  { "id": "la-demeanor", "type": "text", "props": { "value": "Demeanor · {characterAttr.demeanor}", "variant": "caption" } },
+                  { "id": "la-affect", "type": "text", "props": { "value": "Affect · {characterAttr.baseline_affect}", "variant": "caption" } },
+                  { "id": "la-palette", "type": "text", "props": { "value": "Palette · {characterAttr.palette}", "variant": "caption" } },
+                  { "id": "la-era", "type": "text", "props": { "value": "Era · {characterAttr.era}", "variant": "caption" } }
                 ]
               }
             ]
           },
           {
-            "id": "live-card",
+            "id": "dash-sig",
             "type": "column",
-            "props": { "padding": 4, "gap": 6 },
+            "props": { "gap": 2, "flex": 1 },
             "children": [
-              { "id": "live-hint", "type": "text", "props": { "value": "Speak to shape them — appearance, temperament, how they move. A question may surface here; you're never obliged to answer it.", "variant": "caption" } },
-              { "id": "live-q", "type": "text", "props": { "value": "{characterQuestion}", "variant": "subheading" } },
-              { "id": "live-narr", "type": "text", "props": { "value": "{characterNarration}", "variant": "body" } },
-              { "id": "live-look", "type": "text", "props": { "value": "{characterRenderPrompt}", "variant": "caption" } }
-            ]
-          },
-          {
-            "id": "panes",
-            "type": "row",
-            "props": { "gap": 24 },
-            "children": [
+              { "id": "sig-h", "type": "text", "props": { "value": "Signature · effort: {characterEffort}", "variant": "subheading" } },
               {
-                "id": "pane-appearance",
-                "type": "column",
-                "props": { "gap": 14, "flex": 1 },
+                "id": "sig-grid",
+                "type": "grid",
+                "props": { "columns": 2, "gap": 6 },
                 "children": [
-                  { "id": "ap-h", "type": "text", "props": { "value": "Views & gates", "variant": "subheading" } },
-                  { "id": "regen-toggle", "type": "toggle", "props": { "label": "Auto-regenerate the image as I speak", "value": "{autoRegenerate}" } },
                   {
-                    "id": "ladder",
-                    "type": "row",
-                    "props": { "gap": 8 },
-                    "children": [
-                      { "id": "g-schema", "type": "chip", "props": { "label": "schema · locked" } },
-                      { "id": "g-1view", "type": "chip", "props": { "label": "{gate1view}" } },
-                      { "id": "g-4views", "type": "chip", "props": { "label": "{gate4views}" } },
-                      { "id": "g-poses", "type": "chip", "props": { "label": "{gatePoses}" } },
-                      { "id": "g-mesh", "type": "chip", "props": { "label": "{gateMesh}" } }
+                    "id": "sg-weight", "type": "column", "props": { "gap": 0 }, "children": [
+                      { "id": "sg-weight-l", "type": "text", "props": { "value": "weight (light↔strong)", "variant": "caption" } },
+                      { "id": "p-weight", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_weight}" } }
                     ]
                   },
                   {
-                    "id": "view-grid",
-                    "type": "grid",
-                    "props": { "columns": 2, "gap": 12 },
-                    "children": [
-                      { "id": "v-front", "type": "card", "children": [ { "id": "v-front-t", "type": "text", "props": { "value": "front", "variant": "caption" } } ] },
-                      { "id": "v-right", "type": "card", "children": [ { "id": "v-right-t", "type": "text", "props": { "value": "right", "variant": "caption" } } ] },
-                      { "id": "v-back", "type": "card", "children": [ { "id": "v-back-t", "type": "text", "props": { "value": "back", "variant": "caption" } } ] },
-                      { "id": "v-left", "type": "card", "children": [ { "id": "v-left-t", "type": "text", "props": { "value": "left", "variant": "caption" } } ] }
+                    "id": "sg-time", "type": "column", "props": { "gap": 0 }, "children": [
+                      { "id": "sg-time-l", "type": "text", "props": { "value": "time (sustained↔sudden)", "variant": "caption" } },
+                      { "id": "p-time", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_time}" } }
+                    ]
+                  },
+                  {
+                    "id": "sg-space", "type": "column", "props": { "gap": 0 }, "children": [
+                      { "id": "sg-space-l", "type": "text", "props": { "value": "space (indirect↔direct)", "variant": "caption" } },
+                      { "id": "p-space", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_space}" } }
+                    ]
+                  },
+                  {
+                    "id": "sg-flow", "type": "column", "props": { "gap": 0 }, "children": [
+                      { "id": "sg-flow-l", "type": "text", "props": { "value": "flow (free↔bound)", "variant": "caption" } },
+                      { "id": "p-flow", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_flow}" } }
+                    ]
+                  },
+                  {
+                    "id": "sg-amp", "type": "column", "props": { "gap": 0 }, "children": [
+                      { "id": "sg-amp-l", "type": "text", "props": { "value": "amplitude", "variant": "caption" } },
+                      { "id": "p-amp", "type": "slider", "props": { "min": 0.4, "max": 2, "step": 0.05, "value": "{character.personality.amplitude}" } }
+                    ]
+                  },
+                  {
+                    "id": "sg-supp", "type": "column", "props": { "gap": 0 }, "children": [
+                      { "id": "sg-supp-l", "type": "text", "props": { "value": "suppression", "variant": "caption" } },
+                      { "id": "p-supp", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.suppression_tendency}" } }
+                    ]
+                  },
+                  {
+                    "id": "sg-rec", "type": "column", "props": { "gap": 0 }, "children": [
+                      { "id": "sg-rec-l", "type": "text", "props": { "value": "recovery", "variant": "caption" } },
+                      { "id": "p-rec", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.recovery_rate}" } }
+                    ]
+                  },
+                  {
+                    "id": "sg-reg", "type": "column", "props": { "gap": 0 }, "children": [
+                      { "id": "sg-reg-l", "type": "text", "props": { "value": "regulation", "variant": "caption" } },
+                      { "id": "p-reg", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.emotional_regulation}" } }
                     ]
                   }
                 ]
               },
-              {
-                "id": "pane-audition",
-                "type": "column",
-                "props": { "gap": 12, "flex": 1 },
-                "children": [
-                  { "id": "aud-h", "type": "text", "props": { "value": "Audition — tune the personality, watch it move", "variant": "subheading" } },
-                  { "id": "aud-note", "type": "text", "props": { "value": "Bones-react playback lands when the audition solver ships; tune the signature here now.", "variant": "caption" } },
-                  { "id": "effort-label", "type": "text", "props": { "value": "nearest effort: {characterEffort}", "variant": "subheading" } },
-                  { "id": "p-weight-l", "type": "text", "props": { "value": "Laban weight (light ↔ strong)", "variant": "caption" } },
-                  { "id": "p-weight", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_weight}" } },
-                  { "id": "p-time-l", "type": "text", "props": { "value": "Laban time (sustained ↔ sudden)", "variant": "caption" } },
-                  { "id": "p-time", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_time}" } },
-                  { "id": "p-space-l", "type": "text", "props": { "value": "Laban space (indirect ↔ direct)", "variant": "caption" } },
-                  { "id": "p-space", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_space}" } },
-                  { "id": "p-flow-l", "type": "text", "props": { "value": "Laban flow (free ↔ bound)", "variant": "caption" } },
-                  { "id": "p-flow", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_flow}" } },
-                  { "id": "p-amp-l", "type": "text", "props": { "value": "Amplitude (subtle ↔ large)", "variant": "caption" } },
-                  { "id": "p-amp", "type": "slider", "props": { "min": 0.4, "max": 2, "step": 0.05, "value": "{character.personality.amplitude}" } },
-                  { "id": "p-supp-l", "type": "text", "props": { "value": "Suppression (expressive ↔ held)", "variant": "caption" } },
-                  { "id": "p-supp", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.suppression_tendency}" } },
-                  { "id": "p-rec-l", "type": "text", "props": { "value": "Recovery rate (slow ↔ quick)", "variant": "caption" } },
-                  { "id": "p-rec", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.recovery_rate}" } },
-                  { "id": "p-reg-l", "type": "text", "props": { "value": "Emotional regulation (volatile ↔ steady)", "variant": "caption" } },
-                  { "id": "p-reg", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.emotional_regulation}" } }
-                ]
-              }
-            ]
-          },
-          {
-            "id": "sheet-card",
-            "type": "card",
-            "children": [
-              {
-                "id": "sheet-col",
-                "type": "column",
-                "props": { "padding": 16, "gap": 8 },
-                "children": [
-                  { "id": "sheet-h", "type": "text", "props": { "value": "Character sheet — fills in as you speak", "variant": "subheading" } },
-                  {
-                    "id": "sheet-grid",
-                    "type": "grid",
-                    "props": { "columns": 3, "gap": 8 },
-                    "children": [
-                      { "id": "a-age", "type": "text", "props": { "value": "Age — {characterAttr.apparent_age}", "variant": "caption" } },
-                      { "id": "a-build", "type": "text", "props": { "value": "Build — {characterAttr.build}", "variant": "caption" } },
-                      { "id": "a-height", "type": "text", "props": { "value": "Height — {characterAttr.height_impression}", "variant": "caption" } },
-                      { "id": "a-condition", "type": "text", "props": { "value": "Condition — {characterAttr.physical_condition}", "variant": "caption" } },
-                      { "id": "a-hair", "type": "text", "props": { "value": "Hair — {characterAttr.hair}", "variant": "caption" } },
-                      { "id": "a-skin", "type": "text", "props": { "value": "Skin — {characterAttr.skin}", "variant": "caption" } },
-                      { "id": "a-eyes", "type": "text", "props": { "value": "Eyes — {characterAttr.eyes}", "variant": "caption" } },
-                      { "id": "a-features", "type": "text", "props": { "value": "Features — {characterAttr.distinguishing_features}", "variant": "caption" } },
-                      { "id": "a-accessories", "type": "text", "props": { "value": "Accessories — {characterAttr.accessories}", "variant": "caption" } },
-                      { "id": "a-grooming", "type": "text", "props": { "value": "Grooming — {characterAttr.grooming}", "variant": "caption" } },
-                      { "id": "a-wardrobe", "type": "text", "props": { "value": "Wardrobe — {characterAttr.wardrobe}", "variant": "caption" } },
-                      { "id": "a-posture", "type": "text", "props": { "value": "Posture — {characterAttr.posture}", "variant": "caption" } },
-                      { "id": "a-gait", "type": "text", "props": { "value": "Gait — {characterAttr.gait}", "variant": "caption" } },
-                      { "id": "a-demeanor", "type": "text", "props": { "value": "Demeanor — {characterAttr.demeanor}", "variant": "caption" } },
-                      { "id": "a-affect", "type": "text", "props": { "value": "Affect — {characterAttr.baseline_affect}", "variant": "caption" } },
-                      { "id": "a-palette", "type": "text", "props": { "value": "Palette — {characterAttr.palette}", "variant": "caption" } },
-                      { "id": "a-era", "type": "text", "props": { "value": "Era — {characterAttr.era}", "variant": "caption" } },
-                      { "id": "a-role", "type": "text", "props": { "value": "Role — {characterAttr.role}", "variant": "caption" } },
-                      { "id": "a-origin", "type": "text", "props": { "value": "Origin — {characterAttr.origin}", "variant": "caption" } },
-                      { "id": "a-motivation", "type": "text", "props": { "value": "Motivation — {characterAttr.motivation}", "variant": "caption" } },
-                      { "id": "a-fear", "type": "text", "props": { "value": "Fear — {characterAttr.fear}", "variant": "caption" } },
-                      { "id": "a-relationships", "type": "text", "props": { "value": "Bonds — {characterAttr.relationships}", "variant": "caption" } },
-                      { "id": "a-voice", "type": "text", "props": { "value": "Voice — {characterAttr.voice}", "variant": "caption" } },
-                      { "id": "a-name", "type": "text", "props": { "value": "Name — {characterAttr.name}", "variant": "caption" } }
-                    ]
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "id": "history-card",
-            "type": "card",
-            "children": [
-              {
-                "id": "history-col",
-                "type": "column",
-                "props": { "padding": 16, "gap": 8 },
-                "children": [
-                  { "id": "history-h", "type": "text", "props": { "value": "History & notes", "variant": "subheading" } },
-                  { "id": "history-sub", "type": "text", "props": { "value": "What you've decided about this character — the running bible. Adjustments you make to the signature are logged as training rows; they will surface here.", "variant": "caption" } },
-                  { "id": "history-notes", "type": "textinput", "props": { "value": "{characterNotes}", "placeholder": "Notes & history for this character…", "multiline": true } }
-                ]
-              }
+              { "id": "regen-toggle", "type": "toggle", "props": { "label": "Auto-regenerate image as I speak", "value": "{autoRegenerate}" } }
             ]
           }
         ]
