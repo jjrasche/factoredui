@@ -516,7 +516,7 @@ fun RenderScene3d(
             }
         }
         Row(
-            modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 60.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             PoseMode.entries.forEach { mode ->
