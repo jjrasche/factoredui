@@ -104,6 +104,22 @@ class Scene3dDesktopRenderTest {
         assertTrue(after.y > before.y + 20f, "dragging the wrist down should move the joint down on screen")
     }
 
+    @Test
+    fun romClampLimitsJointRotation() {
+        val mesh = json
+            .decodeFromString(Scene3dMesh.serializer(), readMeshResource("heigl_rigged.json"))
+            .prepare()
+        val rig = requireNotNull(mesh.rig)
+        val pose = rig.identityPose()
+        // Spine1 (joint 3) ROM is small (~0.5 rad); a 1.5 rad twist must clamp down to it.
+        pose[3] = Matrix4.rotate(Vec3(0f, 1f, 0f), 1.5f)
+        val clamped = clampToRom(pose, 3)
+        val m = clamped[3].m
+        val angle = kotlin.math.acos(((m[0] + m[5] + m[10] - 1f) * 0.5f).coerceIn(-1f, 1f))
+        println("[scene3d] spine rotation after ROM clamp: $angle (limit ~0.5)")
+        assertTrue(angle <= 0.55f, "spine rotation should clamp to ROM (~0.5 rad), got $angle")
+    }
+
     private fun androidx.compose.ui.test.ComposeUiTest.renderToPng(
         world: Scene3dWorldState,
         meshes: Map<String, PreparedMesh>,

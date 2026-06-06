@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -100,6 +101,7 @@ fun RenderScene3d(
     var moveSettleJob by remember { mutableStateOf<Job?>(null) }
     var clientPoses by remember { mutableStateOf<Map<String, Array<Matrix4>>>(emptyMap()) }
     var selectedJoint by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    var poseMode by remember { mutableStateOf(PoseMode.MOVE) }
     var promptText by remember { mutableStateOf("") }
     var promptStatus by remember { mutableStateOf("") }
     var promptTotalMs by remember { mutableStateOf(0f) }
@@ -332,6 +334,18 @@ fun RenderScene3d(
         }
     }
 
+    // Release of a picked-up body: drop it back to the floor (y=0) at its lifted x,z — the
+    // whole-object equilibrium. The richer sim settle (balance/landing) layers on here later.
+    fun settleToGround(entityId: String) {
+        val lifted = localPositions[entityId]
+            ?: world.entities.firstOrNull { it.id == entityId }?.position ?: return
+        if (lifted.size < 3) return
+        val grounded = listOf(lifted[0], 0f, lifted[2])
+        moveSettleJob?.cancel()
+        localPositions = localPositions + (entityId to grounded)
+        emitIntent("move-entity", mapOf("entity_id" to entityId, "position" to grounded))
+    }
+
     // Prompt loop: sentence -> /director/prompt -> action dispatch -> SSE re-skin; we show narration.
     fun submitPrompt() {
         val actionUrl = props.actionUrl ?: return
@@ -405,6 +419,7 @@ fun RenderScene3d(
             poses = clientPoses,
             selectedJoint = selectedJoint,
             cameraVersion = cameraVersion,
+            poseMode = poseMode,
             modifier = Modifier.fillMaxSize(),
             onSelectEntity = { entityId ->
                 selectedJoint = null
@@ -420,6 +435,7 @@ fun RenderScene3d(
                     mapOf("entity_id" to entityId, "joint" to (selectedJoint?.second ?: -1)),
                 )
             },
+            onPickReleased = { entityId -> settleToGround(entityId) },
         )
         if (previewMode) {
             Box(
@@ -440,6 +456,18 @@ fun RenderScene3d(
                         color = Color(0xFFD8D8E0),
                         modifier = Modifier.padding(24.dp),
                     )
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            PoseMode.entries.forEach { mode ->
+                if (mode == poseMode) {
+                    Button(onClick = { poseMode = mode }) { Text(mode.label) }
+                } else {
+                    OutlinedButton(onClick = { poseMode = mode }) { Text(mode.label) }
                 }
             }
         }

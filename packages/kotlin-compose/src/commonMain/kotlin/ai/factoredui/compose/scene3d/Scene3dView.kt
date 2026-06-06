@@ -44,11 +44,10 @@ private const val REACH_IK_MAX_JOINT = 1.6f
 private val SPINE_JOINTS = setOf(3, 6, 9)
 
 /**
- * scene3d software rasterizer. Renders a flat-shaded mesh (or a box placeholder
- * while a mesh loads) per entity on a ground grid under an orbit camera. Tap to
- * select; drag a selected entity to move it on the ground plane; drag elsewhere
- * to orbit; scroll to zoom. Continuous gestures report via the callbacks; the
- * host debounces them into settled intents.
+ * scene3d software rasterizer: flat-shaded mesh per entity on a ground grid under
+ * an orbit camera. Tap to select; drag empty space to orbit; scroll to zoom.
+ * [poseMode] sets what a drag-on-character does — MOVE lifts the whole body
+ * (release settles it), POSE reaches a limb, ROTATE turns one joint within ROM.
  */
 @Composable
 fun Scene3dView(
@@ -58,6 +57,7 @@ fun Scene3dView(
     poses: Map<String, Array<Matrix4>> = emptyMap(),
     selectedJoint: Pair<String, Int>? = null,
     cameraVersion: Int = 0,
+    poseMode: PoseMode = PoseMode.MOVE,
     modifier: Modifier = Modifier,
     onSelectEntity: (String) -> Unit = {},
     onSelectJoint: (String, Int) -> Unit = { _, _ -> },
@@ -65,6 +65,7 @@ fun Scene3dView(
     onMoveEntity: (String, List<Float>) -> Unit = { _, _ -> },
     onPoseChange: (String, Array<Matrix4>) -> Unit = { _, _ -> },
     onJointReleased: (String) -> Unit = {},
+    onPickReleased: (String) -> Unit = {},
 ) {
     var cameraGeneration by remember { mutableStateOf(0) }
     val background = parseHexColor(world.background) ?: Color(0xFF2B2B30)
@@ -72,6 +73,7 @@ fun Scene3dView(
     val latestMeshes by rememberUpdatedState(meshes)
     val latestPoses by rememberUpdatedState(poses)
     val latestSelectedJoint by rememberUpdatedState(selectedJoint)
+    val latestPoseMode by rememberUpdatedState(poseMode)
 
     Box(
         modifier = modifier
@@ -86,14 +88,29 @@ fun Scene3dView(
                     var dragEntity: String? = null
                     var dragJoint = -1
                     var dragBasePose: Array<Matrix4>? = null
-                    val grab = boneUnderCursor(latestWorld, latestMeshes, latestPoses, camera, width, height, start, BONE_GRAB_RADIUS_PX)
-                    if (grab != null) {
-                        mode = DragKind.JOINT; dragEntity = grab.first; dragJoint = grab.second
-                        dragBasePose = latestPoses[grab.first]
-                    } else {
-                        val hit = nearestEntity(latestWorld.entities, camera, width, height, start)
-                        if (hit != null && latestWorld.entities.any { it.id == hit && it.selected }) {
-                            mode = DragKind.MOVE; dragEntity = hit
+                    var moveBasis: Vec3? = null
+                    var moveGrabOffset = Vec3(0f, 0f, 0f)
+                    when (latestPoseMode) {
+                        PoseMode.MOVE -> {
+                            val hit = nearestEntity(latestWorld.entities, camera, width, height, start)
+                            if (hit != null && latestWorld.entities.any { it.id == hit && it.selected }) {
+                                val basis = latestWorld.entities.first { it.id == hit }.position.toVec3()
+                                mode = DragKind.MOVE; dragEntity = hit; moveBasis = basis
+                                viewPlaneHit(camera, width, height, start, basis)?.let { moveGrabOffset = basis - it }
+                            }
+                        }
+                        PoseMode.POSE -> {
+                            val grab = boneUnderCursor(latestWorld, latestMeshes, latestPoses, camera, width, height, start, BONE_GRAB_RADIUS_PX)
+                            if (grab != null) {
+                                mode = DragKind.JOINT; dragEntity = grab.first; dragJoint = grab.second
+                                dragBasePose = latestPoses[grab.first]
+                            }
+                        }
+                        PoseMode.ROTATE -> {
+                            val grab = boneUnderCursor(latestWorld, latestMeshes, latestPoses, camera, width, height, start, BONE_GRAB_RADIUS_PX)
+                            if (grab != null) {
+                                mode = DragKind.ROTATE_JOINT; dragEntity = grab.first; dragJoint = grab.second
+                            }
                         }
                     }
                     var moved = false
@@ -103,14 +120,18 @@ fun Scene3dView(
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         if (change.changedToUp()) {
                             if (!moved) {
-                                val jointHit = boneUnderCursor(latestWorld, latestMeshes, latestPoses, camera, width, height, change.position, BONE_GRAB_RADIUS_PX)
+                                val jointHit = if (latestPoseMode != PoseMode.MOVE)
+                                    boneUnderCursor(latestWorld, latestMeshes, latestPoses, camera, width, height, change.position, BONE_GRAB_RADIUS_PX)
+                                else null
                                 if (jointHit != null) {
                                     onSelectJoint(jointHit.first, jointHit.second)
                                 } else {
                                     nearestEntity(latestWorld.entities, camera, width, height, change.position)?.let { onSelectEntity(it) }
                                 }
-                            } else if (mode == DragKind.JOINT) {
-                                dragEntity?.let { onJointReleased(it) }
+                            } else when (mode) {
+                                DragKind.JOINT -> dragEntity?.let { onJointReleased(it) }
+                                DragKind.MOVE -> dragEntity?.let { onPickReleased(it) }
+                                else -> {}
                             }
                             break
                         }
@@ -121,9 +142,22 @@ fun Scene3dView(
                                     solveReachIk(latestWorld, latestMeshes, latestPoses, id, dragJoint, dragBasePose, camera, width, height, change.position)
                                         ?.let { onPoseChange(id, it) }
                                 }
+                                DragKind.ROTATE_JOINT -> dragEntity?.let { id ->
+                                    val rig = latestMeshes[id]?.rig
+                                    if (rig != null) {
+                                        val rotated = rig.parents.getOrElse(dragJoint) { -1 }
+                                        solveJointAim(latestWorld, latestMeshes, latestPoses, id, dragJoint, camera, width, height, change.position)
+                                            ?.let { clampToRom(it, rotated) }
+                                            ?.let { onPoseChange(id, it) }
+                                    }
+                                }
                                 DragKind.MOVE -> dragEntity?.let { id ->
-                                    val baseY = latestWorld.entities.firstOrNull { it.id == id }?.position?.toVec3()?.y ?: 0f
-                                    groundHit(camera, width, height, change.position, baseY)?.let { onMoveEntity(id, listOf(it.x, baseY, it.z)) }
+                                    moveBasis?.let { basis ->
+                                        viewPlaneHit(camera, width, height, change.position, basis)?.let { hitPoint ->
+                                            val lifted = hitPoint + moveGrabOffset
+                                            onMoveEntity(id, listOf(lifted.x, lifted.y, lifted.z))
+                                        }
+                                    }
                                 }
                                 DragKind.ORBIT -> {
                                     val delta = change.position - change.previousPosition
@@ -196,7 +230,9 @@ fun Scene3dView(
     }
 }
 
-private enum class DragKind { ORBIT, MOVE, JOINT }
+private enum class DragKind { ORBIT, MOVE, JOINT, ROTATE_JOINT }
+
+enum class PoseMode(val label: String) { MOVE("Move"), POSE("Pose"), ROTATE("Rotate") }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLights(
     lights: List<Scene3dLight>,
@@ -308,15 +344,6 @@ private fun cameraRay(camera: Camera, width: Float, height: Float, screen: Offse
     val ndcY = 1f - 2f * screen.y / height
     val direction = (forward + xAxis * (ndcX * tanHalf * (width / height)) + yAxis * (ndcY * tanHalf)).normalize()
     return eye to direction
-}
-
-private fun groundHit(camera: Camera, width: Float, height: Float, screen: Offset, planeY: Float): Vec3? {
-    if (width <= 0f || height <= 0f) return null
-    val (eye, direction) = cameraRay(camera, width, height, screen)
-    if (abs(direction.y) < 1e-5f) return null
-    val t = (planeY - eye.y) / direction.y
-    if (t <= 0f) return null
-    return eye + direction * t
 }
 
 // Where the cursor ray meets the sphere of radius around center (the fixed bone
@@ -483,6 +510,31 @@ private fun clampRotationMagnitude(rotation: Matrix4, maxRadians: Float): Matrix
     val axis = Vec3(m[6] - m[9], m[8] - m[2], m[1] - m[4])
     if (axis.length() < 1e-6f) return rotation
     return Matrix4.rotate(axis.normalize(), maxRadians)
+}
+
+internal fun clampToRom(pose: Array<Matrix4>, jointIndex: Int): Array<Matrix4> {
+    if (jointIndex < 0 || jointIndex >= pose.size) return pose
+    val clamped = pose.copyOf()
+    clamped[jointIndex] = clampRotationMagnitude(pose[jointIndex], romLimitRadians(jointIndex))
+    return clamped
+}
+
+// Per-joint range-of-motion cone (max rotation from rest), keyed by SMPL-X body-joint index:
+// hips 1/2, knees 4/5, spine 3/6/9, ankles 7/8, feet 10/11, neck 12, collars 13/14, head 15,
+// shoulders 16/17, elbows 18/19, wrists 20/21. Isotropic cone now; per-axis hinge is the tuning pass.
+private fun romLimitRadians(joint: Int): Float = when (joint) {
+    1, 2 -> 2.0f
+    4, 5 -> 2.5f
+    3, 6, 9 -> 0.5f
+    7, 8 -> 0.9f
+    10, 11 -> 0.6f
+    12 -> 1.0f
+    13, 14 -> 0.6f
+    15 -> 1.1f
+    16, 17 -> 2.5f
+    18, 19 -> 2.6f
+    20, 21 -> 1.2f
+    else -> 1.5f
 }
 
 internal fun solveJointAim(
