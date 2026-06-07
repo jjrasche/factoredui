@@ -205,19 +205,24 @@ fun Scene3dView(
                 screen(personCenter(entity)).depth
             }
             for (entity in ordered) {
-                val mesh = meshes[entity.id]
-                if (mesh != null) {
-                    val rig = mesh.rig
-                    val pose = poses[entity.id]
-                    val displayVerts = if (rig != null && pose != null) rig.posedVertices(pose) else mesh.vertices
-                    drawMesh(mesh, displayVerts, entity, ::screen)
-                    if (entity.selected && rig != null) {
-                        val world3d = rig.worldJointTransforms(pose ?: rig.identityPose())
-                        val selected = selectedJoint?.takeIf { it.first == entity.id }?.second ?: -1
-                        drawBones(rig, world3d, entity, selected, ::screen)
-                    }
+                val jointFrame = entity.jointFrame
+                if (jointFrame != null && jointFrame.size >= 22) {
+                    drawJointFrameSkeleton(entity, jointFrame, ::screen)
                 } else {
-                    drawPersonBox(entity, ::screen)
+                    val mesh = meshes[entity.id]
+                    if (mesh != null) {
+                        val rig = mesh.rig
+                        val pose = poses[entity.id]
+                        val displayVerts = if (rig != null && pose != null) rig.posedVertices(pose) else mesh.vertices
+                        drawMesh(mesh, displayVerts, entity, ::screen)
+                        if (entity.selected && rig != null) {
+                            val world3d = rig.worldJointTransforms(pose ?: rig.identityPose())
+                            val selected = selectedJoint?.takeIf { it.first == entity.id }?.second ?: -1
+                            drawBones(rig, world3d, entity, selected, ::screen)
+                        }
+                    } else {
+                        drawPersonBox(entity, ::screen)
+                    }
                 }
                 if (entity.selected) {
                     drawSelectionRing(entity, ::screen)
@@ -295,6 +300,31 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSelectionRing(
         val next = base + Vec3(radius * kotlin.math.cos(angle), 0f, radius * kotlin.math.sin(angle))
         drawWorldLine(screen, previous, next, ringColor, 2.5f)
         previous = next
+    }
+}
+
+private val SMPL_BODY_BONES = listOf(
+    1 to 0, 2 to 0, 3 to 0, 4 to 1, 5 to 2, 6 to 3, 7 to 4, 8 to 5, 9 to 6,
+    10 to 7, 11 to 8, 12 to 9, 13 to 9, 14 to 9, 15 to 12, 16 to 13, 17 to 14,
+    18 to 16, 19 to 17, 20 to 18, 21 to 19,
+)
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawJointFrameSkeleton(
+    entity: Scene3dEntity,
+    jointFrame: List<List<Float>>,
+    screen: (Vec3) -> ProjectedPoint,
+) {
+    val pts = jointFrame.map { j -> screen(Vec3(j.getOrElse(0) { 0f }, j.getOrElse(1) { 0f }, j.getOrElse(2) { 0f })) }
+    val color = if (entity.selected) Color(0xFF6E8BFF) else Color(0xFFE8ECFF)
+    for ((child, parent) in SMPL_BODY_BONES) {
+        if (child >= pts.size || parent >= pts.size) continue
+        val a = pts[child]
+        val b = pts[parent]
+        if (!a.visible || !b.visible) continue
+        drawLine(color, Offset(a.x, a.y), Offset(b.x, b.y), strokeWidth = 2.5f)
+    }
+    for (pt in pts) {
+        if (pt.visible) drawCircle(color.copy(alpha = 0.85f), radius = 3f, center = Offset(pt.x, pt.y))
     }
 }
 

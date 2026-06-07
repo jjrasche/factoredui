@@ -63,7 +63,7 @@ private fun forwardAction(name: String, actionUrl: String): ActionHandler = hand
 val SCENE3D_VERBS = listOf(
     "select-entity", "camera-update", "move-entity", "update-light", "apply-pose",
     "set-joint-angle", "refine-pose", "preview", "sit", "apply-interaction-pose",
-    "render-pose", "play-reaction", "settle", "drop", "add-prop", "select-setting",
+    "render-pose", "play-reaction", "play-motion", "settle", "drop", "add-prop", "select-setting",
 )
 
 private const val CHARACTER_PERSIST_BASE = "http://127.0.0.1:8770/character"

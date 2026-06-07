@@ -23,6 +23,7 @@ data class Scene3dEntity(
     val selected: Boolean = false,
     val status: String = "ready",
     @SerialName("pose_ref") val poseRef: String? = null,
+    @SerialName("joint_frame") val jointFrame: List<List<Float>>? = null,
 )
 
 @Serializable
