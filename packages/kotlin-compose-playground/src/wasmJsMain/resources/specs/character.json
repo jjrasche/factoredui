@@ -98,49 +98,49 @@
                   {
                     "id": "sg-weight", "type": "column", "props": { "gap": 0 }, "children": [
                       { "id": "sg-weight-l", "type": "text", "props": { "value": "weight (light↔strong)", "variant": "caption" } },
-                      { "id": "p-weight", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_weight}" } }
+                      { "id": "p-weight", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_weight}" }, "action": { "action": "persist-dial", "params": { "field": "laban_weight", "value": "{character.personality.laban_weight}", "character_id": "{characterId}" } } }
                     ]
                   },
                   {
                     "id": "sg-time", "type": "column", "props": { "gap": 0 }, "children": [
                       { "id": "sg-time-l", "type": "text", "props": { "value": "time (sustained↔sudden)", "variant": "caption" } },
-                      { "id": "p-time", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_time}" } }
+                      { "id": "p-time", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_time}" }, "action": { "action": "persist-dial", "params": { "field": "laban_time", "value": "{character.personality.laban_time}", "character_id": "{characterId}" } } }
                     ]
                   },
                   {
                     "id": "sg-space", "type": "column", "props": { "gap": 0 }, "children": [
                       { "id": "sg-space-l", "type": "text", "props": { "value": "space (indirect↔direct)", "variant": "caption" } },
-                      { "id": "p-space", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_space}" } }
+                      { "id": "p-space", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_space}" }, "action": { "action": "persist-dial", "params": { "field": "laban_space", "value": "{character.personality.laban_space}", "character_id": "{characterId}" } } }
                     ]
                   },
                   {
                     "id": "sg-flow", "type": "column", "props": { "gap": 0 }, "children": [
                       { "id": "sg-flow-l", "type": "text", "props": { "value": "flow (free↔bound)", "variant": "caption" } },
-                      { "id": "p-flow", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_flow}" } }
+                      { "id": "p-flow", "type": "slider", "props": { "min": -1, "max": 1, "step": 0.05, "value": "{character.personality.laban_flow}" }, "action": { "action": "persist-dial", "params": { "field": "laban_flow", "value": "{character.personality.laban_flow}", "character_id": "{characterId}" } } }
                     ]
                   },
                   {
                     "id": "sg-amp", "type": "column", "props": { "gap": 0 }, "children": [
                       { "id": "sg-amp-l", "type": "text", "props": { "value": "amplitude", "variant": "caption" } },
-                      { "id": "p-amp", "type": "slider", "props": { "min": 0.4, "max": 2, "step": 0.05, "value": "{character.personality.amplitude}" } }
+                      { "id": "p-amp", "type": "slider", "props": { "min": 0.4, "max": 2, "step": 0.05, "value": "{character.personality.amplitude}" }, "action": { "action": "persist-dial", "params": { "field": "amplitude", "value": "{character.personality.amplitude}", "character_id": "{characterId}" } } }
                     ]
                   },
                   {
                     "id": "sg-supp", "type": "column", "props": { "gap": 0 }, "children": [
                       { "id": "sg-supp-l", "type": "text", "props": { "value": "suppression", "variant": "caption" } },
-                      { "id": "p-supp", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.suppression_tendency}" } }
+                      { "id": "p-supp", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.suppression_tendency}" }, "action": { "action": "persist-dial", "params": { "field": "suppression_tendency", "value": "{character.personality.suppression_tendency}", "character_id": "{characterId}" } } }
                     ]
                   },
                   {
                     "id": "sg-rec", "type": "column", "props": { "gap": 0 }, "children": [
                       { "id": "sg-rec-l", "type": "text", "props": { "value": "recovery", "variant": "caption" } },
-                      { "id": "p-rec", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.recovery_rate}" } }
+                      { "id": "p-rec", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.recovery_rate}" }, "action": { "action": "persist-dial", "params": { "field": "recovery_rate", "value": "{character.personality.recovery_rate}", "character_id": "{characterId}" } } }
                     ]
                   },
                   {
                     "id": "sg-reg", "type": "column", "props": { "gap": 0 }, "children": [
                       { "id": "sg-reg-l", "type": "text", "props": { "value": "regulation", "variant": "caption" } },
-                      { "id": "p-reg", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.emotional_regulation}" } }
+                      { "id": "p-reg", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{character.personality.emotional_regulation}" }, "action": { "action": "persist-dial", "params": { "field": "emotional_regulation", "value": "{character.personality.emotional_regulation}", "character_id": "{characterId}" } } }
                     ]
                   }
                 ]

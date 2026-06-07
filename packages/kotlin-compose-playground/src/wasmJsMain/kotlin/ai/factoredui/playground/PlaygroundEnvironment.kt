@@ -66,9 +66,28 @@ val SCENE3D_VERBS = listOf(
     "render-pose", "play-reaction", "settle", "drop", "add-prop", "select-setting",
 )
 
+private const val CHARACTER_PERSIST_BASE = "http://127.0.0.1:8770/character"
+
+private fun persistDialAction(): ActionHandler = handler@{ params ->
+    val field = params["field"] as? String ?: return@handler
+    val value = (params["value"] as? String)?.toFloatOrNull() ?: return@handler
+    val characterId = (params["character_id"] as? String)?.takeIf { it.isNotBlank() } ?: return@handler
+    val body = buildJsonObject {
+        put("diff", buildJsonObject { put(field, value) })
+    }.toString()
+    runCatching {
+        composerHttp.post("$CHARACTER_PERSIST_BASE/$characterId") {
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
+    }
+    Unit
+}
+
 fun playgroundActions(actionUrl: String? = null): ActionRegistry {
     val base = mapOf<String, ActionHandler>(
         "submit" to { params -> println("[playground] submit($params)") },
+        "persist-dial" to persistDialAction(),
     )
     if (actionUrl == null) return base
     return base + SCENE3D_VERBS.associateWith { verb -> forwardAction(verb, actionUrl) }
