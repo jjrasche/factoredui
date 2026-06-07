@@ -7,7 +7,8 @@
     "props": { "gap": 4, "padding": 4 },
     "children": [
       { "id": "drop-title", "type": "text", "props": { "value": "Drop — watch it land", "variant": "heading" } },
-      { "id": "drop-verdict", "type": "text", "props": { "value": "Machine: fell · braced · landed — PASS.   Buckle: none — the knees never give (stiff). A person's would buckle. Hit Drop in the viewport to replay; watch the knees.", "variant": "caption" } },
+      { "id": "drop-verdict", "type": "text", "props": { "value": "Two landings: the viewport 'Drop' button = the old stiff fall (knees never give). 'Play the human drop' = the deep-buckle absorption (128° knee) — watch the difference.", "variant": "caption" } },
+      { "id": "drop-human", "type": "button", "props": { "label": "Play the human drop (deep buckle)" }, "action": { "action": "play-motion", "params": { "entity_id": "heigl", "joint_stream": "tmp/scene_composer/streams/land_buckle.json" } } },
       {
         "id": "drop-scene",
         "type": "scene3d",
