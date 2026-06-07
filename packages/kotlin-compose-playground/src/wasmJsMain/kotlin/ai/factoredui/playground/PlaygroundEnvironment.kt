@@ -58,18 +58,20 @@ private fun forwardAction(name: String, actionUrl: String): ActionHandler = hand
     Unit
 }
 
+// The scene-composer manipulation verbs the server (:8765) registers in actions.py.
+// Kept in sync as ONE list so a spec button can dispatch any verb the simulator exposes.
+val SCENE3D_VERBS = listOf(
+    "select-entity", "camera-update", "move-entity", "update-light", "apply-pose",
+    "set-joint-angle", "refine-pose", "preview", "sit", "apply-interaction-pose",
+    "render-pose", "play-reaction", "settle", "drop", "add-prop", "select-setting",
+)
+
 fun playgroundActions(actionUrl: String? = null): ActionRegistry {
     val base = mapOf<String, ActionHandler>(
         "submit" to { params -> println("[playground] submit($params)") },
     )
     if (actionUrl == null) return base
-    return base + mapOf(
-        "apply-pose" to forwardAction("apply-pose", actionUrl),
-        "select-entity" to forwardAction("select-entity", actionUrl),
-        "move-entity" to forwardAction("move-entity", actionUrl),
-        "update-light" to forwardAction("update-light", actionUrl),
-        "set-joint-angle" to forwardAction("set-joint-angle", actionUrl),
-    )
+    return base + SCENE3D_VERBS.associateWith { verb -> forwardAction(verb, actionUrl) }
 }
 
 fun actionUrlParam(): String? = deriveFromSpec("/action")
