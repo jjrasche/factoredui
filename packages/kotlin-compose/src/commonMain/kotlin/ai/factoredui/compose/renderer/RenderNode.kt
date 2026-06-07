@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -180,11 +181,19 @@ private fun RenderNodeByType(
 @Composable
 private fun RenderColumn(node: SpecNode, context: RenderContext) {
     val props = node.props.asLayoutProps()
+    val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
+    val colModifier = Modifier.padding(props.padding.dp).let { base ->
+        if (hasFlexChild) base.fillMaxHeight() else base
+    }
     Column(
-        modifier = Modifier.padding(props.padding.dp),
+        modifier = colModifier,
         verticalArrangement = Arrangement.spacedBy(props.gap.dp),
     ) {
-        node.children.forEach { child -> RenderNode(node = child, context = context) }
+        node.children.forEach { child ->
+            val childFlex = child.props.asLayoutProps().flex
+            if (childFlex > 0f) Box(Modifier.weight(childFlex)) { RenderNode(node = child, context = context) }
+            else RenderNode(node = child, context = context)
+        }
     }
 }
 

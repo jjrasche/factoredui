@@ -1,0 +1,24 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "drop",
+    "type": "column",
+    "props": { "gap": 4, "padding": 4 },
+    "children": [
+      { "id": "drop-title", "type": "text", "props": { "value": "Drop — watch it land", "variant": "heading" } },
+      { "id": "drop-verdict", "type": "text", "props": { "value": "Machine: fell · braced · landed — PASS.   Buckle: none — the knees never give (stiff). A person's would buckle. Hit Drop in the viewport to replay; watch the knees.", "variant": "caption" } },
+      {
+        "id": "drop-scene",
+        "type": "scene3d",
+        "props": {
+          "world_state_url": "http://127.0.0.1:8765/world/state",
+          "world_stream_url": "http://127.0.0.1:8765/world/stream",
+          "action_url": "http://127.0.0.1:8765/action",
+          "background": "neutral-gray",
+          "flex": 1
+        }
+      }
+    ]
+  }
+}

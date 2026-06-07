@@ -65,7 +65,7 @@ enum class StageContext(val label: String, val specUrl: String?, val promptUrl: 
     STORY("Story", "specs/story-spine.json", null),
     CHARACTER("Character", "specs/character.json", "http://127.0.0.1:8770/character/prompt"),
     COMPOSER("Composer", "specs/composer.json", "http://127.0.0.1:8765/director/prompt"),
-    DROP("Drop", null, null),
+    DROP("Drop", "specs/drop.json", null),
     AGENTS("Agents", "specs/agents.json", null),
     REVIEW("Review", null, null),
 }
@@ -499,11 +499,7 @@ fun StageApp() {
                         )
                     }
                     Box(Modifier.weight(1f).fillMaxWidth().padding(StageTokens.gapMd)) {
-                        if (active == StageContext.DROP) {
-                            DropLongExposure("data/drop_heigl.json")
-                        } else {
-                            RenderSpec(specFlow = specFlow, context = context)
-                        }
+                        RenderSpec(specFlow = specFlow, context = context)
                     }
                 }
             }
