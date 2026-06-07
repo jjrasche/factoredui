@@ -45,7 +45,32 @@
             "type": "column",
             "props": { "gap": 6 },
             "children": [
-              { "id": "id-img", "type": "image", "props": { "source": "{characterImage}", "aspectRatio": 0.8, "maxHeight": 300, "fit": "contain", "cornerRadius": 8, "alt": "character headshot" } },
+              {
+                "id": "id-compare",
+                "type": "row",
+                "props": { "gap": 8 },
+                "children": [
+                  {
+                    "id": "id-render-col",
+                    "type": "column",
+                    "props": { "gap": 2 },
+                    "children": [
+                      { "id": "id-render-l", "type": "text", "props": { "value": "Rendered", "variant": "caption" } },
+                      { "id": "id-img", "type": "image", "props": { "source": "{characterImage}", "aspectRatio": 0.8, "maxHeight": 240, "fit": "contain", "cornerRadius": 8, "alt": "rendered headshot" } }
+                    ]
+                  },
+                  {
+                    "id": "id-ref-col",
+                    "type": "column",
+                    "props": { "gap": 2 },
+                    "children": [
+                      { "id": "id-ref-l", "type": "text", "props": { "value": "Reference (them)", "variant": "caption" } },
+                      { "id": "id-ref-img", "type": "image", "props": { "source": "{characterReferenceImage}", "aspectRatio": 0.8, "maxHeight": 240, "fit": "contain", "cornerRadius": 8, "alt": "reference photo" } }
+                    ]
+                  }
+                ]
+              },
+              { "id": "id-match", "type": "text", "props": { "value": "Looks like them? The gap between the render and the reference is the identity check.", "variant": "caption" } },
               { "id": "id-status", "type": "text", "props": { "value": "{renderStatus}", "variant": "caption" } },
               { "id": "id-refstatus", "type": "text", "props": { "value": "{referenceUploadStatus}", "variant": "caption" } },
               { "id": "id-look", "type": "text", "props": { "value": "{characterRenderPrompt}", "variant": "caption" } }

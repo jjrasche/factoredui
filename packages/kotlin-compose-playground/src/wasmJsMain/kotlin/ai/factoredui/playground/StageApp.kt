@@ -222,6 +222,7 @@ private suspend fun loadCharacter(id: String, context: RenderContext) {
         val lastReference = referenceImages?.lastOrNull()?.jsonObject
             ?.let { (it["url"] as? JsonPrimitive)?.content }
         context.setBinding("characterImage", renderedHeadshot ?: lastReference ?: "")
+        context.setBinding("characterReferenceImage", lastReference ?: "")
         publishCharacterGates(context, personality, referenceImages?.size ?: 0, visual)
     }.onFailure { pushStageLog("character read parse for $id: ${it.message}") }
 }
@@ -334,6 +335,7 @@ fun StageApp() {
                 "characterRenderPrompt" to "",
                 "characterAttr" to emptyAttributes(),
                 "characterImage" to "",
+                "characterReferenceImage" to "",
                 "viewFront" to "",
                 "viewRight" to "",
                 "viewBack" to "",
