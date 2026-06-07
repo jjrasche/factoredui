@@ -183,7 +183,7 @@ private fun RenderColumn(node: SpecNode, context: RenderContext) {
     val props = node.props.asLayoutProps()
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val colModifier = Modifier.padding(props.padding.dp).let { base ->
-        if (hasFlexChild) base.fillMaxHeight() else base
+        if (hasFlexChild) base.fillMaxWidth().fillMaxHeight() else base
     }
     Column(
         modifier = colModifier,

@@ -3,48 +3,62 @@
   "renderer_min": 1,
   "root": {
     "id": "agents",
-    "type": "scrollview",
+    "type": "column",
     "children": [
       {
         "id": "agents-col",
         "type": "column",
-        "props": { "padding": 8, "gap": 16 },
+        "props": { "padding": 8, "gap": 12, "flex": 1 },
         "children": [
           { "id": "ag-title", "type": "text", "props": { "value": "Agents — the build loop", "variant": "heading" } },
           { "id": "ag-sub", "type": "text", "props": { "value": "Watch each brother independently — their thoughts, edits, tool-uses, lines — and grade any output. Binds to ap's build-loop rows (AgentOutput / GradeFeedback) when the schema locks; roster + structure shown now.", "variant": "caption" } },
           {
             "id": "ag-body",
             "type": "row",
-            "props": { "gap": 20 },
+            "props": { "gap": 20, "flex": 1 },
             "children": [
               {
                 "id": "ag-roster",
                 "type": "column",
-                "props": { "gap": 8 },
+                "props": { "gap": 6, "flex": 1 },
                 "children": [
                   { "id": "ros-h", "type": "text", "props": { "value": "Brothers", "variant": "subheading" } },
                   { "id": "ros-tier-head", "type": "text", "props": { "value": "head tier", "variant": "caption" } },
                   { "id": "ros-head", "type": "chip", "props": { "label": "head" } },
                   { "id": "ros-tier-proj", "type": "text", "props": { "value": "project HEADs", "variant": "caption" } },
-                  { "id": "ros-ap", "type": "chip", "props": { "label": "ap" } },
-                  { "id": "ros-fu", "type": "chip", "props": { "label": "factored-ui" } },
-                  { "id": "ros-il", "type": "chip", "props": { "label": "il" } },
+                  {
+                    "id": "ros-proj-grid",
+                    "type": "grid",
+                    "props": { "columns": 2, "gap": 6 },
+                    "children": [
+                      { "id": "ros-ap", "type": "chip", "props": { "label": "ap" } },
+                      { "id": "ros-fu", "type": "chip", "props": { "label": "factored-ui" } },
+                      { "id": "ros-il", "type": "chip", "props": { "label": "il" } }
+                    ]
+                  },
                   { "id": "ros-tier-lane", "type": "text", "props": { "value": "lane bros", "variant": "caption" } },
-                  { "id": "ros-render", "type": "chip", "props": { "label": "render" } },
-                  { "id": "ros-ilchar", "type": "chip", "props": { "label": "il-character" } },
-                  { "id": "ros-fuscene", "type": "chip", "props": { "label": "fu-scene3d" } },
-                  { "id": "ros-ilmodel", "type": "chip", "props": { "label": "il-modeling" } },
-                  { "id": "ros-infref", "type": "chip", "props": { "label": "inference-refactor" } },
-                  { "id": "ros-mempipe", "type": "chip", "props": { "label": "memory-pipeline" } },
-                  { "id": "ros-dataschema", "type": "chip", "props": { "label": "dataschema-refactor" } },
-                  { "id": "ros-platadapt", "type": "chip", "props": { "label": "platform-adapter" } },
-                  { "id": "ros-bridge", "type": "chip", "props": { "label": "bridge-research" } }
+                  {
+                    "id": "ros-lane-grid",
+                    "type": "grid",
+                    "props": { "columns": 2, "gap": 6 },
+                    "children": [
+                      { "id": "ros-render", "type": "chip", "props": { "label": "render" } },
+                      { "id": "ros-ilchar", "type": "chip", "props": { "label": "il-character" } },
+                      { "id": "ros-fuscene", "type": "chip", "props": { "label": "fu-scene3d" } },
+                      { "id": "ros-ilmodel", "type": "chip", "props": { "label": "il-modeling" } },
+                      { "id": "ros-infref", "type": "chip", "props": { "label": "inference-refactor" } },
+                      { "id": "ros-mempipe", "type": "chip", "props": { "label": "memory-pipeline" } },
+                      { "id": "ros-dataschema", "type": "chip", "props": { "label": "dataschema-refactor" } },
+                      { "id": "ros-platadapt", "type": "chip", "props": { "label": "platform-adapter" } },
+                      { "id": "ros-bridge", "type": "chip", "props": { "label": "bridge-research" } }
+                    ]
+                  }
                 ]
               },
               {
                 "id": "ag-detail",
                 "type": "column",
-                "props": { "gap": 12, "flex": 1 },
+                "props": { "gap": 12, "flex": 3 },
                 "children": [
                   { "id": "det-h", "type": "text", "props": { "value": "Select a brother", "variant": "subheading" } },
                   { "id": "det-status", "type": "text", "props": { "value": "Pick a brother to watch their output land in real time. Each output (thought · edit · tool-use · line) shows here with a grade affordance.", "variant": "caption" } },
@@ -79,22 +93,8 @@
                     "id": "into-bro",
                     "type": "textinput",
                     "props": { "value": "{agentDirective}", "placeholder": "Direct this brother… (omnibox into the selected bro)", "multiline": true }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "id": "tables-card",
-            "type": "card",
-            "children": [
-              {
-                "id": "tables-col",
-                "type": "column",
-                "props": { "padding": 16, "gap": 8 },
-                "children": [
-                  { "id": "tables-h", "type": "text", "props": { "value": "Build-loop domain tables", "variant": "subheading" } },
-                  { "id": "tables-sub", "type": "text", "props": { "value": "The @DataSchema rows ap is naming as the build-loop substrate — surfaced live as they fill.", "variant": "caption" } },
+                  },
+                  { "id": "tables-h", "type": "text", "props": { "value": "Build-loop domain tables · @DataSchema rows ap is naming, surfaced live as they fill", "variant": "caption" } },
                   {
                     "id": "tables-grid",
                     "type": "row",
