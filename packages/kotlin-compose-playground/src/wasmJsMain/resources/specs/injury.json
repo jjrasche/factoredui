@@ -7,7 +7,7 @@
     "props": { "gap": 4, "padding": 4 },
     "children": [
       { "id": "inj-title", "type": "text", "props": { "value": "Injury — drag the impact, watch the pain bloom", "variant": "heading" } },
-      { "id": "inj-sub", "type": "text", "props": { "value": "Drag the RED ball onto the body to place the hit — the nearest joint lights up and the pain spreads along the limbs (cold slate → orange → hot red), sized by intensity. The impulse dial = how hard. Scrub the timeline to play the guarded reach. (Live preview field; il-injury's verified geodesic field swaps in next.)", "variant": "caption" } },
+      { "id": "inj-sub", "type": "text", "props": { "value": "Drag the RED ball onto the body to place the hit (pain blooms from the nearest joint). Drag the GREEN target to set where the body reaches, and pick which limb touches it. The reach is FREE — the body may step to favor the injury. Impulse = how hard. Play/scrub the motion. (Pain + reach are previews until il-injury's solver lands.)", "variant": "caption" } },
       { "id": "inj-scene", "type": "scene3d", "props": { "clip_url": "clips/injury_scene_stream.json", "frame": "{injury.frame}", "impulse": "{injury.impulse}", "autoplay": "{injury.autoplay}", "background": "neutral-gray", "flex": 1 } },
       {
         "id": "inj-controls",
@@ -21,6 +21,27 @@
             "children": [
               { "id": "inj-play-l", "type": "text", "props": { "value": "play the reach", "variant": "caption" } },
               { "id": "inj-play", "type": "toggle", "props": { "label": "", "value": "{injury.autoplay}" } }
+            ]
+          },
+          {
+            "id": "inj-effector-col",
+            "type": "column",
+            "props": { "gap": 0, "flex": 1 },
+            "children": [
+              { "id": "inj-effector-l", "type": "text", "props": { "value": "reach with", "variant": "caption" } },
+              {
+                "id": "inj-effector",
+                "type": "select",
+                "props": {
+                  "value": "{injury.endEffector}",
+                  "options": [
+                    { "value": "R_Hand", "label": "right hand" },
+                    { "value": "L_Hand", "label": "left hand" },
+                    { "value": "R_Foot", "label": "right foot" },
+                    { "value": "L_Foot", "label": "left foot" }
+                  ]
+                }
+              }
             ]
           },
           {

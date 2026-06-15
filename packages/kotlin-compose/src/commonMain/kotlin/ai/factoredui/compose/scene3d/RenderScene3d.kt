@@ -193,7 +193,7 @@ fun RenderScene3d(
                 pain = frame.pain,
             )
             val goal = clip.goal.takeIf { it.size >= 3 }?.let {
-                Scene3dEntity(id = "goal", kind = "goal", position = listOf(it[0], it[2], -it[1]))
+                Scene3dEntity(id = "goal", kind = "goal", selected = true, position = listOf(it[0], it[2], -it[1]))
             }
             val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
             world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
@@ -620,7 +620,7 @@ fun RenderScene3d(
                     mapOf("entity_id" to entityId, "joint" to (selectedJoint?.second ?: -1)),
                 )
             },
-            onPickReleased = { entityId -> if (entityId != "impact") dropAndSettle(entityId) },
+            onPickReleased = { entityId -> if (entityId != "impact" && entityId != "goal") dropAndSettle(entityId) },
         )
         if (previewMode) {
             Box(
