@@ -105,6 +105,31 @@ private fun smpl24GraphHops(from: Int, n: Int): IntArray {
     return hops
 }
 
+// The spared leg reads as the limp: over the clip, the foot that plants far less than the other is
+// the one being protected. Heat its leg chain (Hip/Knee/Ankle/Toe) so the injured body's hurt side
+// glows and the healthy body — which uses both legs — stays cold. Ankles are index 3 (L) / 7 (R),
+// height is the stream's z (index 2). Returns null when both legs share the load (no limp to mark).
+private fun sparedLegHeat(source: MotionClip): List<Float>? {
+    val frames = source.frames
+    if (frames.size < 2) return null
+    var leftPlantedFrames = 0
+    for (frame in frames) {
+        val leftHeight = frame.joints.getOrNull(3)?.getOrNull(2) ?: 0f
+        val rightHeight = frame.joints.getOrNull(7)?.getOrNull(2) ?: 0f
+        if (leftHeight < rightHeight) leftPlantedFrames++
+    }
+    val total = frames.size
+    val rightPlantedFrames = total - leftPlantedFrames
+    val sparedRightLeg = leftPlantedFrames >= 0.6f * total && rightPlantedFrames <= 0.3f * total
+    val sparedLeftLeg = rightPlantedFrames >= 0.6f * total && leftPlantedFrames <= 0.3f * total
+    val sparedJoints = when {
+        sparedRightLeg -> listOf(5, 6, 7, 8)
+        sparedLeftLeg -> listOf(1, 2, 3, 4)
+        else -> return null
+    }
+    return (0 until 24).map { if (it in sparedJoints) 0.9f else 0f }
+}
+
 // PREVIEW field (swaps for il-injury's geodesic pain_at when exposed): the dragged
 // impact ball picks the nearest body joint; pain falls off along the bone graph from
 // it, scaled by impulse. Geodesic-ish — leaves the far side dark, unlike euclidean.
@@ -236,26 +261,28 @@ fun RenderScene3d(
         val clipB = motionClipB?.takeIf { it.frames.isNotEmpty() && it.frames.first().joints.size >= 24 }
         val goalDefault = clip.goal.takeIf { it.size >= 3 }?.let { listOf(it[0], it[2], -it[1]) }
             ?: listOf(0.4f, 1.0f, 0.6f)
-        fun bodyFrom(source: MotionClip, index: Int, id: String, lateral: Float): Scene3dEntity {
+        val heatA: List<Float>? = null
+        val heatB = clipB?.let { sparedLegHeat(it) }
+        fun bodyFrom(source: MotionClip, index: Int, id: String, lateral: Float, heat: List<Float>?): Scene3dEntity {
             val f = source.frames[index.coerceIn(0, source.frames.size - 1)]
             return Scene3dEntity(
                 id = id,
                 jointFrame = f.joints.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f } + lateral) },
-                pain = f.pain.takeIf { it.isNotEmpty() },
+                pain = heat ?: f.pain.takeIf { it.isNotEmpty() },
             )
         }
         fun showClipFrame(index: Int) {
             if (clipB != null) {
-                val healthy = bodyFrom(clip, index, "healthy", -0.9f)
-                val injured = bodyFrom(clipB, index, "injured", 0.9f)
+                val healthy = bodyFrom(clip, index, "healthy", -0.9f, heatA)
+                val injured = bodyFrom(clipB, index, "injured", 0.9f, heatB)
                 world = Scene3dWorldState(entities = listOf(healthy, injured))
                 if (!cameraInitialized) {
-                    applyCameraState(camera, Scene3dCameraState(position = listOf(5.2f, 3.4f, 5.2f), target = listOf(0.84f, 0.45f, 0f)))
+                    applyCameraState(camera, Scene3dCameraState(position = listOf(3.9f, 2.1f, 4.6f), target = listOf(0.84f, 0.55f, 0f)))
                     cameraInitialized = true
                 }
                 return
             }
-            val body = bodyFrom(clip, index, "injured", 0f)
+            val body = bodyFrom(clip, index, "injured", 0f, null)
             val goal = Scene3dEntity(id = "goal", kind = "goal", selected = true, position = goalDefault)
             val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
             world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
