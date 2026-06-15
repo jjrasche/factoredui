@@ -175,7 +175,11 @@ fun RenderScene3d(
     var motionClip by remember { mutableStateOf<MotionClip?>(null) }
 
     LaunchedEffect(props.clipUrl) {
-        val url = props.clipUrl ?: return@LaunchedEffect
+        val url = props.clipUrl
+        if (url == null) {
+            motionClip = null
+            return@LaunchedEffect
+        }
         runCatching {
             json.decodeFromString(MotionClip.serializer(), httpClient.get(url).bodyAsText())
         }.fold(
