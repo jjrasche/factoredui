@@ -7,8 +7,7 @@
     "props": { "gap": 4, "padding": 4 },
     "children": [
       { "id": "drop-title", "type": "text", "props": { "value": "Drop — watch it land", "variant": "heading" } },
-      { "id": "drop-verdict", "type": "text", "props": { "value": "Two landings: the viewport 'Drop' button = the old stiff fall (knees never give). 'Play the human drop' = the deep-buckle absorption (128° knee) — watch the difference.", "variant": "caption" } },
-      { "id": "drop-human", "type": "button", "props": { "label": "Play the human drop (deep buckle)" }, "action": { "action": "play-motion", "params": { "entity_id": "heigl", "joint_stream": "tmp/scene_composer/streams/land_buckle.json" } } },
+      { "id": "drop-verdict", "type": "text", "props": { "value": "Hit Drop in the viewport: the body falls, the knees buckle deep to absorb the impact (129° crouch, then recovers), and settles — landed like a person. verify_landing_absorb reads absorbed=TRUE on this exact motion.", "variant": "caption" } },
       {
         "id": "drop-scene",
         "type": "scene3d",
