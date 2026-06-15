@@ -1,5 +1,7 @@
 package ai.factoredui.compose.scene3d
 
+import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.cos
 import kotlin.math.exp
@@ -87,6 +89,53 @@ fun healthyReach(rest: Frame, effector: String, target: List<Float>, baseFrames:
     return (0 until baseFrames).map { i ->
         lerpJoints(rest, solved, minJerk(i.toFloat() / (baseFrames - 1).coerceAtLeast(1)))
     }
+}
+
+// Client-side injured walk-to-target: the body LOCOMOTES across the ground toward the goal with a
+// limping gait, guards the trunk, and stalls short (immobility) when badly hurt. Fast preview tuned
+// against il-injury's optimizer (their validated characterization swaps in). Clip-native frame:
+// Z is up, X/Y the ground.
+fun injuredWalk(rest: Frame, target: List<Float>, severity: Float, baseFrames: Int = 44): List<Frame> {
+    if (rest.size < 24) return listOf(rest)
+    val sev = severity.coerceIn(0f, 1f)
+    val start = v(rest[PELVIS])
+    val gx = target.getOrElse(0) { 0f } - start[0]
+    val gy = target.getOrElse(1) { 0f } - start[1]
+    val dist = sqrt(gx * gx + gy * gy)
+    val dirX = if (dist > 1e-4f) gx / dist else 0f
+    val dirY = if (dist > 1e-4f) gy / dist else 0f
+    val travelFrac = 1f - 0.7f * sev
+    val nSteps = (dist / (0.5f - 0.28f * sev)).toInt().coerceIn(2, 12)
+    val frames = (baseFrames * (1f + 2.2f * sev)).toInt().coerceAtLeast(10)
+    val twoPi = 2f * PI.toFloat()
+    val out = mutableListOf<Frame>()
+    for (i in 0 until frames) {
+        val p = minJerk(i.toFloat() / (frames - 1)) * travelFrac
+        val phase = p * nSteps * twoPi
+        val bob = abs(sin(phase)) * 0.03f
+        val tgx = gx * p; val tgy = gy * p
+        val walked = rest.mapIndexed { j, joint ->
+            var x = joint.getOrElse(0) { 0f } + tgx
+            var y = joint.getOrElse(1) { 0f } + tgy
+            var z = joint.getOrElse(2) { 0f } + bob
+            val legPhase = when {
+                j in 1..4 -> sin(phase)
+                j in 5..8 -> sin(phase + PI.toFloat())
+                else -> Float.NaN
+            }
+            if (!legPhase.isNaN()) {
+                val lift = if (legPhase > 0f) legPhase else 0f
+                val stepHeight = if (j in 5..8) 0.08f * (1f - 0.85f * sev) else 0.08f
+                z += lift * stepHeight
+                val swing = legPhase * (0.14f * (1f - 0.45f * sev))
+                x += dirX * swing; y += dirY * swing
+            }
+            listOf(x, y, z)
+        }
+        val pelvis = v(walked[PELVIS])
+        out.add(walked.mapIndexed { j, joint -> if (j in 9..23) hunchPoint(v(joint), pelvis, 0.3f * sev).toList() else joint })
+    }
+    return out
 }
 
 private fun burstWarpProgress(severity: Float): List<Float> {

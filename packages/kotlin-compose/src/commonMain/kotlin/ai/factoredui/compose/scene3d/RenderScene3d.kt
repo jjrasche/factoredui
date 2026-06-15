@@ -190,7 +190,7 @@ fun RenderScene3d(
             ?: listOf(0.4f, 1.0f, 0.6f)
         val goalRender = localPositions["goal"] ?: goalDefault
         val targetZup = listOf(goalRender[0], -goalRender.getOrElse(2) { 0f }, goalRender.getOrElse(1) { 0f })
-        val guarded = guardTransform(healthyReach(rest, props.clipEffector, targetZup), props.clipSeverity)
+        val guarded = injuredWalk(rest, targetZup, props.clipSeverity)
         if (guarded.isEmpty()) return@LaunchedEffect
         fun showComputedFrame(frame: Frame) {
             val body = Scene3dEntity(
