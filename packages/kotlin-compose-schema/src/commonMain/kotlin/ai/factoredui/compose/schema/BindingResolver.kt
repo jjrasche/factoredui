@@ -4,7 +4,7 @@ package ai.factoredui.compose.schema
  * Resolves binding references against a data context.
  *
  * Binding refs are strings matching "{path.to.value}".
- * Resolution is single-level path lookup — no expressions, no arithmetic.
+ * Resolution walks dotted paths into nested maps/lists ([resolvePath]) — no expressions.
  * Matches the behaviour of binding.ts in @factoredui/core.
  */
 object BindingResolver {
