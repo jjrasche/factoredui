@@ -76,6 +76,63 @@ private const val GRAVITY = -9.8f
 private const val GROUND_FRICTION = 0.7f
 private const val MOVE_FRAME_DT = 1f / 60f
 
+private val SMPL24_PARENTS = intArrayOf(
+    -1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 12, 11, 14, 15, 16, 11, 18, 19, 20, 17, 21,
+)
+
+private fun smpl24GraphHops(from: Int, n: Int): IntArray {
+    val adjacency = Array(n) { mutableListOf<Int>() }
+    SMPL24_PARENTS.forEachIndexed { child, parent ->
+        if (parent in 0 until n && child < n) {
+            adjacency[child].add(parent)
+            adjacency[parent].add(child)
+        }
+    }
+    val hops = IntArray(n) { Int.MAX_VALUE }
+    if (from !in 0 until n) return hops
+    hops[from] = 0
+    val queue = ArrayDeque<Int>()
+    queue.add(from)
+    while (queue.isNotEmpty()) {
+        val current = queue.removeFirst()
+        for (neighbor in adjacency[current]) {
+            if (hops[neighbor] == Int.MAX_VALUE) {
+                hops[neighbor] = hops[current] + 1
+                queue.add(neighbor)
+            }
+        }
+    }
+    return hops
+}
+
+// PREVIEW field (swaps for il-injury's geodesic pain_at when exposed): the dragged
+// impact ball picks the nearest body joint; pain falls off along the bone graph from
+// it, scaled by impulse. Geodesic-ish — leaves the far side dark, unlike euclidean.
+private fun applyImpactPain(state: Scene3dWorldState, impulse: Float): Scene3dWorldState {
+    val ball = state.entities.firstOrNull { it.kind == "ball" } ?: return state
+    val body = state.entities.firstOrNull { (it.jointFrame?.size ?: 0) >= 24 } ?: return state
+    val joints = body.jointFrame ?: return state
+    val bx = ball.position.getOrElse(0) { 0f }
+    val by = ball.position.getOrElse(1) { 0f }
+    val bz = ball.position.getOrElse(2) { 0f }
+    var nearest = 0
+    var best = Float.MAX_VALUE
+    joints.forEachIndexed { index, joint ->
+        val dx = joint.getOrElse(0) { 0f } - bx
+        val dy = joint.getOrElse(1) { 0f } - by
+        val dz = joint.getOrElse(2) { 0f } - bz
+        val distance = dx * dx + dy * dy + dz * dz
+        if (distance < best) { best = distance; nearest = index }
+    }
+    val hops = smpl24GraphHops(nearest, joints.size)
+    val strength = impulse.coerceIn(0f, 1f)
+    val pain = joints.indices.map { index ->
+        val hop = hops[index]
+        if (hop == Int.MAX_VALUE) 0f else (strength * kotlin.math.exp(-0.55f * hop)).coerceIn(0f, 1f)
+    }
+    return state.copy(entities = state.entities.map { if (it.id == body.id) it.copy(pain = pain) else it })
+}
+
 @Composable
 fun RenderScene3d(
     props: Scene3dProps,
@@ -137,7 +194,8 @@ fun RenderScene3d(
         val goal = clip.goal.takeIf { it.size >= 3 }?.let {
             Scene3dEntity(id = "goal", kind = "goal", position = listOf(it[0], it[2], -it[1]))
         }
-        world = Scene3dWorldState(entities = listOfNotNull(body, goal))
+        val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
+        world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
         if (!cameraInitialized) {
             applyCameraState(camera, Scene3dCameraState(position = listOf(2.6f, 1.8f, 2.6f), target = listOf(0f, 0.8f, 0f)))
             cameraInitialized = true
@@ -511,13 +569,16 @@ fun RenderScene3d(
         }
     }
 
-    val effectiveWorld =
-        if (localPositions.isEmpty()) world
-        else world.copy(
-            entities = world.entities.map { entity ->
-                localPositions[entity.id]?.let { entity.copy(position = it) } ?: entity
-            },
-        )
+    val effectiveWorld = run {
+        val withLocal =
+            if (localPositions.isEmpty()) world
+            else world.copy(
+                entities = world.entities.map { entity ->
+                    localPositions[entity.id]?.let { entity.copy(position = it) } ?: entity
+                },
+            )
+        applyImpactPain(withLocal, props.clipImpulse)
+    }
 
     Box(
         modifier = modifier.fillMaxSize().background(backgroundColor(effectiveWorld.background))
@@ -546,7 +607,7 @@ fun RenderScene3d(
                     mapOf("entity_id" to entityId, "joint" to (selectedJoint?.second ?: -1)),
                 )
             },
-            onPickReleased = { entityId -> dropAndSettle(entityId) },
+            onPickReleased = { entityId -> if (entityId != "impact") dropAndSettle(entityId) },
         )
         if (previewMode) {
             Box(

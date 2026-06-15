@@ -334,6 +334,7 @@ data class Scene3dProps(
     val background: String = "neutral-gray",
     val clipUrl: String? = null,
     val clipFrame: Int = 0,
+    val clipImpulse: Float = 0.8f,
 )
 
 fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
@@ -343,4 +344,5 @@ fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
     background = string("background") ?: "neutral-gray",
     clipUrl = string("clip_url"),
     clipFrame = (double("frame") ?: 0.0).toInt(),
+    clipImpulse = (double("impulse") ?: 0.8).toFloat(),
 )

@@ -209,6 +209,10 @@ fun Scene3dView(
                     drawGoalMarker(entity, ::screen)
                     continue
                 }
+                if (entity.kind == "ball") {
+                    drawImpactBall(entity, ::screen)
+                    continue
+                }
                 val jointFrame = entity.jointFrame
                 if (jointFrame != null && jointFrame.size >= 22) {
                     drawJointFrameSkeleton(entity, jointFrame, ::screen)
@@ -374,6 +378,18 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawJointFrameSkele
             drawCircle(boneColor.copy(alpha = 0.85f), radius = 3f, center = Offset(pt.x, pt.y))
         }
     }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawImpactBall(
+    entity: Scene3dEntity,
+    screen: (Vec3) -> ProjectedPoint,
+) {
+    val p = screen(entity.position.toVec3())
+    if (!p.visible) return
+    val center = Offset(p.x, p.y)
+    drawCircle(Color(0x33FF5A4A), radius = 16f, center = center)
+    drawCircle(Color(0xFFFF4733), radius = 8f, center = center)
+    drawCircle(Color(0xFFFFD9CF), radius = 3f, center = center)
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGoalMarker(
