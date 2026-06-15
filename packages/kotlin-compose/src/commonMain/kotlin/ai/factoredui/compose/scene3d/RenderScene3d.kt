@@ -110,7 +110,9 @@ private fun smpl24GraphHops(from: Int, n: Int): IntArray {
 // it, scaled by impulse. Geodesic-ish — leaves the far side dark, unlike euclidean.
 private fun applyImpactPain(state: Scene3dWorldState, impulse: Float): Scene3dWorldState {
     val ball = state.entities.firstOrNull { it.kind == "ball" } ?: return state
-    val body = state.entities.firstOrNull { (it.jointFrame?.size ?: 0) >= 24 } ?: return state
+    val body = state.entities.firstOrNull { it.id == "injured" }
+        ?: state.entities.firstOrNull { (it.jointFrame?.size ?: 0) >= 24 && it.kind != "ghost" }
+        ?: return state
     val joints = body.jointFrame ?: return state
     val bx = ball.position.getOrElse(0) { 0f }
     val by = ball.position.getOrElse(1) { 0f }
@@ -182,47 +184,32 @@ fun RenderScene3d(
         )
     }
 
-    LaunchedEffect(motionClip, props.clipSeverity, props.clipEffector, localPositions, props.clipAutoplay) {
+    LaunchedEffect(motionClip) {
         val clip = motionClip ?: return@LaunchedEffect
         if (clip.frames.isEmpty() || clip.frames.first().joints.size < 24) return@LaunchedEffect
-        val rest: Frame = clip.frames.first().joints
         val goalDefault = clip.goal.takeIf { it.size >= 3 }?.let { listOf(it[0], it[2], -it[1]) }
             ?: listOf(0.4f, 1.0f, 0.6f)
-        val goalRender = localPositions["goal"] ?: goalDefault
-        val targetZup = listOf(goalRender[0], -goalRender.getOrElse(2) { 0f }, goalRender.getOrElse(1) { 0f })
-        val guarded = injuredWalk(rest, targetZup, props.clipSeverity)
-        if (guarded.isEmpty()) return@LaunchedEffect
-        val ghostFrame = targetPose(rest, props.clipEffector, targetZup)
-            .map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) }
-        val ghost = Scene3dEntity(id = "target_pose", kind = "ghost", jointFrame = ghostFrame)
-        fun showComputedFrame(frame: Frame) {
+        fun showClipFrame(index: Int) {
+            val f = clip.frames[index.coerceIn(0, clip.frames.size - 1)]
             val body = Scene3dEntity(
                 id = "injured",
-                jointFrame = frame.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) },
+                jointFrame = f.joints.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) },
+                pain = f.pain.takeIf { it.isNotEmpty() },
             )
             val goal = Scene3dEntity(id = "goal", kind = "goal", selected = true, position = goalDefault)
             val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
-            world = Scene3dWorldState(entities = listOfNotNull(ghost, body, goal, ball))
+            world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
             if (!cameraInitialized) {
-                applyCameraState(camera, Scene3dCameraState(position = listOf(1.5f, 1.1f, 1.5f), target = listOf(0f, 0.55f, 0f)))
+                applyCameraState(camera, Scene3dCameraState(position = listOf(2.0f, 1.3f, 2.0f), target = listOf(0f, 0.7f, 0f)))
                 cameraInitialized = true
             }
         }
         val periodMs = (1000f / clip.fps.coerceAtLeast(1f)).toLong().coerceAtLeast(16L)
-        val span = guarded.size
-        val holdFrames = 20
-        val cycle = span * 2 + holdFrames
-        var tick = 0
+        var index = 0
         while (true) {
-            val phase = tick % cycle
-            val index = when {
-                phase < span -> phase
-                phase < span + holdFrames -> span - 1
-                else -> (cycle - 1 - (phase - holdFrames)).coerceIn(0, span - 1)
-            }
-            showComputedFrame(guarded[index.coerceIn(0, span - 1)])
+            showClipFrame(index)
             delay(periodMs)
-            tick = (tick + 1) % cycle
+            index = (index + 1) % clip.frames.size
         }
     }
 

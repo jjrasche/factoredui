@@ -3,6 +3,7 @@ package ai.factoredui.compose.scene3d
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.acos
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.sin
@@ -113,18 +114,26 @@ fun injuredWalk(rest: Frame, target: List<Float>, severity: Float, baseFrames: I
     val gy = target.getOrElse(1) { 0f } - start[1]
     val dist = sqrt(gx * gx + gy * gy)
     val dirX = if (dist > 1e-4f) gx / dist else 0f
-    val dirY = if (dist > 1e-4f) gy / dist else 0f
-    val travelFrac = 1f - 0.7f * sev
+    val dirY = if (dist > 1e-4f) gy / dist else 1f
+    val travelFrac = 1f - 0.45f * sev * sev
     val nSteps = (dist / (0.5f - 0.28f * sev)).toInt().coerceIn(2, 12)
     val frames = (baseFrames * (1f + 2.2f * sev)).toInt().coerceAtLeast(10)
     val twoPi = 2f * PI.toFloat()
+    val yaw = atan2(dirX, dirY)
+    val cosY = cos(yaw); val sinY = sin(yaw)
+    val pelvis0 = v(rest[PELVIS])
+    val faced = rest.map { joint ->
+        val rx = joint.getOrElse(0) { 0f } - pelvis0[0]
+        val ry = joint.getOrElse(1) { 0f } - pelvis0[1]
+        listOf(pelvis0[0] + rx * cosY - ry * sinY, pelvis0[1] + rx * sinY + ry * cosY, joint.getOrElse(2) { 0f })
+    }
     val out = mutableListOf<Frame>()
     for (i in 0 until frames) {
         val p = minJerk(i.toFloat() / (frames - 1)) * travelFrac
         val phase = p * nSteps * twoPi
         val bob = abs(sin(phase)) * 0.03f
         val tgx = gx * p; val tgy = gy * p
-        val walked = rest.mapIndexed { j, joint ->
+        val walked = faced.mapIndexed { j, joint ->
             var x = joint.getOrElse(0) { 0f } + tgx
             var y = joint.getOrElse(1) { 0f } + tgy
             var z = joint.getOrElse(2) { 0f } + bob
