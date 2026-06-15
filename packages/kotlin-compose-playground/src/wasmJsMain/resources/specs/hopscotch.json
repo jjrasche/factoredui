@@ -1,0 +1,14 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "hopscotch",
+    "type": "column",
+    "props": { "gap": 4, "padding": 4 },
+    "children": [
+      { "id": "hs-title", "type": "text", "props": { "value": "Hopscotch — the injured-motion test board", "variant": "heading" } },
+      { "id": "hs-sub", "type": "text", "props": { "value": "The classic board: single-foot and double-foot squares (single = 1 tile, double = 2 side by side). A character hops through it; healthy vs injured will run side by side so the favoring reads at a glance. Board's built — motion from il-injury (teacher) + il-fastgen (fast) plugs into the same joint-stream render.", "variant": "caption" } },
+      { "id": "hs-scene", "type": "scene3d", "props": { "board": "hopscotch", "background": "neutral-gray", "flex": 1 } }
+    ]
+  }
+}

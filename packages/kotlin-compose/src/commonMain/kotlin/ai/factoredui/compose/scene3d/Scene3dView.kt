@@ -209,6 +209,10 @@ fun Scene3dView(
                     drawGoalMarker(entity, ::screen)
                     continue
                 }
+                if (entity.kind == "tile") {
+                    drawHopscotchTile(entity, ::screen)
+                    continue
+                }
                 if (entity.kind == "ball") {
                     drawImpactBall(entity, ::screen)
                     continue
@@ -382,6 +386,31 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawJointFrameSkele
         } else {
             drawCircle(boneColor.copy(alpha = 0.85f), radius = 3f, center = Offset(pt.x, pt.y))
         }
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawHopscotchTile(
+    entity: Scene3dEntity,
+    screen: (Vec3) -> ProjectedPoint,
+) {
+    val base = entity.position.toVec3()
+    val s = 0.42f
+    val corners = listOf(
+        Vec3(base.x - s, 0f, base.z - s), Vec3(base.x + s, 0f, base.z - s),
+        Vec3(base.x + s, 0f, base.z + s), Vec3(base.x - s, 0f, base.z + s),
+    ).map { screen(it) }
+    if (corners.any { !it.visible }) return
+    val edge = Color(0xFF9AA8D0)
+    val fill = Color(0x223FE0C8)
+    val path = Path().apply {
+        moveTo(corners[0].x, corners[0].y)
+        for (i in 1..3) lineTo(corners[i].x, corners[i].y)
+        close()
+    }
+    drawPath(path, color = fill)
+    for (i in 0..3) {
+        val a = corners[i]; val b = corners[(i + 1) % 4]
+        drawLine(edge, Offset(a.x, a.y), Offset(b.x, b.y), strokeWidth = 2f)
     }
 }
 

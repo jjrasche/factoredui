@@ -67,6 +67,7 @@ enum class StageContext(val label: String, val specUrl: String?, val promptUrl: 
     COMPOSER("Composer", "specs/composer.json", "http://127.0.0.1:8765/director/prompt"),
     DROP("Drop", "specs/drop.json", null),
     INJURY("Injury", "specs/injury.json", null),
+    HOPSCOTCH("Hopscotch", "specs/hopscotch.json", null),
     AGENTS("Agents", "specs/agents.json", null),
     REVIEW("Review", null, null),
 }

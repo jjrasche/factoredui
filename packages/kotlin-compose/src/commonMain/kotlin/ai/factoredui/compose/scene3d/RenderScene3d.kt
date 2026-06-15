@@ -226,9 +226,32 @@ fun RenderScene3d(
         }
     }
 
+    LaunchedEffect(props.board) {
+        if (props.board != "hopscotch") return@LaunchedEffect
+        val pattern = listOf("single", "single", "double", "single", "double", "single", "double", "single")
+        val tiles = mutableListOf<Scene3dEntity>()
+        var z = -3f
+        var n = 1
+        for (foot in pattern) {
+            if (foot == "single") {
+                tiles.add(Scene3dEntity(id = "tile_$n", kind = "tile", position = listOf(0f, 0f, z)))
+            } else {
+                tiles.add(Scene3dEntity(id = "tile_${n}a", kind = "tile", position = listOf(-0.5f, 0f, z)))
+                tiles.add(Scene3dEntity(id = "tile_${n}b", kind = "tile", position = listOf(0.5f, 0f, z)))
+            }
+            z += 1.1f
+            n++
+        }
+        world = Scene3dWorldState(entities = tiles)
+        if (!cameraInitialized) {
+            applyCameraState(camera, Scene3dCameraState(position = listOf(4.2f, 3.2f, 4.5f), target = listOf(0f, 0f, 1f)))
+            cameraInitialized = true
+        }
+    }
+
     LaunchedEffect(props.worldStateUrl) {
         if (props.worldStateUrl.isEmpty()) {
-            if (props.clipUrl == null) loadError = "scene3d: missing world_state_url"
+            if (props.clipUrl == null && props.board == null) loadError = "scene3d: missing world_state_url"
             return@LaunchedEffect
         }
         runCatching {
