@@ -350,7 +350,7 @@ fun StageApp() {
                 "gatePoses" to "poses",
                 "gateMesh" to "3D mesh",
                 "character" to mapOf("personality" to NEUTRAL_PERSONALITY),
-                "injury" to mapOf("frame" to 0f, "impulse" to 0.8f),
+                "injury" to mapOf("frame" to 0f, "impulse" to 0.8f, "autoplay" to false),
             ),
         )
     }

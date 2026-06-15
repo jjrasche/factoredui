@@ -171,6 +171,7 @@ fun RenderScene3d(
     var appliedPoseRefs by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     var motionClip by remember { mutableStateOf<MotionClip?>(null) }
+    var autoFrame by remember { mutableStateOf(0) }
 
     LaunchedEffect(props.clipUrl) {
         val url = props.clipUrl ?: return@LaunchedEffect
@@ -182,10 +183,23 @@ fun RenderScene3d(
         )
     }
 
-    LaunchedEffect(motionClip, props.clipFrame) {
+    LaunchedEffect(props.clipAutoplay, motionClip) {
+        if (!props.clipAutoplay) return@LaunchedEffect
         val clip = motionClip ?: return@LaunchedEffect
         if (clip.frames.isEmpty()) return@LaunchedEffect
-        val frame = clip.frames[props.clipFrame.coerceIn(0, clip.frames.size - 1)]
+        val periodMs = (1000f / clip.fps.coerceAtLeast(1f)).toLong().coerceAtLeast(16L)
+        while (true) {
+            delay(periodMs)
+            autoFrame = (autoFrame + 1) % clip.frames.size
+        }
+    }
+
+    val activeClipFrame = if (props.clipAutoplay) autoFrame else props.clipFrame
+
+    LaunchedEffect(motionClip, activeClipFrame) {
+        val clip = motionClip ?: return@LaunchedEffect
+        if (clip.frames.isEmpty()) return@LaunchedEffect
+        val frame = clip.frames[activeClipFrame.coerceIn(0, clip.frames.size - 1)]
         val body = Scene3dEntity(
             id = "injured",
             jointFrame = frame.joints.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) },

@@ -8,12 +8,21 @@
     "children": [
       { "id": "inj-title", "type": "text", "props": { "value": "Injury — drag the impact, watch the pain bloom", "variant": "heading" } },
       { "id": "inj-sub", "type": "text", "props": { "value": "Drag the RED ball onto the body to place the hit — the nearest joint lights up and the pain spreads along the limbs (cold slate → orange → hot red), sized by intensity. The impulse dial = how hard. Scrub the timeline to play the guarded reach. (Live preview field; il-injury's verified geodesic field swaps in next.)", "variant": "caption" } },
-      { "id": "inj-scene", "type": "scene3d", "props": { "clip_url": "clips/injury_scene_stream.json", "frame": "{injury.frame}", "impulse": "{injury.impulse}", "background": "neutral-gray", "flex": 1 } },
+      { "id": "inj-scene", "type": "scene3d", "props": { "clip_url": "clips/injury_scene_stream.json", "frame": "{injury.frame}", "impulse": "{injury.impulse}", "autoplay": "{injury.autoplay}", "background": "neutral-gray", "flex": 1 } },
       {
         "id": "inj-controls",
         "type": "row",
         "props": { "gap": 16 },
         "children": [
+          {
+            "id": "inj-play-col",
+            "type": "column",
+            "props": { "gap": 0 },
+            "children": [
+              { "id": "inj-play-l", "type": "text", "props": { "value": "play the reach", "variant": "caption" } },
+              { "id": "inj-play", "type": "toggle", "props": { "label": "", "value": "{injury.autoplay}" } }
+            ]
+          },
           {
             "id": "inj-impulse-col",
             "type": "column",
@@ -28,7 +37,7 @@
             "type": "column",
             "props": { "gap": 0, "flex": 1 },
             "children": [
-              { "id": "inj-frame-l", "type": "text", "props": { "value": "timeline — the guarded reach (frame {injury.frame} / 106)", "variant": "caption" } },
+              { "id": "inj-frame-l", "type": "text", "props": { "value": "timeline — scrub the guarded reach (or hit play)", "variant": "caption" } },
               { "id": "inj-scrub", "type": "slider", "props": { "min": 0, "max": 106, "step": 1, "value": "{injury.frame}" } }
             ]
           }
