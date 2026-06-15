@@ -213,6 +213,11 @@ fun Scene3dView(
                     drawImpactBall(entity, ::screen)
                     continue
                 }
+                val ghostFrame = entity.jointFrame
+                if (entity.kind == "ghost" && ghostFrame != null && ghostFrame.size >= 22) {
+                    drawGhostSkeleton(ghostFrame, ::screen)
+                    continue
+                }
                 val jointFrame = entity.jointFrame
                 if (jointFrame != null && jointFrame.size >= 22) {
                     drawJointFrameSkeleton(entity, jointFrame, ::screen)
@@ -378,6 +383,22 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawJointFrameSkele
             drawCircle(boneColor.copy(alpha = 0.85f), radius = 3f, center = Offset(pt.x, pt.y))
         }
     }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGhostSkeleton(
+    jointFrame: List<List<Float>>,
+    screen: (Vec3) -> ProjectedPoint,
+) {
+    val pts = jointFrame.map { j -> screen(Vec3(j.getOrElse(0) { 0f }, j.getOrElse(1) { 0f }, j.getOrElse(2) { 0f })) }
+    val bones = if (jointFrame.size >= 24) SMPL24_BONES else SMPL_BODY_BONES
+    val color = Color(0x553FE0C8)
+    for ((child, parent) in bones) {
+        if (child >= pts.size || parent >= pts.size) continue
+        val a = pts[child]; val b = pts[parent]
+        if (!a.visible || !b.visible) continue
+        drawLine(color, Offset(a.x, a.y), Offset(b.x, b.y), strokeWidth = 2f)
+    }
+    for (pt in pts) if (pt.visible) drawCircle(color, radius = 2.5f, center = Offset(pt.x, pt.y))
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawImpactBall(

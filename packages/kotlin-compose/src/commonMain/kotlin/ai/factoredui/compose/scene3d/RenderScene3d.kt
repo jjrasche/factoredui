@@ -192,6 +192,9 @@ fun RenderScene3d(
         val targetZup = listOf(goalRender[0], -goalRender.getOrElse(2) { 0f }, goalRender.getOrElse(1) { 0f })
         val guarded = injuredWalk(rest, targetZup, props.clipSeverity)
         if (guarded.isEmpty()) return@LaunchedEffect
+        val ghostFrame = targetPose(rest, props.clipEffector, targetZup)
+            .map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) }
+        val ghost = Scene3dEntity(id = "target_pose", kind = "ghost", jointFrame = ghostFrame)
         fun showComputedFrame(frame: Frame) {
             val body = Scene3dEntity(
                 id = "injured",
@@ -199,7 +202,7 @@ fun RenderScene3d(
             )
             val goal = Scene3dEntity(id = "goal", kind = "goal", selected = true, position = goalDefault)
             val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
-            world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
+            world = Scene3dWorldState(entities = listOfNotNull(ghost, body, goal, ball))
             if (!cameraInitialized) {
                 applyCameraState(camera, Scene3dCameraState(position = listOf(1.5f, 1.1f, 1.5f), target = listOf(0f, 0.55f, 0f)))
                 cameraInitialized = true

@@ -83,6 +83,16 @@ private fun solveLimbReach(rest: Frame, chain: Chain, target: FloatArray): Frame
     return solved
 }
 
+// The STATIC destination: body stood at the goal's ground position with the effector reaching the
+// target point. A ghost reference so you can see whether the walk/reach actually honors the target.
+fun targetPose(rest: Frame, effector: String, target: List<Float>): Frame {
+    if (rest.size < 24) return rest
+    val dx = target.getOrElse(0) { 0f } - rest[PELVIS].getOrElse(0) { 0f }
+    val dy = target.getOrElse(1) { 0f } - rest[PELVIS].getOrElse(1) { 0f }
+    val stood = rest.map { listOf(it.getOrElse(0) { 0f } + dx, it.getOrElse(1) { 0f } + dy, it.getOrElse(2) { 0f }) }
+    return solveLimbReach(stood, effectorChain(effector), v(target))
+}
+
 fun healthyReach(rest: Frame, effector: String, target: List<Float>, baseFrames: Int = 28): List<Frame> {
     if (rest.size < 24) return listOf(rest)
     val solved = solveLimbReach(rest, effectorChain(effector), v(target))
