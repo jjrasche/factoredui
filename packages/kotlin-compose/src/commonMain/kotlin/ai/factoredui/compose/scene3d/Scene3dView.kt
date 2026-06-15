@@ -407,6 +407,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGoalMarker(
 
 private fun personCenter(entity: Scene3dEntity): Vec3 {
     val base = entity.position.toVec3()
+    if (entity.kind == "ball" || entity.kind == "goal") return base
     return Vec3(base.x, base.y + PERSON_HEIGHT / 2f, base.z)
 }
 

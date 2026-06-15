@@ -17,7 +17,7 @@
           {
             "id": "inj-play-col",
             "type": "column",
-            "props": { "gap": 0 },
+            "props": { "gap": 0, "flex": 1 },
             "children": [
               { "id": "inj-play-l", "type": "text", "props": { "value": "play the reach", "variant": "caption" } },
               { "id": "inj-play", "type": "toggle", "props": { "label": "", "value": "{injury.autoplay}" } }
