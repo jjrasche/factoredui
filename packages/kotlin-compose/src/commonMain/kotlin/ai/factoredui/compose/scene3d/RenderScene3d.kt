@@ -201,7 +201,7 @@ fun RenderScene3d(
             val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
             world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
             if (!cameraInitialized) {
-                applyCameraState(camera, Scene3dCameraState(position = listOf(2.6f, 1.8f, 2.6f), target = listOf(0f, 0.8f, 0f)))
+                applyCameraState(camera, Scene3dCameraState(position = listOf(1.5f, 1.1f, 1.5f), target = listOf(0f, 0.55f, 0f)))
                 cameraInitialized = true
             }
         }
