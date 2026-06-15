@@ -174,6 +174,7 @@ fun RenderScene3d(
     var appliedPoseRefs by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     var motionClip by remember { mutableStateOf<MotionClip?>(null) }
+    var motionClipB by remember { mutableStateOf<MotionClip?>(null) }
 
     LaunchedEffect(props.clipUrl) {
         val url = props.clipUrl
@@ -186,6 +187,20 @@ fun RenderScene3d(
         }.fold(
             onSuccess = { motionClip = it },
             onFailure = { loadError = "scene3d clip: ${it.message ?: it::class.simpleName}" },
+        )
+    }
+
+    LaunchedEffect(props.clipUrlB) {
+        val url = props.clipUrlB
+        if (url == null) {
+            motionClipB = null
+            return@LaunchedEffect
+        }
+        runCatching {
+            json.decodeFromString(MotionClip.serializer(), httpClient.get(url).bodyAsText())
+        }.fold(
+            onSuccess = { motionClipB = it },
+            onFailure = { loadError = "scene3d clipB: ${it.message ?: it::class.simpleName}" },
         )
     }
 
@@ -215,18 +230,32 @@ fun RenderScene3d(
         )
     }
 
-    LaunchedEffect(motionClip) {
+    LaunchedEffect(motionClip, motionClipB) {
         val clip = motionClip ?: return@LaunchedEffect
         if (clip.frames.isEmpty() || clip.frames.first().joints.size < 24) return@LaunchedEffect
+        val clipB = motionClipB?.takeIf { it.frames.isNotEmpty() && it.frames.first().joints.size >= 24 }
         val goalDefault = clip.goal.takeIf { it.size >= 3 }?.let { listOf(it[0], it[2], -it[1]) }
             ?: listOf(0.4f, 1.0f, 0.6f)
-        fun showClipFrame(index: Int) {
-            val f = clip.frames[index.coerceIn(0, clip.frames.size - 1)]
-            val body = Scene3dEntity(
-                id = "injured",
-                jointFrame = f.joints.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) },
+        fun bodyFrom(source: MotionClip, index: Int, id: String, lateral: Float): Scene3dEntity {
+            val f = source.frames[index.coerceIn(0, source.frames.size - 1)]
+            return Scene3dEntity(
+                id = id,
+                jointFrame = f.joints.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f } + lateral) },
                 pain = f.pain.takeIf { it.isNotEmpty() },
             )
+        }
+        fun showClipFrame(index: Int) {
+            if (clipB != null) {
+                val healthy = bodyFrom(clip, index, "healthy", -0.9f)
+                val injured = bodyFrom(clipB, index, "injured", 0.9f)
+                world = Scene3dWorldState(entities = listOf(healthy, injured))
+                if (!cameraInitialized) {
+                    applyCameraState(camera, Scene3dCameraState(position = listOf(5.2f, 3.4f, 5.2f), target = listOf(0.84f, 0.45f, 0f)))
+                    cameraInitialized = true
+                }
+                return
+            }
+            val body = bodyFrom(clip, index, "injured", 0f)
             val goal = Scene3dEntity(id = "goal", kind = "goal", selected = true, position = goalDefault)
             val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
             world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
