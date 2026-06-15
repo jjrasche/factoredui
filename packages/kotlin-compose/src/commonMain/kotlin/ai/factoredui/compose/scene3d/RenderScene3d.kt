@@ -171,7 +171,6 @@ fun RenderScene3d(
     var appliedPoseRefs by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     var motionClip by remember { mutableStateOf<MotionClip?>(null) }
-    var autoFrame by remember { mutableStateOf(0) }
 
     LaunchedEffect(props.clipUrl) {
         val url = props.clipUrl ?: return@LaunchedEffect
@@ -183,36 +182,36 @@ fun RenderScene3d(
         )
     }
 
-    LaunchedEffect(props.clipAutoplay, motionClip) {
-        if (!props.clipAutoplay) return@LaunchedEffect
+    LaunchedEffect(motionClip, props.clipAutoplay, props.clipFrame) {
         val clip = motionClip ?: return@LaunchedEffect
         if (clip.frames.isEmpty()) return@LaunchedEffect
-        val periodMs = (1000f / clip.fps.coerceAtLeast(1f)).toLong().coerceAtLeast(16L)
-        while (true) {
-            delay(periodMs)
-            autoFrame = (autoFrame + 1) % clip.frames.size
+        fun showFrame(index: Int) {
+            val frame = clip.frames[index.coerceIn(0, clip.frames.size - 1)]
+            val body = Scene3dEntity(
+                id = "injured",
+                jointFrame = frame.joints.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) },
+                pain = frame.pain,
+            )
+            val goal = clip.goal.takeIf { it.size >= 3 }?.let {
+                Scene3dEntity(id = "goal", kind = "goal", position = listOf(it[0], it[2], -it[1]))
+            }
+            val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
+            world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
+            if (!cameraInitialized) {
+                applyCameraState(camera, Scene3dCameraState(position = listOf(2.6f, 1.8f, 2.6f), target = listOf(0f, 0.8f, 0f)))
+                cameraInitialized = true
+            }
         }
-    }
-
-    val activeClipFrame = if (props.clipAutoplay) autoFrame else props.clipFrame
-
-    LaunchedEffect(motionClip, activeClipFrame) {
-        val clip = motionClip ?: return@LaunchedEffect
-        if (clip.frames.isEmpty()) return@LaunchedEffect
-        val frame = clip.frames[activeClipFrame.coerceIn(0, clip.frames.size - 1)]
-        val body = Scene3dEntity(
-            id = "injured",
-            jointFrame = frame.joints.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) },
-            pain = frame.pain,
-        )
-        val goal = clip.goal.takeIf { it.size >= 3 }?.let {
-            Scene3dEntity(id = "goal", kind = "goal", position = listOf(it[0], it[2], -it[1]))
-        }
-        val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
-        world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
-        if (!cameraInitialized) {
-            applyCameraState(camera, Scene3dCameraState(position = listOf(2.6f, 1.8f, 2.6f), target = listOf(0f, 0.8f, 0f)))
-            cameraInitialized = true
+        if (props.clipAutoplay) {
+            val periodMs = (1000f / clip.fps.coerceAtLeast(1f)).toLong().coerceAtLeast(16L)
+            var index = 0
+            while (true) {
+                showFrame(index)
+                delay(periodMs)
+                index = (index + 1) % clip.frames.size
+            }
+        } else {
+            showFrame(props.clipFrame)
         }
     }
 
