@@ -261,8 +261,10 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawMesh(
 ) {
     val base = entity.position.toVec3()
     val scale = entity.scale
+    val spin = eulerRotation(entity.rotation)
     val projected = displayVertices.map { vertex ->
-        screen(Vec3(base.x + vertex.x * scale, base.y + vertex.y * scale, base.z + vertex.z * scale))
+        val r = spin.transform(Vec3(vertex.x * scale, vertex.y * scale, vertex.z * scale))
+        screen(Vec3(base.x + r[0], base.y + r[1], base.z + r[2]))
     }
     val triangleCount = mesh.triangles.size / 3
     val order = (0 until triangleCount).sortedByDescending { triangle ->
@@ -284,6 +286,16 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawMesh(
         }
         drawPath(path, color = mesh.colors.getOrElse(triangle) { Color(0xFF888888) })
     }
+}
+
+private fun eulerRotation(euler: List<Float>): Matrix4 {
+    val rx = euler.getOrElse(0) { 0f }
+    val ry = euler.getOrElse(1) { 0f }
+    val rz = euler.getOrElse(2) { 0f }
+    if (rx == 0f && ry == 0f && rz == 0f) return Matrix4.identity()
+    return Matrix4.rotate(Vec3(0f, 0f, 1f), rz) *
+        Matrix4.rotate(Vec3(0f, 1f, 0f), ry) *
+        Matrix4.rotate(Vec3(1f, 0f, 0f), rx)
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSelectionRing(
