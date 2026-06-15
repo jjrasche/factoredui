@@ -172,7 +172,15 @@ private fun RenderNodeByType(
             val liveFrame = (resolvedProps["frame"] as? Number)?.toInt() ?: sceneProps.clipFrame
             val liveImpulse = (resolvedProps["impulse"] as? Number)?.toFloat() ?: sceneProps.clipImpulse
             val liveAutoplay = (resolvedProps["autoplay"] as? Boolean) ?: sceneProps.clipAutoplay
-            RenderScene3d(sceneProps.copy(clipFrame = liveFrame, clipImpulse = liveImpulse, clipAutoplay = liveAutoplay), node.id, context.observability)
+            val liveSeverity = (resolvedProps["severity"] as? Number)?.toFloat() ?: sceneProps.clipSeverity
+            val liveEffector = (resolvedProps["effector"] as? String) ?: sceneProps.clipEffector
+            RenderScene3d(
+                sceneProps.copy(
+                    clipFrame = liveFrame, clipImpulse = liveImpulse, clipAutoplay = liveAutoplay,
+                    clipSeverity = liveSeverity, clipEffector = liveEffector,
+                ),
+                node.id, context.observability,
+            )
         }
         SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)
         SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)

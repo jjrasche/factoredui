@@ -182,19 +182,22 @@ fun RenderScene3d(
         )
     }
 
-    LaunchedEffect(motionClip, props.clipAutoplay, props.clipFrame) {
+    LaunchedEffect(motionClip, props.clipSeverity, props.clipEffector, localPositions, props.clipAutoplay) {
         val clip = motionClip ?: return@LaunchedEffect
-        if (clip.frames.isEmpty()) return@LaunchedEffect
-        fun showFrame(index: Int) {
-            val frame = clip.frames[index.coerceIn(0, clip.frames.size - 1)]
+        if (clip.frames.isEmpty() || clip.frames.first().joints.size < 24) return@LaunchedEffect
+        val rest: Frame = clip.frames.first().joints
+        val goalDefault = clip.goal.takeIf { it.size >= 3 }?.let { listOf(it[0], it[2], -it[1]) }
+            ?: listOf(0.4f, 1.0f, 0.6f)
+        val goalRender = localPositions["goal"] ?: goalDefault
+        val targetZup = listOf(goalRender[0], -goalRender.getOrElse(2) { 0f }, goalRender.getOrElse(1) { 0f })
+        val guarded = guardTransform(healthyReach(rest, props.clipEffector, targetZup), props.clipSeverity)
+        if (guarded.isEmpty()) return@LaunchedEffect
+        fun showComputedFrame(frame: Frame) {
             val body = Scene3dEntity(
                 id = "injured",
-                jointFrame = frame.joints.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) },
-                pain = frame.pain,
+                jointFrame = frame.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) },
             )
-            val goal = clip.goal.takeIf { it.size >= 3 }?.let {
-                Scene3dEntity(id = "goal", kind = "goal", selected = true, position = listOf(it[0], it[2], -it[1]))
-            }
+            val goal = Scene3dEntity(id = "goal", kind = "goal", selected = true, position = goalDefault)
             val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
             world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
             if (!cameraInitialized) {
@@ -202,16 +205,21 @@ fun RenderScene3d(
                 cameraInitialized = true
             }
         }
-        if (props.clipAutoplay) {
-            val periodMs = (1000f / clip.fps.coerceAtLeast(1f)).toLong().coerceAtLeast(16L)
-            var index = 0
-            while (true) {
-                showFrame(index)
-                delay(periodMs)
-                index = (index + 1) % clip.frames.size
+        val periodMs = (1000f / clip.fps.coerceAtLeast(1f)).toLong().coerceAtLeast(16L)
+        val span = guarded.size
+        val holdFrames = 20
+        val cycle = span * 2 + holdFrames
+        var tick = 0
+        while (true) {
+            val phase = tick % cycle
+            val index = when {
+                phase < span -> phase
+                phase < span + holdFrames -> span - 1
+                else -> (cycle - 1 - (phase - holdFrames)).coerceIn(0, span - 1)
             }
-        } else {
-            showFrame(props.clipFrame)
+            showComputedFrame(guarded[index.coerceIn(0, span - 1)])
+            delay(periodMs)
+            tick = (tick + 1) % cycle
         }
     }
 

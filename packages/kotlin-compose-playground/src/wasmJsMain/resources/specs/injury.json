@@ -6,21 +6,21 @@
     "type": "column",
     "props": { "gap": 4, "padding": 4 },
     "children": [
-      { "id": "inj-title", "type": "text", "props": { "value": "Injury — drag the impact, watch the pain bloom", "variant": "heading" } },
-      { "id": "inj-sub", "type": "text", "props": { "value": "Drag the RED ball onto the body to place the hit (pain blooms from the nearest joint). Drag the GREEN target to set where the body reaches, and pick which limb touches it. The reach is FREE — the body may step to favor the injury. Impulse = how hard. Play/scrub the motion. (Pain + reach are previews until il-injury's solver lands.)", "variant": "caption" } },
-      { "id": "inj-scene", "type": "scene3d", "props": { "clip_url": "clips/injury_scene_stream.json", "frame": "{injury.frame}", "impulse": "{injury.impulse}", "autoplay": "{injury.autoplay}", "background": "neutral-gray", "flex": 1 } },
+      { "id": "inj-title", "type": "text", "props": { "value": "Injury — set the hit, the target, and the severity; watch it reach guarding", "variant": "heading" } },
+      { "id": "inj-sub", "type": "text", "props": { "value": "Drag the GREEN target → the body reaches it (pick which limb). Crank SEVERITY → the reach goes slow, stuttering, hunched — guarded. Drag the RED ball to place the hit → pain blooms there. The reach loops so you can watch it. (Client-side port of il-injury's guard transform — the offline optimizer is the ground truth it's tuned against.)", "variant": "caption" } },
+      { "id": "inj-scene", "type": "scene3d", "props": { "clip_url": "clips/injury_scene_stream.json", "impulse": "{injury.impulse}", "severity": "{injury.severity}", "effector": "{injury.endEffector}", "background": "neutral-gray", "flex": 1 } },
       {
         "id": "inj-controls",
         "type": "row",
         "props": { "gap": 16 },
         "children": [
           {
-            "id": "inj-play-col",
+            "id": "inj-severity-col",
             "type": "column",
             "props": { "gap": 0, "flex": 1 },
             "children": [
-              { "id": "inj-play-l", "type": "text", "props": { "value": "play the reach", "variant": "caption" } },
-              { "id": "inj-play", "type": "toggle", "props": { "label": "", "value": "{injury.autoplay}" } }
+              { "id": "inj-severity-l", "type": "text", "props": { "value": "severity — healthy ↔ badly hurt", "variant": "caption" } },
+              { "id": "inj-severity", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{injury.severity}" } }
             ]
           },
           {
@@ -51,15 +51,6 @@
             "children": [
               { "id": "inj-impulse-l", "type": "text", "props": { "value": "impulse — how hard the hit lands", "variant": "caption" } },
               { "id": "inj-impulse", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{injury.impulse}" } }
-            ]
-          },
-          {
-            "id": "inj-frame-col",
-            "type": "column",
-            "props": { "gap": 0, "flex": 1 },
-            "children": [
-              { "id": "inj-frame-l", "type": "text", "props": { "value": "timeline — scrub the guarded reach (or hit play)", "variant": "caption" } },
-              { "id": "inj-scrub", "type": "slider", "props": { "min": 0, "max": 106, "step": 1, "value": "{injury.frame}" } }
             ]
           }
         ]
