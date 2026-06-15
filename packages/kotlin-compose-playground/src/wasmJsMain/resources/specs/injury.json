@@ -47,17 +47,17 @@
             "type": "column",
             "props": { "gap": 0, "flex": 1 },
             "children": [
-              { "id": "inj-effector-l", "type": "text", "props": { "value": "reach with", "variant": "caption" } },
+              { "id": "inj-effector-l", "type": "text", "props": { "value": "injured limb", "variant": "caption" } },
               {
                 "id": "inj-effector",
                 "type": "select",
                 "props": {
                   "value": "{injury.endEffector}",
                   "options": [
-                    { "value": "R_Hand", "label": "right hand" },
-                    { "value": "L_Hand", "label": "left hand" },
-                    { "value": "R_Foot", "label": "right foot" },
-                    { "value": "L_Foot", "label": "left foot" }
+                    { "value": "R_leg", "label": "right leg" },
+                    { "value": "L_leg", "label": "left leg" },
+                    { "value": "R_arm", "label": "right arm" },
+                    { "value": "L_arm", "label": "left arm" }
                   ]
                 }
               }

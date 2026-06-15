@@ -8,7 +8,7 @@
     "children": [
       { "id": "hs-title", "type": "text", "props": { "value": "Hopscotch — the injured-motion test board", "variant": "heading" } },
       { "id": "hs-sub", "type": "text", "props": { "value": "Single-foot and double-foot squares. Pick a motion engine and a severity; the engine solves the hop through the board and the body plays it. Healthy ↔ hurt reads in the favoring. Same joint-stream contract as Injury — switching engines is one field.", "variant": "caption" } },
-      { "id": "hs-scene", "type": "scene3d", "props": { "board": "hopscotch", "engine_url": "http://127.0.0.1:8765/engine/solve", "engine": "{hopscotch.engine}", "severity": "{hopscotch.severity}", "effector": "L_Foot", "background": "neutral-gray", "flex": 1 } },
+      { "id": "hs-scene", "type": "scene3d", "props": { "board": "hopscotch", "engine_url": "http://127.0.0.1:8765/engine/solve", "engine": "{hopscotch.engine}", "severity": "{hopscotch.severity}", "effector": "L_leg", "background": "neutral-gray", "flex": 1 } },
       {
         "id": "hs-controls",
         "type": "row",
