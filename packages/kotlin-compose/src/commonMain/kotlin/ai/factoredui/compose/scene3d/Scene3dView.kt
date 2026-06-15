@@ -92,8 +92,8 @@ fun Scene3dView(
                     var moveGrabOffset = Vec3(0f, 0f, 0f)
                     when (latestPoseMode) {
                         PoseMode.MOVE -> {
-                            val hit = nearestEntity(latestWorld.entities, camera, width, height, start)
-                            if (hit != null && latestWorld.entities.any { it.id == hit && it.selected }) {
+                            val hit = nearestEntity(latestWorld.entities.filter { it.selected }, camera, width, height, start)
+                            if (hit != null) {
                                 val basis = latestWorld.entities.first { it.id == hit }.position.toVec3()
                                 mode = DragKind.MOVE; dragEntity = hit; moveBasis = basis
                                 viewPlaneHit(camera, width, height, start, basis)?.let { moveGrabOffset = basis - it }
