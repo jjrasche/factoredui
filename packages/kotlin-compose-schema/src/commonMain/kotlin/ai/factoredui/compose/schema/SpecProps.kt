@@ -339,6 +339,8 @@ data class Scene3dProps(
     val clipSeverity: Float = 0f,
     val clipEffector: String = "R_Hand",
     val board: String? = null,
+    val engineUrl: String? = null,
+    val engine: String = "injury",
 )
 
 fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
@@ -350,4 +352,6 @@ fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
     clipFrame = (double("frame") ?: 0.0).toInt(),
     clipImpulse = (double("impulse") ?: 0.8).toFloat(),
     board = string("board"),
+    engineUrl = string("engine_url"),
+    engine = string("engine") ?: "injury",
 )

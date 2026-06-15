@@ -7,8 +7,43 @@
     "props": { "gap": 4, "padding": 4 },
     "children": [
       { "id": "hs-title", "type": "text", "props": { "value": "Hopscotch — the injured-motion test board", "variant": "heading" } },
-      { "id": "hs-sub", "type": "text", "props": { "value": "The classic board: single-foot and double-foot squares (single = 1 tile, double = 2 side by side). A character hops through it; healthy vs injured will run side by side so the favoring reads at a glance. Board's built — motion from il-injury (teacher) + il-fastgen (fast) plugs into the same joint-stream render.", "variant": "caption" } },
-      { "id": "hs-scene", "type": "scene3d", "props": { "board": "hopscotch", "background": "neutral-gray", "flex": 1 } }
+      { "id": "hs-sub", "type": "text", "props": { "value": "Single-foot and double-foot squares. Pick a motion engine and a severity; the engine solves the hop through the board and the body plays it. Healthy ↔ hurt reads in the favoring. Same joint-stream contract as Injury — switching engines is one field.", "variant": "caption" } },
+      { "id": "hs-scene", "type": "scene3d", "props": { "board": "hopscotch", "engine_url": "http://127.0.0.1:8765/engine/solve", "engine": "{hopscotch.engine}", "severity": "{hopscotch.severity}", "effector": "L_Foot", "background": "neutral-gray", "flex": 1 } },
+      {
+        "id": "hs-controls",
+        "type": "row",
+        "props": { "gap": 16 },
+        "children": [
+          {
+            "id": "hs-engine-col",
+            "type": "column",
+            "props": { "gap": 0, "flex": 1 },
+            "children": [
+              { "id": "hs-engine-l", "type": "text", "props": { "value": "motion engine", "variant": "caption" } },
+              {
+                "id": "hs-engine",
+                "type": "select",
+                "props": {
+                  "value": "{hopscotch.engine}",
+                  "options": [
+                    { "value": "injury", "label": "injury optimizer (ground truth · slow)" },
+                    { "value": "fastgen", "label": "fastgen distill (fast)" }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "hs-severity-col",
+            "type": "column",
+            "props": { "gap": 0, "flex": 1 },
+            "children": [
+              { "id": "hs-severity-l", "type": "text", "props": { "value": "severity — healthy ↔ badly hurt", "variant": "caption" } },
+              { "id": "hs-severity", "type": "slider", "props": { "min": 0, "max": 1, "step": 0.05, "value": "{hopscotch.severity}" } }
+            ]
+          }
+        ]
+      }
     ]
   }
 }

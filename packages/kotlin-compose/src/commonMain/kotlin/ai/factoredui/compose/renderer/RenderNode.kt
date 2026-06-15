@@ -174,10 +174,11 @@ private fun RenderNodeByType(
             val liveAutoplay = (resolvedProps["autoplay"] as? Boolean) ?: sceneProps.clipAutoplay
             val liveSeverity = (resolvedProps["severity"] as? Number)?.toFloat() ?: sceneProps.clipSeverity
             val liveEffector = (resolvedProps["effector"] as? String) ?: sceneProps.clipEffector
+            val liveEngine = (resolvedProps["engine"] as? String) ?: sceneProps.engine
             RenderScene3d(
                 sceneProps.copy(
                     clipFrame = liveFrame, clipImpulse = liveImpulse, clipAutoplay = liveAutoplay,
-                    clipSeverity = liveSeverity, clipEffector = liveEffector,
+                    clipSeverity = liveSeverity, clipEffector = liveEffector, engine = liveEngine,
                 ),
                 node.id, context.observability,
             )
