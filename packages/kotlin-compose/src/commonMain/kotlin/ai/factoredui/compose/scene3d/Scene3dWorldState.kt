@@ -24,6 +24,8 @@ data class Scene3dEntity(
     val status: String = "ready",
     @SerialName("pose_ref") val poseRef: String? = null,
     @SerialName("joint_frame") val jointFrame: List<List<Float>>? = null,
+    val pain: List<Float>? = null,
+    val kind: String? = null,
 )
 
 @Serializable
@@ -43,3 +45,19 @@ data class Scene3dLight(
 
 fun List<Float>.toVec3(): Vec3 =
     Vec3(getOrElse(0) { 0f }, getOrElse(1) { 0f }, getOrElse(2) { 0f })
+
+@Serializable
+data class MotionClip(
+    val name: String = "",
+    val fps: Float = 30f,
+    @SerialName("joint_names") val jointNames: List<String> = emptyList(),
+    val goal: List<Float> = emptyList(),
+    val frames: List<MotionClipFrame> = emptyList(),
+)
+
+@Serializable
+data class MotionClipFrame(
+    val t: Float = 0f,
+    val joints: List<List<Float>> = emptyList(),
+    val pain: List<Float> = emptyList(),
+)

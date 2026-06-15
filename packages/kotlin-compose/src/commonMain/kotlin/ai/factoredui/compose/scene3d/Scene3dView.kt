@@ -205,6 +205,10 @@ fun Scene3dView(
                 screen(personCenter(entity)).depth
             }
             for (entity in ordered) {
+                if (entity.kind == "goal") {
+                    drawGoalMarker(entity, ::screen)
+                    continue
+                }
                 val jointFrame = entity.jointFrame
                 if (jointFrame != null && jointFrame.size >= 22) {
                     drawJointFrameSkeleton(entity, jointFrame, ::screen)
@@ -321,23 +325,68 @@ private val SMPL_BODY_BONES = listOf(
     18 to 16, 19 to 17, 20 to 18, 21 to 19,
 )
 
+private val SMPL24_BONES = listOf(
+    1 to 0, 2 to 1, 3 to 2, 4 to 3, 5 to 0, 6 to 5, 7 to 6, 8 to 7, 9 to 0,
+    10 to 9, 11 to 10, 12 to 11, 13 to 12, 14 to 11, 15 to 14, 16 to 15,
+    17 to 16, 18 to 11, 19 to 18, 20 to 19, 21 to 20, 22 to 17, 23 to 21,
+)
+
+private fun lerpColor(from: Color, to: Color, t: Float): Color {
+    val u = t.coerceIn(0f, 1f)
+    return Color(
+        red = from.red + (to.red - from.red) * u,
+        green = from.green + (to.green - from.green) * u,
+        blue = from.blue + (to.blue - from.blue) * u,
+        alpha = 1f,
+    )
+}
+
+private val PAIN_COLD = Color(0xFF566179)
+private val PAIN_WARM = Color(0xFFFF9A3C)
+private val PAIN_HOT = Color(0xFFFF2D2D)
+
+private fun painColor(pain: Float): Color =
+    if (pain < 0.5f) lerpColor(PAIN_COLD, PAIN_WARM, pain * 2f)
+    else lerpColor(PAIN_WARM, PAIN_HOT, (pain - 0.5f) * 2f)
+
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawJointFrameSkeleton(
     entity: Scene3dEntity,
     jointFrame: List<List<Float>>,
     screen: (Vec3) -> ProjectedPoint,
 ) {
     val pts = jointFrame.map { j -> screen(Vec3(j.getOrElse(0) { 0f }, j.getOrElse(1) { 0f }, j.getOrElse(2) { 0f })) }
-    val color = if (entity.selected) Color(0xFF6E8BFF) else Color(0xFFE8ECFF)
-    for ((child, parent) in SMPL_BODY_BONES) {
+    val bones = if (jointFrame.size >= 24) SMPL24_BONES else SMPL_BODY_BONES
+    val pain = entity.pain
+    val boneColor = if (entity.selected) Color(0xFF6E8BFF) else Color(0xFF8A94AD)
+    for ((child, parent) in bones) {
         if (child >= pts.size || parent >= pts.size) continue
         val a = pts[child]
         val b = pts[parent]
         if (!a.visible || !b.visible) continue
-        drawLine(color, Offset(a.x, a.y), Offset(b.x, b.y), strokeWidth = 2.5f)
+        drawLine(boneColor, Offset(a.x, a.y), Offset(b.x, b.y), strokeWidth = 2.5f)
     }
-    for (pt in pts) {
-        if (pt.visible) drawCircle(color.copy(alpha = 0.85f), radius = 3f, center = Offset(pt.x, pt.y))
+    pts.forEachIndexed { index, pt ->
+        if (!pt.visible) return@forEachIndexed
+        val heat = pain?.getOrNull(index)
+        if (heat != null) {
+            drawCircle(painColor(heat), radius = 3f + 7f * heat.coerceIn(0f, 1f), center = Offset(pt.x, pt.y))
+        } else {
+            drawCircle(boneColor.copy(alpha = 0.85f), radius = 3f, center = Offset(pt.x, pt.y))
+        }
     }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGoalMarker(
+    entity: Scene3dEntity,
+    screen: (Vec3) -> ProjectedPoint,
+) {
+    val p = screen(entity.position.toVec3())
+    if (!p.visible) return
+    val color = Color(0xFF4ADE80)
+    val r = 9f
+    drawCircle(color, radius = r, center = Offset(p.x, p.y), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f))
+    drawLine(color, Offset(p.x - r, p.y), Offset(p.x + r, p.y), strokeWidth = 2f)
+    drawLine(color, Offset(p.x, p.y - r), Offset(p.x, p.y + r), strokeWidth = 2f)
 }
 
 private fun personCenter(entity: Scene3dEntity): Vec3 {

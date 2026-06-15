@@ -66,6 +66,7 @@ enum class StageContext(val label: String, val specUrl: String?, val promptUrl: 
     CHARACTER("Character", "specs/character.json", "http://127.0.0.1:8770/character/prompt"),
     COMPOSER("Composer", "specs/composer.json", "http://127.0.0.1:8765/director/prompt"),
     DROP("Drop", "specs/drop.json", null),
+    INJURY("Injury", "specs/injury.json", null),
     AGENTS("Agents", "specs/agents.json", null),
     REVIEW("Review", null, null),
 }
@@ -349,6 +350,7 @@ fun StageApp() {
                 "gatePoses" to "poses",
                 "gateMesh" to "3D mesh",
                 "character" to mapOf("personality" to NEUTRAL_PERSONALITY),
+                "injury" to mapOf("frame" to 0f),
             ),
         )
     }

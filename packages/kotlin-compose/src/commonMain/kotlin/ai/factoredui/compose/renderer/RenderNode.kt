@@ -167,7 +167,11 @@ private fun RenderNodeByType(
         SpecNodeType.TEXTINPUT -> RenderTextInput(node, resolvedProps, context)
         SpecNodeType.CHIP -> RenderChip(node, resolvedProps, context)
         SpecNodeType.FORCE_GRAPH -> RenderForceGraph(node.props.asForceGraphProps())
-        SpecNodeType.SCENE3D -> RenderScene3d(node.props.asScene3dProps(), node.id, context.observability)
+        SpecNodeType.SCENE3D -> {
+            val sceneProps = node.props.asScene3dProps()
+            val liveFrame = (resolvedProps["frame"] as? Number)?.toInt() ?: sceneProps.clipFrame
+            RenderScene3d(sceneProps.copy(clipFrame = liveFrame), node.id, context.observability)
+        }
         SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)
         SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)
         SpecNodeType.SELECT -> RenderSelect(node, resolvedProps, context)

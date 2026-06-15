@@ -332,6 +332,8 @@ data class Scene3dProps(
     val worldStreamUrl: String? = null,
     val actionUrl: String? = null,
     val background: String = "neutral-gray",
+    val clipUrl: String? = null,
+    val clipFrame: Int = 0,
 )
 
 fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
@@ -339,4 +341,6 @@ fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
     worldStreamUrl = string("world_stream_url"),
     actionUrl = string("action_url"),
     background = string("background") ?: "neutral-gray",
+    clipUrl = string("clip_url"),
+    clipFrame = (double("frame") ?: 0.0).toInt(),
 )

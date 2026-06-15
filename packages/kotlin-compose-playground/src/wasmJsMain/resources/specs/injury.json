@@ -1,0 +1,16 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "injury",
+    "type": "column",
+    "props": { "gap": 4, "padding": 4 },
+    "children": [
+      { "id": "inj-title", "type": "text", "props": { "value": "Injury — the pain field over a guarded reach", "variant": "heading" } },
+      { "id": "inj-sub", "type": "text", "props": { "value": "A softball hits the chest, then the body reaches for the green goal while GUARDING the injury (the guard emerges from a pain cost — nobody authored it). Each joint glows with pain: cold slate → orange → hot red, sized by intensity. Chest stays hottest, then fades. Scrub the timeline and watch it bloom and settle.", "variant": "caption" } },
+      { "id": "inj-scene", "type": "scene3d", "props": { "clip_url": "clips/injury_scene_stream.json", "frame": "{injury.frame}", "background": "neutral-gray", "flex": 1 } },
+      { "id": "inj-scrub", "type": "slider", "props": { "min": 0, "max": 106, "step": 1, "value": "{injury.frame}" } },
+      { "id": "inj-frame-label", "type": "text", "props": { "value": "frame {injury.frame} / 106  ·  pain blooms ~frame 10, peaks mid-reach, fades by the end", "variant": "caption" } }
+    ]
+  }
+}

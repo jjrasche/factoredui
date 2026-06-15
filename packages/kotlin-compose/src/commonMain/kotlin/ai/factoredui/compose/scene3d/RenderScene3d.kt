@@ -113,9 +113,40 @@ fun RenderScene3d(
     var promptOk by remember { mutableStateOf(true) }
     var appliedPoseRefs by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
+    var motionClip by remember { mutableStateOf<MotionClip?>(null) }
+
+    LaunchedEffect(props.clipUrl) {
+        val url = props.clipUrl ?: return@LaunchedEffect
+        runCatching {
+            json.decodeFromString(MotionClip.serializer(), httpClient.get(url).bodyAsText())
+        }.fold(
+            onSuccess = { motionClip = it },
+            onFailure = { loadError = "scene3d clip: ${it.message ?: it::class.simpleName}" },
+        )
+    }
+
+    LaunchedEffect(motionClip, props.clipFrame) {
+        val clip = motionClip ?: return@LaunchedEffect
+        if (clip.frames.isEmpty()) return@LaunchedEffect
+        val frame = clip.frames[props.clipFrame.coerceIn(0, clip.frames.size - 1)]
+        val body = Scene3dEntity(
+            id = "injured",
+            jointFrame = frame.joints.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) },
+            pain = frame.pain,
+        )
+        val goal = clip.goal.takeIf { it.size >= 3 }?.let {
+            Scene3dEntity(id = "goal", kind = "goal", position = listOf(it[0], it[2], -it[1]))
+        }
+        world = Scene3dWorldState(entities = listOfNotNull(body, goal))
+        if (!cameraInitialized) {
+            applyCameraState(camera, Scene3dCameraState(position = listOf(2.6f, 1.8f, 2.6f), target = listOf(0f, 0.8f, 0f)))
+            cameraInitialized = true
+        }
+    }
+
     LaunchedEffect(props.worldStateUrl) {
         if (props.worldStateUrl.isEmpty()) {
-            loadError = "scene3d: missing world_state_url"
+            if (props.clipUrl == null) loadError = "scene3d: missing world_state_url"
             return@LaunchedEffect
         }
         runCatching {
