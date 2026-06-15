@@ -176,4 +176,38 @@ class RenderListTest {
         onNodeWithText("id=1").assertIsDisplayed()
         onNodeWithText("id=2").assertIsDisplayed()
     }
+
+    @Test
+    fun staticListResolvesDottedRowFieldInsideCardTemplate() = runComposeUiTest {
+        val rows = listOf(
+            mapOf("id" to "0", "display" to "You: Sam lives in Denver"),
+            mapOf("id" to "1", "display" to "Agent: Got it, I'll remember that"),
+        )
+        val context = RenderContext(initialData = mapOf("chatMessages" to rows))
+        val bubble = SpecNode(
+            id = "bubble",
+            type = SpecNodeType.CARD,
+            children = listOf(
+                SpecNode(
+                    id = "bubbleText",
+                    type = SpecNodeType.TEXT,
+                    props = mapOf("value" to SpecValue.StringValue("{row.display}")),
+                ),
+            ),
+        )
+        val node = SpecNode(
+            id = "messages",
+            type = SpecNodeType.LIST,
+            props = mapOf(
+                "data" to SpecValue.StringValue("chatMessages"),
+                "itemTemplate" to SpecValue.NodeValue(bubble),
+            ),
+        )
+
+        setContent { RenderSpec(root = node, context = context) }
+        waitForIdle()
+
+        onNodeWithText("You: Sam lives in Denver").assertIsDisplayed()
+        onNodeWithText("Agent: Got it, I'll remember that").assertIsDisplayed()
+    }
 }
