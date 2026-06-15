@@ -421,6 +421,10 @@ fun StageApp() {
         installStageTestHooks()
         while (true) {
             delay(120)
+            val goto = consumeStageGoto()
+            if (goto.isNotBlank()) {
+                StageContext.entries.firstOrNull { it.label.equals(goto, ignoreCase = true) }?.let { active = it }
+            }
             val raw = consumeStageSetQueue()
             if (raw == "[]" || raw.isBlank()) continue
             runCatching {
