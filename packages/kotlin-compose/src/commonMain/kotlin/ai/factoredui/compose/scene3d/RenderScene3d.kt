@@ -183,6 +183,7 @@ fun RenderScene3d(
     var previewMode by remember { mutableStateOf(false) }
     var previewStatus by remember { mutableStateOf("") }
     var engineStatus by remember { mutableStateOf("") }
+    var solveTarget by remember { mutableStateOf<List<Float>?>(null) }
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var localPositions by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
@@ -229,7 +230,7 @@ fun RenderScene3d(
         )
     }
 
-    LaunchedEffect(props.engineUrl, props.engine, props.clipSeverity, props.clipEffector, props.clipImpulse, props.board) {
+    LaunchedEffect(props.engineUrl, props.engine, props.clipSeverity, props.clipEffector, props.clipImpulse, props.board, solveTarget) {
         val url = props.engineUrl ?: return@LaunchedEffect
         delay(300)
         engineStatus = "${props.engine} · solving…"
@@ -239,17 +240,20 @@ fun RenderScene3d(
             put("effector", props.clipEffector)
             put("impulse", props.clipImpulse)
             props.board?.let { put("board", it) }
+            solveTarget?.let { put("target", anyToJson(it)) }
         }.toString()
         runCatching {
             val text = httpClient.post(url) {
                 contentType(ContentType.Application.Json)
                 setBody(requestBody)
             }.bodyAsText()
-            json.decodeFromString(MotionClip.serializer(), text)
+            val parsed = json.parseToJsonElement(text).jsonObject
+            val mode = parsed["mode"]?.jsonPrimitive?.contentOrNull
+            json.decodeFromString(MotionClip.serializer(), text) to mode
         }.fold(
-            onSuccess = { clip ->
+            onSuccess = { (clip, mode) ->
                 motionClip = clip
-                engineStatus = "${props.engine} · ${clip.frames.size}f @ ${clip.fps.toInt()}fps"
+                engineStatus = "${props.engine} · ${clip.frames.size}f${mode?.let { " · $it" } ?: ""}"
             },
             onFailure = { engineStatus = "${props.engine} · offline (${it.message ?: "no endpoint"})" },
         )
@@ -589,6 +593,9 @@ fun RenderScene3d(
         }
         movePrevPos = position
         localPositions = localPositions + (entityId to position)
+        if (entityId == "goal" && position.size >= 3) {
+            solveTarget = listOf(position[0], -position[2], position[1])
+        }
         moveSettleJob?.cancel()
         moveSettleJob = scope.launch {
             delay(CAMERA_SETTLE_MS)
