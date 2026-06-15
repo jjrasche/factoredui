@@ -418,6 +418,27 @@ fun StageApp() {
     }
 
     LaunchedEffect(Unit) {
+        installStageTestHooks()
+        while (true) {
+            delay(120)
+            val raw = consumeStageSetQueue()
+            if (raw == "[]" || raw.isBlank()) continue
+            runCatching {
+                Json.parseToJsonElement(raw).jsonArray.forEach { item ->
+                    val obj = item.jsonObject
+                    val path = (obj["path"] as? JsonPrimitive)?.content ?: return@forEach
+                    val cell = obj["value"] as? JsonPrimitive ?: return@forEach
+                    val value: Any? = when {
+                        cell.isString -> cell.content
+                        else -> cell.content.toFloatOrNull() ?: cell.content.toBooleanStrictOrNull() ?: cell.content
+                    }
+                    context.setBinding(path, value)
+                }
+            }.onFailure { pushStageLog("stageSet drain failed: ${it.message}") }
+        }
+    }
+
+    LaunchedEffect(Unit) {
         while (true) {
             delay(500)
             val uploadStatus = readReferenceUploadStatus()

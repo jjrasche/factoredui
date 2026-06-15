@@ -18,6 +18,12 @@ fun pushStageTrainingRow(json: String): Unit =
 fun nowMillis(): Double =
     js("Date.now()")
 
+fun installStageTestHooks(): Unit =
+    js("window.__stageSet = function(path, value){ (window.__stageSetQueue = window.__stageSetQueue || []).push({path: path, value: value}); return 'queued ' + path + '=' + value; }")
+
+fun consumeStageSetQueue(): String =
+    js("(function(){ var q = window.__stageSetQueue || []; window.__stageSetQueue = []; return JSON.stringify(q); })()")
+
 fun triggerReferenceUpload(uploadUrl: String): Unit =
     js("(function(){ window.__pendingReferenceUrl=''; window.__referenceUploadStatus='choosing photo…'; var input=document.createElement('input'); input.type='file'; input.accept='image/*'; input.style.display='none'; document.body.appendChild(input); input.onchange=function(ev){ var file=ev.target.files&&ev.target.files[0]; if(!file){window.__referenceUploadStatus=''; if(input.parentNode){document.body.removeChild(input);} return;} window.__referenceUploadStatus='uploading '+file.name+'…'; var form=new FormData(); form.append('file', file); fetch(uploadUrl,{method:'POST',body:form}).then(function(r){ if(!r.ok){throw new Error('HTTP '+r.status);} return r.json(); }).then(function(d){ if(d&&d.url){window.__pendingReferenceUrl=d.url; window.__referenceUploadStatus='photo uploaded ✓';} else {window.__referenceUploadStatus='upload failed: no url in response';} }).catch(function(e){window.__referenceUploadStatus='upload error: '+(e&&e.message?e.message:e);}).finally(function(){ if(input.parentNode){document.body.removeChild(input);} }); }; input.click(); })()")
 
