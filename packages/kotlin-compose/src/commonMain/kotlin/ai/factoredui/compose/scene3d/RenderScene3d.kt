@@ -281,11 +281,11 @@ fun RenderScene3d(
         val heatA: List<Float>? = null
         val heatB = clipB?.let { sparedLegHeat(it) }
         val heatSingle = if (props.board == "hopscotch") sparedLegHeat(clip) else null
-        fun bodyFrom(source: MotionClip, index: Int, id: String, lateral: Float, heat: List<Float>?): Scene3dEntity {
+        fun bodyFrom(source: MotionClip, index: Int, id: String, lateral: Float, heat: List<Float>?, centerX: Float = 0f): Scene3dEntity {
             val f = source.frames[index.coerceIn(0, source.frames.size - 1)]
             return Scene3dEntity(
                 id = id,
-                jointFrame = f.joints.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f } + lateral) },
+                jointFrame = f.joints.map { j -> listOf(j.getOrElse(0) { 0f } - centerX, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f } + lateral) },
                 pain = heat ?: f.pain.takeIf { it.isNotEmpty() },
             )
         }
@@ -301,9 +301,10 @@ fun RenderScene3d(
                 return
             }
             if (props.board == "hopscotch") {
-                world = Scene3dWorldState(entities = listOf(bodyFrom(clip, index, "injured", 0f, heatSingle)))
+                val pelvisX = clip.frames[index.coerceIn(0, clip.frames.size - 1)].joints.getOrNull(0)?.getOrNull(0) ?: 0f
+                world = Scene3dWorldState(entities = listOf(bodyFrom(clip, index, "injured", 0f, heatSingle, pelvisX)))
                 if (!cameraInitialized) {
-                    applyCameraState(camera, Scene3dCameraState(position = listOf(3.4f, 2.2f, 4.4f), target = listOf(0.84f, 0.55f, 0f)))
+                    applyCameraState(camera, Scene3dCameraState(position = listOf(0.95f, 0.75f, 1.25f), target = listOf(0f, 0.7f, 0f)))
                     cameraInitialized = true
                 }
             } else {
