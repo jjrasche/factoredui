@@ -27,13 +27,13 @@
     <dependency>
       <groupId>ai.factoredui</groupId>
       <artifactId>kotlin-compose-schema-jvm</artifactId>
-      <version>0.10.0</version>
+      <version>0.11.0</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>ai.factoredui</groupId>
       <artifactId>kotlin-engine-jvm</artifactId>
-      <version>0.10.0</version>
+      <version>0.11.0</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
