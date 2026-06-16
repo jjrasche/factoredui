@@ -380,7 +380,7 @@ private fun StyledCard(
     } else {
         CardDefaults.cardElevation()
     }
-    Card(modifier = widthModifier, shape = shape, colors = colors, elevation = elevation) {
+    Card(modifier = widthModifier.testTag(node.id), shape = shape, colors = colors, elevation = elevation) {
         val contentModifier = props.padding?.let { Modifier.padding(it.dp) } ?: Modifier
         Column(modifier = contentModifier) {
             node.children.forEach { child -> RenderNode(node = child, context = context) }
