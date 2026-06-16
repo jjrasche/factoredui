@@ -359,6 +359,11 @@ fun StageApp() {
     val scope = rememberCoroutineScope()
     var active by remember { mutableStateOf(if (urlParam("character").isNotBlank()) StageContext.CHARACTER else StageContext.STORY) }
     val specFlow = remember { MutableStateFlow(placeholderSpec("Loading…")) }
+    var buildStamp by remember { mutableStateOf("…") }
+
+    LaunchedEffect(Unit) {
+        buildStamp = runCatching { HttpClient().get("buildstamp.txt").bodyAsText().trim() }.getOrElse { "dev" }
+    }
 
     LaunchedEffect(Unit) {
         val deepLinkedCharacter = urlParam("character")
@@ -476,6 +481,7 @@ fun StageApp() {
 
     StageTheme {
         Surface(Modifier.fillMaxSize(), color = StageTokens.canvas) {
+            Box(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxSize()) {
                 StageNavRail(active = active, onSelect = { pushStageLog("nav -> ${it.label}"); active = it })
                 Column(Modifier.weight(1f).fillMaxHeight()) {
@@ -533,6 +539,13 @@ fun StageApp() {
                         RenderSpec(specFlow = specFlow, context = context)
                     }
                 }
+            }
+            Text(
+                "build $buildStamp",
+                color = StageTokens.textMuted,
+                fontSize = 11.sp,
+                modifier = Modifier.align(Alignment.TopEnd).padding(horizontal = 10.dp, vertical = 6.dp),
+            )
             }
         }
     }
