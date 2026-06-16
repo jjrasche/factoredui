@@ -5,6 +5,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
@@ -76,7 +77,8 @@ class RenderLayoutAlignTest {
         setContent { RenderSpec(root = inputBar, context = RenderContext()) }
         waitForIdle()
 
-        val sendWidth = onNodeWithContentDescription("send").getUnclippedBoundsInRoot().width
+        val sendBounds = onNodeWithContentDescription("send").getUnclippedBoundsInRoot()
+        val sendWidth = sendBounds.right - sendBounds.left
         assertTrue(sendWidth > 40.dp, "Send button should keep intrinsic width beside a flex text field, got $sendWidth")
     }
 
