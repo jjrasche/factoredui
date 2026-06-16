@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -479,6 +480,7 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
 private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val props = node.props.asButtonProps()
     val label = (resolvedProps["label"] as? String) ?: props.label
+    val icon = (resolvedProps["icon"] as? String) ?: props.icon
     val isDisabled = (resolvedProps["disabled"] as? Boolean) ?: props.disabled
     val scope = rememberCoroutineScope()
 
@@ -493,26 +495,26 @@ private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, conte
             onClick = onClickHandler,
             enabled = !isDisabled,
             modifier = Modifier.semantics { contentDescription = node.id },
-        ) { Text(label) }
+        ) { ButtonContent(icon, label) }
 
         ButtonVariant.GHOST -> TextButton(
             onClick = onClickHandler,
             enabled = !isDisabled,
             modifier = Modifier.semantics { contentDescription = node.id },
-        ) { Text(label) }
+        ) { ButtonContent(icon, label) }
 
         ButtonVariant.DESTRUCTIVE -> Button(
             onClick = onClickHandler,
             enabled = !isDisabled,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             modifier = Modifier.semantics { contentDescription = node.id },
-        ) { Text(label) }
+        ) { ButtonContent(icon, label) }
 
         else -> Button(
             onClick = onClickHandler,
             enabled = !isDisabled,
             modifier = Modifier.semantics { contentDescription = node.id },
-        ) { Text(label) }
+        ) { ButtonContent(icon, label) }
     }
 }
 
@@ -560,27 +562,44 @@ private fun RenderImage(node: SpecNode, resolvedProps: Map<String, Any?>) {
 private fun RenderIcon(node: SpecNode, resolvedProps: Map<String, Any?>) {
     val name = (resolvedProps["name"] as? String) ?: ""
     val sizeDp = ((resolvedProps["size"] as? Number)?.toInt() ?: 24).dp
-
     if (name.isEmpty()) return
+    IconifyImage(
+        name = name,
+        sizeDp = sizeDp,
+        contentDescription = node.id,
+        modifier = Modifier.semantics { contentDescription = node.id },
+    )
+}
 
+@Composable
+private fun IconifyImage(name: String, sizeDp: Dp, contentDescription: String, modifier: Modifier = Modifier) {
     val (prefix, iconName) = parseIconifyName(name)
     val url = "https://api.iconify.design/$prefix/$iconName.svg"
-
     val platformContext = LocalPlatformContext.current
     val imageLoader = remember(platformContext) {
         ImageLoader.Builder(platformContext)
             .components { add(SvgDecoder.Factory()) }
             .build()
     }
-
     AsyncImage(
         model = url,
         imageLoader = imageLoader,
-        contentDescription = node.id,
-        modifier = Modifier
-            .size(sizeDp)
-            .semantics { contentDescription = node.id },
+        contentDescription = contentDescription,
+        modifier = modifier.size(sizeDp),
     )
+}
+
+@Composable
+private fun ButtonContent(icon: String?, label: String) {
+    if (!icon.isNullOrEmpty()) {
+        IconifyImage(name = icon, sizeDp = 20.dp, contentDescription = label.ifEmpty { "icon" })
+        if (label.isNotEmpty()) {
+            Spacer(Modifier.width(8.dp))
+            Text(label)
+        }
+    } else {
+        Text(label)
+    }
 }
 
 /**
