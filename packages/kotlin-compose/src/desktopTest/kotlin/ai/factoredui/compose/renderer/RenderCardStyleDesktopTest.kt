@@ -8,6 +8,8 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.Density
@@ -56,5 +58,34 @@ class RenderCardStyleDesktopTest {
         val expectedB = 0xE7 / 255f
         val off = abs(sample.red - expectedR) + abs(sample.green - expectedG) + abs(sample.blue - expectedB)
         assertTrue(off < 0.05f, "card background pixel should match #6C5CE7, got r=${sample.red} g=${sample.green} b=${sample.blue}")
+    }
+
+    @Test
+    fun cardCapsWidthAtMaxWidthFractionOfParent() = runComposeUiTest {
+        val card = SpecNode(
+            id = "bubble",
+            type = SpecNodeType.CARD,
+            props = mapOf("maxWidthFraction" to SpecValue.NumberValue(0.5)),
+            children = listOf(
+                SpecNode(
+                    id = "t",
+                    type = SpecNodeType.TEXT,
+                    props = mapOf("value" to SpecValue.StringValue("a chat message long enough to overflow half the parent width easily")),
+                ),
+            ),
+        )
+        setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f)) {
+                Box(Modifier.size(200.dp)) {
+                    RenderSpec(root = card, context = RenderContext())
+                }
+            }
+        }
+        waitForIdle()
+
+        val bounds = onNodeWithTag("bubble").getUnclippedBoundsInRoot()
+        val width = bounds.right - bounds.left
+        assertTrue(width <= 104.dp, "card should cap at ~50% of 200dp parent, got $width")
+        assertTrue(width > 60.dp, "long content should fill the bubble up toward the cap, got $width")
     }
 }

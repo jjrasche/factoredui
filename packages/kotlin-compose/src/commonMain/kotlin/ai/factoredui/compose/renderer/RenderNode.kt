@@ -3,6 +3,7 @@ package ai.factoredui.compose.renderer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -352,6 +354,23 @@ private fun RenderLazyGrid(
 @Composable
 private fun RenderCard(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val props = resolvedProps.asResolvedCardProps()
+    val fraction = props.maxWidthFraction
+    if (fraction != null) {
+        BoxWithConstraints {
+            StyledCard(node, props, context, Modifier.widthIn(max = maxWidth * fraction))
+        }
+    } else {
+        StyledCard(node, props, context, Modifier.fillMaxWidth())
+    }
+}
+
+@Composable
+private fun StyledCard(
+    node: SpecNode,
+    props: ResolvedCardProps,
+    context: RenderContext,
+    widthModifier: Modifier,
+) {
     val shape = props.cornerRadius?.let { RoundedCornerShape(it.dp) } ?: CardDefaults.shape
     val colors = props.background
         ?.let { CardDefaults.cardColors(containerColor = it) }
@@ -361,7 +380,7 @@ private fun RenderCard(node: SpecNode, resolvedProps: Map<String, Any?>, context
     } else {
         CardDefaults.cardElevation()
     }
-    Card(modifier = Modifier.fillMaxWidth(), shape = shape, colors = colors, elevation = elevation) {
+    Card(modifier = widthModifier, shape = shape, colors = colors, elevation = elevation) {
         val contentModifier = props.padding?.let { Modifier.padding(it.dp) } ?: Modifier
         Column(modifier = contentModifier) {
             node.children.forEach { child -> RenderNode(node = child, context = context) }
@@ -707,12 +726,14 @@ private data class ResolvedCardProps(
     val background: Color?,
     val cornerRadius: Int?,
     val padding: Int?,
+    val maxWidthFraction: Float?,
 )
 
 private fun Map<String, Any?>.asResolvedCardProps(): ResolvedCardProps = ResolvedCardProps(
     background = (get("background") as? String)?.parseColor(),
     cornerRadius = (get("cornerRadius") as? Double)?.toInt(),
     padding = (get("padding") as? Double)?.toInt(),
+    maxWidthFraction = (get("maxWidthFraction") as? Double)?.toFloat(),
 )
 
 private fun String.parseColor(): Color? = runCatching {

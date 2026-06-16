@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
@@ -186,6 +187,7 @@ fun RenderScene3d(
     var previewStatus by remember { mutableStateOf("") }
     var engineStatus by remember { mutableStateOf("") }
     var solveTarget by remember { mutableStateOf<List<Float>?>(null) }
+    var naturalness by remember { mutableStateOf<Triple<Float, Float, Float>?>(null) }
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var localPositions by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
@@ -251,10 +253,19 @@ fun RenderScene3d(
             }.bodyAsText()
             val parsed = json.parseToJsonElement(text).jsonObject
             val mode = parsed["mode"]?.jsonPrimitive?.contentOrNull
-            json.decodeFromString(MotionClip.serializer(), text) to mode
+            val natObj = parsed["naturalness"]?.jsonObject
+            val nat = natObj?.takeIf { it["error"] == null }?.let {
+                Triple(
+                    it["score"]?.jsonPrimitive?.floatOrNull ?: 0f,
+                    it["smoothness"]?.jsonPrimitive?.floatOrNull ?: 0f,
+                    it["continuity"]?.jsonPrimitive?.floatOrNull ?: 0f,
+                )
+            }
+            Triple(json.decodeFromString(MotionClip.serializer(), text), mode, nat)
         }.fold(
-            onSuccess = { (clip, mode) ->
+            onSuccess = { (clip, mode, nat) ->
                 motionClip = clip
+                naturalness = nat
                 engineStatus = "${props.engine} · ${clip.frames.size}f${mode?.let { " · $it" } ?: ""}"
             },
             onFailure = { engineStatus = "${props.engine} · offline (${it.message ?: "no endpoint"})" },
@@ -840,8 +851,39 @@ fun RenderScene3d(
                     .background(Color(0xCC1C1C20)).padding(horizontal = 10.dp, vertical = 4.dp),
             )
         }
+        naturalness?.let { (score, smoothness, continuity) ->
+            Column(
+                modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
+                    .background(Color(0xCC1C1C20)).padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.End,
+            ) {
+                Text(
+                    "physical plausibility  ${(score * 100).toInt()}%",
+                    color = plausibilityColor(score),
+                    modifier = Modifier.padding(bottom = 5.dp),
+                )
+                PlausibilityBar("smoothness", smoothness)
+                PlausibilityBar("continuity", continuity)
+            }
+        }
         loadError?.let {
             Text(text = it, color = Color(0xFFE0A0A0), modifier = Modifier.padding(12.dp))
+        }
+    }
+}
+
+private fun plausibilityColor(value: Float): Color = when {
+    value >= 0.8f -> Color(0xFF7CD992)
+    value >= 0.5f -> Color(0xFFE0C080)
+    else -> Color(0xFFE08A8A)
+}
+
+@Composable
+private fun PlausibilityBar(label: String, value: Float) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, color = Color(0xFF9AA0B0))
+        Box(Modifier.width(96.dp).height(5.dp).background(Color(0x33FFFFFF))) {
+            Box(Modifier.width((96f * value.coerceIn(0f, 1f)).dp).height(5.dp).background(plausibilityColor(value)))
         }
     }
 }
