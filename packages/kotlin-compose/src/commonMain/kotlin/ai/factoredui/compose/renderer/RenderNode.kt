@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -243,6 +244,9 @@ private fun RenderRow(node: SpecNode, context: RenderContext) {
         }
     }
 }
+
+private fun Modifier.nodeTag(id: String): Modifier =
+    this.testTag(id).semantics { contentDescription = id }
 
 private fun columnHorizontalAlignment(align: LayoutAlign): Alignment.Horizontal = when (align) {
     LayoutAlign.CENTER -> Alignment.CenterHorizontally
@@ -472,7 +476,7 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
             else -> TextAlign.Start
         },
         maxLines = props.numberOfLines ?: Int.MAX_VALUE,
-        modifier = Modifier.semantics { contentDescription = node.id },
+        modifier = Modifier.nodeTag(node.id),
     )
 }
 
@@ -494,26 +498,26 @@ private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, conte
         ButtonVariant.OUTLINE -> OutlinedButton(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.semantics { contentDescription = node.id },
+            modifier = Modifier.nodeTag(node.id),
         ) { ButtonContent(icon, label) }
 
         ButtonVariant.GHOST -> TextButton(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.semantics { contentDescription = node.id },
+            modifier = Modifier.nodeTag(node.id),
         ) { ButtonContent(icon, label) }
 
         ButtonVariant.DESTRUCTIVE -> Button(
             onClick = onClickHandler,
             enabled = !isDisabled,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier.semantics { contentDescription = node.id },
+            modifier = Modifier.nodeTag(node.id),
         ) { ButtonContent(icon, label) }
 
         else -> Button(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.semantics { contentDescription = node.id },
+            modifier = Modifier.nodeTag(node.id),
         ) { ButtonContent(icon, label) }
     }
 }
@@ -543,6 +547,7 @@ private fun RenderImage(node: SpecNode, resolvedProps: Map<String, Any?>) {
     }
     val baseModifier = sizeModifier
         .clip(shape)
+        .testTag(node.id)
         .semantics { contentDescription = alt.ifEmpty { node.id } }
 
     if (source.isEmpty()) {
@@ -567,7 +572,7 @@ private fun RenderIcon(node: SpecNode, resolvedProps: Map<String, Any?>) {
         name = name,
         sizeDp = sizeDp,
         contentDescription = node.id,
-        modifier = Modifier.semantics { contentDescription = node.id },
+        modifier = Modifier.nodeTag(node.id),
     )
 }
 
@@ -618,7 +623,7 @@ private fun parseIconifyName(name: String): Pair<String, String> {
 
 @Composable
 private fun RenderDivider(node: SpecNode) {
-    Divider(modifier = Modifier.semantics { contentDescription = node.id })
+    Divider(modifier = Modifier.nodeTag(node.id))
 }
 
 @Composable
@@ -654,7 +659,7 @@ private fun RenderTextInput(
         singleLine = !multiline,
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = node.id },
+            .nodeTag(node.id),
     )
 }
 
@@ -674,7 +679,7 @@ private fun RenderChip(
             }
         },
         label = { Text(label) },
-        modifier = Modifier.semantics { contentDescription = node.id },
+        modifier = Modifier.nodeTag(node.id),
     )
 }
 
