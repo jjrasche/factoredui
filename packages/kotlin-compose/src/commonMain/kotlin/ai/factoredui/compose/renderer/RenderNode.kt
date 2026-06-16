@@ -49,6 +49,8 @@ import ai.factoredui.compose.forcegraph.RenderForceGraph
 import ai.factoredui.compose.scene3d.RenderScene3d
 import ai.factoredui.compose.schema.BindingResolver
 import ai.factoredui.compose.schema.ImageFit
+import ai.factoredui.compose.schema.LayoutAlign
+import ai.factoredui.compose.schema.LayoutJustify
 import ai.factoredui.compose.schema.ListProps
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.compose.schema.asForceGraphProps
@@ -197,17 +199,22 @@ private fun RenderNodeByType(
 private fun RenderColumn(node: SpecNode, context: RenderContext) {
     val props = node.props.asLayoutProps()
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
-    val colModifier = Modifier.padding(props.padding.dp).let { base ->
-        if (hasFlexChild) base.fillMaxWidth().fillMaxHeight() else base
-    }
+    val fillWidth = hasFlexChild || props.align != LayoutAlign.START
+    val colModifier = Modifier.padding(props.padding.dp)
+        .let { if (fillWidth) it.fillMaxWidth() else it }
+        .let { if (hasFlexChild) it.fillMaxHeight() else it }
     Column(
         modifier = colModifier,
-        verticalArrangement = Arrangement.spacedBy(props.gap.dp),
+        verticalArrangement = verticalArrangement(props.justify, props.gap),
+        horizontalAlignment = columnHorizontalAlignment(props.align),
     ) {
         node.children.forEach { child ->
             val childFlex = child.props.asLayoutProps().flex
-            if (childFlex > 0f) Box(Modifier.weight(childFlex)) { RenderNode(node = child, context = context) }
-            else RenderNode(node = child, context = context)
+            when {
+                childFlex > 0f -> Box(Modifier.weight(childFlex)) { RenderNode(node = child, context = context) }
+                props.align == LayoutAlign.STRETCH -> Box(Modifier.fillMaxWidth()) { RenderNode(node = child, context = context) }
+                else -> RenderNode(node = child, context = context)
+            }
         }
     }
 }
@@ -216,12 +223,13 @@ private fun RenderColumn(node: SpecNode, context: RenderContext) {
 private fun RenderRow(node: SpecNode, context: RenderContext) {
     val props = node.props.asLayoutProps()
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
-    val rowModifier = Modifier.padding(props.padding.dp).let { base ->
-        if (hasFlexChild) base.fillMaxWidth() else base
-    }
+    val fillWidth = hasFlexChild || props.justify != LayoutJustify.START
+    val rowModifier = Modifier.padding(props.padding.dp)
+        .let { if (fillWidth) it.fillMaxWidth() else it }
     Row(
         modifier = rowModifier,
-        horizontalArrangement = Arrangement.spacedBy(props.gap.dp),
+        horizontalArrangement = horizontalArrangement(props.justify, props.gap),
+        verticalAlignment = rowVerticalAlignment(props.align),
     ) {
         node.children.forEach { child ->
             val childFlex = child.props.asLayoutProps().flex
@@ -232,6 +240,34 @@ private fun RenderRow(node: SpecNode, context: RenderContext) {
             }
         }
     }
+}
+
+private fun columnHorizontalAlignment(align: LayoutAlign): Alignment.Horizontal = when (align) {
+    LayoutAlign.CENTER -> Alignment.CenterHorizontally
+    LayoutAlign.END -> Alignment.End
+    else -> Alignment.Start
+}
+
+private fun rowVerticalAlignment(align: LayoutAlign): Alignment.Vertical = when (align) {
+    LayoutAlign.CENTER -> Alignment.CenterVertically
+    LayoutAlign.END -> Alignment.Bottom
+    else -> Alignment.Top
+}
+
+private fun verticalArrangement(justify: LayoutJustify, gap: Int): Arrangement.Vertical = when (justify) {
+    LayoutJustify.CENTER -> Arrangement.spacedBy(gap.dp, Alignment.CenterVertically)
+    LayoutJustify.END -> Arrangement.spacedBy(gap.dp, Alignment.Bottom)
+    LayoutJustify.BETWEEN -> Arrangement.SpaceBetween
+    LayoutJustify.AROUND -> Arrangement.SpaceAround
+    else -> Arrangement.spacedBy(gap.dp, Alignment.Top)
+}
+
+private fun horizontalArrangement(justify: LayoutJustify, gap: Int): Arrangement.Horizontal = when (justify) {
+    LayoutJustify.CENTER -> Arrangement.spacedBy(gap.dp, Alignment.CenterHorizontally)
+    LayoutJustify.END -> Arrangement.spacedBy(gap.dp, Alignment.End)
+    LayoutJustify.BETWEEN -> Arrangement.SpaceBetween
+    LayoutJustify.AROUND -> Arrangement.SpaceAround
+    else -> Arrangement.spacedBy(gap.dp, Alignment.Start)
 }
 
 @Composable
