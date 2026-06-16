@@ -376,15 +376,15 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawJointFrameSkele
         val a = pts[child]
         val b = pts[parent]
         if (!a.visible || !b.visible) continue
-        drawLine(boneColor, Offset(a.x, a.y), Offset(b.x, b.y), strokeWidth = 2.5f)
+        drawLine(boneColor, Offset(a.x, a.y), Offset(b.x, b.y), strokeWidth = 7f, cap = androidx.compose.ui.graphics.StrokeCap.Round)
     }
     pts.forEachIndexed { index, pt ->
         if (!pt.visible) return@forEachIndexed
         val heat = pain?.getOrNull(index)
         if (heat != null) {
-            drawCircle(painColor(heat), radius = 3f + 7f * heat.coerceIn(0f, 1f), center = Offset(pt.x, pt.y))
+            drawCircle(painColor(heat), radius = 4f + 8f * heat.coerceIn(0f, 1f), center = Offset(pt.x, pt.y))
         } else {
-            drawCircle(boneColor.copy(alpha = 0.85f), radius = 3f, center = Offset(pt.x, pt.y))
+            drawCircle(boneColor, radius = 4.5f, center = Offset(pt.x, pt.y))
         }
     }
 }

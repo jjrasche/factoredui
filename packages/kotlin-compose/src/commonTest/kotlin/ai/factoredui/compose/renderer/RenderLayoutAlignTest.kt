@@ -2,6 +2,7 @@ package ai.factoredui.compose.renderer
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.runComposeUiTest
 import ai.factoredui.compose.schema.SpecNode
@@ -49,6 +50,34 @@ class RenderLayoutAlignTest {
         val startLeft = onNodeWithText("leftbubble").getUnclippedBoundsInRoot().left
         val endLeft = onNodeWithText("rightbubble").getUnclippedBoundsInRoot().left
         assertTrue(endLeft > startLeft, "end-aligned child should sit right of start-aligned ($endLeft !> $startLeft)")
+    }
+
+    @Test
+    fun buttonKeepsIntrinsicWidthBesideFlexTextInput() = runComposeUiTest {
+        val inputBar = SpecNode(
+            id = "bar",
+            type = SpecNodeType.ROW,
+            children = listOf(
+                SpecNode(
+                    id = "field",
+                    type = SpecNodeType.TEXTINPUT,
+                    props = mapOf(
+                        "flex" to SpecValue.NumberValue(1.0),
+                        "placeholder" to SpecValue.StringValue("Message"),
+                    ),
+                ),
+                SpecNode(
+                    id = "send",
+                    type = SpecNodeType.BUTTON,
+                    props = mapOf("label" to SpecValue.StringValue("Send")),
+                ),
+            ),
+        )
+        setContent { RenderSpec(root = inputBar, context = RenderContext()) }
+        waitForIdle()
+
+        val sendWidth = onNodeWithContentDescription("send").getUnclippedBoundsInRoot().width
+        assertTrue(sendWidth > 40.dp, "Send button should keep intrinsic width beside a flex text field, got $sendWidth")
     }
 
     @Test

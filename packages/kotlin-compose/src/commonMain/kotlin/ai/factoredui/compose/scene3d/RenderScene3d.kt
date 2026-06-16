@@ -112,6 +112,8 @@ private fun smpl24GraphHops(from: Int, n: Int): IntArray {
 private fun sparedLegHeat(source: MotionClip): List<Float>? {
     val frames = source.frames
     if (frames.size < 2) return null
+    val rootX = frames.map { it.joints.getOrNull(0)?.getOrNull(0) ?: 0f }
+    if ((rootX.max() - rootX.min()) < 0.5f) return null
     var leftPlantedFrames = 0
     for (frame in frames) {
         val leftHeight = frame.joints.getOrNull(3)?.getOrNull(2) ?: 0f
@@ -267,6 +269,7 @@ fun RenderScene3d(
             ?: listOf(0.4f, 1.0f, 0.6f)
         val heatA: List<Float>? = null
         val heatB = clipB?.let { sparedLegHeat(it) }
+        val heatSingle = if (props.board == "hopscotch") sparedLegHeat(clip) else null
         fun bodyFrom(source: MotionClip, index: Int, id: String, lateral: Float, heat: List<Float>?): Scene3dEntity {
             val f = source.frames[index.coerceIn(0, source.frames.size - 1)]
             return Scene3dEntity(
@@ -281,18 +284,26 @@ fun RenderScene3d(
                 val injured = bodyFrom(clipB, index, "injured", 0.9f, heatB)
                 world = Scene3dWorldState(entities = listOf(healthy, injured))
                 if (!cameraInitialized) {
-                    applyCameraState(camera, Scene3dCameraState(position = listOf(3.9f, 2.1f, 4.6f), target = listOf(0.84f, 0.55f, 0f)))
+                    applyCameraState(camera, Scene3dCameraState(position = listOf(2.8f, 1.5f, 3.3f), target = listOf(0f, 0.85f, 0f)))
                     cameraInitialized = true
                 }
                 return
             }
-            val body = bodyFrom(clip, index, "injured", 0f, null)
-            val goal = Scene3dEntity(id = "goal", kind = "goal", selected = true, position = goalDefault)
-            val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
-            world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
-            if (!cameraInitialized) {
-                applyCameraState(camera, Scene3dCameraState(position = listOf(2.0f, 1.3f, 2.0f), target = listOf(0f, 0.7f, 0f)))
-                cameraInitialized = true
+            if (props.board == "hopscotch") {
+                world = Scene3dWorldState(entities = listOf(bodyFrom(clip, index, "injured", 0f, heatSingle)))
+                if (!cameraInitialized) {
+                    applyCameraState(camera, Scene3dCameraState(position = listOf(3.4f, 2.2f, 4.4f), target = listOf(0.84f, 0.55f, 0f)))
+                    cameraInitialized = true
+                }
+            } else {
+                val body = bodyFrom(clip, index, "injured", 0f, null)
+                val goal = Scene3dEntity(id = "goal", kind = "goal", selected = true, position = goalDefault)
+                val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
+                world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
+                if (!cameraInitialized) {
+                    applyCameraState(camera, Scene3dCameraState(position = listOf(2.0f, 1.3f, 2.0f), target = listOf(0f, 0.7f, 0f)))
+                    cameraInitialized = true
+                }
             }
         }
         val periodMs = (1000f / clip.fps.coerceAtLeast(1f)).toLong().coerceAtLeast(16L)
