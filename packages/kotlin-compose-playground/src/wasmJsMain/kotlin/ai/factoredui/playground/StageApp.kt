@@ -351,7 +351,7 @@ fun StageApp() {
                 "gatePoses" to "poses",
                 "gateMesh" to "3D mesh",
                 "character" to mapOf("personality" to NEUTRAL_PERSONALITY),
-                "injury" to mapOf("frame" to 0f, "impulse" to 0.8f, "autoplay" to false, "endEffector" to "R_leg", "severity" to 0.6f, "engine" to "fastgen"),
+                "injury" to mapOf("frame" to 0f, "impulse" to 0.8f, "autoplay" to true, "endEffector" to "R_leg", "severity" to 0.6f, "engine" to "fastgen"),
                 "hopscotch" to mapOf("engine" to "injury", "severity" to 0.6f),
             ),
         )

@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -188,6 +190,8 @@ fun RenderScene3d(
     var engineStatus by remember { mutableStateOf("") }
     var solveTarget by remember { mutableStateOf<List<Float>?>(null) }
     var naturalness by remember { mutableStateOf<Triple<Float, Float, Float>?>(null) }
+    var playFrame by remember { mutableStateOf(0) }
+    var playing by remember { mutableStateOf(true) }
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var localPositions by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
@@ -272,63 +276,64 @@ fun RenderScene3d(
         )
     }
 
-    LaunchedEffect(motionClip, motionClipB) {
+    val heatSingle = remember(motionClip, props.board) {
+        motionClip?.takeIf { props.board == "hopscotch" }?.let { sparedLegHeat(it) }
+    }
+    val heatB = remember(motionClipB) { motionClipB?.let { sparedLegHeat(it) } }
+
+    LaunchedEffect(motionClip, playing) {
+        val clip = motionClip ?: return@LaunchedEffect
+        if (clip.frames.size < 2 || !playing) return@LaunchedEffect
+        val periodMs = (1000f / clip.fps.coerceAtLeast(1f)).toLong().coerceAtLeast(16L)
+        while (true) {
+            delay(periodMs)
+            playFrame = (playFrame + 1) % clip.frames.size
+        }
+    }
+
+    LaunchedEffect(playFrame, motionClip, motionClipB) {
         val clip = motionClip ?: return@LaunchedEffect
         if (clip.frames.isEmpty() || clip.frames.first().joints.size < 24) return@LaunchedEffect
         val clipB = motionClipB?.takeIf { it.frames.isNotEmpty() && it.frames.first().joints.size >= 24 }
-        val goalDefault = clip.goal.takeIf { it.size >= 3 }?.let { listOf(it[0], it[2], -it[1]) }
-            ?: listOf(0.4f, 1.0f, 0.6f)
-        val heatA: List<Float>? = null
-        val heatB = clipB?.let { sparedLegHeat(it) }
-        val heatSingle = if (props.board == "hopscotch") sparedLegHeat(clip) else null
-        fun bodyFrom(source: MotionClip, index: Int, id: String, lateral: Float, heat: List<Float>?, centerX: Float = 0f): Scene3dEntity {
-            val f = source.frames[index.coerceIn(0, source.frames.size - 1)]
+        val index = playFrame.coerceIn(0, clip.frames.size - 1)
+        val goalDefault = clip.goal.takeIf { it.size >= 3 }?.let { listOf(it[0], it[2], -it[1]) } ?: listOf(0.4f, 1.0f, 0.6f)
+        fun bodyFrom(source: MotionClip, idx: Int, id: String, lateral: Float, heat: List<Float>?, centerX: Float = 0f): Scene3dEntity {
+            val f = source.frames[idx.coerceIn(0, source.frames.size - 1)]
             return Scene3dEntity(
                 id = id,
                 jointFrame = f.joints.map { j -> listOf(j.getOrElse(0) { 0f } - centerX, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f } + lateral) },
                 pain = heat ?: f.pain.takeIf { it.isNotEmpty() },
             )
         }
-        fun showClipFrame(index: Int) {
-            if (clipB != null) {
-                val healthy = bodyFrom(clip, index, "healthy", -0.9f, heatA)
-                val injured = bodyFrom(clipB, index, "injured", 0.9f, heatB)
-                world = Scene3dWorldState(entities = listOf(healthy, injured))
-                if (!cameraInitialized) {
-                    applyCameraState(camera, Scene3dCameraState(position = listOf(2.8f, 1.5f, 3.3f), target = listOf(0f, 0.85f, 0f)))
-                    cameraInitialized = true
-                }
-                return
+        if (clipB != null) {
+            world = Scene3dWorldState(entities = listOf(bodyFrom(clip, index, "healthy", -0.9f, null), bodyFrom(clipB, index, "injured", 0.9f, heatB)))
+            if (!cameraInitialized) {
+                applyCameraState(camera, Scene3dCameraState(position = listOf(2.8f, 1.5f, 3.3f), target = listOf(0f, 0.85f, 0f)))
+                cameraInitialized = true
             }
-            if (props.board == "hopscotch") {
-                val pelvisX = clip.frames[index.coerceIn(0, clip.frames.size - 1)].joints.getOrNull(0)?.getOrNull(0) ?: 0f
-                world = Scene3dWorldState(entities = listOf(bodyFrom(clip, index, "injured", 0f, heatSingle, pelvisX)))
-                if (!cameraInitialized) {
-                    applyCameraState(camera, Scene3dCameraState(position = listOf(0.95f, 0.75f, 1.25f), target = listOf(0f, 0.7f, 0f)))
-                    cameraInitialized = true
-                }
-            } else {
-                val body = bodyFrom(clip, index, "injured", 0f, null)
-                val goal = Scene3dEntity(id = "goal", kind = "goal", selected = true, position = goalDefault)
-                val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
-                world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
-                if (!cameraInitialized) {
-                    applyCameraState(camera, Scene3dCameraState(position = listOf(2.0f, 1.3f, 2.0f), target = listOf(0f, 0.7f, 0f)))
-                    cameraInitialized = true
-                }
+        } else if (props.board == "hopscotch") {
+            val pelvisX = clip.frames[index].joints.getOrNull(0)?.getOrNull(0) ?: 0f
+            val body = bodyFrom(clip, index, "injured", 0f, heatSingle, pelvisX)
+            val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.3f, 1.0f, 0.4f))
+            world = Scene3dWorldState(entities = listOf(body, ball))
+            if (!cameraInitialized) {
+                applyCameraState(camera, Scene3dCameraState(position = listOf(0.95f, 0.75f, 1.25f), target = listOf(0f, 0.7f, 0f)))
+                cameraInitialized = true
             }
-        }
-        val periodMs = (1000f / clip.fps.coerceAtLeast(1f)).toLong().coerceAtLeast(16L)
-        var index = 0
-        while (true) {
-            showClipFrame(index)
-            delay(periodMs)
-            index = (index + 1) % clip.frames.size
+        } else {
+            val body = bodyFrom(clip, index, "injured", 0f, null)
+            val goal = Scene3dEntity(id = "goal", kind = "goal", selected = true, position = goalDefault)
+            val ball = Scene3dEntity(id = "impact", kind = "ball", selected = true, position = listOf(0.25f, 1.0f, 0.5f))
+            world = Scene3dWorldState(entities = listOfNotNull(body, goal, ball))
+            if (!cameraInitialized) {
+                applyCameraState(camera, Scene3dCameraState(position = listOf(2.0f, 1.3f, 2.0f), target = listOf(0f, 0.7f, 0f)))
+                cameraInitialized = true
+            }
         }
     }
 
     LaunchedEffect(props.board) {
-        if (props.board != "hopscotch") return@LaunchedEffect
+        if (props.board != "hopscotch" || props.engineUrl != null) return@LaunchedEffect
         val pattern = listOf("single", "single", "double", "single", "double", "single", "double", "single")
         val tiles = mutableListOf<Scene3dEntity>()
         var z = -3f
@@ -851,6 +856,25 @@ fun RenderScene3d(
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp)
                     .background(Color(0xCC1C1C20)).padding(horizontal = 10.dp, vertical = 4.dp),
             )
+        }
+        motionClip?.let { clip ->
+            val total = clip.frames.size.coerceAtLeast(2)
+            Row(
+                modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(0.82f).padding(top = 44.dp)
+                    .background(Color(0xCC1C1C20)).padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Button(onClick = { playing = !playing }) { Text(if (playing) "❚❚ pause" else "▶ play") }
+                Slider(
+                    value = (playFrame.toFloat() / (total - 1)).coerceIn(0f, 1f),
+                    onValueChange = { fraction ->
+                        playing = false
+                        playFrame = (fraction * (total - 1)).toInt().coerceIn(0, total - 1)
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
         naturalness?.let { (score, smoothness, continuity) ->
             Column(

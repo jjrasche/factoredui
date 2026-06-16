@@ -176,7 +176,7 @@ private fun RenderNodeByType(
         SpecNodeType.FORCE_GRAPH -> RenderForceGraph(node.props.asForceGraphProps())
         SpecNodeType.SCENE3D -> {
             val sceneProps = node.props.asScene3dProps()
-            val liveFrame = (resolvedProps["frame"] as? Number)?.toInt() ?: sceneProps.clipFrame
+            val liveFrame = (resolvedProps["frame"] as? Number)?.toFloat() ?: sceneProps.clipFrameFraction
             val liveImpulse = (resolvedProps["impulse"] as? Number)?.toFloat() ?: sceneProps.clipImpulse
             val liveAutoplay = (resolvedProps["autoplay"] as? Boolean) ?: sceneProps.clipAutoplay
             val liveSeverity = (resolvedProps["severity"] as? Number)?.toFloat() ?: sceneProps.clipSeverity
@@ -184,7 +184,7 @@ private fun RenderNodeByType(
             val liveEngine = (resolvedProps["engine"] as? String) ?: sceneProps.engine
             RenderScene3d(
                 sceneProps.copy(
-                    clipFrame = liveFrame, clipImpulse = liveImpulse, clipAutoplay = liveAutoplay,
+                    clipFrameFraction = liveFrame, clipImpulse = liveImpulse, clipAutoplay = liveAutoplay,
                     clipSeverity = liveSeverity, clipEffector = liveEffector, engine = liveEngine,
                 ),
                 node.id, context.observability,

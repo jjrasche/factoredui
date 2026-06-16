@@ -7,7 +7,7 @@
     "props": { "gap": 4, "padding": 4 },
     "children": [
       { "id": "inj-title", "type": "text", "props": { "value": "Injury — drag the severity, pick the hurt leg, watch it favor (LIVE engine)", "variant": "heading" } },
-      { "id": "inj-sub", "type": "text", "props": { "value": "This is wired to the live motion engine on :8765. Crank SEVERITY 0→1 and the body goes from a healthy alternating hop to favoring the good leg every square — the hurt leg's chain glows. Switch the INJURED LIMB (left/right) and it flips which leg it spares. Each drag re-fetches a real solved motion in ~3ms (il-fastgen's v2 grid-NN over il-injury's 28-cell corpus).", "variant": "caption" } },
+      { "id": "inj-sub", "type": "text", "props": { "value": "Live motion engine on :8765. PLAY/PAUSE the hop, SCRUB the timeline (drag back to reverse). Crank SEVERITY 0→1: healthy alternating hop → favoring the good leg, hurt leg glows. Switch the INJURED LIMB to flip sides. Each change re-solves in ~3ms.", "variant": "caption" } },
       { "id": "inj-scene", "type": "scene3d", "props": { "engine_url": "http://127.0.0.1:8765/engine/solve", "engine": "{injury.engine}", "board": "hopscotch", "impulse": "{injury.impulse}", "severity": "{injury.severity}", "effector": "{injury.endEffector}", "background": "neutral-gray", "flex": 1 } },
       {
         "id": "inj-controls",
