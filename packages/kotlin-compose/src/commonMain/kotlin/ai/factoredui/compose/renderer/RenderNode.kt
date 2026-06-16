@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -165,7 +166,7 @@ private fun RenderNodeByType(
         SpecNodeType.DIVIDER -> RenderDivider(node)
         SpecNodeType.SPACER -> RenderSpacer(node)
         SpecNodeType.LIST -> RenderList(node, context)
-        SpecNodeType.CARD -> RenderCard(node, context)
+        SpecNodeType.CARD -> RenderCard(node, resolvedProps, context)
         SpecNodeType.TEXTINPUT -> RenderTextInput(node, resolvedProps, context)
         SpecNodeType.CHIP -> RenderChip(node, resolvedProps, context)
         SpecNodeType.FORCE_GRAPH -> RenderForceGraph(node.props.asForceGraphProps())
@@ -344,9 +345,22 @@ private fun RenderLazyGrid(
 }
 
 @Composable
-private fun RenderCard(node: SpecNode, context: RenderContext) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        node.children.forEach { child -> RenderNode(node = child, context = context) }
+private fun RenderCard(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val props = resolvedProps.asResolvedCardProps()
+    val shape = props.cornerRadius?.let { RoundedCornerShape(it.dp) } ?: CardDefaults.shape
+    val colors = props.background
+        ?.let { CardDefaults.cardColors(containerColor = it) }
+        ?: CardDefaults.cardColors()
+    val elevation = if (props.background != null) {
+        CardDefaults.cardElevation(defaultElevation = 0.dp)
+    } else {
+        CardDefaults.cardElevation()
+    }
+    Card(modifier = Modifier.fillMaxWidth(), shape = shape, colors = colors, elevation = elevation) {
+        val contentModifier = props.padding?.let { Modifier.padding(it.dp) } ?: Modifier
+        Column(modifier = contentModifier) {
+            node.children.forEach { child -> RenderNode(node = child, context = context) }
+        }
     }
 }
 
@@ -663,6 +677,18 @@ private fun Map<String, Any?>.asResolvedTextProps(): ResolvedTextProps = Resolve
     colorValue = (get("color") as? String)?.parseColor(),
     bold = (get("bold") as? Boolean) ?: false,
     numberOfLines = (get("numberOfLines") as? Double)?.toInt(),
+)
+
+private data class ResolvedCardProps(
+    val background: Color?,
+    val cornerRadius: Int?,
+    val padding: Int?,
+)
+
+private fun Map<String, Any?>.asResolvedCardProps(): ResolvedCardProps = ResolvedCardProps(
+    background = (get("background") as? String)?.parseColor(),
+    cornerRadius = (get("cornerRadius") as? Double)?.toInt(),
+    padding = (get("padding") as? Double)?.toInt(),
 )
 
 private fun String.parseColor(): Color? = runCatching {
