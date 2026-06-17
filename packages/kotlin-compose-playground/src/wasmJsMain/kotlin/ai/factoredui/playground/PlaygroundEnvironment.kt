@@ -89,9 +89,7 @@ fun playgroundActions(actionUrl: String? = null): ActionRegistry {
         "submit" to { params -> println("[playground] submit($params)") },
         "persist-dial" to persistDialAction(),
         "on-focus-change" to { params ->
-            val nodeId = params["node_id"] as? String ?: "?"
-            val magnitude = params["relevance_magnitude"]
-            println("[playground] focus: $nodeId magnitude=$magnitude")
+            println("[playground] focus: node=${params["node_id"]} magnitude=${params["relevance_magnitude"]}")
         },
     )
     if (actionUrl == null) return base
