@@ -4,6 +4,7 @@ data class FieldNode(
     val id: String,
     val group: String,
     val label: String,
+    val ageSecs: Float = 0f,
 )
 
 data class FieldEdge(

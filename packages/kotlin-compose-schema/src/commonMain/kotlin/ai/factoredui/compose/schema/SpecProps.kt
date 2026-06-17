@@ -326,12 +326,14 @@ fun Map<String, SpecValue>.asForceGraphProps(): ForceGraphProps {
 data class FieldGraphProps(
     val topologyUrl: String,
     val onRelevanceChangeAction: String? = null,
+    val onNodeTapAction: String? = null,
     val reduceMotion: Boolean = false,
 )
 
 fun Map<String, SpecValue>.asFieldGraphProps(): FieldGraphProps = FieldGraphProps(
     topologyUrl = string("topology_url") ?: "",
     onRelevanceChangeAction = string("on_relevance_change"),
+    onNodeTapAction = string("on_node_tap"),
     reduceMotion = boolean("reduce_motion") ?: false,
 )
 

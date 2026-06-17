@@ -15,6 +15,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import ai.factoredui.compose.fieldgraph.graph.FieldEdge
 import ai.factoredui.compose.fieldgraph.graph.FieldGraphSnapshot
@@ -24,11 +25,14 @@ import ai.factoredui.compose.fieldgraph.graph.FieldNodePosition
 import kotlinx.coroutines.delay
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 private const val CLAIM_RADIUS = 16f
 private const val ENTITY_RADIUS = 11f
+private const val AGE_HALF_LIFE_SEC = 43200f
+private const val TAP_MAX_MOVE_PX = 8f
 private val BACKGROUND = Color(0xFF08080F)
 private val RING_COLOR = Color(0x14FFFFFF)
 
@@ -52,6 +56,7 @@ fun FieldGraphView(
     onNodeDragUpdate: (nodeId: String, angle: Float, radiusFraction: Float) -> Unit = { _, _, _ -> },
     onNodeDragRelease: () -> Unit = {},
     onNodeDragComplete: (nodeId: String, relevanceMagnitude: Float) -> Unit = { _, _ -> },
+    onNodeTap: (nodeId: String) -> Unit = {},
 ) {
     var snapshot by remember(graphState) { mutableStateOf(graphState.snapshot()) }
     var draggedNodeId by remember { mutableStateOf<String?>(null) }
@@ -92,7 +97,7 @@ fun FieldGraphView(
                             onNodeDragStart(hit)
                         }
                     },
-                    onDrag = { change, _ ->
+                    onDrag = { change, dragAmount ->
                         val hitId = draggedNodeId ?: return@detectDragGestures
                         val cx = size.width / 2f
                         val cy = size.height / 2f
@@ -103,13 +108,20 @@ fun FieldGraphView(
                         val dist = sqrt(dx * dx + dy * dy)
                         val angle = atan2(dy, dx)
                         val frac = (dist / maxR).coerceIn(0f, 1f)
-                        onNodeDragUpdate(hitId, angle, frac)
+                        val moveSq = dragAmount.x * dragAmount.x + dragAmount.y * dragAmount.y
+                        if (moveSq > TAP_MAX_MOVE_PX * TAP_MAX_MOVE_PX) {
+                            onNodeDragUpdate(hitId, angle, frac)
+                        }
                         snapshot = graphState.snapshot()
                     },
                     onDragEnd = {
                         val hitId = draggedNodeId ?: return@detectDragGestures
                         val pos = snapshot.positions[hitId]
-                        if (pos != null) onNodeDragComplete(hitId, 1f - pos.radiusFraction)
+                        if (pos != null) {
+                            val movedFraction = 1f - pos.radiusFraction
+                            val isTap = movedFraction < 0.05f && snapshot.nodes.any { it.id == hitId && it.group != "entity" }
+                            if (isTap) onNodeTap(hitId) else onNodeDragComplete(hitId, movedFraction)
+                        }
                         onNodeDragRelease()
                         draggedNodeId = null
                     },
@@ -187,7 +199,8 @@ private fun DrawScope.drawClaimNodes(s: FieldGraphSnapshot, cx: Float, cy: Float
     for (node in s.nodes.filter { it.group != "entity" }) {
         val pos = s.positions[node.id] ?: continue
         val relevance = 1f - pos.radiusFraction
-        val alpha = (0.30f + 0.70f * relevance).coerceIn(0f, 1f)
+        val ageDecay = exp(-0.693f * node.ageSecs / AGE_HALF_LIFE_SEC).coerceIn(0.10f, 1f)
+        val alpha = (0.30f + 0.70f * relevance) * ageDecay
         val center = Offset(
             cx + cos(pos.angle) * pos.radiusFraction * maxR,
             cy + sin(pos.angle) * pos.radiusFraction * maxR,

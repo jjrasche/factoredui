@@ -351,6 +351,7 @@ export interface Scene3dProps {
 export interface FieldGraphProps {
   topology_url: string;
   on_relevance_change?: string;
+  on_node_tap?: string;
   reduce_motion?: boolean;
 }
 

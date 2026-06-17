@@ -59,7 +59,7 @@ fun RenderFieldGraph(
                 val dto = json.decodeFromString(FieldGraphTopologyDto.serializer(), body)
                 topology = FieldGraphTopology(
                     nodes = dto.nodes.map {
-                        FieldNode(id = it.id, group = it.group ?: "claim", label = it.label ?: it.id)
+                        FieldNode(id = it.id, group = it.group ?: "claim", label = it.label ?: it.id, ageSecs = it.ageSecs ?: 0f)
                     },
                     edges = dto.edges.map {
                         FieldEdge(fromId = it.from, toId = it.to, kind = it.kind ?: "")
@@ -109,6 +109,18 @@ fun RenderFieldGraph(
                 )
             }
         },
+        onNodeTap = { nodeId ->
+            val actionName = props.onNodeTapAction ?: return@FieldGraphView
+            coroutineScope.launch {
+                context.dispatch(
+                    primitiveId,
+                    ActionRef(
+                        action = actionName,
+                        params = mapOf("node_id" to SpecValue.StringValue(nodeId)),
+                    ),
+                )
+            }
+        },
     )
 }
 
@@ -123,6 +135,7 @@ private data class FieldGraphNodeDto(
     val id: String,
     val group: String? = null,
     val label: String? = null,
+    @kotlinx.serialization.SerialName("age_seconds") val ageSecs: Float? = null,
 )
 
 @Serializable
