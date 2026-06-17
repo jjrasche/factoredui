@@ -1,0 +1,14 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "reach",
+    "type": "column",
+    "props": { "gap": 4, "padding": 4 },
+    "children": [
+      { "id": "rch-title", "type": "text", "props": { "value": "Reach — guarded (left) vs healthy (right)", "variant": "heading" } },
+      { "id": "rch-sub", "type": "text", "props": { "value": "Two real solver streams from il-injury, same clock — a body reaching forward. LEFT is guarding an injury; RIGHT is healthy. The arms carry the motion. This is the blind-perceptual-stimulus pair: the open question is whether the guarding reads as injured to a naive eye, or just as slower. Kinematic; PHC adds dynamics downstream.", "variant": "caption" } },
+      { "id": "rch-scene", "type": "scene3d", "props": { "clip_url": "clips/reach_guarded_stream.json", "clip_url_b": "clips/reach_healthy_stream.json", "background": "neutral-gray", "flex": 1 } }
+    ]
+  }
+}

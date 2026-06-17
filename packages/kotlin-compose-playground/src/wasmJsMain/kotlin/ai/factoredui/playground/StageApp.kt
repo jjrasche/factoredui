@@ -68,6 +68,7 @@ enum class StageContext(val label: String, val specUrl: String?, val promptUrl: 
     DROP("Drop", "specs/drop.json", null),
     INJURY("Injury", "specs/injury.json", null),
     HOPSCOTCH("Hopscotch", "specs/hopscotch.json", null),
+    REACH("Reach", "specs/reach.json", null),
     AGENTS("Agents", "specs/agents.json", null),
     FIELDGRAPH("Focus", "specs/fieldgraph.json", null),
     REVIEW("Review", null, null),

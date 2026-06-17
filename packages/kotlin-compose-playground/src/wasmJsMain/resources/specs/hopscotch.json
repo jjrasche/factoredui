@@ -6,9 +6,9 @@
     "type": "column",
     "props": { "gap": 4, "padding": 4 },
     "children": [
-      { "id": "hs-title", "type": "text", "props": { "value": "Reach — guarded/injured (left) vs healthy (right)", "variant": "heading" } },
-      { "id": "hs-sub", "type": "text", "props": { "value": "Two real solver streams from il-injury, same clock — a body reaching forward. LEFT is guarding an injury; RIGHT is healthy. The arms carry the motion. This is the blind-perceptual-stimulus pair: the open question is whether the guarding reads as injured to a naive eye, or just as slower. Kinematic; PHC adds dynamics downstream.", "variant": "caption" } },
-      { "id": "hs-scene", "type": "scene3d", "props": { "clip_url": "clips/reach_guarded_stream.json", "clip_url_b": "clips/reach_healthy_stream.json", "background": "neutral-gray", "flex": 1 } }
+      { "id": "hs-title", "type": "text", "props": { "value": "Hopscotch — healthy (left) vs injured (right)", "variant": "heading" } },
+      { "id": "hs-sub", "type": "text", "props": { "value": "Same hopscotch routine, two bodies — 78 frames at 30fps. RIGHT body favors the hurt leg; the spared-leg heat glows the limb being protected. The open question: does the guarding read as injured to a naive eye, or just as different rhythm? Use PLAY/PAUSE and SCRUB to compare frame-by-frame.", "variant": "caption" } },
+      { "id": "hs-scene", "type": "scene3d", "props": { "clip_url": "clips/hopscotch_healthy_stream.json", "clip_url_b": "clips/hopscotch_injured_stream.json", "background": "neutral-gray", "flex": 1 } }
     ]
   }
 }
