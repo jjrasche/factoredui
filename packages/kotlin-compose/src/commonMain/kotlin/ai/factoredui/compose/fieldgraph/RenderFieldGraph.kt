@@ -16,10 +16,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import ai.factoredui.compose.fieldgraph.graph.FieldEdge
 import ai.factoredui.compose.fieldgraph.graph.FieldGraphState
 import ai.factoredui.compose.fieldgraph.graph.FieldGraphTopology
-import ai.factoredui.compose.fieldgraph.graph.FieldNode
 import ai.factoredui.compose.fieldgraph.render.FieldGraphView
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.dispatch
@@ -30,7 +28,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 @Composable
@@ -53,19 +50,10 @@ fun RenderFieldGraph(
             return@LaunchedEffect
         }
         runCatching {
-            httpClient.get(props.topologyUrl).bodyAsText()
+            val body = httpClient.get(props.topologyUrl).bodyAsText()
+            FieldGraphTopology.fromJson(json, body)
         }.fold(
-            onSuccess = { body ->
-                val dto = json.decodeFromString(FieldGraphTopologyDto.serializer(), body)
-                topology = FieldGraphTopology(
-                    nodes = dto.nodes.map {
-                        FieldNode(id = it.id, group = it.group ?: "claim", label = it.label ?: it.id, ageSecs = it.ageSecs ?: 0f)
-                    },
-                    edges = dto.edges.map {
-                        FieldEdge(fromId = it.from, toId = it.to, kind = it.kind ?: "")
-                    },
-                )
-            },
+            onSuccess = { topo -> topology = topo },
             onFailure = { err ->
                 loadError = "fieldgraph: fetch failed — ${err.message ?: err::class.simpleName}"
             },
@@ -124,23 +112,3 @@ fun RenderFieldGraph(
     )
 }
 
-@Serializable
-private data class FieldGraphTopologyDto(
-    val nodes: List<FieldGraphNodeDto> = emptyList(),
-    val edges: List<FieldGraphEdgeDto> = emptyList(),
-)
-
-@Serializable
-private data class FieldGraphNodeDto(
-    val id: String,
-    val group: String? = null,
-    val label: String? = null,
-    @kotlinx.serialization.SerialName("age_seconds") val ageSecs: Float? = null,
-)
-
-@Serializable
-private data class FieldGraphEdgeDto(
-    val from: String,
-    val to: String,
-    val kind: String? = null,
-)
