@@ -39,10 +39,10 @@
           "name": "kotlin-server-0.10.0.jar",
           "url": "kotlin-server-0.10.0.jar",
           "size": 12937,
-          "sha512": "f302f0c91b96e7864b992b9f47e0d7049b23f3ccffc8af56b34ac012010acc504743b56ba81d98a54cbe7db5d072624ef4af9de6f5d52544845aea2b1c19b6c2",
-          "sha256": "58dc876b86149ffdeb065a95a65f1b8f90c3529f41184ebda192fa4419518754",
-          "sha1": "d40bdcc15afdbf0164378e886927b6daff7785f1",
-          "md5": "9a235ee09d70894ad07544518240850d"
+          "sha512": "a6f4299f8f1a9ebc41999eeaef3fbe982abfed9fc87729e090e6c8b25c279bea23838319bde49eb5a0e7432e058bc04c791c874bff57751c0fa932a4a3e1eec9",
+          "sha256": "9fc389b6ecb29bf12efd61e488563f8c8308e82bc281a55b30870fded4bde1a8",
+          "sha1": "4fce9f1301ac399429683698307715fc79603ae5",
+          "md5": "a28b31ef315f30fb4268cd83cb9a1497"
         }
       ]
     },
@@ -62,7 +62,7 @@
           "group": "ai.factoredui",
           "module": "kotlin-compose-schema",
           "version": {
-            "requires": "0.12.0"
+            "requires": "0.13.0"
           }
         },
         {
@@ -120,10 +120,10 @@
           "name": "kotlin-server-0.10.0.jar",
           "url": "kotlin-server-0.10.0.jar",
           "size": 12937,
-          "sha512": "f302f0c91b96e7864b992b9f47e0d7049b23f3ccffc8af56b34ac012010acc504743b56ba81d98a54cbe7db5d072624ef4af9de6f5d52544845aea2b1c19b6c2",
-          "sha256": "58dc876b86149ffdeb065a95a65f1b8f90c3529f41184ebda192fa4419518754",
-          "sha1": "d40bdcc15afdbf0164378e886927b6daff7785f1",
-          "md5": "9a235ee09d70894ad07544518240850d"
+          "sha512": "a6f4299f8f1a9ebc41999eeaef3fbe982abfed9fc87729e090e6c8b25c279bea23838319bde49eb5a0e7432e058bc04c791c874bff57751c0fa932a4a3e1eec9",
+          "sha256": "9fc389b6ecb29bf12efd61e488563f8c8308e82bc281a55b30870fded4bde1a8",
+          "sha1": "4fce9f1301ac399429683698307715fc79603ae5",
+          "md5": "a28b31ef315f30fb4268cd83cb9a1497"
         }
       ]
     }

@@ -1,0 +1,221 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../kotlin-compose/0.13.0/kotlin-compose-0.13.0.module",
+    "group": "ai.factoredui",
+    "module": "kotlin-compose",
+    "version": "0.13.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "desktopApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-schema",
+          "version": {
+            "requires": "0.13.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-desktop-0.13.0.jar",
+          "url": "kotlin-compose-desktop-0.13.0.jar",
+          "size": 803554,
+          "sha512": "e7424a61f5628ea5ea3bec4d5146a1661ac3e2a9b7c33f46ad1931608fd83f6be36ba599b1524778eb2e82a53c7b1ecc3e3a76451f3eafa3828dded4c03aa667",
+          "sha256": "89408e4b76e59f9aae2d940740727942c9df20c5b7dea655d8a7198e7cc785fb",
+          "sha1": "354f2470f020ea25a11ef29fdfc304773744f73d",
+          "md5": "e5627e7389022dc6a4b03093e4c882f6"
+        }
+      ]
+    },
+    {
+      "name": "desktopRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-schema",
+          "version": {
+            "requires": "0.13.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.desktop",
+          "module": "desktop-jvm-linux-x64",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-okhttp",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.runtime",
+          "module": "runtime",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.foundation",
+          "module": "foundation",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.material3",
+          "module": "material3",
+          "version": {
+            "requires": "1.9.0-beta03"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.ui",
+          "module": "ui",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.10.2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-compose",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-network-ktor3",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-svg",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-core",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-content-negotiation",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-serialization-kotlinx-json",
+          "version": {
+            "requires": "3.2.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-desktop-0.13.0.jar",
+          "url": "kotlin-compose-desktop-0.13.0.jar",
+          "size": 803554,
+          "sha512": "e7424a61f5628ea5ea3bec4d5146a1661ac3e2a9b7c33f46ad1931608fd83f6be36ba599b1524778eb2e82a53c7b1ecc3e3a76451f3eafa3828dded4c03aa667",
+          "sha256": "89408e4b76e59f9aae2d940740727942c9df20c5b7dea655d8a7198e7cc785fb",
+          "sha1": "354f2470f020ea25a11ef29fdfc304773744f73d",
+          "md5": "e5627e7389022dc6a4b03093e4c882f6"
+        }
+      ]
+    },
+    {
+      "name": "desktopSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "files": [
+        {
+          "name": "kotlin-compose-desktop-0.13.0-sources.jar",
+          "url": "kotlin-compose-desktop-0.13.0-sources.jar",
+          "size": 94262,
+          "sha512": "7698bceaedb6d68a2de2cfb3a434767e8526d2124220df2ea0e283b6620f6aec88885a2b2ff565ab22b18efbed594bb9c71663dcb8dc8def43efa9cf76c6da2f",
+          "sha256": "80a1f75d73e8bf92290fbc36e0f63c82d2d521211bc56e3dd07ee274d9259970",
+          "sha1": "e7a097b29214d6c1c11b619f4b269b6da38667b2",
+          "md5": "9f4b7bb97a49865ed163977803d78638"
+        }
+      ]
+    }
+  ]
+}
