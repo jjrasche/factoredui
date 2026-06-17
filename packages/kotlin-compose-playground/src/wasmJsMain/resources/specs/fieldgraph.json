@@ -1,0 +1,46 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "fieldgraph-demo",
+    "type": "column",
+    "props": { "flex": 1 },
+    "children": [
+      {
+        "id": "fg-header",
+        "type": "row",
+        "props": { "padding": 12, "gap": 8 },
+        "children": [
+          {
+            "id": "fg-title",
+            "type": "text",
+            "props": { "value": "Scene Focus", "variant": "heading" }
+          },
+          {
+            "id": "fg-hint",
+            "type": "text",
+            "props": { "value": "drag what matters inward", "variant": "caption" }
+          }
+        ]
+      },
+      {
+        "id": "fg-field",
+        "type": "fieldgraph",
+        "props": {
+          "topology_url": "topology/scene-focus.json",
+          "on_relevance_change": "on-focus-change"
+        }
+      },
+      {
+        "id": "fg-footer",
+        "type": "row",
+        "props": { "padding": 12, "gap": 16 },
+        "children": [
+          { "id": "fg-legend-entity", "type": "chip", "props": { "label": "○ entity (stroked)" } },
+          { "id": "fg-legend-claim",  "type": "chip", "props": { "label": "● claim (filled)" } },
+          { "id": "fg-legend-center", "type": "chip", "props": { "label": "center = most relevant" } }
+        ]
+      }
+    ]
+  }
+}

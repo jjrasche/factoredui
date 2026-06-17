@@ -88,6 +88,11 @@ fun playgroundActions(actionUrl: String? = null): ActionRegistry {
     val base = mapOf<String, ActionHandler>(
         "submit" to { params -> println("[playground] submit($params)") },
         "persist-dial" to persistDialAction(),
+        "on-focus-change" to { params ->
+            val nodeId = params["node_id"] as? String ?: "?"
+            val magnitude = params["relevance_magnitude"]
+            println("[playground] focus: $nodeId magnitude=$magnitude")
+        },
     )
     if (actionUrl == null) return base
     return base + SCENE3D_VERBS.associateWith { verb -> forwardAction(verb, actionUrl) }

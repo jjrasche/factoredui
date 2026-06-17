@@ -1,0 +1,32 @@
+{
+  "nodes": [
+    { "id": "heigl",  "group": "entity", "label": "Heigl" },
+    { "id": "eli",    "group": "entity", "label": "Eli" },
+
+    { "id": "pain",     "group": "injury",  "label": "pain" },
+    { "id": "guard",    "group": "injury",  "label": "guarding" },
+    { "id": "buckle",   "group": "injury",  "label": "buckle" },
+
+    { "id": "heavy",    "group": "motion",  "label": "heavy" },
+    { "id": "sudden",   "group": "motion",  "label": "sudden" },
+    { "id": "floaty",   "group": "motion",  "label": "floaty" },
+    { "id": "bound",    "group": "motion",  "label": "bound" },
+
+    { "id": "reach",    "group": "gesture", "label": "reach" },
+    { "id": "contract", "group": "gesture", "label": "contract" },
+    { "id": "twist",    "group": "gesture", "label": "twist" },
+
+    { "id": "ground",   "group": "space",   "label": "ground" },
+    { "id": "height",   "group": "space",   "label": "height" },
+    { "id": "facing",   "group": "space",   "label": "facing" }
+  ],
+  "edges": [
+    { "from": "pain",   "to": "heigl",  "kind": "affects" },
+    { "from": "guard",  "to": "heigl",  "kind": "affects" },
+    { "from": "buckle", "to": "heigl",  "kind": "affects" },
+    { "from": "heavy",  "to": "heigl",  "kind": "quality" },
+    { "from": "reach",  "to": "eli",    "kind": "quality" },
+    { "from": "ground", "to": "heigl",  "kind": "anchors" },
+    { "from": "ground", "to": "eli",    "kind": "anchors" }
+  ]
+}
