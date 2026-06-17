@@ -1,8 +1,8 @@
 package ai.factoredui.compose.fieldgraph.render
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -16,7 +16,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import ai.factoredui.compose.fieldgraph.graph.FieldEdge
 import ai.factoredui.compose.fieldgraph.graph.FieldGraphSnapshot
@@ -62,6 +61,8 @@ fun FieldGraphView(
 ) {
     var snapshot by remember(graphState) { mutableStateOf(graphState.snapshot()) }
     var draggedNodeId by remember { mutableStateOf<String?>(null) }
+    var dragStartPos by remember { mutableStateOf(Offset.Zero) }
+    var dragCurrentPos by remember { mutableStateOf(Offset.Zero) }
 
     LaunchedEffect(graphState, reduceMotion) {
         while (true) {
@@ -102,64 +103,81 @@ fun FieldGraphView(
     Box(
         modifier = modifier.fillMaxSize()
             .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { pos ->
-                        val cx = size.width / 2f
-                        val cy = size.height / 2f
-                        val maxR = minOf(cx, cy) * 0.88f
-                        val snap = snapshot
-                        val hitR = CLAIM_RADIUS * 2.5f
-                        val hitRSq = hitR * hitR
-                        val hit = snap.positions.entries
-                            .map { entry ->
-                                val nodePos = entry.value
-                                val nx = cx + cos(nodePos.angle) * nodePos.radiusFraction * maxR
-                                val ny = cy + sin(nodePos.angle) * nodePos.radiusFraction * maxR
-                                val dx = nx - pos.x
-                                val dy = ny - pos.y
-                                Pair(entry.key, dx * dx + dy * dy)
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    val cx = size.width / 2f
+                    val cy = size.height / 2f
+                    val maxR = minOf(cx, cy) * 0.88f
+                    val snap = snapshot
+                    val hitR = CLAIM_RADIUS * 2.5f
+                    val hitRSq = hitR * hitR
+                    val hitCandidates: List<Pair<String, Float>> = snap.positions.entries.map { entry ->
+                        val nodePos = entry.value
+                        val nx = cx + cos(nodePos.angle) * nodePos.radiusFraction * maxR
+                        val ny = cy + sin(nodePos.angle) * nodePos.radiusFraction * maxR
+                        val dx = nx - down.position.x
+                        val dy = ny - down.position.y
+                        entry.key to (dx * dx + dy * dy)
+                    }
+                    val hit: String = hitCandidates
+                        .filter { it.second <= hitRSq }
+                        .minByOrNull { it.second }
+                        ?.first
+                        ?: return@awaitEachGesture
+
+                    dragStartPos = down.position
+                    dragCurrentPos = down.position
+                    var gestureStarted = false
+                    var lastFrac = snap.positions[hit]?.radiusFraction ?: 1f
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull() ?: break
+
+                        if (!change.pressed) {
+                            if (!gestureStarted) {
+                                if (snap.nodes.any { it.id == hit && it.group != "entity" }) {
+                                    onNodeTap(hit)
+                                }
+                            } else {
+                                onNodeDragComplete(hit, 1f - lastFrac)
+                                onNodeDragRelease()
+                                draggedNodeId = null
                             }
-                            .filter { (_, d2) -> d2 <= hitRSq }
-                            .minByOrNull { (_, d2) -> d2 }
-                            ?.first
-                        if (hit != null) {
+                            break
+                        }
+
+                        change.consume()
+                        dragCurrentPos = change.position
+                        val ddx = dragCurrentPos.x - dragStartPos.x
+                        val ddy = dragCurrentPos.y - dragStartPos.y
+                        val totalMove = sqrt(ddx * ddx + ddy * ddy)
+
+                        if (!gestureStarted && totalMove >= viewConfiguration.touchSlop) {
+                            gestureStarted = true
                             draggedNodeId = hit
                             onNodeDragStart(hit)
                         }
-                    },
-                    onDrag = { change, dragAmount ->
-                        val hitId = draggedNodeId ?: return@detectDragGestures
-                        val cx = size.width / 2f
-                        val cy = size.height / 2f
-                        val maxR = minOf(cx, cy) * 0.88f
-                        val p = change.position
-                        val dx = p.x - cx
-                        val dy = p.y - cy
-                        val dist = sqrt(dx * dx + dy * dy)
-                        val angle = atan2(dy, dx)
-                        val frac = (dist / maxR).coerceIn(0f, 1f)
-                        val moveSq = dragAmount.x * dragAmount.x + dragAmount.y * dragAmount.y
-                        if (moveSq > TAP_MAX_MOVE_PX * TAP_MAX_MOVE_PX) {
-                            onNodeDragUpdate(hitId, angle, frac)
+
+                        if (gestureStarted) {
+                            val px = change.position.x - cx
+                            val py = change.position.y - cy
+                            val dist = sqrt(px * px + py * py)
+                            val angle = atan2(py, px)
+                            val frac = (dist / maxR).coerceIn(0f, 1f)
+                            lastFrac = frac
+                            if (totalMove > TAP_MAX_MOVE_PX) {
+                                onNodeDragUpdate(hit, angle, frac)
+                            }
+                            snapshot = graphState.snapshot()
                         }
-                        snapshot = graphState.snapshot()
-                    },
-                    onDragEnd = {
-                        val hitId = draggedNodeId ?: return@detectDragGestures
-                        val pos = snapshot.positions[hitId]
-                        if (pos != null) {
-                            val movedFraction = 1f - pos.radiusFraction
-                            val isTap = movedFraction < 0.05f && snapshot.nodes.any { it.id == hitId && it.group != "entity" }
-                            if (isTap) onNodeTap(hitId) else onNodeDragComplete(hitId, movedFraction)
-                        }
+                    }
+
+                    if (gestureStarted && draggedNodeId != null) {
                         onNodeDragRelease()
                         draggedNodeId = null
-                    },
-                    onDragCancel = {
-                        if (draggedNodeId != null) onNodeDragRelease()
-                        draggedNodeId = null
-                    },
-                )
+                    }
+                }
             },
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
