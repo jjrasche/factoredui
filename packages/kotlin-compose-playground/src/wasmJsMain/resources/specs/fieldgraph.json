@@ -19,7 +19,7 @@
           {
             "id": "fg-hint",
             "type": "text",
-            "props": { "value": "drag what matters inward", "variant": "caption" }
+            "props": { "value": "drag what matters inward — updates injury simulation live", "variant": "caption" }
           }
         ]
       },
@@ -32,13 +32,37 @@
         }
       },
       {
-        "id": "fg-footer",
+        "id": "fg-status",
         "type": "row",
-        "props": { "padding": 12, "gap": 16 },
+        "props": { "padding": 12, "gap": 24 },
         "children": [
-          { "id": "fg-legend-entity", "type": "chip", "props": { "label": "○ entity (stroked)" } },
-          { "id": "fg-legend-claim",  "type": "chip", "props": { "label": "● claim (filled)" } },
-          { "id": "fg-legend-center", "type": "chip", "props": { "label": "center = most relevant" } }
+          {
+            "id": "fg-sev-col",
+            "type": "column",
+            "props": { "gap": 2 },
+            "children": [
+              { "id": "fg-sev-l", "type": "text", "props": { "value": "injury.severity", "variant": "caption" } },
+              { "id": "fg-sev",   "type": "slider", "props": { "min": 0, "max": 1, "step": 0.01, "value": "{injury.severity}" } }
+            ]
+          },
+          {
+            "id": "fg-imp-col",
+            "type": "column",
+            "props": { "gap": 2 },
+            "children": [
+              { "id": "fg-imp-l", "type": "text", "props": { "value": "injury.impulse", "variant": "caption" } },
+              { "id": "fg-imp",   "type": "slider", "props": { "min": 0, "max": 1, "step": 0.01, "value": "{injury.impulse}" } }
+            ]
+          },
+          {
+            "id": "fg-legend-col",
+            "type": "column",
+            "props": { "gap": 4 },
+            "children": [
+              { "id": "fg-legend-entity", "type": "chip", "props": { "label": "○ entity" } },
+              { "id": "fg-legend-claim",  "type": "chip", "props": { "label": "● claim" } }
+            ]
+          }
         ]
       }
     ]
