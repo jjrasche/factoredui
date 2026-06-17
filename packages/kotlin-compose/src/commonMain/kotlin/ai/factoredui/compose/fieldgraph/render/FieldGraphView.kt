@@ -2,6 +2,7 @@ package ai.factoredui.compose.fieldgraph.render
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -22,6 +23,7 @@ import ai.factoredui.compose.fieldgraph.graph.FieldGraphSnapshot
 import ai.factoredui.compose.fieldgraph.graph.FieldGraphState
 import ai.factoredui.compose.fieldgraph.graph.FieldNode
 import ai.factoredui.compose.fieldgraph.graph.FieldNodePosition
+import ai.factoredui.compose.testing.DomShadow
 import kotlinx.coroutines.delay
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -66,6 +68,34 @@ fun FieldGraphView(
             if (!reduceMotion) graphState.step()
             snapshot = graphState.snapshot()
             delay(33L)
+        }
+    }
+
+    // Emit pixel positions into DomShadow so external drivers (adb scripts,
+    // on-device test runners) can find nodes without coordinate guessing.
+    // cx/cy/maxR are Canvas-local — the Canvas fills the full Box size.
+    // Positions update every layout tick alongside the snapshot.
+    val canvasSize = remember { androidx.compose.ui.unit.IntSize.Zero }
+    androidx.compose.runtime.LaunchedEffect(snapshot) {
+        // Canvas size is not directly available in LaunchedEffect; use snapshot
+        // positions relative to a unit square so the consumer can scale.
+        // Emitting radiusFraction + angle is coordinate-system-independent.
+        val snap = snapshot
+        snap.nodes.forEach { node ->
+            val pos = snap.positions[node.id] ?: return@forEach
+            DomShadow.emit(
+                id = "fieldgraph:node:${node.id}",
+                role = "field-node",
+                attrs = mapOf(
+                    "node-id" to node.id,
+                    "group" to node.group,
+                    "label" to node.label.take(60),
+                    "angle" to pos.angle.toString(),
+                    "radius-fraction" to pos.radiusFraction.toString(),
+                    "is-user-anchored" to pos.isUserAnchored.toString(),
+                    "age-secs" to node.ageSecs.toString(),
+                ),
+            )
         }
     }
 

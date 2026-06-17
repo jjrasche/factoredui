@@ -1,9 +1,19 @@
 package ai.factoredui.compose.testing
 
-/**
- * Non-wasm actual: there's no browser DOM here. No-op.
- */
+import java.util.concurrent.ConcurrentHashMap
+
 actual object DomShadow {
-    actual fun emit(id: String, role: String, attrs: Map<String, String?>) { /* no-op */ }
-    actual fun remove(id: String) { /* no-op */ }
+    private val store = ConcurrentHashMap<String, Entry>()
+
+    actual fun emit(id: String, role: String, attrs: Map<String, String?>) {
+        store[id] = Entry(id = id, role = role, attrs = attrs.filterValues { it != null }.mapValues { it.value!! })
+    }
+
+    actual fun remove(id: String) { store.remove(id) }
+
+    fun snapshot(): List<Entry> = store.values.toList()
+
+    fun byRole(role: String): List<Entry> = store.values.filter { it.role == role }
+
+    data class Entry(val id: String, val role: String, val attrs: Map<String, String>)
 }
