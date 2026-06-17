@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import ai.factoredui.compose.adapter.HostDataSource
+import ai.factoredui.compose.fieldgraph.RenderFieldGraph
 import ai.factoredui.compose.forcegraph.RenderForceGraph
 import ai.factoredui.compose.scene3d.RenderScene3d
 import ai.factoredui.compose.schema.BindingResolver
@@ -58,6 +59,7 @@ import ai.factoredui.compose.schema.LayoutAlign
 import ai.factoredui.compose.schema.LayoutJustify
 import ai.factoredui.compose.schema.ListProps
 import ai.factoredui.compose.schema.Spec
+import ai.factoredui.compose.schema.asFieldGraphProps
 import ai.factoredui.compose.schema.asForceGraphProps
 import ai.factoredui.compose.schema.asScene3dProps
 // BindingResolver used to support {ref} in list `data` prop (nested lists).
@@ -174,6 +176,7 @@ private fun RenderNodeByType(
         SpecNodeType.TEXTINPUT -> RenderTextInput(node, resolvedProps, context)
         SpecNodeType.CHIP -> RenderChip(node, resolvedProps, context)
         SpecNodeType.FORCE_GRAPH -> RenderForceGraph(node.props.asForceGraphProps())
+        SpecNodeType.FIELD_GRAPH -> RenderFieldGraph(node.props.asFieldGraphProps(), node.id, context)
         SpecNodeType.SCENE3D -> {
             val sceneProps = node.props.asScene3dProps()
             val liveFrame = (resolvedProps["frame"] as? Number)?.toFloat() ?: sceneProps.clipFrameFraction

@@ -52,7 +52,8 @@ export type SpecNodeType =
   | "modal"
   | "chip"
   | "forcegraph"
-  | "scene3d";
+  | "scene3d"
+  | "fieldgraph";
 
 export interface SpecNode {
   id: string;
@@ -345,6 +346,12 @@ export interface Scene3dProps {
 
   /** Background tint for the viewport. Default "neutral-gray". */
   background?: string;
+}
+
+export interface FieldGraphProps {
+  topology_url: string;
+  on_relevance_change?: string;
+  reduce_motion?: boolean;
 }
 
 // --- Data source contract (implemented by the host app) ---

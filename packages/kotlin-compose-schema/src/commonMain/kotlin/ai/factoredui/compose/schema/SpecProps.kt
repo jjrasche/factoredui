@@ -323,6 +323,18 @@ fun Map<String, SpecValue>.asForceGraphProps(): ForceGraphProps {
     )
 }
 
+data class FieldGraphProps(
+    val topologyUrl: String,
+    val onRelevanceChangeAction: String? = null,
+    val reduceMotion: Boolean = false,
+)
+
+fun Map<String, SpecValue>.asFieldGraphProps(): FieldGraphProps = FieldGraphProps(
+    topologyUrl = string("topology_url") ?: "",
+    onRelevanceChangeAction = string("on_relevance_change"),
+    reduceMotion = boolean("reduce_motion") ?: false,
+)
+
 // --- Scene3dProps ---
 // Second "dense/semantic" primitive; full contract in spec-types.ts. Entities,
 // camera, and lights live in the fetched world state, not in spec props.
