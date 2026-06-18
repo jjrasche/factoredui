@@ -25,15 +25,20 @@ import kotlin.test.Test
 class FieldGraphCheck {
 
     private val canvasDp = 400
+
+    private val oldClaimAgeSecs = 217965f
+
     private val topology = FieldGraphTopology(
         nodes = listOf(
             FieldNode(id = "claim-pain", group = "pain", label = "Knee pain on impact"),
             FieldNode(id = "claim-motion", group = "motion", label = "Lateral lurch pattern"),
             FieldNode(id = "entity-knee", group = "entity", label = "Knee"),
+            FieldNode(id = "claim-old", group = "claim", label = "Old claim", ageSecs = oldClaimAgeSecs),
         ),
         edges = listOf(
             FieldEdge(fromId = "claim-pain", toId = "entity-knee", kind = "describes"),
             FieldEdge(fromId = "claim-motion", toId = "entity-knee", kind = "describes"),
+            FieldEdge(fromId = "claim-old", toId = "entity-knee", kind = "describes"),
         ),
     )
 
@@ -79,6 +84,12 @@ class FieldGraphCheck {
         expectFieldNodeMinAlpha("claim-pain", minAlpha = 0.10f)
     }
 
+    private val oldOutskirtClaimRemainsVisible = check("old-outskirt-claim-remains-visible") {
+        awaitFieldNode("claim-old")
+        expectFieldNodePresent("claim-old")
+        expectFieldNodeMinAlpha("claim-old", minAlpha = 0.10f)
+    }
+
     private val nodeAgeAdvances = check("node-age-advances") {
         awaitFieldNode("claim-pain")
         advanceTime(3600f)
@@ -105,6 +116,9 @@ class FieldGraphCheck {
 
     @Test
     fun runNodeDecaysOverTime() = runCheck(nodeDecaysOverTime)
+
+    @Test
+    fun runOldOutskirtClaimRemainsVisible() = runCheck(oldOutskirtClaimRemainsVisible)
 
     private fun runCheck(
         checkScript: ai.factoredui.compose.testing.Check,
