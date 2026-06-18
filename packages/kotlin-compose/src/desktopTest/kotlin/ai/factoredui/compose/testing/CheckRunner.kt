@@ -39,6 +39,7 @@ class CheckRunner(
         is CheckAssertion.NoActionFired -> interactor.assertNoActionFired()
         is CheckAssertion.DragMagnitude -> interactor.assertLastDragMagnitude(assertion.nodeId, assertion.min)
         is CheckAssertion.FieldNodeAgeSecs -> interactor.assertFieldNodeAgeSecs(assertion.nodeId, assertion.minSecs)
+        is CheckAssertion.FieldNodeMinAlpha -> interactor.assertFieldNodeMinAlpha(assertion.nodeId, assertion.minAlpha)
         is CheckAssertion.EngineState -> {
             val result = kotlinx.coroutines.runBlocking { engineClient.query(assertion.query) }
             assertTrue(assertion.predicate(result), "EngineState assertion failed for query '${assertion.query}', got: $result")

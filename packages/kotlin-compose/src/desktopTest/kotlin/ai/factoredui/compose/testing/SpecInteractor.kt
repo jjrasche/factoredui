@@ -4,10 +4,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.graphics.toPixelMap
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.test.assertNotNull
@@ -44,6 +46,27 @@ class SpecInteractor(
         val ageSecs = entry.attrs["age-secs"]?.toFloatOrNull()
             ?: error("Field node '$nodeId' missing age-secs in DomShadow")
         assertTrue(ageSecs >= minSecs, "Expected age-secs >= $minSecs for '$nodeId', got $ageSecs")
+    }
+
+    fun assertFieldNodeMinAlpha(nodeId: String, minAlpha: Float) {
+        val (nx, ny) = fieldNodePixelPos(nodeId)
+        val cx = canvasWidthPx / 2f
+        val cy = canvasHeightPx / 2f
+        // Background luminance: Color(0xFF08080F) ≈ 0.003
+        val bgLuminance = 0.003f
+        // Sample the node center pixel via captureToImage
+        val img = scope.onRoot().captureToImage().toPixelMap()
+        val px = nx.coerceIn(0f, canvasWidthPx - 1f).toInt()
+        val py = ny.coerceIn(0f, canvasHeightPx - 1f).toInt()
+        val pixel = img[px, py]
+        // Relative luminance of sampled pixel
+        val lum = 0.2126f * pixel.red + 0.7152f * pixel.green + 0.0722f * pixel.blue
+        // A node at minAlpha blended over background should produce lum > bgLuminance + threshold
+        val minLuminance = bgLuminance + minAlpha * 0.15f
+        assertTrue(
+            lum >= minLuminance,
+            "Node '$nodeId' pixel at ($px,$py) has luminance $lum, expected >= $minLuminance (minAlpha=$minAlpha)",
+        )
     }
 
     fun assertLastDragMagnitude(nodeId: String, min: Float) {

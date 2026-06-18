@@ -76,6 +76,7 @@ class FieldGraphCheck {
         advanceTime(86400f)
         expectFieldNodeAgeSecs("claim-pain", minSecs = 86400f)
         expectFieldNodePresent("claim-pain")
+        expectFieldNodeMinAlpha("claim-pain", minAlpha = 0.10f)
     }
 
     private val nodeAgeAdvances = check("node-age-advances") {

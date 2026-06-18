@@ -34,6 +34,7 @@ private const val CLAIM_RADIUS = 16f
 private const val ENTITY_RADIUS = 11f
 private const val AGE_HALF_LIFE_SEC = 43200f
 private const val TAP_MAX_MOVE_PX = 8f
+private const val MIN_CLAIM_ALPHA = 0.10f
 private val BACKGROUND = Color(0xFF08080F)
 private val RING_COLOR = Color(0x14FFFFFF)
 
@@ -247,8 +248,8 @@ private fun DrawScope.drawClaimNodes(s: FieldGraphSnapshot, cx: Float, cy: Float
     for (node in s.nodes.filter { it.group != "entity" }) {
         val pos = s.positions[node.id] ?: continue
         val relevance = 1f - pos.radiusFraction
-        val ageDecay = exp(-0.693f * node.ageSecs / AGE_HALF_LIFE_SEC).coerceIn(0.10f, 1f)
-        val alpha = (0.30f + 0.70f * relevance) * ageDecay
+        val ageDecay = exp(-0.693f * node.ageSecs / AGE_HALF_LIFE_SEC).coerceIn(0f, 1f)
+        val alpha = ((0.30f + 0.70f * relevance) * ageDecay).coerceAtLeast(MIN_CLAIM_ALPHA)
         val center = Offset(
             cx + cos(pos.angle) * pos.radiusFraction * maxR,
             cy + sin(pos.angle) * pos.radiusFraction * maxR,
