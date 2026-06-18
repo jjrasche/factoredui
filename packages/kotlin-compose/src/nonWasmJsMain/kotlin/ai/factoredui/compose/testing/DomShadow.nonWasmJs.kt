@@ -1,9 +1,7 @@
 package ai.factoredui.compose.testing
 
-import java.util.concurrent.ConcurrentHashMap
-
 actual object DomShadow {
-    private val store = ConcurrentHashMap<String, Entry>()
+    private val store = mutableMapOf<String, Entry>()
 
     actual fun emit(id: String, role: String, attrs: Map<String, String?>) {
         store[id] = Entry(id = id, role = role, attrs = attrs.filterValues { it != null }.mapValues { it.value!! })
