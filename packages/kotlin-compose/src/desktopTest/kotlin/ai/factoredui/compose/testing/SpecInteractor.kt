@@ -27,9 +27,23 @@ class SpecInteractor(
     }
 
     fun clearActions() { dispatchedActions.clear(); dragCompletions.clear() }
+    fun waitForIdle() { scope.waitForIdle() }
+
+    fun advanceFrameAndIdle() {
+        scope.mainClock.advanceTimeBy(34)
+        scope.waitForIdle()
+    }
 
     fun recordDragComplete(nodeId: String, magnitude: Float) {
         dragCompletions += nodeId to magnitude
+    }
+
+    fun assertFieldNodeAgeSecs(nodeId: String, minSecs: Float) {
+        val entry = DomShadow.byRole("field-node").firstOrNull { it.attrs["node-id"] == nodeId }
+            ?: error("Field node '$nodeId' not found in DomShadow")
+        val ageSecs = entry.attrs["age-secs"]?.toFloatOrNull()
+            ?: error("Field node '$nodeId' missing age-secs in DomShadow")
+        assertTrue(ageSecs >= minSecs, "Expected age-secs >= $minSecs for '$nodeId', got $ageSecs")
     }
 
     fun assertLastDragMagnitude(nodeId: String, min: Float) {

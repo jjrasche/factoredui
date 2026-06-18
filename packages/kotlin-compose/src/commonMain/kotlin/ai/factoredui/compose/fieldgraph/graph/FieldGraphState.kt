@@ -23,6 +23,7 @@ class FieldGraphState(topology: FieldGraphTopology) {
     private val edges: List<FieldEdge> = topology.edges
     private val positions: MutableMap<String, FieldNodePosition> = LinkedHashMap()
     private var frozenNodeId: String? = null
+    private var virtualTimeOffsetSecs: Float = 0f
 
     init {
         seedPositions()
@@ -45,6 +46,7 @@ class FieldGraphState(topology: FieldGraphTopology) {
 
     fun freezeNode(nodeId: String) { frozenNodeId = nodeId }
     fun releaseNode() { frozenNodeId = null }
+    fun advanceTime(deltaSecs: Float) { virtualTimeOffsetSecs += deltaSecs }
 
     fun moveNode(nodeId: String, angle: Float, radiusFraction: Float) {
         positions[nodeId] = FieldNodePosition(
@@ -93,7 +95,7 @@ class FieldGraphState(topology: FieldGraphTopology) {
     }
 
     fun snapshot(): FieldGraphSnapshot = FieldGraphSnapshot(
-        nodes = nodes.toList(),
+        nodes = nodes.map { it.copy(ageSecs = it.ageSecs + virtualTimeOffsetSecs) },
         positions = positions.toMap(),
         edges = edges.toList(),
     )

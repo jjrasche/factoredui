@@ -26,6 +26,7 @@ sealed class CheckAssertion {
     data class ActionFired(val action: String, val params: Map<String, String> = emptyMap()) : CheckAssertion()
     data class NoActionFired(val unused: Unit = Unit) : CheckAssertion()
     data class DragMagnitude(val nodeId: String, val min: Float) : CheckAssertion()
+    data class FieldNodeAgeSecs(val nodeId: String, val minSecs: Float) : CheckAssertion()
     data class EngineState(val query: String, val predicate: (Any?) -> Boolean) : CheckAssertion()
 }
 
@@ -50,6 +51,7 @@ class CheckBuilder(private val id: String) {
         expect(CheckAssertion.ActionFired(action, params))
     fun expectNoActionFired() = expect(CheckAssertion.NoActionFired())
     fun expectDragMagnitude(nodeId: String, min: Float) = expect(CheckAssertion.DragMagnitude(nodeId, min))
+    fun expectFieldNodeAgeSecs(nodeId: String, minSecs: Float) = expect(CheckAssertion.FieldNodeAgeSecs(nodeId, minSecs))
 
     fun build() = Check(id, steps.toList())
 }

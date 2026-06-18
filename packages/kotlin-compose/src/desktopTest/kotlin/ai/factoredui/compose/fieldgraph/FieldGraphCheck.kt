@@ -61,6 +61,12 @@ class FieldGraphCheck {
         expectDragMagnitude("claim-motion", min = 0.8f)
     }
 
+    private val nodeAgeAdvances = check("node-age-advances") {
+        awaitFieldNode("claim-pain")
+        advanceTime(3600f)
+        expectFieldNodeAgeSecs("claim-pain", 3600f)
+    }
+
     @Test
     fun runClaimNodesAppear() = runCheck(claimNodesAppear)
 
@@ -72,6 +78,9 @@ class FieldGraphCheck {
 
     @Test
     fun runDragClaimRanksRelevance() = runCheck(dragClaimTowardCenterRanksRelevance, trackDrags = true)
+
+    @Test
+    fun runNodeAgeAdvances() = runCheck(nodeAgeAdvances)
 
     private fun runCheck(
         checkScript: ai.factoredui.compose.testing.Check,
@@ -100,6 +109,6 @@ class FieldGraphCheck {
         }
         waitForIdle()
 
-        CheckRunner(interact, engine).run(checkScript)
+        CheckRunner(interact, engine, state).run(checkScript)
     }
 }
