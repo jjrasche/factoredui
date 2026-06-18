@@ -28,6 +28,7 @@ sealed class CheckAssertion {
     data class DragMagnitude(val nodeId: String, val min: Float) : CheckAssertion()
     data class FieldNodeAgeSecs(val nodeId: String, val minSecs: Float) : CheckAssertion()
     data class FieldNodeMinAlpha(val nodeId: String, val minAlpha: Float) : CheckAssertion()
+    data class FieldNodeWcagContrast(val nodeId: String, val minRatio: Float = 3.0f) : CheckAssertion()
     data class EngineState(val query: String, val predicate: (Any?) -> Boolean) : CheckAssertion()
 }
 
@@ -54,6 +55,7 @@ class CheckBuilder(private val id: String) {
     fun expectDragMagnitude(nodeId: String, min: Float) = expect(CheckAssertion.DragMagnitude(nodeId, min))
     fun expectFieldNodeAgeSecs(nodeId: String, minSecs: Float) = expect(CheckAssertion.FieldNodeAgeSecs(nodeId, minSecs))
     fun expectFieldNodeMinAlpha(nodeId: String, minAlpha: Float) = expect(CheckAssertion.FieldNodeMinAlpha(nodeId, minAlpha))
+    fun expectFieldNodeWcagContrast(nodeId: String, minRatio: Float = 3.0f) = expect(CheckAssertion.FieldNodeWcagContrast(nodeId, minRatio))
 
     fun build() = Check(id, steps.toList())
 }

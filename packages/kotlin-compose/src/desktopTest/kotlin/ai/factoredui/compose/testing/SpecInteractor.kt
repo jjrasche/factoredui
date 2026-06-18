@@ -50,23 +50,32 @@ class SpecInteractor(
 
     fun assertFieldNodeMinAlpha(nodeId: String, minAlpha: Float) {
         val (nx, ny) = fieldNodePixelPos(nodeId)
-        val cx = canvasWidthPx / 2f
-        val cy = canvasHeightPx / 2f
-        // Background luminance: Color(0xFF08080F) ≈ 0.003
-        val bgLuminance = 0.003f
-        // Sample the node center pixel via captureToImage
         val img = scope.onRoot().captureToImage().toPixelMap()
         val px = nx.coerceIn(0f, canvasWidthPx - 1f).toInt()
         val py = ny.coerceIn(0f, canvasHeightPx - 1f).toInt()
         val pixel = img[px, py]
-        // Relative luminance of sampled pixel
-        val lum = 0.2126f * pixel.red + 0.7152f * pixel.green + 0.0722f * pixel.blue
-        // A node at minAlpha blended over background should produce lum > bgLuminance + threshold
-        val minLuminance = bgLuminance + minAlpha * 0.15f
+        val nodeLum = 0.2126f * pixel.red + 0.7152f * pixel.green + 0.0722f * pixel.blue
+        val bgLum = 0.0334f  // Color(0xFF08080F): 0.2126*0.031 + 0.7152*0.031 + 0.0722*0.059
+        val contrastRatio = (nodeLum + 0.05f) / (bgLum + 0.05f)
+        val minContrast = (bgLum + 0.05f + minAlpha * 0.15f * bgLum) / (bgLum + 0.05f)
         assertTrue(
-            lum >= minLuminance,
-            "Node '$nodeId' pixel at ($px,$py) has luminance $lum, expected >= $minLuminance (minAlpha=$minAlpha)",
+            contrastRatio >= minAlpha * 12f + 1f,
+            "Node '$nodeId' contrast ratio $contrastRatio:1, expected >= ${minAlpha * 12f + 1f}:1 (minAlpha=$minAlpha). Node is not visually distinct from background.",
         )
+    }
+
+    fun assertFieldNodeWcagContrast(nodeId: String, minRatio: Float = 3.0f) {
+        val (nx, ny) = fieldNodePixelPos(nodeId)
+        val img = scope.onRoot().captureToImage().toPixelMap()
+        val px = nx.coerceIn(0f, canvasWidthPx - 1f).toInt()
+        val py = ny.coerceIn(0f, canvasHeightPx - 1f).toInt()
+        val pixel = img[px, py]
+        val nodeLum = 0.2126f * pixel.red + 0.7152f * pixel.green + 0.0722f * pixel.blue
+        val bgLum = 0.0334f
+        val lighter = maxOf(nodeLum, bgLum)
+        val darker = minOf(nodeLum, bgLum)
+        val ratio = (lighter + 0.05f) / (darker + 0.05f)
+        assertTrue(ratio >= minRatio, "Node '$nodeId' WCAG contrast ratio $ratio:1, required >= $minRatio:1.")
     }
 
     fun assertLastDragMagnitude(nodeId: String, min: Float) {

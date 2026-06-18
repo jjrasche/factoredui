@@ -34,7 +34,7 @@ private const val CLAIM_RADIUS = 16f
 private const val ENTITY_RADIUS = 11f
 private const val AGE_HALF_LIFE_SEC = 43200f
 private const val TAP_MAX_MOVE_PX = 8f
-private const val MIN_CLAIM_ALPHA = 0.10f
+private const val MIN_CLAIM_ALPHA = 0.30f
 private val BACKGROUND = Color(0xFF08080F)
 private val RING_COLOR = Color(0x14FFFFFF)
 
