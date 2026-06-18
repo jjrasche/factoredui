@@ -29,7 +29,7 @@
           "group": "ai.factoredui",
           "module": "kotlin-compose-schema",
           "version": {
-            "requires": "0.13.1"
+            "requires": "0.13.2"
           }
         },
         {
@@ -96,7 +96,7 @@
           "group": "ai.factoredui",
           "module": "kotlin-compose-schema",
           "version": {
-            "requires": "0.13.1"
+            "requires": "0.13.2"
           }
         },
         {
@@ -119,10 +119,10 @@
           "name": "kotlin-engine-iosx64-0.11.0-metadata.jar",
           "url": "kotlin-engine-iosx64-0.11.0-metadata.jar",
           "size": 261,
-          "sha512": "c17af3048fb2c49ac08143aaa6a246493219f243677410a94bc7ce47ee04151d3b4d4ee2c4b57e4056ced84953cec448c155581998a7873ac2c7b41d3bc2a912",
-          "sha256": "ada007b52f47a6c4809e0dab33873be1cd4d6100802779e30dfdb0fd29c98112",
-          "sha1": "81add493a07cec3d09094bcf3e46bfe1e3c84448",
-          "md5": "9e2bf4b8447e1cdef62400d5ee844a33"
+          "sha512": "b700d15e799dd032f712e408b6d69a2baa595fb3c7fe565f7197980f72f787859e1536231ffbcfebd20f5539ee792793635491a42a9269b84a076fcee2ed4caa",
+          "sha256": "726b52056523201d4670bdeccefc3f973dd51f4beef818bc3b5b3b5ea1054b8e",
+          "sha1": "733b0635d75c6842776b1b41864635302863715e",
+          "md5": "aa7f531e2a847e9c23b33797421b445d"
         }
       ]
     }

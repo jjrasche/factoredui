@@ -28,7 +28,7 @@
           "group": "ai.factoredui",
           "module": "kotlin-compose-schema",
           "version": {
-            "requires": "0.13.1"
+            "requires": "0.13.2"
           }
         },
         {
@@ -64,7 +64,7 @@
           "group": "ai.factoredui",
           "module": "kotlin-compose-schema",
           "version": {
-            "requires": "0.13.1"
+            "requires": "0.13.2"
           },
           "excludes": [
             {
