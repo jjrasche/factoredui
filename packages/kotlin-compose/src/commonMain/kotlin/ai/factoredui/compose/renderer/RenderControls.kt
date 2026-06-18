@@ -23,8 +23,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import ai.factoredui.compose.schema.SpecNode
@@ -70,7 +68,7 @@ internal fun RenderToggle(
                 writePath?.let { context.setBinding(it, next) }
                 node.action?.let { ref -> scope.launch { context.dispatch(node.id, ref) } }
             },
-            modifier = Modifier.semantics { contentDescription = node.id },
+            modifier = Modifier.nodeTag(node.id),
         )
     }
 }
@@ -106,7 +104,7 @@ internal fun RenderSlider(
         steps = steps,
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = node.id },
+            .nodeTag(node.id),
     )
 }
 
@@ -128,7 +126,7 @@ internal fun RenderSelect(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = node.id },
+            .nodeTag(node.id),
     ) {
         OutlinedButton(
             onClick = { expanded = true },
@@ -166,7 +164,7 @@ internal fun RenderTabs(
 
     if (props.items.isEmpty()) return
 
-    Column(modifier = Modifier.semantics { contentDescription = node.id }) {
+    Column(modifier = Modifier.nodeTag(node.id)) {
         TabRow(selectedTabIndex = selected) {
             props.items.forEachIndexed { index, label ->
                 Tab(
@@ -213,6 +211,6 @@ internal fun RenderModal(
                 enabled = props.dismissible,
             ) { Text("Close") }
         },
-        modifier = Modifier.semantics { contentDescription = node.id },
+        modifier = Modifier.nodeTag(node.id),
     )
 }

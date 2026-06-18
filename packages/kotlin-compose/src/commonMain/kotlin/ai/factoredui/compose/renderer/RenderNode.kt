@@ -250,7 +250,7 @@ private fun RenderRow(node: SpecNode, context: RenderContext) {
     }
 }
 
-private fun Modifier.nodeTag(id: String): Modifier =
+internal fun Modifier.nodeTag(id: String): Modifier =
     this.testTag(id).semantics { contentDescription = id }
 
 private fun columnHorizontalAlignment(align: LayoutAlign): Alignment.Horizontal = when (align) {
@@ -383,7 +383,7 @@ private fun StyledCard(
     } else {
         CardDefaults.cardElevation()
     }
-    Card(modifier = widthModifier.testTag(node.id), shape = shape, colors = colors, elevation = elevation) {
+    Card(modifier = widthModifier.nodeTag(node.id), shape = shape, colors = colors, elevation = elevation) {
         val contentModifier = props.padding?.let { Modifier.padding(it.dp) } ?: Modifier
         Column(modifier = contentModifier) {
             node.children.forEach { child -> RenderNode(node = child, context = context) }
