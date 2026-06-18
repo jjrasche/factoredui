@@ -14,10 +14,11 @@ import ai.factoredui.compose.fieldgraph.graph.FieldGraphState
 import ai.factoredui.compose.fieldgraph.graph.FieldGraphTopology
 import ai.factoredui.compose.fieldgraph.graph.FieldNode
 import ai.factoredui.compose.fieldgraph.render.FieldGraphView
+import ai.factoredui.compose.testing.CheckRunner
+import ai.factoredui.compose.testing.FakeEngineClient
 import ai.factoredui.compose.testing.SpecInteractor
+import ai.factoredui.compose.testing.check
 import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class FieldGraphCheck {
@@ -35,89 +36,70 @@ class FieldGraphCheck {
         ),
     )
 
-    @Test
-    fun claimNodeAppearsInField() = runComposeUiTest {
-        val state = FieldGraphState(topology)
-        val interact = SpecInteractor(this, canvasWidthPx = canvasDp.toFloat(), canvasHeightPx = canvasDp.toFloat())
-        setContent {
-            CompositionLocalProvider(LocalDensity provides Density(1f)) {
-                Box(Modifier.size(canvasDp.dp)) {
-                    FieldGraphView(graphState = state, reduceMotion = true)
-                }
-            }
-        }
-        waitForIdle()
-        interact.assertFieldNodePresent("claim-pain")
-        interact.assertFieldNodePresent("claim-motion")
+    private val claimNodesAppear = check("claim-nodes-appear") {
+        awaitFieldNode("claim-pain")
+        awaitFieldNode("claim-motion")
+        expectFieldNodePresent("claim-pain")
+        expectFieldNodePresent("claim-motion")
+    }
+
+    private val entityNodeRejectsTap = check("entity-node-rejects-tap") {
+        awaitFieldNode("entity-knee")
+        tapFieldNode("entity-knee")
+        expectNoActionFired()
+    }
+
+    private val tapClaimFiresAction = check("tap-claim-fires-on-node-tap") {
+        awaitFieldNode("claim-pain")
+        tapFieldNode("claim-pain")
+        expectActionFired("on_node_tap", mapOf("node_id" to "claim-pain"))
+    }
+
+    private val dragClaimTowardCenterRanksRelevance = check("drag-claim-ranks-relevance") {
+        awaitFieldNode("claim-motion")
+        dragFieldNodeToCenter("claim-motion")
+        expectDragMagnitude("claim-motion", min = 0.8f)
     }
 
     @Test
-    fun entityNodeDoesNotReceiveTap() = runComposeUiTest {
-        val tapped = mutableListOf<String>()
+    fun runClaimNodesAppear() = runCheck(claimNodesAppear)
+
+    @Test
+    fun runEntityNodeRejectsTap() = runCheck(entityNodeRejectsTap, trackTaps = true)
+
+    @Test
+    fun runTapClaimFiresAction() = runCheck(tapClaimFiresAction, trackTaps = true)
+
+    @Test
+    fun runDragClaimRanksRelevance() = runCheck(dragClaimTowardCenterRanksRelevance, trackDrags = true)
+
+    private fun runCheck(
+        checkScript: ai.factoredui.compose.testing.Check,
+        trackTaps: Boolean = false,
+        trackDrags: Boolean = false,
+    ) = runComposeUiTest {
         val state = FieldGraphState(topology)
         val interact = SpecInteractor(this, canvasWidthPx = canvasDp.toFloat(), canvasHeightPx = canvasDp.toFloat())
+        val engine = FakeEngineClient()
+
         setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f)) {
                 Box(Modifier.size(canvasDp.dp)) {
                     FieldGraphView(
                         graphState = state,
                         reduceMotion = true,
-                        onNodeTap = { id -> tapped += id },
+                        onNodeTap = { id ->
+                            if (trackTaps) interact.recordAction("on_node_tap", mapOf("node_id" to id))
+                        },
+                        onNodeDragComplete = { id, magnitude ->
+                            if (trackDrags) interact.recordDragComplete(id, magnitude)
+                        },
                     )
                 }
             }
         }
         waitForIdle()
-        interact.tapFieldNode("entity-knee")
-        waitForIdle()
-        assertTrue(tapped.isEmpty(), "entity nodes must not fire onNodeTap")
-    }
 
-    @Test
-    fun tapClaimNodeFiresOnNodeTap() = runComposeUiTest {
-        val tapped = mutableListOf<String>()
-        val state = FieldGraphState(topology)
-        val interact = SpecInteractor(this, canvasWidthPx = canvasDp.toFloat(), canvasHeightPx = canvasDp.toFloat())
-        setContent {
-            CompositionLocalProvider(LocalDensity provides Density(1f)) {
-                Box(Modifier.size(canvasDp.dp)) {
-                    FieldGraphView(
-                        graphState = state,
-                        reduceMotion = true,
-                        onNodeTap = { id -> tapped += id },
-                    )
-                }
-            }
-        }
-        waitForIdle()
-        interact.tapFieldNode("claim-pain")
-        waitForIdle()
-        assertTrue(tapped.isNotEmpty(), "tapping a claim node must fire onNodeTap")
-        assertEquals("claim-pain", tapped.first())
-    }
-
-    @Test
-    fun dragClaimNodeTowardCenterIncreasesRelevance() = runComposeUiTest {
-        val completed = mutableListOf<Pair<String, Float>>()
-        val state = FieldGraphState(topology)
-        val interact = SpecInteractor(this, canvasWidthPx = canvasDp.toFloat(), canvasHeightPx = canvasDp.toFloat())
-        setContent {
-            CompositionLocalProvider(LocalDensity provides Density(1f)) {
-                Box(Modifier.size(canvasDp.dp)) {
-                    FieldGraphView(
-                        graphState = state,
-                        reduceMotion = true,
-                        onNodeDragComplete = { id, magnitude -> completed += id to magnitude },
-                    )
-                }
-            }
-        }
-        waitForIdle()
-        interact.dragFieldNodeToCenter("claim-motion")
-        waitForIdle()
-        assertTrue(completed.isNotEmpty(), "dragging a claim node must fire onNodeDragComplete")
-        val (nodeId, magnitude) = completed.first()
-        assertEquals("claim-motion", nodeId)
-        assertTrue(magnitude > 0.8f, "dragging to center yields high relevance magnitude, got $magnitude")
+        CheckRunner(interact, engine).run(checkScript)
     }
 }

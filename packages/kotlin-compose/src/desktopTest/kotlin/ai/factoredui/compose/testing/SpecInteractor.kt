@@ -20,12 +20,23 @@ class SpecInteractor(
     private val canvasHeightPx: Float = 400f,
 ) {
     private val dispatchedActions = mutableListOf<Pair<String, Map<String, String>>>()
+    private val dragCompletions = mutableListOf<Pair<String, Float>>()
 
     fun recordAction(action: String, params: Map<String, String> = emptyMap()) {
         dispatchedActions += action to params
     }
 
-    fun clearActions() = dispatchedActions.clear()
+    fun clearActions() { dispatchedActions.clear(); dragCompletions.clear() }
+
+    fun recordDragComplete(nodeId: String, magnitude: Float) {
+        dragCompletions += nodeId to magnitude
+    }
+
+    fun assertLastDragMagnitude(nodeId: String, min: Float) {
+        val last = dragCompletions.lastOrNull { it.first == nodeId }
+        assertNotNull(last, "No drag completion recorded for '$nodeId'")
+        assertTrue(last.second >= min, "Expected drag magnitude >= $min for '$nodeId', got ${last.second}")
+    }
 
     fun tap(nodeId: String) {
         scope.onNodeWithTag(nodeId).performClick()
