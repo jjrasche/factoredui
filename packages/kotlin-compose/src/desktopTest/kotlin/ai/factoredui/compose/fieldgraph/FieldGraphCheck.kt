@@ -14,6 +14,7 @@ import ai.factoredui.compose.fieldgraph.graph.FieldGraphState
 import ai.factoredui.compose.fieldgraph.graph.FieldGraphTopology
 import ai.factoredui.compose.fieldgraph.graph.FieldNode
 import ai.factoredui.compose.fieldgraph.render.FieldGraphView
+import ai.factoredui.compose.testing.CheckAssertion
 import ai.factoredui.compose.testing.CheckRunner
 import ai.factoredui.compose.testing.FakeEngineClient
 import ai.factoredui.compose.testing.SpecInteractor
@@ -61,6 +62,22 @@ class FieldGraphCheck {
         expectDragMagnitude("claim-motion", min = 0.8f)
     }
 
+    private val dragPostsToEngine = check("drag-posts-relevance-to-engine") {
+        awaitFieldNode("claim-motion")
+        dragFieldNodeToCenter("claim-motion")
+        expectDragMagnitude("claim-motion", min = 0.8f)
+        expect(CheckAssertion.EngineState("/field/relevance") { value ->
+            (value as? Map<*, *>)?.get("nodeId") == "claim-motion"
+        })
+    }
+
+    private val nodeDecaysOverTime = check("node-decays-over-time") {
+        awaitFieldNode("claim-pain")
+        advanceTime(86400f)
+        expectFieldNodeAgeSecs("claim-pain", minSecs = 86400f)
+        expectFieldNodePresent("claim-pain")
+    }
+
     private val nodeAgeAdvances = check("node-age-advances") {
         awaitFieldNode("claim-pain")
         advanceTime(3600f)
@@ -80,12 +97,19 @@ class FieldGraphCheck {
     fun runDragClaimRanksRelevance() = runCheck(dragClaimTowardCenterRanksRelevance, trackDrags = true)
 
     @Test
+    fun runDragPostsToEngine() = runCheck(dragPostsToEngine, trackDrags = true, trackEnginePost = true)
+
+    @Test
     fun runNodeAgeAdvances() = runCheck(nodeAgeAdvances)
+
+    @Test
+    fun runNodeDecaysOverTime() = runCheck(nodeDecaysOverTime)
 
     private fun runCheck(
         checkScript: ai.factoredui.compose.testing.Check,
         trackTaps: Boolean = false,
         trackDrags: Boolean = false,
+        trackEnginePost: Boolean = false,
     ) = runComposeUiTest {
         val state = FieldGraphState(topology)
         val interact = SpecInteractor(this, canvasWidthPx = canvasDp.toFloat(), canvasHeightPx = canvasDp.toFloat())
@@ -102,6 +126,9 @@ class FieldGraphCheck {
                         },
                         onNodeDragComplete = { id, magnitude ->
                             if (trackDrags) interact.recordDragComplete(id, magnitude)
+                            if (trackEnginePost) kotlinx.coroutines.runBlocking {
+                                engine.post("/field/relevance", mapOf("nodeId" to id, "magnitude" to magnitude.toDouble()))
+                            }
                         },
                     )
                 }
