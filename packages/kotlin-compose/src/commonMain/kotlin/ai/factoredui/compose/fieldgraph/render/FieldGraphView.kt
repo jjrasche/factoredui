@@ -17,6 +17,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.sp
 import ai.factoredui.compose.fieldgraph.graph.FieldEdge
 import ai.factoredui.compose.fieldgraph.graph.FieldGraphSnapshot
 import ai.factoredui.compose.fieldgraph.graph.FieldGraphState
@@ -59,6 +64,10 @@ fun FieldGraphView(
     onNodeDragRelease: () -> Unit = {},
     onNodeDragComplete: (nodeId: String, relevanceMagnitude: Float) -> Unit = { _, _ -> },
     onNodeTap: (nodeId: String) -> Unit = {},
+    onLogItemTap: (nodeId: String) -> Unit = {},
+    onLogItemToField: (nodeId: String, xFraction: Float, yFraction: Float) -> Unit = { _, _, _ -> },
+    onNodeToLog: (nodeId: String) -> Unit = {},
+    onLogToggle: (collapsed: Boolean) -> Unit = {},
 ) {
     var snapshot by remember(graphState) { mutableStateOf(graphState.snapshot()) }
     var draggedNodeId by remember { mutableStateOf<String?>(null) }
@@ -181,6 +190,7 @@ fun FieldGraphView(
                 }
             },
     ) {
+        val textMeasurer = rememberTextMeasurer()
         Canvas(modifier = Modifier.fillMaxSize()) {
             val cx = size.width / 2f
             val cy = size.height / 2f
@@ -190,7 +200,7 @@ fun FieldGraphView(
             drawRelevanceRings(cx, cy, maxR)
             drawEdges(snapshot, cx, cy, maxR)
             drawEntityNodes(snapshot, cx, cy, maxR)
-            drawClaimNodes(snapshot, cx, cy, maxR)
+            drawClaimNodes(snapshot, cx, cy, maxR, textMeasurer)
         }
     }
 }
@@ -244,7 +254,7 @@ private fun DrawScope.drawEntityNodes(s: FieldGraphSnapshot, cx: Float, cy: Floa
     }
 }
 
-private fun DrawScope.drawClaimNodes(s: FieldGraphSnapshot, cx: Float, cy: Float, maxR: Float) {
+private fun DrawScope.drawClaimNodes(s: FieldGraphSnapshot, cx: Float, cy: Float, maxR: Float, textMeasurer: TextMeasurer) {
     for (node in s.nodes.filter { it.group != "entity" }) {
         val pos = s.positions[node.id] ?: continue
         val relevance = 1f - pos.radiusFraction
@@ -254,13 +264,21 @@ private fun DrawScope.drawClaimNodes(s: FieldGraphSnapshot, cx: Float, cy: Float
             cx + cos(pos.angle) * pos.radiusFraction * maxR,
             cy + sin(pos.angle) * pos.radiusFraction * maxR,
         )
-        val color = groupColor(node.group)
-        drawCircle(color = color.copy(alpha = alpha), radius = CLAIM_RADIUS, center = center)
+        drawCircle(color = Color.White.copy(alpha = alpha), radius = CLAIM_RADIUS, center = center)
         drawCircle(
             color = Color.Black.copy(alpha = 0.28f),
             radius = CLAIM_RADIUS,
             center = center,
             style = Stroke(width = 1f),
+        )
+        val labelWords = node.label.split(" ").take(3).joinToString(" ")
+        val measured = textMeasurer.measure(
+            labelWords,
+            style = TextStyle(color = Color.White.copy(alpha = alpha), fontSize = 9.sp),
+        )
+        drawText(
+            textLayoutResult = measured,
+            topLeft = Offset(center.x - measured.size.width / 2f, center.y + CLAIM_RADIUS + 3f),
         )
     }
 }

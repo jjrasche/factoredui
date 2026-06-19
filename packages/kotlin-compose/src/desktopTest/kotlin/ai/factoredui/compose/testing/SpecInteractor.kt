@@ -145,6 +145,101 @@ class SpecInteractor(
         assertTrue(dispatchedActions.isEmpty(), "Expected no actions. Fired: $dispatchedActions")
     }
 
+    // --- Log column interactions ---
+
+    fun tapLogItem(nodeId: String) {
+        val entry = DomShadow.byRole("log-item").firstOrNull { it.attrs["id"] == nodeId }
+            ?: error("Log item '$nodeId' not found in DomShadow — log column UI not yet rendered")
+        val px = entry.attrs["pixel-x"]?.toFloatOrNull() ?: 0f
+        val py = entry.attrs["pixel-y"]?.toFloatOrNull() ?: 0f
+        scope.onRoot().performTouchInput { down(Offset(px, py)); up() }
+    }
+
+    fun dragLogItemToField(nodeId: String, toX: Float, toY: Float) {
+        val entry = DomShadow.byRole("log-item").firstOrNull { it.attrs["id"] == nodeId }
+            ?: error("Log item '$nodeId' not found in DomShadow — log column UI not yet rendered")
+        val px = entry.attrs["pixel-x"]?.toFloatOrNull() ?: 0f
+        val py = entry.attrs["pixel-y"]?.toFloatOrNull() ?: 0f
+        scope.onRoot().performTouchInput {
+            down(Offset(px, py))
+            moveTo(Offset(toX * canvasWidthPx, toY * canvasHeightPx))
+            up()
+        }
+    }
+
+    fun dragFieldNodeToLog(nodeId: String) {
+        val (nx, ny) = fieldNodePixelPos(nodeId)
+        // Log column is on the left edge — drag toward x=0
+        val logColumnX = 5f
+        scope.onRoot().performTouchInput {
+            down(Offset(nx, ny))
+            moveTo(Offset(logColumnX, ny))
+            up()
+        }
+    }
+
+    fun holdFieldNodeNearLeftEdge(nodeId: String, holdSecs: Float) {
+        val (nx, ny) = fieldNodePixelPos(nodeId)
+        // Move field node to left edge region (xFraction ~ 0.05)
+        val leftEdgeX = canvasWidthPx * 0.05f
+        scope.onRoot().performTouchInput {
+            down(Offset(nx, ny))
+            moveTo(Offset(leftEdgeX, ny))
+        }
+        // Simulate hold duration by advancing frames
+        val frames = (holdSecs * 30).toLong().coerceAtLeast(1)
+        repeat(frames.toInt()) { scope.mainClock.advanceTimeBy(33) }
+        scope.onRoot().performTouchInput { up() }
+        scope.waitForIdle()
+    }
+
+    fun tapLogCollapseButton() {
+        val entry = DomShadow.byRole("log-collapse-button").firstOrNull()
+            ?: error("log-collapse-button not found in DomShadow — log column UI not yet rendered")
+        val px = entry.attrs["pixel-x"]?.toFloatOrNull() ?: 0f
+        val py = entry.attrs["pixel-y"]?.toFloatOrNull() ?: 0f
+        scope.onRoot().performTouchInput { down(Offset(px, py)); up() }
+    }
+
+    // --- Log column assertions ---
+
+    fun assertLogColumnCollapsed(expectedCollapsed: Boolean) {
+        val entry = DomShadow.byRole("log-column").firstOrNull()
+            ?: error("log-column not found in DomShadow — log column UI not yet rendered")
+        val collapsed = entry.attrs["collapsed"] == "true"
+        assertTrue(
+            collapsed == expectedCollapsed,
+            "Expected log-column collapsed=$expectedCollapsed, got collapsed=$collapsed",
+        )
+    }
+
+    fun assertLogItemPresent(nodeId: String) {
+        val entry = DomShadow.byRole("log-item").firstOrNull { it.attrs["id"] == nodeId }
+        assertNotNull(entry, "Log item '$nodeId' should be present in DomShadow")
+    }
+
+    fun assertLogItemAbsent(nodeId: String) {
+        val entry = DomShadow.byRole("log-item").firstOrNull { it.attrs["id"] == nodeId }
+        assertTrue(entry == null, "Log item '$nodeId' should NOT be present in DomShadow")
+    }
+
+    fun assertLogItemOrder(expectedIds: List<String>) {
+        val items = DomShadow.byRole("log-item")
+            .sortedByDescending { it.attrs["placed-at-ms"]?.toLongOrNull() ?: 0L }
+        val actualIds = items.mapNotNull { it.attrs["id"] }
+        assertTrue(
+            actualIds == expectedIds,
+            "Expected log item order $expectedIds but got $actualIds",
+        )
+    }
+
+    fun assertActionFiredWithNodeId(action: String, nodeId: String) {
+        assertTrue(
+            dispatchedActions.any { (a, p) -> a == action && p["node_id"] == nodeId },
+            "Expected action '$action' with node_id='$nodeId'. Fired: $dispatchedActions",
+        )
+    }
+
     private fun fieldNodePixelPos(nodeId: String): Pair<Float, Float> {
         val cx = canvasWidthPx / 2f
         val cy = canvasHeightPx / 2f

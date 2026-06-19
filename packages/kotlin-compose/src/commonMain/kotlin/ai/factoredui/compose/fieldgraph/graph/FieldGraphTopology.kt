@@ -17,9 +17,18 @@ data class FieldEdge(
     val kind: String,
 )
 
+data class FieldLogItem(
+    val id: String,
+    val label: String,
+    val entityName: String = "",
+    val ageSecs: Float = 0f,
+    val placedAtMs: Long = 0L,
+)
+
 data class FieldGraphTopology(
     val nodes: List<FieldNode>,
     val edges: List<FieldEdge>,
+    val logItems: List<FieldLogItem> = emptyList(),
 ) {
     companion object {
         fun fromJson(json: Json, body: String): FieldGraphTopology {

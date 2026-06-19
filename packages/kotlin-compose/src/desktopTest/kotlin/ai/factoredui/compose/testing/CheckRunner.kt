@@ -25,11 +25,18 @@ class CheckRunner(
         }
         is CheckStep.Await -> executeAwait(step.condition)
         is CheckStep.Expect -> executeExpect(step.assertion)
+        is CheckStep.TapLogItem -> interactor.tapLogItem(step.nodeId)
+        is CheckStep.DragLogItemToField -> interactor.dragLogItemToField(step.nodeId, step.toX, step.toY)
+        is CheckStep.DragFieldNodeToLog -> interactor.dragFieldNodeToLog(step.nodeId)
+        is CheckStep.HoldFieldNodeNearLeftEdge -> interactor.holdFieldNodeNearLeftEdge(step.nodeId, step.holdSecs)
+        is CheckStep.ToggleLogColumn -> interactor.tapLogCollapseButton()
     }
 
     private fun executeAwait(condition: AwaitCondition) = when (condition) {
         is AwaitCondition.FieldNodePresent -> interactor.assertFieldNodePresent(condition.nodeId)
         is AwaitCondition.NodeExists -> interactor.assertNodeExists(condition.nodeId)
+        is AwaitCondition.LogColumnVisible -> interactor.assertLogColumnCollapsed(false)
+        is AwaitCondition.LogItemPresent -> interactor.assertLogItemPresent(condition.nodeId)
     }
 
     private fun executeExpect(assertion: CheckAssertion) = when (assertion) {
@@ -45,5 +52,10 @@ class CheckRunner(
             val result = kotlinx.coroutines.runBlocking { engineClient.query(assertion.query) }
             assertTrue(assertion.predicate(result), "EngineState assertion failed for query '${assertion.query}', got: $result")
         }
+        is CheckAssertion.LogColumnCollapsed -> interactor.assertLogColumnCollapsed(assertion.expectedCollapsed)
+        is CheckAssertion.LogItemPresent -> interactor.assertLogItemPresent(assertion.nodeId)
+        is CheckAssertion.LogItemAbsent -> interactor.assertLogItemAbsent(assertion.nodeId)
+        is CheckAssertion.LogItemOrder -> interactor.assertLogItemOrder(assertion.expectedIds)
+        is CheckAssertion.ActionFiredWithNodeId -> interactor.assertActionFiredWithNodeId(assertion.action, assertion.nodeId)
     }
 }
