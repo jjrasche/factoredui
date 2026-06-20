@@ -27,7 +27,9 @@
                   "value": "{injury.engine}",
                   "options": [
                     { "value": "injury", "label": "injury optimizer (ground truth · slow)" },
-                    { "value": "fastgen", "label": "fastgen distill (fast)" }
+                    { "value": "fastgen", "label": "fastgen distill (fast)" },
+                    { "value": "embodiment-tracked", "label": "harness: TRACKED loop (motion-gen + tracker + physics — force knocks it, it recovers)" },
+                    { "value": "embodiment-kinematic", "label": "harness: KINEMATIC loop (motion-gen only — force does nothing)" }
                   ]
                 }
               }
