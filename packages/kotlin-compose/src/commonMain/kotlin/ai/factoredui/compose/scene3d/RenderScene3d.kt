@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -133,6 +134,19 @@ private fun sparedLegHeat(source: MotionClip): List<Float>? {
         else -> return null
     }
     return (0 until 24).map { if (it in sparedJoints) 0.9f else 0f }
+}
+
+// The timeline scrubber's mapping, extracted so it is unit-testable: dragging the slider right
+// (fraction 0→1) advances the playhead across the clip's frames; the inverse places the slider at
+// the frame currently showing. "Moving the slider IS moving the frame" is exactly this contract.
+internal fun scrubFrameForFraction(fraction: Float, frameCount: Int): Int {
+    if (frameCount < 2) return 0
+    return (fraction * (frameCount - 1)).toInt().coerceIn(0, frameCount - 1)
+}
+
+internal fun scrubFractionForFrame(frame: Int, frameCount: Int): Float {
+    if (frameCount < 2) return 0f
+    return (frame.toFloat() / (frameCount - 1)).coerceIn(0f, 1f)
 }
 
 // PREVIEW field (swaps for il-injury's geodesic pain_at when exposed): the dragged
@@ -867,12 +881,12 @@ fun RenderScene3d(
             ) {
                 Button(onClick = { playing = !playing }) { Text(if (playing) "❚❚ pause" else "▶ play") }
                 Slider(
-                    value = (playFrame.toFloat() / (total - 1)).coerceIn(0f, 1f),
+                    value = scrubFractionForFrame(playFrame, total),
                     onValueChange = { fraction ->
                         playing = false
-                        playFrame = (fraction * (total - 1)).toInt().coerceIn(0, total - 1)
+                        playFrame = scrubFrameForFraction(fraction, total)
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).testTag("scene3d-timeline"),
                 )
             }
         }

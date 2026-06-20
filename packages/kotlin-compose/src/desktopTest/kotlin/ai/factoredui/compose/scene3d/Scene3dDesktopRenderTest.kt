@@ -22,6 +22,7 @@ import java.io.File
 import javax.imageio.ImageIO
 import kotlin.math.PI
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
@@ -118,6 +119,36 @@ class Scene3dDesktopRenderTest {
         val angle = kotlin.math.acos(((m[0] + m[5] + m[10] - 1f) * 0.5f).coerceIn(-1f, 1f))
         println("[scene3d] spine rotation after ROM clamp: $angle (limit ~0.5)")
         assertTrue(angle <= 0.55f, "spine rotation should clamp to ROM (~0.5 rad), got $angle")
+    }
+
+    @Test
+    fun movingTheTimelineSliderAdjustsTheFrame() {
+        // GIVEN a 60-frame motion clip loaded in the scene3d timeline
+        val frameCount = 60
+        // WHEN the playback slider is dragged to the start / middle / end
+        // THEN the playhead frame tracks the slider position
+        assertEquals(0, scrubFrameForFraction(0f, frameCount), "start of the slider shows the first frame")
+        assertEquals(frameCount - 1, scrubFrameForFraction(1f, frameCount), "end of the slider shows the last frame")
+        val mid = scrubFrameForFraction(0.5f, frameCount)
+        assertTrue(mid in 28..30, "the half-way slider position lands mid-clip, got frame $mid")
+
+        // AND dragging the slider rightward only ever advances the frame — it never jumps backward
+        var previous = -1
+        for (step in 0..20) {
+            val frame = scrubFrameForFraction(step / 20f, frameCount)
+            assertTrue(frame >= previous, "frame must not go backward as the slider moves right: $frame after $previous")
+            previous = frame
+        }
+
+        // AND the slider position shown for a frame round-trips back to that exact frame
+        assertEquals(42, scrubFrameForFraction(scrubFractionForFrame(42, frameCount), frameCount), "frame 42 round-trips through the slider")
+    }
+
+    @Test
+    fun scrubbingADegenerateClipClampsInsteadOfCrashing() {
+        // GIVEN a 1-frame (or empty) clip, scrubbing must clamp — no divide-by-zero on (frameCount - 1)
+        assertEquals(0, scrubFrameForFraction(0.7f, 1), "a single-frame clip stays on frame 0")
+        assertEquals(0f, scrubFractionForFrame(0, 1), "a single-frame clip parks the slider at 0")
     }
 
     private fun androidx.compose.ui.test.ComposeUiTest.renderToPng(
