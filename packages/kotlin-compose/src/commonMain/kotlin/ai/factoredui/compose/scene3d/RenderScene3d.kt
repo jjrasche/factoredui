@@ -39,6 +39,7 @@ import ai.factoredui.compose.observability.NoOpObservability
 import ai.factoredui.compose.observability.Observability
 import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.Scene3dProps
+import ai.factoredui.compose.testing.DomShadow
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -70,6 +71,7 @@ import kotlin.math.acos
 import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -148,6 +150,11 @@ internal fun scrubFractionForFrame(frame: Int, frameCount: Int): Float {
     if (frameCount < 2) return 0f
     return (frame.toFloat() / (frameCount - 1)).coerceIn(0f, 1f)
 }
+
+internal fun jointFrameDigest(joints: List<List<Float>>): String =
+    joints.joinToString(";") { joint ->
+        joint.joinToString(",") { axis -> (axis * 1000f).roundToInt().toString() }
+    }
 
 // PREVIEW field (swaps for il-injury's geodesic pain_at when exposed): the dragged
 // impact ball picks the nearest body joint; pain falls off along the bone graph from
@@ -343,6 +350,24 @@ fun RenderScene3d(
                 applyCameraState(camera, Scene3dCameraState(position = listOf(2.0f, 1.3f, 2.0f), target = listOf(0f, 0.7f, 0f)))
                 cameraInitialized = true
             }
+        }
+    }
+
+    motionClip?.let { clip ->
+        val drawnFrame = playFrame.coerceIn(0, (clip.frames.size - 1).coerceAtLeast(0))
+        val drawnJoints = clip.frames.getOrNull(drawnFrame)?.joints ?: emptyList()
+        DisposableEffect(clip, drawnFrame) {
+            DomShadow.emit(
+                id = "$nodeId:frame",
+                role = "scene3d-frame",
+                attrs = mapOf(
+                    "playhead" to drawnFrame.toString(),
+                    "frame-count" to clip.frames.size.toString(),
+                    "joints-digest" to jointFrameDigest(drawnJoints),
+                    "source" to clip.name.ifEmpty { null },
+                ),
+            )
+            onDispose { DomShadow.remove("$nodeId:frame") }
         }
     }
 
