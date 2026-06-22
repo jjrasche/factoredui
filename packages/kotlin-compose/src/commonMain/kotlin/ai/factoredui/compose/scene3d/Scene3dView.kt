@@ -37,6 +37,7 @@ private const val SELECT_HIT_RADIUS_PX = 48f
 private const val JOINT_HIT_RADIUS_PX = 20f
 private const val JOINT_GRAB_RADIUS_PX = 30f
 private const val BONE_GRAB_RADIUS_PX = 26f
+private const val PINCH_ZOOM_SCALE = 0.01f
 private const val REACH_IK_ITERATIONS = 6
 private const val REACH_IK_MAX_STEP = 0.5f
 private const val REACH_IK_FALLOFF = 0.6f
@@ -114,9 +115,26 @@ fun Scene3dView(
                         }
                     }
                     var moved = false
+                    var pinchPrevDist: Float? = null
                     val slop = viewConfiguration.touchSlop
                     while (true) {
                         val event = awaitPointerEvent()
+                        // Two fingers = pinch-zoom (touch has no scroll wheel); it preempts the
+                        // one-finger orbit below so the working orbit/tap routing stays untouched.
+                        val pressed = event.changes.filter { it.pressed }
+                        if (pressed.size >= 2) {
+                            val pinchDist = (pressed[0].position - pressed[1].position).getDistance()
+                            pinchPrevDist?.let { prev ->
+                                camera.zoom((pinchDist - prev) * PINCH_ZOOM_SCALE)
+                                cameraGeneration++
+                                onCameraChange()
+                            }
+                            pinchPrevDist = pinchDist
+                            moved = true
+                            event.changes.forEach { it.consume() }
+                            continue
+                        }
+                        pinchPrevDist = null
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         if (change.changedToUp()) {
                             if (!moved) {

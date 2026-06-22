@@ -370,7 +370,7 @@ fun RenderScene3d(
         if (props.simId != null) {
             world = Scene3dWorldState(entities = listOf(bodyFrom(clip, index, "body", 0f, null)))
             if (!cameraInitialized) {
-                applyCameraState(camera, Scene3dCameraState(position = listOf(2.0f, 1.3f, 2.0f), target = listOf(0f, 0.7f, 0f)))
+                applyCameraState(camera, Scene3dCameraState(position = listOf(3.0f, 1.9f, 3.0f), target = listOf(0f, 0.95f, 0f)))
                 cameraInitialized = true
             }
         } else if (clipB != null) {
@@ -443,7 +443,7 @@ fun RenderScene3d(
 
     LaunchedEffect(props.worldStateUrl) {
         if (props.worldStateUrl.isEmpty()) {
-            if (props.clipUrl == null && props.board == null) loadError = "scene3d: missing world_state_url"
+            if (props.clipUrl == null && props.board == null && props.simId == null) loadError = "scene3d: missing world_state_url"
             return@LaunchedEffect
         }
         runCatching {
