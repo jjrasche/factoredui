@@ -834,6 +834,7 @@ fun RenderScene3d(
             selectedJoint = selectedJoint,
             cameraVersion = cameraVersion,
             poseMode = poseMode,
+            nodeId = nodeId,
             modifier = Modifier.fillMaxSize(),
             onSelectEntity = { entityId ->
                 selectedJoint = null

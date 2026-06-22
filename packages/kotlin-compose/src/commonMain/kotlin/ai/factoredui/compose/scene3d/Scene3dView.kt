@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +24,7 @@ import ai.factoredui.compose.forcegraph.math.Matrix4
 import ai.factoredui.compose.forcegraph.math.ProjectedPoint
 import ai.factoredui.compose.forcegraph.math.Vec3
 import ai.factoredui.compose.forcegraph.math.project
+import ai.factoredui.compose.testing.DomShadow
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.atan2
@@ -59,6 +61,7 @@ fun Scene3dView(
     selectedJoint: Pair<String, Int>? = null,
     cameraVersion: Int = 0,
     poseMode: PoseMode = PoseMode.MOVE,
+    nodeId: String = "scene3d",
     modifier: Modifier = Modifier,
     onSelectEntity: (String) -> Unit = {},
     onSelectJoint: (String, Int) -> Unit = { _, _ -> },
@@ -75,6 +78,25 @@ fun Scene3dView(
     val latestPoses by rememberUpdatedState(poses)
     val latestSelectedJoint by rememberUpdatedState(selectedJoint)
     val latestPoseMode by rememberUpdatedState(poseMode)
+
+    // Render-observability emitted from the RENDERER itself, off the SAME entities the Canvas draws
+    // below (jointFrame skeletons). The shadow node exists iff Scene3dView processed that frame — so a
+    // headless mount of Scene3dView asserting it IS the headless==headed proof, not a data-layer digest.
+    val drawnSkeletons = world.entities.filter { (it.jointFrame?.size ?: 0) >= 22 && it.kind != "ghost" }
+    DisposableEffect(nodeId, drawnSkeletons.map { it.id to jointFrameDigest(it.jointFrame ?: emptyList()) }) {
+        drawnSkeletons.forEach { entity ->
+            DomShadow.emit(
+                id = "$nodeId:body:${entity.id}",
+                role = "scene3d-body",
+                attrs = mapOf(
+                    "entity-id" to entity.id,
+                    "joint-count" to (entity.jointFrame?.size ?: 0).toString(),
+                    "joints-digest" to jointFrameDigest(entity.jointFrame ?: emptyList()),
+                ),
+            )
+        }
+        onDispose { drawnSkeletons.forEach { DomShadow.remove("$nodeId:body:${it.id}") } }
+    }
 
     Box(
         modifier = modifier
