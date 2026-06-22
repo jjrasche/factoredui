@@ -357,6 +357,7 @@ data class Scene3dProps(
     val board: String? = null,
     val engineUrl: String? = null,
     val engine: String = "injury",
+    val simId: String? = null,
 )
 
 fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
@@ -372,4 +373,5 @@ fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
     board = string("board"),
     engineUrl = string("engine_url"),
     engine = string("engine") ?: "injury",
+    simId = string("sim_id"),
 )

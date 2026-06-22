@@ -156,6 +156,25 @@ internal fun jointFrameDigest(joints: List<List<Float>>): String =
         joint.joinToString(",") { axis -> (axis * 1000f).roundToInt().toString() }
     }
 
+// Bake the root channel into each joint per frame so the body translates with its root (no foot-skate),
+// then the existing clip pipeline (autoplay/world-build/timeline/DomShadow) draws it unchanged. Joints
+// stay in the stream's Z-up space; bodyFrom applies the Z-up→Y-up swap downstream.
+internal fun bodyFramesToMotionClip(response: BodyFramesResponse): MotionClip =
+    MotionClip(
+        name = "body-frames",
+        frames = response.frames.map { frame ->
+            MotionClipFrame(
+                joints = frame.joints.map { joint ->
+                    listOf(
+                        joint.getOrElse(0) { 0f } + frame.rootX,
+                        joint.getOrElse(1) { 0f } + frame.rootY,
+                        joint.getOrElse(2) { 0f } + frame.rootZ,
+                    )
+                },
+            )
+        },
+    )
+
 // PREVIEW field (swaps for il-injury's geodesic pain_at when exposed): the dragged
 // impact ball picks the nearest body joint; pain falls off along the bone graph from
 // it, scaled by impulse. Geodesic-ish — leaves the far side dark, unlike euclidean.
@@ -261,6 +280,7 @@ fun RenderScene3d(
 
     LaunchedEffect(props.engineUrl, props.engine, props.clipSeverity, props.clipEffector, props.clipImpulse, props.board, solveTarget) {
         val url = props.engineUrl ?: return@LaunchedEffect
+        if (props.simId != null) return@LaunchedEffect
         delay(300)
         engineStatus = "${props.engine} · solving…"
         val requestBody = buildJsonObject {
@@ -297,6 +317,27 @@ fun RenderScene3d(
         )
     }
 
+    // Live body-sim path: POST {simId} to /embodiment/body-frames, draw the returned ring via the clip
+    // pipeline. Read-once + scrub-locally per the pinned seam; the believable-future fields ride null.
+    LaunchedEffect(props.simId, props.engineUrl) {
+        val simId = props.simId ?: return@LaunchedEffect
+        val url = props.engineUrl ?: return@LaunchedEffect
+        runCatching {
+            val text = httpClient.post(url) {
+                contentType(ContentType.Application.Json)
+                setBody(buildJsonObject { put("simId", simId) }.toString())
+            }.bodyAsText()
+            json.decodeFromString(BodyFramesResponse.serializer(), text)
+        }.fold(
+            onSuccess = { response ->
+                motionClip = bodyFramesToMotionClip(response)
+                playFrame = response.playhead.coerceAtLeast(0)
+                engineStatus = "body-frames · ${response.frames.size}f"
+            },
+            onFailure = { engineStatus = "body-frames · offline (${it.message ?: "no endpoint"})" },
+        )
+    }
+
     val heatSingle = remember(motionClip, props.board) {
         motionClip?.takeIf { props.board == "hopscotch" }?.let { sparedLegHeat(it) }
     }
@@ -326,7 +367,13 @@ fun RenderScene3d(
                 pain = heat ?: f.pain.takeIf { it.isNotEmpty() },
             )
         }
-        if (clipB != null) {
+        if (props.simId != null) {
+            world = Scene3dWorldState(entities = listOf(bodyFrom(clip, index, "body", 0f, null)))
+            if (!cameraInitialized) {
+                applyCameraState(camera, Scene3dCameraState(position = listOf(2.0f, 1.3f, 2.0f), target = listOf(0f, 0.7f, 0f)))
+                cameraInitialized = true
+            }
+        } else if (clipB != null) {
             world = Scene3dWorldState(entities = listOf(bodyFrom(clip, index, "healthy", -0.9f, null), bodyFrom(clipB, index, "injured", 0.9f, heatB)))
             if (!cameraInitialized) {
                 applyCameraState(camera, Scene3dCameraState(position = listOf(2.8f, 1.5f, 3.3f), target = listOf(0f, 0.85f, 0f)))
