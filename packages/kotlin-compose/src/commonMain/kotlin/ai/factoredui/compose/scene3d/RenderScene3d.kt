@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -28,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -138,19 +136,6 @@ private fun sparedLegHeat(source: MotionClip): List<Float>? {
     return (0 until 24).map { if (it in sparedJoints) 0.9f else 0f }
 }
 
-// The timeline scrubber's mapping, extracted so it is unit-testable: dragging the slider right
-// (fraction 0→1) advances the playhead across the clip's frames; the inverse places the slider at
-// the frame currently showing. "Moving the slider IS moving the frame" is exactly this contract.
-internal fun scrubFrameForFraction(fraction: Float, frameCount: Int): Int {
-    if (frameCount < 2) return 0
-    return (fraction * (frameCount - 1)).toInt().coerceIn(0, frameCount - 1)
-}
-
-internal fun scrubFractionForFrame(frame: Int, frameCount: Int): Float {
-    if (frameCount < 2) return 0f
-    return (frame.toFloat() / (frameCount - 1)).coerceIn(0f, 1f)
-}
-
 internal fun jointFrameDigest(joints: List<List<Float>>): String =
     joints.joinToString(";") { joint ->
         joint.joinToString(",") { axis -> (axis * 1000f).roundToInt().toString() }
@@ -234,12 +219,10 @@ fun RenderScene3d(
     var solveTarget by remember { mutableStateOf<List<Float>?>(null) }
     var naturalness by remember { mutableStateOf<Triple<Float, Float, Float>?>(null) }
     var playFrame by remember { mutableStateOf(0) }
-    var playing by remember { mutableStateOf(true) }
-    // Thin-primitive mode: when the host composes the controls (controls_internal=false), playback is
-    // driven by the inbound `playing` binding, not the internal toggle. `playing` gates who owns the
-    // playhead — playing → scene3d advances it and writes it back; paused → the host's scrub drives it.
-    val controlsInternal = props.controlsInternal
-    val effectivePlaying = if (controlsInternal) playing else (playingBinding ?: false)
+    // scene3d bakes NO timeline chrome — playback is declarative (`autoplay` prop) or host-driven
+    // (`playing` binding wins). `playing` gates who owns the playhead: playing → scene3d advances it and
+    // writes it back so a host slider follows; paused → the host's scrub drives it through playheadBinding.
+    val effectivePlaying = playingBinding ?: props.clipAutoplay
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var localPositions by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
@@ -358,14 +341,14 @@ fun RenderScene3d(
         while (true) {
             delay(periodMs)
             playFrame = (playFrame + 1) % clip.frames.size
-            if (!controlsInternal) onPlayheadChange(playFrame)
+            onPlayheadChange(playFrame)
         }
     }
 
-    // Host-driven scrub: when the host owns the controls and playback is paused, the inbound playhead
-    // binding (the host's slider) drives the frame. During playback scene3d owns it, so ignore inbound.
-    LaunchedEffect(playheadBinding, effectivePlaying, controlsInternal, motionClip) {
-        if (!controlsInternal && !effectivePlaying) {
+    // Host-driven scrub: while paused, the inbound playhead binding (the host's slider) drives the
+    // frame. During playback scene3d owns the playhead, so inbound is ignored.
+    LaunchedEffect(playheadBinding, effectivePlaying, motionClip) {
+        if (!effectivePlaying) {
             val clip = motionClip ?: return@LaunchedEffect
             playheadBinding?.let { playFrame = it.coerceIn(0, (clip.frames.size - 1).coerceAtLeast(0)) }
         }
@@ -961,25 +944,6 @@ fun RenderScene3d(
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp)
                     .background(Color(0xCC1C1C20)).padding(horizontal = 10.dp, vertical = 4.dp),
             )
-        }
-        motionClip?.takeIf { controlsInternal }?.let { clip ->
-            val total = clip.frames.size.coerceAtLeast(2)
-            Row(
-                modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(0.82f).padding(top = 44.dp)
-                    .background(Color(0xCC1C1C20)).padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Button(onClick = { playing = !playing }) { Text(if (playing) "❚❚ pause" else "▶ play") }
-                Slider(
-                    value = scrubFractionForFrame(playFrame, total),
-                    onValueChange = { fraction ->
-                        playing = false
-                        playFrame = scrubFrameForFraction(fraction, total)
-                    },
-                    modifier = Modifier.weight(1f).testTag("scene3d-timeline"),
-                )
-            }
         }
         naturalness?.let { (score, smoothness, continuity) ->
             Column(
