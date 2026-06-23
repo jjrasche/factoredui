@@ -185,12 +185,18 @@ private fun RenderNodeByType(
             val liveSeverity = (resolvedProps["severity"] as? Number)?.toFloat() ?: sceneProps.clipSeverity
             val liveEffector = (resolvedProps["effector"] as? String) ?: sceneProps.clipEffector
             val liveEngine = (resolvedProps["engine"] as? String) ?: sceneProps.engine
+            val livePlayhead = (resolvedProps["playhead"] as? Number)?.toInt()
+            val livePlaying = resolvedProps["playing"] as? Boolean
+            val playheadWritePath = node.props["playhead"]?.bindingPath()
             RenderScene3d(
                 sceneProps.copy(
                     clipFrameFraction = liveFrame, clipImpulse = liveImpulse, clipAutoplay = liveAutoplay,
                     clipSeverity = liveSeverity, clipEffector = liveEffector, engine = liveEngine,
                 ),
                 node.id, context.observability,
+                playheadBinding = livePlayhead,
+                playingBinding = livePlaying,
+                onPlayheadChange = { next -> playheadWritePath?.let { context.setBinding(it, next) } },
             )
         }
         SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)

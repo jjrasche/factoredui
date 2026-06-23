@@ -210,6 +210,9 @@ fun RenderScene3d(
     props: Scene3dProps,
     nodeId: String = "scene3d",
     observability: Observability = NoOpObservability,
+    playheadBinding: Int? = null,
+    playingBinding: Boolean? = null,
+    onPlayheadChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val json = remember { Json { ignoreUnknownKeys = true } }
@@ -232,6 +235,11 @@ fun RenderScene3d(
     var naturalness by remember { mutableStateOf<Triple<Float, Float, Float>?>(null) }
     var playFrame by remember { mutableStateOf(0) }
     var playing by remember { mutableStateOf(true) }
+    // Thin-primitive mode: when the host composes the controls (controls_internal=false), playback is
+    // driven by the inbound `playing` binding, not the internal toggle. `playing` gates who owns the
+    // playhead — playing → scene3d advances it and writes it back; paused → the host's scrub drives it.
+    val controlsInternal = props.controlsInternal
+    val effectivePlaying = if (controlsInternal) playing else (playingBinding ?: false)
     var previewImageUrl by remember { mutableStateOf<String?>(null) }
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var localPositions by remember { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
@@ -343,13 +351,23 @@ fun RenderScene3d(
     }
     val heatB = remember(motionClipB) { motionClipB?.let { sparedLegHeat(it) } }
 
-    LaunchedEffect(motionClip, playing) {
+    LaunchedEffect(motionClip, effectivePlaying) {
         val clip = motionClip ?: return@LaunchedEffect
-        if (clip.frames.size < 2 || !playing) return@LaunchedEffect
+        if (clip.frames.size < 2 || !effectivePlaying) return@LaunchedEffect
         val periodMs = (1000f / clip.fps.coerceAtLeast(1f)).toLong().coerceAtLeast(16L)
         while (true) {
             delay(periodMs)
             playFrame = (playFrame + 1) % clip.frames.size
+            if (!controlsInternal) onPlayheadChange(playFrame)
+        }
+    }
+
+    // Host-driven scrub: when the host owns the controls and playback is paused, the inbound playhead
+    // binding (the host's slider) drives the frame. During playback scene3d owns it, so ignore inbound.
+    LaunchedEffect(playheadBinding, effectivePlaying, controlsInternal, motionClip) {
+        if (!controlsInternal && !effectivePlaying) {
+            val clip = motionClip ?: return@LaunchedEffect
+            playheadBinding?.let { playFrame = it.coerceIn(0, (clip.frames.size - 1).coerceAtLeast(0)) }
         }
     }
 
@@ -944,7 +962,7 @@ fun RenderScene3d(
                     .background(Color(0xCC1C1C20)).padding(horizontal = 10.dp, vertical = 4.dp),
             )
         }
-        motionClip?.let { clip ->
+        motionClip?.takeIf { controlsInternal }?.let { clip ->
             val total = clip.frames.size.coerceAtLeast(2)
             Row(
                 modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(0.82f).padding(top = 44.dp)
