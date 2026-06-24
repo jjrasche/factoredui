@@ -199,6 +199,7 @@ private fun RenderNodeByType(
                 onPlayheadChange = { next -> playheadWritePath?.let { context.setBinding(it, next) } },
             )
         }
+        SpecNodeType.CANVAS -> RenderCanvas(node, context)
         SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)
         SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)
         SpecNodeType.SELECT -> RenderSelect(node, resolvedProps, context)

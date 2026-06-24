@@ -375,3 +375,18 @@ fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
     engine = string("engine") ?: "injury",
     simId = string("sim_id"),
 )
+
+data class CanvasEdge(val from: String, val to: String)
+
+data class CanvasProps(
+    val edges: List<CanvasEdge> = emptyList(),
+)
+
+fun Map<String, SpecValue>.asCanvasProps(): CanvasProps = CanvasProps(
+    edges = (get("edges") as? SpecValue.ArrayValue)?.value.orEmpty().mapNotNull { edge ->
+        val fields = (edge as? SpecValue.ObjectValue)?.value ?: return@mapNotNull null
+        val from = fields.string("from") ?: return@mapNotNull null
+        val to = fields.string("to") ?: return@mapNotNull null
+        CanvasEdge(from, to)
+    },
+)
