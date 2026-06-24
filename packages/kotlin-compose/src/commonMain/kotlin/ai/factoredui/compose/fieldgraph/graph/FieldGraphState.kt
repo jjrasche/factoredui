@@ -19,6 +19,7 @@ data class FieldGraphSnapshot(
 )
 
 class FieldGraphState(topology: FieldGraphTopology) {
+    val logItems: List<FieldLogItem> = topology.logItems
     private val nodes: List<FieldNode> = topology.nodes
     private val edges: List<FieldEdge> = topology.edges
     private val positions: MutableMap<String, FieldNodePosition> = LinkedHashMap()

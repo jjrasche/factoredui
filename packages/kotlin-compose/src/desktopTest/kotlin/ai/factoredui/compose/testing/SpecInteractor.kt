@@ -199,6 +199,8 @@ class SpecInteractor(
         val px = entry.attrs["pixel-x"]?.toFloatOrNull() ?: 0f
         val py = entry.attrs["pixel-y"]?.toFloatOrNull() ?: 0f
         scope.onRoot().performTouchInput { down(Offset(px, py)); up() }
+        // Wait for Compose to recompose after state change so DomShadow reflects new collapsed state
+        scope.waitForIdle()
     }
 
     // --- Log column assertions ---
@@ -223,13 +225,21 @@ class SpecInteractor(
         assertTrue(entry == null, "Log item '$nodeId' should NOT be present in DomShadow")
     }
 
+    // Sort by laid-out pixel-y (real visual order), not the view's own placed-at-ms key — that would be a tautology.
     fun assertLogItemOrder(expectedIds: List<String>) {
         val items = DomShadow.byRole("log-item")
-            .sortedByDescending { it.attrs["placed-at-ms"]?.toLongOrNull() ?: 0L }
-        val actualIds = items.mapNotNull { it.attrs["id"] }
+        items.forEach { entry ->
+            assertNotNull(
+                entry.attrs["pixel-y"]?.toFloatOrNull(),
+                "Log item '${entry.attrs["id"]}' has no laid-out pixel-y — cannot verify visual order",
+            )
+        }
+        val actualIds = items
+            .sortedBy { it.attrs.getValue("pixel-y").toFloat() }
+            .mapNotNull { it.attrs["id"] }
         assertTrue(
             actualIds == expectedIds,
-            "Expected log item order $expectedIds but got $actualIds",
+            "Expected top-to-bottom log item order $expectedIds but got $actualIds (sorted by on-screen pixel-y)",
         )
     }
 
@@ -237,6 +247,13 @@ class SpecInteractor(
         assertTrue(
             dispatchedActions.any { (a, p) -> a == action && p["node_id"] == nodeId },
             "Expected action '$action' with node_id='$nodeId'. Fired: $dispatchedActions",
+        )
+    }
+
+    fun assertActionNotFired(action: String) {
+        assertTrue(
+            dispatchedActions.none { it.first == action },
+            "Expected action '$action' NOT to fire, but it did. Fired: ${dispatchedActions.map { it.first }}",
         )
     }
 
