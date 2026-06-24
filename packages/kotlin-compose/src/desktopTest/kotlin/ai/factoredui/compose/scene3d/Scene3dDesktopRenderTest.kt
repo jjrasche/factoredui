@@ -18,6 +18,10 @@ import ai.factoredui.compose.forcegraph.math.Matrix4
 import ai.factoredui.compose.forcegraph.math.Vec3
 import ai.factoredui.compose.forcegraph.math.project
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.float
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import javax.imageio.ImageIO
 import kotlin.math.PI
@@ -121,6 +125,105 @@ class Scene3dDesktopRenderTest {
         assertTrue(angle <= 0.55f, "spine rotation should clamp to ROM (~0.5 rad), got $angle")
     }
 
+    // Instrument validation: a 24-joint jointFrame skeleton (lines, no mesh, no paint) must
+    // rasterize to a recognizable standing human. Source pose = agent-platform human24().restPose
+    // (Z-up meters); mapped to entity space (x, z, -y) exactly as RenderScene3d maps the live stream.
+    @Test
+    fun rendersStandingSkeletonToPng() = runComposeUiTest {
+        val standing = STANDING_HUMAN24
+        val world = Scene3dWorldState(
+            entities = listOf(Scene3dEntity(id = "body", jointFrame = standing, kind = "body")),
+        )
+        renderSkeletonToPng(world, bodyHeight = 1.65f, fileName = "scene3d_skeleton_standing.png")
+    }
+
+    @Test
+    fun rendersWalkStripToPng() {
+        renderWalkStrip("walk_kin.json", "scene3d_walk_kin_strip.png")
+        renderWalkStrip("walk_tracked.json", "scene3d_walk_tracked_strip.png")
+    }
+
+    @Test
+    fun rendersPokeStripToPng() {
+        renderWalkStrip("walk_poke.json", "scene3d_walk_poke_strip.png", fromFrac = 0.35f, trackLateral = false)
+    }
+
+    @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+    private fun renderWalkStrip(
+        srcName: String,
+        outName: String,
+        fromFrac: Float = 0f,
+        trackLateral: Boolean = true,
+    ) {
+        val frames = loadScratchFrames(srcName)
+        val samples = 8
+        val cellW = 220
+        val cellH = 460
+        val first = (fromFrac * (frames.size - 1)).toInt()
+        val strip = java.awt.image.BufferedImage(cellW * samples, cellH, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        val g = strip.createGraphics()
+        for (i in 0 until samples) {
+            val span = frames.size - 1 - first
+            val frameIdx = if (samples == 1) first else first + i * span / (samples - 1)
+            val jointFrame = frames[frameIdx]
+            val pelvis = jointFrame[0]
+            val camera = Camera(
+                yawRadians = (-PI / 3.4).toFloat(),
+                pitchRadians = (PI / 16.0).toFloat(),
+                distance = 4.2f,
+                target = Vec3(if (trackLateral) pelvis[0] else 0f, 0.9f, pelvis[2]),
+                fovYRadians = (PI / 3.0).toFloat(),
+            )
+            val world = Scene3dWorldState(
+                entities = listOf(Scene3dEntity(id = "body", jointFrame = jointFrame, kind = "body")),
+            )
+            val scene = androidx.compose.ui.ImageComposeScene(cellW, cellH, androidx.compose.ui.unit.Density(1f)) {
+                Scene3dView(world = world, camera = camera, modifier = Modifier.size(cellW.dp, cellH.dp))
+            }
+            val png = scene.render().encodeToData(org.jetbrains.skia.EncodedImageFormat.PNG)?.bytes ?: ByteArray(0)
+            scene.close()
+            g.drawImage(ImageIO.read(java.io.ByteArrayInputStream(png)), i * cellW, 0, null)
+        }
+        g.dispose()
+        val outFile = File(System.getProperty("user.dir"), "build/$outName")
+        outFile.parentFile.mkdirs()
+        ImageIO.write(strip, "PNG", outFile)
+        println("[scene3d] wrote ${outFile.absolutePath}")
+    }
+
+    private fun loadScratchFrames(srcName: String): List<List<List<Float>>> {
+        val file = File("C:/Users/rasche_j/Documents/workspace/.scene-scratch/$srcName")
+        val root = json.parseToJsonElement(file.readText()).jsonObject
+        return root["frames"]!!.jsonArray.map { frame ->
+            frame.jsonArray.map { joint -> joint.jsonArray.map { it.jsonPrimitive.float } }
+        }
+    }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.renderSkeletonToPng(
+        world: Scene3dWorldState,
+        bodyHeight: Float,
+        fileName: String,
+    ) {
+        val camera = Camera(
+            yawRadians = (-PI / 5.0).toFloat(),
+            pitchRadians = (PI / 14.0).toFloat(),
+            distance = bodyHeight * 3.2f,
+            target = Vec3(0f, bodyHeight * 0.52f, 0f),
+            fovYRadians = (PI / 3.0).toFloat(),
+        )
+        setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f)) {
+                Box(Modifier.size(800.dp)) {
+                    Scene3dView(world = world, camera = camera, modifier = Modifier.size(800.dp))
+                }
+            }
+        }
+        val outFile = File(System.getProperty("user.dir"), "build/$fileName")
+        outFile.parentFile.mkdirs()
+        ImageIO.write(onRoot().captureToImage().toAwtImage(), "PNG", outFile)
+        println("[scene3d] wrote ${outFile.absolutePath}")
+    }
+
     private fun androidx.compose.ui.test.ComposeUiTest.renderToPng(
         world: Scene3dWorldState,
         meshes: Map<String, PreparedMesh>,
@@ -153,3 +256,14 @@ class Scene3dDesktopRenderTest {
         return stream.bufferedReader().use { it.readText() }
     }
 }
+
+// agent-platform human24().restPose (Z-up meters) mapped to entity space (x, z, -y).
+private val STANDING_HUMAN24: List<List<Float>> = listOf(
+    listOf(0.0f, 0.95f, 0.0f),
+    listOf(0.10f, 0.90f, 0.0f), listOf(0.10f, 0.50f, 0.0f), listOf(0.10f, 0.08f, 0.0f), listOf(0.10f, 0.04f, -0.12f),
+    listOf(-0.10f, 0.90f, 0.0f), listOf(-0.10f, 0.50f, 0.0f), listOf(-0.10f, 0.08f, 0.0f), listOf(-0.10f, 0.04f, -0.12f),
+    listOf(0.0f, 1.10f, 0.0f), listOf(0.0f, 1.25f, 0.0f), listOf(0.0f, 1.40f, 0.0f), listOf(0.0f, 1.50f, 0.0f), listOf(0.0f, 1.65f, 0.0f),
+    listOf(0.05f, 1.42f, 0.0f), listOf(0.18f, 1.42f, 0.0f), listOf(0.30f, 1.20f, 0.0f), listOf(0.32f, 0.98f, 0.0f),
+    listOf(-0.05f, 1.42f, 0.0f), listOf(-0.18f, 1.42f, 0.0f), listOf(-0.30f, 1.20f, 0.0f), listOf(-0.32f, 0.98f, 0.0f),
+    listOf(0.33f, 0.90f, 0.0f), listOf(-0.33f, 0.90f, 0.0f),
+)
