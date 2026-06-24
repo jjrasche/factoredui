@@ -13,6 +13,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
@@ -93,5 +94,18 @@ class SpecVisualCheck(private val scope: ComposeUiTest, private val context: Ren
     fun assertLeftOf(leftId: String, rightId: String) {
         assertTrue(region(leftId).left < region(rightId).left,
             "node '$leftId' must render left of '$rightId'")
+    }
+
+    fun tap(nodeId: String) {
+        scope.onNodeWithTag(nodeId).performClick()
+        scope.waitForIdle()
+    }
+
+    fun binding(path: String): Any? {
+        var current: Any? = context.data
+        for (segment in path.split(".")) {
+            current = (current as? Map<*, *>)?.get(segment) ?: return null
+        }
+        return current
     }
 }

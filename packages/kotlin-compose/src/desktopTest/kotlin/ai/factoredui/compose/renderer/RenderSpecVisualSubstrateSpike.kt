@@ -44,4 +44,15 @@ class RenderSpecVisualSubstrateSpike {
         assertEquals("hello", check.node("greeting").props["value"], "resolved props ride the shadow node")
         assertTrue(check.node("cta").bounds != null, "a rendered node carries its region")
     }
+
+    @Test
+    fun syntheticTapReRendersAndChangesBoundState() = runComposeUiTest {
+        val context = RenderContext(initialData = mapOf("enabled" to false))
+        val check = SpecVisualCheck(this, context)
+        val toggle = SpecNode(id = "sw", type = SpecNodeType.TOGGLE, props = mapOf("value" to SpecValue.StringValue("{enabled}")))
+        check.render(toggle)
+        assertEquals(false, check.binding("enabled"))
+        check.tap("sw")
+        assertEquals(true, check.binding("enabled"), "a synthetic tap flips the bound state — interactability is provable headless")
+    }
 }
