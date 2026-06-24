@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toAwtImage
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
@@ -46,6 +47,7 @@ class Scene3dDesktopRenderTest {
             ),
         )
         renderToPng(world, mapOf("heigl" to mesh, "guest" to mesh), mesh.height, "scene3d_desktop_heigl.png")
+        assertMeshDrew(minNonBackgroundFraction = 0.02f)
     }
 
     @Test
@@ -68,6 +70,7 @@ class Scene3dDesktopRenderTest {
             entities = listOf(Scene3dEntity(id = "heigl", position = listOf(0f, 0f, 0f))),
         )
         renderToPng(world, mapOf("heigl" to posed), mesh.height, "scene3d_desktop_posed.png")
+        assertMeshDrew(minNonBackgroundFraction = 0.02f)
     }
 
     @Test
@@ -175,6 +178,29 @@ class Scene3dDesktopRenderTest {
         outFile.parentFile.mkdirs()
         ImageIO.write(onRoot().captureToImage().toAwtImage(), "PNG", outFile)
         println("[scene3d] wrote ${outFile.absolutePath}")
+    }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.assertMeshDrew(minNonBackgroundFraction: Float) {
+        val pixels = onRoot().captureToImage().toPixelMap()
+        val bgRed = 0x2B / 255f
+        val bgGreen = 0x2B / 255f
+        val bgBlue = 0x30 / 255f
+        var drawnCount = 0
+        for (py in 0 until pixels.height) {
+            for (px in 0 until pixels.width) {
+                val pixel = pixels[px, py]
+                val delta = kotlin.math.abs(pixel.red - bgRed) +
+                    kotlin.math.abs(pixel.green - bgGreen) +
+                    kotlin.math.abs(pixel.blue - bgBlue)
+                if (delta > 0.05f) drawnCount++
+            }
+        }
+        val fraction = drawnCount.toFloat() / (pixels.width * pixels.height)
+        println("[scene3d] non-background pixel fraction: $fraction (floor $minNonBackgroundFraction)")
+        assertTrue(
+            fraction >= minNonBackgroundFraction,
+            "Mesh did not draw: only $fraction of pixels differ from background, expected >= $minNonBackgroundFraction",
+        )
     }
 
     private fun readMeshResource(name: String): String {

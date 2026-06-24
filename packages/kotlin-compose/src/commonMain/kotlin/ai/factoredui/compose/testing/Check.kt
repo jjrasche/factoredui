@@ -42,6 +42,7 @@ sealed class CheckAssertion {
     data class LogItemAbsent(val nodeId: String) : CheckAssertion()
     data class LogItemOrder(val expectedIds: List<String>) : CheckAssertion()
     data class ActionFiredWithNodeId(val action: String, val nodeId: String) : CheckAssertion()
+    data class ActionNotFired(val action: String) : CheckAssertion()
 }
 
 fun check(id: String, block: CheckBuilder.() -> Unit): Check =
@@ -80,6 +81,7 @@ class CheckBuilder(private val id: String) {
     fun expectLogItemAbsent(nodeId: String) = expect(CheckAssertion.LogItemAbsent(nodeId))
     fun expectLogItemOrder(vararg ids: String) = expect(CheckAssertion.LogItemOrder(ids.toList()))
     fun expectActionFiredWithNodeId(action: String, nodeId: String) = expect(CheckAssertion.ActionFiredWithNodeId(action, nodeId))
+    fun expectActionNotFired(action: String) = expect(CheckAssertion.ActionNotFired(action))
 
     fun build() = Check(id, steps.toList())
 }

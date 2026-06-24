@@ -50,12 +50,14 @@ class FieldLogCheck {
         awaitLogItemPresent("log-item-1")
         tapLogItem("log-item-1")
         expectActionFiredWithNodeId("field.logItemTapped", "log-item-1")
+        expectActionNotFired("field.logItemPlacedOnField")
     }
 
     private val dragLogItemToFieldFiresPlaceAction = check("drag-log-item-to-field-fires-place-action") {
         awaitLogItemPresent("log-item-2")
         dragLogItemToField("log-item-2", toX = 0.5f, toY = 0.5f)
         expectActionFiredWithNodeId("field.logItemPlacedOnField", "log-item-2")
+        expectActionNotFired("field.logItemTapped")
     }
 
     private val collapseLogHidesItems = check("collapse-log-hides-items") {
@@ -81,6 +83,16 @@ class FieldLogCheck {
         expectLogColumnCollapsed(true)
         holdFieldNodeNearLeftEdge("claim-field-a", holdSecs = 2f)
         expectLogColumnCollapsed(false)
+    }
+
+    // Negative control: a hold shorter than AUTO_EXPAND_HOLD_MS (1500ms) must NOT expand —
+    // proves the auto-expand is gated on dwell time, not on merely touching the edge.
+    private val shortHoldNearLeftEdgeDoesNotExpandLog = check("short-hold-near-left-edge-does-not-expand-log") {
+        awaitFieldNode("claim-field-a")
+        toggleLogColumn()
+        expectLogColumnCollapsed(true)
+        holdFieldNodeNearLeftEdge("claim-field-a", holdSecs = 1f)
+        expectLogColumnCollapsed(true)
     }
 
     private val dragFieldNodeToLogEjectsIt = check("drag-field-node-to-log-ejects-it") {
@@ -117,6 +129,9 @@ class FieldLogCheck {
 
     @Test
     fun runDragFieldNodeNearLeftEdgeAutoExpandsLog() = runLogCheck(dragFieldNodeNearLeftEdgeAutoExpandsLog, trackLogActions = true)
+
+    @Test
+    fun runShortHoldNearLeftEdgeDoesNotExpandLog() = runLogCheck(shortHoldNearLeftEdgeDoesNotExpandLog, trackLogActions = true)
 
     @Test
     fun runDragFieldNodeToLogEjectsIt() = runLogCheck(dragFieldNodeToLogEjectsIt, trackLogActions = true)

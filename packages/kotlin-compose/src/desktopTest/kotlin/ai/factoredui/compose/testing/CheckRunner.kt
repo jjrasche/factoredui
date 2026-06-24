@@ -57,5 +57,6 @@ class CheckRunner(
         is CheckAssertion.LogItemAbsent -> interactor.assertLogItemAbsent(assertion.nodeId)
         is CheckAssertion.LogItemOrder -> interactor.assertLogItemOrder(assertion.expectedIds)
         is CheckAssertion.ActionFiredWithNodeId -> interactor.assertActionFiredWithNodeId(assertion.action, assertion.nodeId)
+        is CheckAssertion.ActionNotFired -> interactor.assertActionNotFired(assertion.action)
     }
 }
