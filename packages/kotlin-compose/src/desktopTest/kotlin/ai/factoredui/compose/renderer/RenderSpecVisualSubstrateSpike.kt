@@ -7,6 +7,8 @@ import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.testing.SpecVisualCheck
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalTestApi::class)
 class RenderSpecVisualSubstrateSpike {
@@ -30,5 +32,16 @@ class RenderSpecVisualSubstrateSpike {
         check.assertPresent("cta")
         check.assertOccupiesRegion("cta")
         check.assertAbove("greeting", "cta")
+    }
+
+    @Test
+    fun shadowTreeMapsEverySpecNodeToTypePropsAndRegion() = runComposeUiTest {
+        val check = SpecVisualCheck(this)
+        check.render(spec)
+        val tree = check.shadowTree()
+        assertEquals(listOf("root", "greeting", "cta"), tree.map { it.id }, "the whole spec tree is in the shadow tree")
+        assertEquals(SpecNodeType.TEXT, check.node("greeting").type)
+        assertEquals("hello", check.node("greeting").props["value"], "resolved props ride the shadow node")
+        assertTrue(check.node("cta").bounds != null, "a rendered node carries its region")
     }
 }
