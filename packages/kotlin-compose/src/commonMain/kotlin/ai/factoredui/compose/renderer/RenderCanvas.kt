@@ -1,6 +1,7 @@
 package ai.factoredui.compose.renderer
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -10,9 +11,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.asCanvasProps
+import ai.factoredui.compose.schema.bindingPath
 
 private const val NODE_CENTER_DP = 20f
 private val EDGE_COLOR = Color(0xFF8A94AD)
@@ -37,11 +40,30 @@ fun RenderCanvas(node: SpecNode, context: RenderContext) {
         }
         for (child in node.children) {
             val position = positions[child.id] ?: Offset(0f, 0f)
-            Box(modifier = Modifier.offset(position.x.dp, position.y.dp)) {
+            val writeX = child.props["x"]?.bindingPath()
+            val writeY = child.props["y"]?.bindingPath()
+            Box(modifier = Modifier.offset(position.x.dp, position.y.dp).then(curationDrag(context, writeX, writeY))) {
                 RenderNode(child, context)
             }
         }
     }
+}
+
+private fun curationDrag(context: RenderContext, writeX: String?, writeY: String?): Modifier {
+    if (writeX == null || writeY == null) return Modifier
+    return Modifier.pointerInput(writeX, writeY) {
+        detectDragGestures { change, dragAmount ->
+            change.consume()
+            context.setBinding(writeX, coordAtPath(context.data, writeX) + dragAmount.x / density)
+            context.setBinding(writeY, coordAtPath(context.data, writeY) + dragAmount.y / density)
+        }
+    }
+}
+
+private fun coordAtPath(data: Map<String, Any?>, path: String): Float {
+    var current: Any? = data
+    for (segment in path.split(".")) current = (current as? Map<*, *>)?.get(segment)
+    return (current as? Number)?.toFloat() ?: 0f
 }
 
 private fun childPositions(node: SpecNode, liveData: Map<String, Any?>): Map<String, Offset> =

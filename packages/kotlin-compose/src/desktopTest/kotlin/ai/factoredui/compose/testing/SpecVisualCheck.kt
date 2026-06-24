@@ -11,9 +11,11 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
@@ -98,6 +100,15 @@ class SpecVisualCheck(private val scope: ComposeUiTest, private val context: Ren
 
     fun tap(nodeId: String) {
         scope.onNodeWithTag(nodeId).performClick()
+        scope.waitForIdle()
+    }
+
+    fun drag(nodeId: String, dx: Float, dy: Float) {
+        scope.onNodeWithTag(nodeId).performTouchInput {
+            down(center)
+            moveBy(Offset(dx, dy))
+            up()
+        }
         scope.waitForIdle()
     }
 
