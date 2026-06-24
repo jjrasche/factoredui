@@ -8,7 +8,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.geometry.Offset
@@ -20,7 +19,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
-import ai.factoredui.compose.renderer.BindingResolver
+import ai.factoredui.compose.schema.BindingResolver
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
 import ai.factoredui.compose.schema.SpecNode
@@ -79,7 +78,7 @@ class SpecVisualCheck(private val scope: ComposeUiTest, private val context: Ren
     }
 
     fun assertPresent(nodeId: String) {
-        scope.onNodeWithTag(nodeId).assertExists()
+        scope.onNodeWithTag(nodeId).getUnclippedBoundsInRoot()
     }
 
     fun assertOccupiesRegion(nodeId: String) {

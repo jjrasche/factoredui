@@ -13,6 +13,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import ai.factoredui.compose.schema.BindingResolver
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.asCanvasProps
 import ai.factoredui.compose.schema.bindingPath

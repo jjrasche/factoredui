@@ -70,7 +70,6 @@ enum class StageContext(val label: String, val specUrl: String?, val promptUrl: 
     HOPSCOTCH("Hopscotch", "specs/hopscotch.json", null),
     REACH("Reach", "specs/reach.json", null),
     AGENTS("Agents", "specs/agents.json", null),
-    FIELDGRAPH("Focus", "specs/fieldgraph.json", null),
     REVIEW("Review", null, null),
 }
 
@@ -319,29 +318,11 @@ private suspend fun postPrompt(url: String, text: String) {
     publishStageLastAction(body)
 }
 
-// Node IDs that the fieldgraph Focus context can write to injury bindings.
-// Relevance magnitude 0..1 maps directly to the target binding's value range.
-private val FOCUS_TO_INJURY: Map<String, String> = mapOf(
-    "pain"    to "injury.severity",
-    "guard"   to "injury.impulse",
-    "buckle"  to "injury.severity",
-)
-
 @Composable
 fun StageApp() {
-    // Side-channel for on-focus-change: the action handler can't capture `context`
-    // (not yet created), so it writes here; a LaunchedEffect maps to context bindings.
-    val focusEvents = remember { MutableStateFlow<Pair<String, Double>?>(null) }
-
     val context = remember {
         RenderContext(
-            actions = playgroundActions(actionUrlParam()) + mapOf(
-                "on-focus-change" to focus@{ params ->
-                    val nodeId = params["node_id"] as? String ?: return@focus
-                    val magnitude = (params["relevance_magnitude"] as? Double) ?: return@focus
-                    focusEvents.value = nodeId to magnitude
-                }
-            ),
+            actions = playgroundActions(actionUrlParam()),
             observability = StageDebugObservability(),
             initialData = mapOf(
                 "omnibox" to mapOf("text" to ""),
@@ -383,13 +364,6 @@ fun StageApp() {
 
     LaunchedEffect(Unit) {
         buildStamp = runCatching { HttpClient().get("buildstamp.txt").bodyAsText().trim() }.getOrElse { "dev" }
-    }
-
-    LaunchedEffect(Unit) {
-        focusEvents.collect { event ->
-            val (nodeId, magnitude) = event ?: return@collect
-            FOCUS_TO_INJURY[nodeId]?.let { path -> context.setBinding(path, magnitude.toFloat()) }
-        }
     }
 
     LaunchedEffect(Unit) {

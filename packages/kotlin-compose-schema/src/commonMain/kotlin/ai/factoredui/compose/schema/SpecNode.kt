@@ -85,7 +85,6 @@ enum class SpecNodeType {
     @SerialName("chip") CHIP,
     @SerialName("forcegraph") FORCE_GRAPH,
     @SerialName("scene3d") SCENE3D,
-    @SerialName("fieldgraph") FIELD_GRAPH,
     @SerialName("canvas") CANVAS,
 }
 
