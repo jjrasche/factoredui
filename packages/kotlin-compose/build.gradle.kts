@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = "0.13.8"
+version = "0.14.0"
 
 kotlin {
     androidTarget {
