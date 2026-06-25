@@ -19,6 +19,7 @@ fun renderSpecToPng(
     width: Int = 800,
     height: Int = 1280,
     density: Float = 2f,
+    transparent: Boolean = false,
 ): ByteArray {
     val spec = specDecoder.decodeFromString(Spec.serializer(), specJson)
     val scene = ImageComposeScene(width = width, height = height, density = Density(density)) {

@@ -194,6 +194,7 @@ private fun RenderNodeByType(
                 playheadBinding = livePlayhead,
                 playingBinding = livePlaying,
                 onPlayheadChange = { next -> playheadWritePath?.let { context.setBinding(it, next) } },
+                chrome = sceneProps.chrome,
             )
         }
         SpecNodeType.CANVAS -> RenderCanvas(node, context)

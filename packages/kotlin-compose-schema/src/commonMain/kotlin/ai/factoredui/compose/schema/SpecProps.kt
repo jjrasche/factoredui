@@ -345,6 +345,7 @@ data class Scene3dProps(
     val engine: String = "injury",
     val simId: String? = null,
     val bodyFrame: String? = null,
+    val chrome: Boolean = true,
 )
 
 fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
@@ -362,6 +363,7 @@ fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
     engine = string("engine") ?: "injury",
     simId = string("sim_id"),
     bodyFrame = string("body_frame"),
+    chrome = boolean("chrome") ?: true,
 )
 
 data class CanvasEdge(val from: String, val to: String)

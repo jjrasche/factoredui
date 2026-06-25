@@ -62,6 +62,8 @@ fun Scene3dView(
     cameraVersion: Int = 0,
     poseMode: PoseMode = PoseMode.MOVE,
     nodeId: String = "scene3d",
+    showGrid: Boolean = true,
+    transparentBackground: Boolean = false,
     modifier: Modifier = Modifier,
     onSelectEntity: (String) -> Unit = {},
     onSelectJoint: (String, Int) -> Unit = { _, _ -> },
@@ -232,14 +234,14 @@ fun Scene3dView(
 
             val width = size.width
             val height = size.height
-            drawRect(color = background, size = size)
+            if (!transparentBackground) drawRect(color = background, size = size)
 
             val view = camera.viewMatrix()
             val proj = camera.projectionMatrix(aspect = if (height > 0f) width / height else 1f)
 
             fun screen(point: Vec3): ProjectedPoint = point.project(view, proj, width, height)
 
-            drawGroundGrid(::screen)
+            if (showGrid) drawGroundGrid(::screen)
 
             val ordered = world.entities.sortedByDescending { entity ->
                 screen(personCenter(entity)).depth

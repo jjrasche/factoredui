@@ -207,6 +207,7 @@ fun RenderScene3d(
     playheadBinding: Int? = null,
     playingBinding: Boolean? = null,
     onPlayheadChange: (Int) -> Unit = {},
+    chrome: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val json = remember { Json { ignoreUnknownKeys = true } }
@@ -841,10 +842,10 @@ fun RenderScene3d(
         applyImpactPain(withLocal, props.clipImpulse)
     }
 
-    Box(
-        modifier = modifier.fillMaxSize().background(backgroundColor(effectiveWorld.background))
-            .onSizeChanged { viewportSize = it },
-    ) {
+    val boxModifier =
+        if (chrome) modifier.fillMaxSize().background(backgroundColor(effectiveWorld.background))
+        else modifier.fillMaxSize()
+    Box(modifier = boxModifier.onSizeChanged { viewportSize = it }) {
         Scene3dView(
             world = effectiveWorld,
             camera = camera,
@@ -854,6 +855,8 @@ fun RenderScene3d(
             cameraVersion = cameraVersion,
             poseMode = poseMode,
             nodeId = nodeId,
+            showGrid = chrome,
+            transparentBackground = !chrome,
             modifier = Modifier.fillMaxSize(),
             onSelectEntity = { entityId ->
                 selectedJoint = null
@@ -871,6 +874,7 @@ fun RenderScene3d(
             },
             onPickReleased = { entityId -> if (entityId != "impact" && entityId != "goal") dropAndSettle(entityId) },
         )
+        if (chrome) {
         if (previewMode) {
             Box(
                 modifier = Modifier.fillMaxSize().background(Color(0xF01C1C20)),
@@ -980,6 +984,7 @@ fun RenderScene3d(
         }
         loadError?.let {
             Text(text = it, color = Color(0xFFE0A0A0), modifier = Modifier.padding(12.dp))
+        }
         }
     }
 }
