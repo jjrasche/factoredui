@@ -65,3 +65,18 @@ jobs:
           --tests "ai.factoredui.compose.capture.*"
           --tests "ai.factoredui.compose.renderer.RenderContextTest"
           --tests "ai.factoredui.compose.schema.ObservabilityTest"
+
+      # Render-correctness gate: headless renderSpecToPng paths only (no
+      # runComposeUiTest — these are immune to #1). The golden-pose silhouette
+      # gate reds if a scene3d change shifts a body's drawn silhouette; the rest
+      # guard the headless render seam (inline body_frame, bare-body, drive,
+      # topology-neutral bones, intent dispatch).
+      - name: Run render-correctness gate
+        run: >
+          ./gradlew :kotlin-compose:desktopTest
+          --tests "ai.factoredui.compose.render.*"
+          --tests "ai.factoredui.compose.scene3d.TopologyNeutralBonesTest"
+          --tests "ai.factoredui.compose.scene3d.Scene3dIntentDispatchCheck"
+          --tests "ai.factoredui.compose.scene3d.BodyFrameParseTest"
+          --tests "ai.factoredui.compose.scene3d.BodyFramesToMotionClipTest"
+          --tests "ai.factoredui.compose.scene3d.JointFrameDigestTest"
