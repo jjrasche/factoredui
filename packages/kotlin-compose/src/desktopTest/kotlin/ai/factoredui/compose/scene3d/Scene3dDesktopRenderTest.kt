@@ -139,8 +139,8 @@ class Scene3dDesktopRenderTest {
 
     @Test
     fun rendersWalkStripToPng() {
-        renderWalkStrip("walk_kin.json", "scene3d_walk_kin_strip.png")
-        renderWalkStrip("walk_tracked.json", "scene3d_walk_tracked_strip.png")
+        renderWalkStrip("walk_kin.json", "scene3d_walk_kin_strip.png", trackLateral = false)
+        renderWalkStrip("walk_tracked.json", "scene3d_walk_tracked_strip.png", trackLateral = false)
     }
 
     @Test
@@ -169,9 +169,9 @@ class Scene3dDesktopRenderTest {
             val pelvis = jointFrame[0]
             val camera = Camera(
                 yawRadians = (-PI / 3.4).toFloat(),
-                pitchRadians = (PI / 16.0).toFloat(),
-                distance = 4.2f,
-                target = Vec3(if (trackLateral) pelvis[0] else 0f, 0.9f, pelvis[2]),
+                pitchRadians = (PI / 18.0).toFloat(),
+                distance = 3.2f,
+                target = Vec3(if (trackLateral) pelvis[0] else 0f, 0.95f, pelvis[2]),
                 fovYRadians = (PI / 3.0).toFloat(),
             )
             val world = Scene3dWorldState(
@@ -206,8 +206,8 @@ class Scene3dDesktopRenderTest {
     ) {
         val camera = Camera(
             yawRadians = (-PI / 5.0).toFloat(),
-            pitchRadians = (PI / 14.0).toFloat(),
-            distance = bodyHeight * 3.2f,
+            pitchRadians = (PI / 16.0).toFloat(),
+            distance = bodyHeight * 2.1f,
             target = Vec3(0f, bodyHeight * 0.52f, 0f),
             fovYRadians = (PI / 3.0).toFloat(),
         )
