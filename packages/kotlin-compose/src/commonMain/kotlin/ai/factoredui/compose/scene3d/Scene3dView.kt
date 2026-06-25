@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,7 +86,10 @@ fun Scene3dView(
     // below (jointFrame skeletons). The shadow node exists iff Scene3dView processed that frame — so a
     // headless mount of Scene3dView asserting it IS the headless==headed proof, not a data-layer digest.
     val drawnSkeletons = world.entities.filter { (it.jointFrame?.size ?: 0) >= 22 && it.kind != "ghost" }
-    DisposableEffect(nodeId, drawnSkeletons.map { it.id to jointFrameDigest(it.jointFrame ?: emptyList()) }) {
+    DisposableEffect(nodeId, drawnSkeletons.map { it.id }) {
+        onDispose { drawnSkeletons.forEach { DomShadow.remove("$nodeId:body:${it.id}") } }
+    }
+    SideEffect {
         drawnSkeletons.forEach { entity ->
             DomShadow.emit(
                 id = "$nodeId:body:${entity.id}",
@@ -97,7 +101,6 @@ fun Scene3dView(
                 ),
             )
         }
-        onDispose { drawnSkeletons.forEach { DomShadow.remove("$nodeId:body:${it.id}") } }
     }
 
     Box(
@@ -386,6 +389,15 @@ private val SMPL24_BONES = listOf(
     17 to 16, 18 to 11, 19 to 18, 20 to 19, 21 to 20, 22 to 17, 23 to 21,
 )
 
+internal fun bonesFor(parents: List<Int>?, jointCount: Int): List<Pair<Int, Int>> {
+    if (parents != null) {
+        return parents.mapIndexedNotNull { child, parent ->
+            if (parent in 0 until jointCount) child to parent else null
+        }
+    }
+    return if (jointCount >= 24) SMPL24_BONES else SMPL_BODY_BONES
+}
+
 private fun lerpColor(from: Color, to: Color, t: Float): Color {
     val u = t.coerceIn(0f, 1f)
     return Color(
@@ -410,7 +422,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawJointFrameSkele
     screen: (Vec3) -> ProjectedPoint,
 ) {
     val pts = jointFrame.map { j -> screen(Vec3(j.getOrElse(0) { 0f }, j.getOrElse(1) { 0f }, j.getOrElse(2) { 0f })) }
-    val bones = if (jointFrame.size >= 24) SMPL24_BONES else SMPL_BODY_BONES
+    val bones = bonesFor(entity.parents, jointFrame.size)
     val pain = entity.pain
     val boneColor = if (entity.selected) Color(0xFF6E8BFF) else Color(0xFF8A94AD)
     for ((child, parent) in bones) {
@@ -461,7 +473,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGhostSkeleton(
     screen: (Vec3) -> ProjectedPoint,
 ) {
     val pts = jointFrame.map { j -> screen(Vec3(j.getOrElse(0) { 0f }, j.getOrElse(1) { 0f }, j.getOrElse(2) { 0f })) }
-    val bones = if (jointFrame.size >= 24) SMPL24_BONES else SMPL_BODY_BONES
+    val bones = bonesFor(null, jointFrame.size)
     val color = Color(0x553FE0C8)
     for ((child, parent) in bones) {
         if (child >= pts.size || parent >= pts.size) continue

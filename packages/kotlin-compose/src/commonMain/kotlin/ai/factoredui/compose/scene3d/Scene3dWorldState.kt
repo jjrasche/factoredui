@@ -24,6 +24,7 @@ data class Scene3dEntity(
     val status: String = "ready",
     @SerialName("pose_ref") val poseRef: String? = null,
     @SerialName("joint_frame") val jointFrame: List<List<Float>>? = null,
+    val parents: List<Int>? = null,
     val pain: List<Float>? = null,
     val kind: String? = null,
 )

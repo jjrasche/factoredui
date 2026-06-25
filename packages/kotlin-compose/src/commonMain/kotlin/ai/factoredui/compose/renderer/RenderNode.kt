@@ -184,6 +184,7 @@ private fun RenderNodeByType(
             val liveEngine = (resolvedProps["engine"] as? String) ?: sceneProps.engine
             val livePlayhead = (resolvedProps["playhead"] as? Number)?.toInt()
             val livePlaying = resolvedProps["playing"] as? Boolean
+            val liveBody = resolvedProps["body"] as? Map<*, *>
             val playheadWritePath = node.props["playhead"]?.bindingPath()
             RenderScene3d(
                 sceneProps.copy(
@@ -195,6 +196,7 @@ private fun RenderNodeByType(
                 playingBinding = livePlaying,
                 onPlayheadChange = { next -> playheadWritePath?.let { context.setBinding(it, next) } },
                 chrome = sceneProps.chrome,
+                liveBody = liveBody,
             )
         }
         SpecNodeType.CANVAS -> RenderCanvas(node, context)

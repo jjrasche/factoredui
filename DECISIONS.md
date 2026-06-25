@@ -313,3 +313,49 @@ factors were, and is gated on an actual multi-tenant consumer needing it.
 - **Capture overhead budget.** Autocapture has to be cheap on every
   interaction. Set a perf budget (e.g. <0.5ms per event recorded,
   zero-alloc on the hot path) and enforce in benchmarks.
+
+## Decision: the renderer is HTTP-zero (host owns all I/O)
+
+**Status:** decided 2026-06-25 (Jim). Implementation = the scene3d
+decomposition arc, in progress.
+
+The renderer's contract is `state → pixels` + `interaction → action
+dispatch`. It must not open a socket. Data arrives via `dataFlow`
+(host fetched it); intents leave via `ActionRegistry` (host does the
+POST). This is already enforced for the slider, the field `canvas`,
+and the inline-`body_frame` / bare-body paths (that HTTP-freeness is
+exactly why `renderSpecToPng` is a pure function).
+
+**The violation:** `scene3d` predates the rule. It has **18 HTTP
+call-sites** (`world_state_url` fetch, action POSTs, SSE stream, preview/
+settle/drop/sit/prompt handlers) and forces `ktor.client.*` to be a
+renderer dependency. `forcegraph` adds 7 more (slated for deletion
+anyway). `capture/` posts telemetry (observability, movable host-side).
+
+**Acceptance test (binary, unfakeable):** the `kotlin-compose` module
+drops its `ktor.client.*` dependency. You cannot half-violate "no HTTP"
+if the HTTP client isn't on the classpath. Sub-goals on the way:
+- scene3d decomposes to a pure rasterizer leaf (`BodyFrame`/world-state
+  → pixels), the seam every lane meets at (render consumes, runtime
+  produces, il-verify's believability heads tap the same `BodyFrame`).
+- drive (clip playback) / source (URL/SSE) / interaction (action POSTs)
+  move host-side — clip-playback-now and the live policy+physics runtime
+  become interchangeable **step drivers** feeding the same render (the
+  render ⊥ drive cut). Live `{body}` binding (0.15.4) is that seam in
+  miniature.
+- chrome (Move/Pose/Settle/… buttons + prompt) composes in SDUI host-side
+  (the play/pause thinning at 0.13.8 is the template).
+- image loading (`coil.network.ktor3`) → host-provided image loader.
+
+**Cut by concern, not by class** (il-embodiment): render / drive /
+interact / source — not "Scene3dView split into 8 files." **Keep the
+shadow-node emit inside the rasterizer** when it splits, or the headless
+gate + BDD-visual loop die in the split. **Don't bake `SMPL24_PARENTS`
+into the leaf** (il-verify) — take skeleton connectivity from the
+`BodyFrame`; the leaf is topology-neutral.
+
+**The gate is the forcing function** (il-verify): a correctness gate that
+renders the pure leaf IS the executable spec of what scene3d decomposes
+to. Decompose against a green gate — re-entangle I/O into the render path
+and a golden reds. That's how this doesn't grow back a third time (the
+`fieldgraph` anti-pattern, deleted, regrowing inside scene3d).
