@@ -20,11 +20,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
-import ai.factoredui.compose.forcegraph.math.Camera
-import ai.factoredui.compose.forcegraph.math.Matrix4
-import ai.factoredui.compose.forcegraph.math.ProjectedPoint
-import ai.factoredui.compose.forcegraph.math.Vec3
-import ai.factoredui.compose.forcegraph.math.project
+import ai.factoredui.compose.math.Camera
+import ai.factoredui.compose.math.Matrix4
+import ai.factoredui.compose.math.ProjectedPoint
+import ai.factoredui.compose.math.Vec3
+import ai.factoredui.compose.math.project
 import ai.factoredui.compose.testing.DomShadow
 import kotlin.math.abs
 import kotlin.math.acos

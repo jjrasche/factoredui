@@ -1,4 +1,4 @@
-package ai.factoredui.compose.forcegraph.math
+package ai.factoredui.compose.math
 
 import kotlin.math.cos
 import kotlin.math.sin

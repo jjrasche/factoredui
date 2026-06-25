@@ -1,6 +1,6 @@
 package ai.factoredui.compose.scene3d
 
-import ai.factoredui.compose.forcegraph.math.Vec3
+import ai.factoredui.compose.math.Vec3
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

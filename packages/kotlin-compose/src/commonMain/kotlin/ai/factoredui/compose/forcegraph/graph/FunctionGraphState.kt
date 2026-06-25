@@ -3,7 +3,7 @@ package ai.factoredui.compose.forcegraph.graph
 import ai.factoredui.compose.forcegraph.layout.ForceLayout
 import ai.factoredui.compose.forcegraph.layout.LayoutEdge
 import ai.factoredui.compose.forcegraph.layout.LayoutNode
-import ai.factoredui.compose.forcegraph.math.Vec3
+import ai.factoredui.compose.math.Vec3
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.math.PI

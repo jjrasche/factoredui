@@ -13,10 +13,10 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import ai.factoredui.compose.forcegraph.math.Camera
-import ai.factoredui.compose.forcegraph.math.Matrix4
-import ai.factoredui.compose.forcegraph.math.Vec3
-import ai.factoredui.compose.forcegraph.math.project
+import ai.factoredui.compose.math.Camera
+import ai.factoredui.compose.math.Matrix4
+import ai.factoredui.compose.math.Vec3
+import ai.factoredui.compose.math.project
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.float
 import kotlinx.serialization.json.jsonArray

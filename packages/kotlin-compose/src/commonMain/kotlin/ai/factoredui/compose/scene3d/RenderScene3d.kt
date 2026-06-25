@@ -30,8 +30,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import ai.factoredui.compose.forcegraph.math.Camera
-import ai.factoredui.compose.forcegraph.math.Matrix4
+import ai.factoredui.compose.math.Camera
+import ai.factoredui.compose.math.Matrix4
 import ai.factoredui.compose.forcegraph.startSseSubscription
 import ai.factoredui.compose.observability.NoOpObservability
 import ai.factoredui.compose.observability.Observability

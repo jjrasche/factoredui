@@ -1,7 +1,7 @@
 package ai.factoredui.compose.scene3d
 
-import ai.factoredui.compose.forcegraph.math.Matrix4
-import ai.factoredui.compose.forcegraph.math.Vec3
+import ai.factoredui.compose.math.Matrix4
+import ai.factoredui.compose.math.Vec3
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2

@@ -1,4 +1,4 @@
-package ai.factoredui.compose.forcegraph.math
+package ai.factoredui.compose.math
 
 /**
  * Projected screen-space point. `visible=false` marks points behind the

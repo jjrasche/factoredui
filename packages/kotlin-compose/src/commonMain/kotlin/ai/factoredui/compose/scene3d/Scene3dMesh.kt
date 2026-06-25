@@ -1,7 +1,7 @@
 package ai.factoredui.compose.scene3d
 
 import androidx.compose.ui.graphics.Color
-import ai.factoredui.compose.forcegraph.math.Vec3
+import ai.factoredui.compose.math.Vec3
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

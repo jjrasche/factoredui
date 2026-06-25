@@ -49,7 +49,7 @@ import ai.factoredui.compose.forcegraph.graph.FunctionGraphTopology
 import ai.factoredui.compose.forcegraph.graph.FunctionNodeSpec
 import ai.factoredui.compose.forcegraph.graph.PositionedFunctionNode
 import ai.factoredui.compose.forcegraph.graph.SignalParticles
-import ai.factoredui.compose.forcegraph.math.Camera
+import ai.factoredui.compose.math.Camera
 import ai.factoredui.compose.forcegraph.render.ForceGraphView
 import ai.factoredui.compose.forcegraph.render.KindColor
 import ai.factoredui.compose.forcegraph.replay.ReplayControlBar

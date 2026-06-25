@@ -22,9 +22,9 @@ import ai.factoredui.compose.forcegraph.graph.FunctionGraphSnapshot
 import ai.factoredui.compose.forcegraph.graph.FunctionGraphState
 import ai.factoredui.compose.forcegraph.graph.PositionedFunctionNode
 import ai.factoredui.compose.forcegraph.graph.SignalParticle
-import ai.factoredui.compose.forcegraph.math.Camera
-import ai.factoredui.compose.forcegraph.math.ProjectedPoint
-import ai.factoredui.compose.forcegraph.math.project
+import ai.factoredui.compose.math.Camera
+import ai.factoredui.compose.math.ProjectedPoint
+import ai.factoredui.compose.math.project
 import kotlinx.coroutines.delay
 import kotlin.time.Clock
 

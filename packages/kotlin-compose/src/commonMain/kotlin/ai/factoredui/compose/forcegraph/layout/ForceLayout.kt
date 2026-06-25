@@ -1,6 +1,6 @@
 package ai.factoredui.compose.forcegraph.layout
 
-import ai.factoredui.compose.forcegraph.math.Vec3
+import ai.factoredui.compose.math.Vec3
 import kotlin.math.max
 
 /**

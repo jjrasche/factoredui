@@ -5,7 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
-import ai.factoredui.compose.forcegraph.math.Camera
+import ai.factoredui.compose.math.Camera
 import ai.factoredui.compose.testing.DomShadow
 import kotlin.test.Test
 import kotlin.test.assertEquals
