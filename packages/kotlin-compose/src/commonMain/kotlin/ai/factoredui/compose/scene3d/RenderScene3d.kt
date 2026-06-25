@@ -136,6 +136,15 @@ private fun sparedLegHeat(source: MotionClip): List<Float>? {
     return (0 until 24).map { if (it in sparedJoints) 0.9f else 0f }
 }
 
+private val inlineBodyDecoder = Json { ignoreUnknownKeys = true }
+
+// The hermetic CI seam (il-render): a golden BodyFramesResponse rides INLINE in the spec so
+// renderSpecToPng is pure — spec in, PNG out, no HTTP server in the correctness gate.
+fun inlineBodyFramesOrNull(bodyFrameJson: String): BodyFramesResponse? =
+    runCatching { inlineBodyDecoder.decodeFromString(BodyFramesResponse.serializer(), bodyFrameJson) }
+        .getOrNull()
+        ?.takeIf { it.frames.isNotEmpty() }
+
 internal fun jointFrameDigest(joints: List<List<Float>>): String =
     joints.joinToString(";") { joint ->
         joint.joinToString(",") { axis -> (axis * 1000f).roundToInt().toString() }
@@ -329,6 +338,15 @@ fun RenderScene3d(
         )
     }
 
+    LaunchedEffect(props.bodyFrame) {
+        val inline = props.bodyFrame ?: return@LaunchedEffect
+        inlineBodyFramesOrNull(inline)?.let { response ->
+            motionClip = bodyFramesToMotionClip(response)
+            playFrame = response.playhead.coerceAtLeast(0)
+            engineStatus = "body-frame · ${response.frames.size}f (inline)"
+        }
+    }
+
     val heatSingle = remember(motionClip, props.board) {
         motionClip?.takeIf { props.board == "hopscotch" }?.let { sparedLegHeat(it) }
     }
@@ -368,7 +386,7 @@ fun RenderScene3d(
                 pain = heat ?: f.pain.takeIf { it.isNotEmpty() },
             )
         }
-        if (props.simId != null) {
+        if (props.simId != null || props.bodyFrame != null) {
             world = Scene3dWorldState(entities = listOf(bodyFrom(clip, index, "body", 0f, null)))
             if (!cameraInitialized) {
                 applyCameraState(camera, Scene3dCameraState(position = listOf(3.0f, 1.9f, 3.0f), target = listOf(0f, 0.95f, 0f)))
@@ -444,7 +462,7 @@ fun RenderScene3d(
 
     LaunchedEffect(props.worldStateUrl) {
         if (props.worldStateUrl.isEmpty()) {
-            if (props.clipUrl == null && props.board == null && props.simId == null) loadError = "scene3d: missing world_state_url"
+            if (props.clipUrl == null && props.board == null && props.simId == null && props.bodyFrame == null) loadError = "scene3d: missing world_state_url"
             return@LaunchedEffect
         }
         runCatching {
