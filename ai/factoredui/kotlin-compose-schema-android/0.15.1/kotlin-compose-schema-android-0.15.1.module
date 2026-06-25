@@ -1,0 +1,156 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../kotlin-compose-schema/0.15.1/kotlin-compose-schema-0.15.1.module",
+    "group": "ai.factoredui",
+    "module": "kotlin-compose-schema",
+    "version": "0.15.1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-schema-release.aar",
+          "url": "kotlin-compose-schema-android-0.15.1.aar",
+          "size": 144608,
+          "sha512": "ba55d5b53d8b9e2e69bc6159c895e431b05469c80c8e23480541291933a84c8973eb5afabbf54e79f12563e3d1438972c551587c41de3ab0881bb799e06a03e4",
+          "sha256": "099a8b77d782610f9a6092186559ed2a65f987b27550b7aad2fc5cd5b7bc1baa",
+          "sha1": "0655bafae9edb886a998d6e8aaacd59259aa82b6",
+          "md5": "a4a89a1a44efd0360004f13fbd0a8c91"
+        }
+      ]
+    },
+    {
+      "name": "releaseRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          },
+          "excludes": [
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-stdlib-common"
+            },
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-test-common"
+            },
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-test-annotations-common"
+            }
+          ]
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          },
+          "excludes": [
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-stdlib-common"
+            },
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-test-common"
+            },
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-test-annotations-common"
+            }
+          ]
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          },
+          "excludes": [
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-stdlib-common"
+            },
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-test-common"
+            },
+            {
+              "group": "org.jetbrains.kotlin",
+              "module": "kotlin-test-annotations-common"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-schema-release.aar",
+          "url": "kotlin-compose-schema-android-0.15.1.aar",
+          "size": 144608,
+          "sha512": "ba55d5b53d8b9e2e69bc6159c895e431b05469c80c8e23480541291933a84c8973eb5afabbf54e79f12563e3d1438972c551587c41de3ab0881bb799e06a03e4",
+          "sha256": "099a8b77d782610f9a6092186559ed2a65f987b27550b7aad2fc5cd5b7bc1baa",
+          "sha1": "0655bafae9edb886a998d6e8aaacd59259aa82b6",
+          "md5": "a4a89a1a44efd0360004f13fbd0a8c91"
+        }
+      ]
+    },
+    {
+      "name": "releaseSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "files": [
+        {
+          "name": "kotlin-compose-schema-android-0.15.1-sources.jar",
+          "url": "kotlin-compose-schema-android-0.15.1-sources.jar",
+          "size": 10701,
+          "sha512": "e03eabd24f7ad18525a53b2efdcbcd0587aeb9e5b04013ab6bf4e2cfdfa0ddd43e12eb8438375e892759fc85f72eeb0cf7b860ee4879b8d7139d14920dad2276",
+          "sha256": "a7fe9cc4be4ffcf073a969764e26d8bb7269094079301e8370e5a752d9e90dd9",
+          "sha1": "a1431a695180b1ca4b85418facb62d09da7942eb",
+          "md5": "7aa00ebdc36bf4eddfd3db43fe3759a1"
+        }
+      ]
+    }
+  ]
+}
