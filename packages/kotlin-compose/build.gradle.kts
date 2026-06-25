@@ -155,6 +155,16 @@ extensions.configure<LibraryExtension>("android") {
     }
 }
 
+// Headless render entry for non-JVM callers (il-render's Python correctness gate):
+// ./gradlew :kotlin-compose:renderSpecCli --args="spec.json out.png [w] [h] [density]"
+tasks.register<JavaExec>("renderSpecCli") {
+    group = "render"
+    description = "Render an SDUI spec JSON file to a PNG headlessly (spec-in -> PNG-out)."
+    val desktopCompilation = kotlin.jvm("desktop").compilations.getByName("main")
+    classpath(desktopCompilation.output.allOutputs, desktopCompilation.runtimeDependencyFiles)
+    mainClass.set("ai.factoredui.compose.render.RenderSpecCliKt")
+}
+
 publishing {
     publications.withType<MavenPublication>().configureEach {
         pom {
