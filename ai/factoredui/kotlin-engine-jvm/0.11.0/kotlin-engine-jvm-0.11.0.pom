@@ -21,7 +21,7 @@
     <dependency>
       <groupId>ai.factoredui</groupId>
       <artifactId>kotlin-compose-schema-jvm</artifactId>
-      <version>0.15.0</version>
+      <version>0.15.2</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
