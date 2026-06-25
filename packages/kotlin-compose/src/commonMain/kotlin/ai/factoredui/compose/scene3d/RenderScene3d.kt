@@ -221,6 +221,7 @@ fun RenderScene3d(
     onPlayheadChange: (Int) -> Unit = {},
     chrome: Boolean = true,
     liveBody: Map<*, *>? = null,
+    onIntent: (String, Map<String, Any?>) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val json = remember { Json { ignoreUnknownKeys = true } }
@@ -537,24 +538,11 @@ fun RenderScene3d(
         }
     }
 
-    // One path for every settled intent: capture it as a factored-ui interaction
-    // event AND POST it to the server. Continuous gestures (camera) coalesce via
-    // emitCameraSettled; discrete intents (select, move) fire immediately.
+    // A settled intent leaves as an ActionRef for the host to wire — the renderer
+    // never does the network itself (render ⊥ I/O). observability still witnesses it.
     fun emitIntent(action: String, params: Map<String, Any?>) {
         observability.onInteraction(nodeId, ActionRef(action = action), params)
-        val url = props.actionUrl ?: return
-        val body = buildJsonObject {
-            put("action", action)
-            put("params", anyToJson(params))
-        }.toString()
-        scope.launch {
-            runCatching {
-                httpClient.post(url) {
-                    contentType(ContentType.Application.Json)
-                    setBody(body)
-                }
-            }
-        }
+        onIntent(action, params)
     }
 
     // Explicit "snap to plausible" (NOT on every drag-release — see Fork B). The drag loop conveys

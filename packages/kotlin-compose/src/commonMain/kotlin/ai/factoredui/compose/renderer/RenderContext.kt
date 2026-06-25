@@ -155,3 +155,13 @@ suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
     }
     handler(resolvedParams)
 }
+
+fun sceneIntentDispatcher(
+    context: RenderContext,
+    nodeId: String,
+    onObserve: (String) -> Unit = {},
+): suspend (String, Map<String, Any?>) -> Unit = { action, params ->
+    onObserve(action)
+    context.observability.onInteraction(nodeId, ActionRef(action = action), params)
+    context.actions[action]?.invoke(params)
+}

@@ -186,6 +186,8 @@ private fun RenderNodeByType(
             val livePlaying = resolvedProps["playing"] as? Boolean
             val liveBody = resolvedProps["body"] as? Map<*, *>
             val playheadWritePath = node.props["playhead"]?.bindingPath()
+            val sceneScope = rememberCoroutineScope()
+            val intentDispatch = sceneIntentDispatcher(context, node.id)
             RenderScene3d(
                 sceneProps.copy(
                     clipFrameFraction = liveFrame, clipImpulse = liveImpulse, clipAutoplay = liveAutoplay,
@@ -197,6 +199,7 @@ private fun RenderNodeByType(
                 onPlayheadChange = { next -> playheadWritePath?.let { context.setBinding(it, next) } },
                 chrome = sceneProps.chrome,
                 liveBody = liveBody,
+                onIntent = { action, params -> sceneScope.launch { intentDispatch(action, params) } },
             )
         }
         SpecNodeType.CANVAS -> RenderCanvas(node, context)
