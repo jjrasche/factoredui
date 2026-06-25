@@ -26,6 +26,7 @@ class LiveFieldCanvasCheck {
         props = mapOf(
             "nodes" to SpecValue.StringValue("{field_nodes}"),
             "on_node_arranged" to SpecValue.StringValue("field.nodeArranged"),
+            "on_node_tap" to SpecValue.StringValue("field.nodeTapped"),
         ),
     )
 
@@ -57,5 +58,19 @@ class LiveFieldCanvasCheck {
         check.drag("claim-7", 50f, 30f)
         assertEquals("claim-7", arrangedId, "drag-end must fire on_node_arranged with the dragged node id")
         assertTrue(arrangedX > 30.0, "the action must carry the node's curated final x (was 30, dragged +50)")
+    }
+
+    @Test
+    fun tappingALiveNodeFiresNodeTappedWithId() = runComposeUiTest {
+        var tappedId: String? = null
+        val capture: ActionHandler = { params -> tappedId = params["node_id"] as? String }
+        val context = RenderContext(
+            actions = mapOf("field.nodeTapped" to capture),
+            initialData = mapOf("field_nodes" to liveFieldNodes()),
+        )
+        val check = SpecVisualCheck(this, context)
+        check.render(liveField, viewport = 400.dp)
+        check.tap("claim-9")
+        assertEquals("claim-9", tappedId, "tap must fire on_node_tap with the tapped node id")
     }
 }

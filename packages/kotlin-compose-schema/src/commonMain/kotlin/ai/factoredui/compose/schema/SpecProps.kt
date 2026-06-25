@@ -370,6 +370,7 @@ data class CanvasProps(
     val edges: List<CanvasEdge> = emptyList(),
     val nodesBinding: String? = null,
     val onNodeArranged: String? = null,
+    val onNodeTapped: String? = null,
 )
 
 fun Map<String, SpecValue>.asCanvasProps(): CanvasProps = CanvasProps(
@@ -381,6 +382,7 @@ fun Map<String, SpecValue>.asCanvasProps(): CanvasProps = CanvasProps(
     },
     nodesBinding = string("nodes"),
     onNodeArranged = string("on_node_arranged"),
+    onNodeTapped = string("on_node_tap"),
 )
 
 data class FieldNodeEntry(

@@ -2,6 +2,7 @@ package ai.factoredui.compose.renderer
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -35,7 +36,7 @@ fun RenderCanvas(node: SpecNode, context: RenderContext) {
     val props = node.props.asCanvasProps()
     val liveEntries = liveFieldEntries(props.nodesBinding, liveData)
     if (liveEntries != null) {
-        LiveFieldCanvas(node, context, props.onNodeArranged, liveEntries, props.edges.connectorPairs())
+        LiveFieldCanvas(node, context, props.onNodeArranged, props.onNodeTapped, liveEntries, props.edges.connectorPairs())
     } else {
         StaticChildCanvas(node, context, liveData)
     }
@@ -46,6 +47,7 @@ private fun LiveFieldCanvas(
     node: SpecNode,
     context: RenderContext,
     onNodeArranged: String?,
+    onNodeTapped: String?,
     entries: List<FieldNodeEntry>,
     edges: List<Pair<String, String>>,
 ) {
@@ -58,6 +60,8 @@ private fun LiveFieldCanvas(
                 modifier = Modifier
                     .offset(entry.x.dp, entry.y.dp)
                     .alpha(entry.glow)
+                    .nodeTag(entry.id)
+                    .nodeTapDispatch(scope, context, node.id, onNodeTapped, entry.id)
                     .arrangeDrag(scope, context, node.id, onNodeArranged, entry),
             ) {
                 RenderNode(labelNode(entry), context)
@@ -65,6 +69,26 @@ private fun LiveFieldCanvas(
         }
     }
 }
+
+private fun Modifier.nodeTapDispatch(
+    scope: kotlinx.coroutines.CoroutineScope,
+    context: RenderContext,
+    nodeId: String,
+    onNodeTapped: String?,
+    entryId: String,
+): Modifier {
+    if (onNodeTapped == null) return this
+    return this.pointerInput(entryId, onNodeTapped) {
+        detectTapGestures(onTap = {
+            scope.launch { context.dispatch(nodeId, tappedAction(onNodeTapped, entryId)) }
+        })
+    }
+}
+
+private fun tappedAction(action: String, nodeId: String) = ActionRef(
+    action = action,
+    params = mapOf("node_id" to SpecValue.StringValue(nodeId)),
+)
 
 @Composable
 private fun StaticChildCanvas(node: SpecNode, context: RenderContext, liveData: Map<String, Any?>) {
@@ -132,7 +156,7 @@ private fun arrangedAction(action: String, nodeId: String, x: Float, y: Float) =
 )
 
 private fun labelNode(entry: FieldNodeEntry) = SpecNode(
-    id = entry.id,
+    id = "${entry.id}:label",
     type = SpecNodeType.TEXT,
     props = mapOf("value" to SpecValue.StringValue(entry.label)),
 )
