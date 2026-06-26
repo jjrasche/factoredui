@@ -11,14 +11,15 @@ The thesis (see `CONCEPT.md`) is a 5-stage loop:
 | # | Stage | Built? |
 |---|---|---|
 | 1 | Standardized component vocabulary (observation = change unit) | **Done** — kotlin-compose, 22 primitives, all targets |
-| 2 | Multi-tier factor engine (alarm / diagnostic / structural) | **Not built in Kotlin.** Was prototyped in TS in `packages/core/factors/`; that code is the reference for the port. |
+| 2 | Multi-tier factor engine (alarm / diagnostic / structural) | **Engine ported to Kotlin** (`kotlin-engine/factors/`: KMeans, FactorModel, FactorDashboardSpec, bit-exact parity tested). Not yet wired into a live proactive loop. |
 | 3 | LLM hypothesis generation (read factors → propose component-level changes) | **Not built anywhere.** New work, slated for this repo (not agent-platform). |
-| 4 | Component-level experimentation (variant assignment, exposure, governance) | **Not built in Kotlin.** TS prototype in `packages/core/experiment/`. Kotlin has an `Experiments` interface stub only. |
+| 4 | Component-level experimentation (variant assignment, exposure, governance) | **Ported to Kotlin** (`kotlin-engine/experiments/`: Bucketing, Governance, Lifecycle, Targeting + `kotlin-compose/experiments/Experiments`). Not yet wired into a live loop. |
 | 5 | Democratic governance (community-decided thresholds and shipping gates) | **Not built.** |
 
-Today FactoredUI implements 1 of 5. Next port wave is **2 + 4 + the
-observability slice of 3** (every interaction documented). Then 3 in
-full, then 5.
+The engine pieces (1, 2, 4) are built in Kotlin; what remains is the
+LIVE LOOP — wiring 2+4 into proactive operation plus 3 (LLM hypothesis)
+and 5 (governance). The TS reference (`packages/core`) that prototyped
+2/4 was deleted 2026-06-25 after the port; Kotlin is the only source now.
 
 ## Decision: two gradle subprojects in one repo
 

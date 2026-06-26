@@ -12,34 +12,29 @@ The rendering half of agent-platform. Kotlin Multiplatform + Compose Multiplatfo
 ## Packages (post-2026-04-24 cleanup)
 
 - `packages/kotlin-compose/` — **the live renderer.** All rendering work happens here.
-- `packages/core/` — TypeScript. Contains `src/sdui/spec-types.ts` (canonical spec schema source of truth, mirrored into Kotlin `SpecNode.kt`) plus capture/factor/experiment pipelines. Pipeline code is **deferred for a Kotlin port**, not actively used by any current consumer. See agent-platform's memory for the "AI-proactive UI improvement" thesis that motivates it.
+- `packages/kotlin-compose-schema/` — pure-Kotlin spec/wire types (the schema source of truth).
+- `packages/kotlin-engine/` — the factor + experiment engine (clustering/governance/targeting), bit-exact parity tested.
+- `packages/kotlin-server/`, `packages/kotlin-compose-playground/` — server + dev playground.
 
-## What was deleted on 2026-04-24
+## What was deleted
 
-- `packages/react/` — React renderer (replaced by kotlin-compose WASM).
-- `packages/react-native/` — RN primitives (replaced by kotlin-compose Android/iOS).
-- `packages/adapter-supabase/` — Supabase-specific storage adapter (agent-platform uses SQLite; not relevant to the rendering role).
+- 2026-04-24: `packages/react/`, `packages/react-native/`, `packages/adapter-supabase/` (replaced by kotlin-compose).
+- 2026-06-25: `packages/core/` (the last TypeScript) + all root npm tooling (package.json, tsconfig, vitest). It was the pre-Kotlin reference — sdui/capture/experiment/factor — and was fully ported (capture→kotlin-compose/capture, experiment+factors→kotlin-engine, sdui→kotlin-compose-schema). The repo is now 100% Kotlin/gradle, no npm island.
 
 ## Commands
 
 ```bash
-# Kotlin (the primary work)
-cd packages/kotlin-compose
-./gradlew build             # compile all targets
-./gradlew wasmJsBrowserDevelopmentExecutableDistribution   # browser bundle
-./gradlew publish           # publish to local maven repo
-
-# TS (spec-types + dormant pipeline)
-npm run build               # tsup: core
-npm test                    # vitest run
-npm run typecheck
+# 100% Kotlin/gradle — run from repo root
+./gradlew build             # compile + test all modules, all targets
+./gradlew :kotlin-compose:wasmJsBrowserDevelopmentExecutableDistribution   # browser bundle
+./gradlew :kotlin-compose:publish   # publish to local maven repo (CDN release = push a kotlin-compose-v* tag)
 ```
 
 ## Architecture
 
 ### Renderer dispatch (kotlin-compose)
 
-`SpecNodeType` is a closed enum in `src/commonMain/.../schema/SpecNode.kt`, mirrored exactly with the TS union in `packages/core/src/sdui/spec-types.ts`. `RenderNode.kt` has a single `when (node.type)` dispatch to a private composable per primitive. To add a primitive: update both enum sites + add a renderer branch.
+`SpecNodeType` is a closed enum in `kotlin-compose-schema/.../schema/SpecNode.kt` — the sole source of truth. `RenderNode.kt` has a single `when (node.type)` dispatch to a private composable per primitive. To add a primitive: update the enum + add a renderer branch.
 
 ### Primitive classes
 
