@@ -1,9 +1,7 @@
-package ai.factoredui.compose.forcegraph
+package ai.factoredui.compose.net
 
 /**
- * Live event-stream subscription. The `forcegraph` primitive uses this
- * to receive `signalgraph.event` SSE frames and feed them into the
- * firing-pulse + particle overlays + sidebar log.
+ * Live event-stream subscription — a host/consumer streams SSE frames in.
  *
  * Why expect/actual rather than raw ktor in commonMain: ktor's wasmJs
  * client is fetch-based, and the browser fetch API doesn't emit body

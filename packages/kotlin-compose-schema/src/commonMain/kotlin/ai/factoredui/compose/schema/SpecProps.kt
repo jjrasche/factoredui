@@ -290,39 +290,6 @@ fun Map<String, SpecValue>.asModalProps(): ModalProps = ModalProps(
     dismissible = boolean("dismissible") ?: true,
 )
 
-// --- ForceGraphProps ---
-// First "dense/semantic" primitive. See ForceGraphProps in spec-types.ts
-// for the full contract (topology URL, optional event stream, physics).
-
-data class ForceGraphProps(
-    val topologyUrl: String,
-    val eventStreamUrl: String? = null,
-    val historyUrl: String? = null,
-    val physics: ForceGraphPhysics = ForceGraphPhysics(),
-)
-
-data class ForceGraphPhysics(
-    val repulsion: Double = 100.0,
-    val attraction: Double = 0.05,
-    val damping: Double = 0.9,
-    val domainAnchoring: Boolean = true,
-)
-
-fun Map<String, SpecValue>.asForceGraphProps(): ForceGraphProps {
-    val physicsMap = (get("physics") as? SpecValue.ObjectValue)?.value ?: emptyMap()
-    return ForceGraphProps(
-        topologyUrl = string("topology_url") ?: "",
-        eventStreamUrl = string("event_stream_url"),
-        historyUrl = string("history_url"),
-        physics = ForceGraphPhysics(
-            repulsion = physicsMap.double("repulsion") ?: 100.0,
-            attraction = physicsMap.double("attraction") ?: 0.05,
-            damping = physicsMap.double("damping") ?: 0.9,
-            domainAnchoring = physicsMap.boolean("domain_anchoring") ?: true,
-        ),
-    )
-}
-
 // --- Scene3dProps ---
 // Second "dense/semantic" primitive; full contract in spec-types.ts. Entities,
 // camera, and lights live in the fetched world state, not in spec props.

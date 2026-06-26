@@ -51,9 +51,8 @@ export type SpecNodeType =
   | "tabs"
   | "modal"
   | "chip"
-  | "forcegraph"
   | "scene3d"
-  | "fieldgraph";
+  | "canvas";
 
 export interface SpecNode {
   id: string;
@@ -249,64 +248,16 @@ export interface SpacerProps {
   flex?: number;
 }
 
-// --- ForceGraph props ---
-// First "dense/semantic" primitive: a force-directed graph of typed
-// nodes (with domain-grouping) connected by typed edges, with an
-// optional live event stream overlaying firing highlights + moving
-// particles. Used for signal-graph, memory-topology, and any view
-// where the shape is "nodes + edges with physics."
-//
-// Unlike container primitives (column/row/list), this takes data
-// URLs rather than child nodes. The renderer fetches + subscribes.
-
-export interface ForceGraphProps {
-  /**
-   * URL to fetch the current topology from. Expected response shape:
-   *   { nodes: [{ id, group?, label? }], edges: [{ from, to, kind? }] }
-   */
-  topology_url: string;
-
-  /**
-   * Optional SSE endpoint. Each event's `payload` drives overlays:
-   *   - { type: "firing_started",   payload: { function } }  → pulse node
-   *   - { type: "firing_completed", payload: { function } }  → fade pulse
-   *   - { type: "signal_emitted",   payload: { producer, consumers[], kind } }
-   *       → spawn a particle from producer to each consumer
-   */
-  event_stream_url?: string;
-
-  /**
-   * Optional history endpoint for replay/scrubbing. Returns prior events
-   * so the user can DVR backwards through time. Expected response shape:
-   *   { signals: [{ id, kind, payload, produced_by?, triggered_by[], created_at }, …] }
-   * Each signal's `payload` mirrors a live SSE frame's payload (same
-   * `type`, `function`, `producer`, `consumers`, `kind` fields). Without
-   * this URL, the renderer hides the replay controls and runs live-only.
-   */
-  history_url?: string;
-
-  physics?: {
-    /** Node–node repulsion strength. Higher = more spread. Default 100. */
-    repulsion?: number;
-    /** Edge contraction strength. Higher = tighter graph. Default 0.05. */
-    attraction?: number;
-    /** Velocity damping per step. 0..1. Default 0.9. */
-    damping?: number;
-    /** Anchor nodes toward a center per domain/group. Default true. */
-    domain_anchoring?: boolean;
-  };
-}
-
 // --- Scene3d props ---
 // Second "dense/semantic" primitive: a 3D staging viewport. Renders typed
 // entities (characters) under an orbit camera with configurable lights —
-// the "thin Blender" surface for composing a shot. Like forcegraph it takes
-// data URLs rather than child nodes: it pulls world state, subscribes to a
+// the "thin Blender" surface for composing a shot. It takes data URLs
+// rather than child nodes: it pulls world state, subscribes to a
 // stream of updates, and POSTs user intents (selection, camera moves, pose
 // prompts) back to an action endpoint that a host ActionRegistry services.
 //
 // Rendering is pure-Kotlin (Compose Canvas + a software painter's-algorithm
-// rasterizer reusing the forcegraph math layer) so the primitive stays
+// rasterizer over the ai.factoredui.compose.math layer) so the primitive stays
 // multiplatform-clean — no WebGL, no JS interop. The viewport is
 // preview-quality; final frames are produced downstream, not here.
 

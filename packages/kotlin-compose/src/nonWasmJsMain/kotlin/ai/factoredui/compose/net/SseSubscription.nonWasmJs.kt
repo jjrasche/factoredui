@@ -1,4 +1,4 @@
-package ai.factoredui.compose.forcegraph
+package ai.factoredui.compose.net
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get

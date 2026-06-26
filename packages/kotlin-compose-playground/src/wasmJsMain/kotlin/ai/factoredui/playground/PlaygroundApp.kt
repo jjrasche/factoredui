@@ -15,7 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import ai.factoredui.compose.forcegraph.startSseSubscription
+import ai.factoredui.compose.net.startSseSubscription
 import ai.factoredui.compose.observability.LoggingObservability
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.scene3d.Scene3dWorldState

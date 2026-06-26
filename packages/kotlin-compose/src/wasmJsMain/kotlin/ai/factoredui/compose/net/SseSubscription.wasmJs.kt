@@ -1,4 +1,4 @@
-package ai.factoredui.compose.forcegraph
+package ai.factoredui.compose.net
 
 /**
  * wasmJs actual: uses the browser's native EventSource. Required because

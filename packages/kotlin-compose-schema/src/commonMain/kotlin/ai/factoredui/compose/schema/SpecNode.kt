@@ -83,7 +83,6 @@ enum class SpecNodeType {
     @SerialName("tabs") TABS,
     @SerialName("modal") MODAL,
     @SerialName("chip") CHIP,
-    @SerialName("forcegraph") FORCE_GRAPH,
     @SerialName("scene3d") SCENE3D,
     @SerialName("canvas") CANVAS,
 }
