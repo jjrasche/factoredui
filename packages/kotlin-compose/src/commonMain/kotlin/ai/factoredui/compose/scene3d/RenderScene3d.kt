@@ -148,6 +148,18 @@ fun liveBodyToMotionClip(liveBody: Map<*, *>?): MotionClip? {
     return MotionClip(name = "live", frames = listOf(MotionClipFrame(joints = placed)))
 }
 
+fun liveBodyToWorld(liveBody: Map<*, *>?): Scene3dWorldState? {
+    val clip = liveBodyToMotionClip(liveBody) ?: return null
+    val joints = clip.frames.first().joints
+    val parents = (liveBody?.get("parents") as? List<*>)?.mapNotNull { (it as? Number)?.toInt() }
+    val entity = Scene3dEntity(
+        id = "body",
+        jointFrame = joints.map { j -> listOf(j.getOrElse(0) { 0f }, j.getOrElse(2) { 0f }, -j.getOrElse(1) { 0f }) },
+        parents = parents,
+    )
+    return Scene3dWorldState(entities = listOf(entity))
+}
+
 private val inlineBodyDecoder = Json { ignoreUnknownKeys = true }
 
 // The hermetic CI seam (il-render): a golden BodyFramesResponse rides INLINE in the spec so
@@ -362,14 +374,6 @@ fun RenderScene3d(
         }
     }
 
-    LaunchedEffect(liveBody) {
-        liveBodyToMotionClip(liveBody)?.let { clip ->
-            motionClip = clip
-            playFrame = 0
-            engineStatus = "body · live"
-        }
-    }
-
     val heatSingle = remember(motionClip, props.board) {
         motionClip?.takeIf { props.board == "hopscotch" }?.let { sparedLegHeat(it) }
     }
@@ -409,9 +413,8 @@ fun RenderScene3d(
                 pain = heat ?: f.pain.takeIf { it.isNotEmpty() },
             )
         }
-        if (props.simId != null || props.bodyFrame != null || liveBody != null) {
-            val parents = (liveBody?.get("parents") as? List<*>)?.mapNotNull { (it as? Number)?.toInt() }
-            world = Scene3dWorldState(entities = listOf(bodyFrom(clip, index, "body", 0f, null).copy(parents = parents)))
+        if (props.simId != null || props.bodyFrame != null) {
+            world = Scene3dWorldState(entities = listOf(bodyFrom(clip, index, "body", 0f, null)))
             if (!cameraInitialized) {
                 applyCameraState(camera, Scene3dCameraState(position = listOf(3.0f, 1.9f, 3.0f), target = listOf(0f, 0.95f, 0f)))
                 cameraInitialized = true
@@ -841,7 +844,17 @@ fun RenderScene3d(
         }
     }
 
-    val effectiveWorld = run {
+    val liveCameraGate = remember { booleanArrayOf(false) }
+    val liveWorld = remember(liveBody) {
+        liveBodyToWorld(liveBody)?.also {
+            if (!liveCameraGate[0]) {
+                applyCameraState(camera, Scene3dCameraState(position = listOf(3.0f, 1.9f, 3.0f), target = listOf(0f, 0.95f, 0f)))
+                liveCameraGate[0] = true
+            }
+        }
+    }
+
+    val effectiveWorld = liveWorld ?: run {
         val withLocal =
             if (localPositions.isEmpty()) world
             else world.copy(

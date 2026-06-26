@@ -63,6 +63,30 @@ fun driveAndRender(
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
+fun renderBodyStream(
+    specJson: String,
+    bodyStatePath: String,
+    framesJson: String,
+    width: Int = 800,
+    height: Int = 1280,
+    density: Float = 2f,
+): List<ByteArray> {
+    val spec = decoder.decodeFromString(Spec.serializer(), specJson)
+    val context = RenderContext()
+    val scene = ImageComposeScene(width = width, height = height, density = Density(density)) {
+        RenderSpec(spec = spec, context = context)
+    }
+    try {
+        return decoder.parseToJsonElement(framesJson).jsonArray.map { frame ->
+            context.setBinding(bodyStatePath, jsonToAny(frame))
+            scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes ?: ByteArray(0)
+        }
+    } finally {
+        scene.close()
+    }
+}
+
 private val decoder = Json { ignoreUnknownKeys = true }
 
 private fun pointerType(name: String?): PointerEventType = when (name) {
