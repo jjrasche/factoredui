@@ -55,6 +55,7 @@ import ai.factoredui.compose.schema.BindingResolver
 import ai.factoredui.compose.schema.ImageFit
 import ai.factoredui.compose.schema.LayoutAlign
 import ai.factoredui.compose.schema.LayoutJustify
+import ai.factoredui.compose.schema.LayoutProps
 import ai.factoredui.compose.schema.ListProps
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.compose.schema.asScene3dProps
@@ -156,8 +157,8 @@ private fun RenderNodeByType(
     context: RenderContext,
 ) {
     when (node.type) {
-        SpecNodeType.COLUMN -> RenderColumn(node, context)
-        SpecNodeType.ROW -> RenderRow(node, context)
+        SpecNodeType.COLUMN -> RenderColumn(node, resolvedProps, context)
+        SpecNodeType.ROW -> RenderRow(node, resolvedProps, context)
         SpecNodeType.STACK -> RenderStack(node, context)
         SpecNodeType.SCROLLVIEW -> RenderScrollView(node, context)
         SpecNodeType.GRID -> RenderGrid(node, context)
@@ -210,9 +211,34 @@ private fun RenderNodeByType(
 
 // --- Container nodes ---
 
+private fun resolveLayoutProps(node: SpecNode, resolved: Map<String, Any?>): LayoutProps {
+    val base = node.props.asLayoutProps()
+    val justify = when (resolved["justify"] as? String) {
+        "center" -> LayoutJustify.CENTER
+        "end" -> LayoutJustify.END
+        "between" -> LayoutJustify.BETWEEN
+        "around" -> LayoutJustify.AROUND
+        "start" -> LayoutJustify.START
+        else -> base.justify
+    }
+    val align = when (resolved["align"] as? String) {
+        "center" -> LayoutAlign.CENTER
+        "end" -> LayoutAlign.END
+        "stretch" -> LayoutAlign.STRETCH
+        "start" -> LayoutAlign.START
+        else -> base.align
+    }
+    return base.copy(
+        justify = justify,
+        align = align,
+        gap = (resolved["gap"] as? Number)?.toInt() ?: base.gap,
+        padding = (resolved["padding"] as? Number)?.toInt() ?: base.padding,
+    )
+}
+
 @Composable
-private fun RenderColumn(node: SpecNode, context: RenderContext) {
-    val props = node.props.asLayoutProps()
+private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val fillWidth = hasFlexChild || props.align != LayoutAlign.START
     val colModifier = Modifier.padding(props.padding.dp)
@@ -235,8 +261,8 @@ private fun RenderColumn(node: SpecNode, context: RenderContext) {
 }
 
 @Composable
-private fun RenderRow(node: SpecNode, context: RenderContext) {
-    val props = node.props.asLayoutProps()
+private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val fillWidth = hasFlexChild || props.justify != LayoutJustify.START
     val rowModifier = Modifier.padding(props.padding.dp)
@@ -390,10 +416,28 @@ private fun StyledCard(
     } else {
         CardDefaults.cardElevation()
     }
-    Card(modifier = widthModifier.nodeTag(node.id), shape = shape, colors = colors, elevation = elevation) {
-        val contentModifier = props.padding?.let { Modifier.padding(it.dp) } ?: Modifier
-        Column(modifier = contentModifier) {
-            node.children.forEach { child -> RenderNode(node = child, context = context) }
+    val cardModifier = widthModifier.nodeTag(node.id)
+    val action = node.action
+    if (action != null) {
+        val scope = rememberCoroutineScope()
+        Card(
+            onClick = { scope.launch { context.dispatch(node.id, action) } },
+            modifier = cardModifier,
+            shape = shape,
+            colors = colors,
+            elevation = elevation,
+        ) {
+            val contentModifier = props.padding?.let { Modifier.padding(it.dp) } ?: Modifier
+            Column(modifier = contentModifier) {
+                node.children.forEach { child -> RenderNode(node = child, context = context) }
+            }
+        }
+    } else {
+        Card(modifier = cardModifier, shape = shape, colors = colors, elevation = elevation) {
+            val contentModifier = props.padding?.let { Modifier.padding(it.dp) } ?: Modifier
+            Column(modifier = contentModifier) {
+                node.children.forEach { child -> RenderNode(node = child, context = context) }
+            }
         }
     }
 }
