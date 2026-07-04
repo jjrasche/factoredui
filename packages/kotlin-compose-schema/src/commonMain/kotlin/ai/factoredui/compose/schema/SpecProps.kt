@@ -338,6 +338,7 @@ data class CanvasEdge(val from: String, val to: String)
 data class CanvasProps(
     val edges: List<CanvasEdge> = emptyList(),
     val nodesBinding: String? = null,
+    val edgesBinding: String? = null,
     val onNodeArranged: String? = null,
     val onNodeTapped: String? = null,
 )
@@ -350,6 +351,7 @@ fun Map<String, SpecValue>.asCanvasProps(): CanvasProps = CanvasProps(
         CanvasEdge(from, to)
     },
     nodesBinding = string("nodes"),
+    edgesBinding = string("edges"),
     onNodeArranged = string("on_node_arranged"),
     onNodeTapped = string("on_node_tap"),
 )
@@ -373,4 +375,12 @@ fun resolveFieldNodeEntries(resolvedNodes: Any?): List<FieldNodeEntry> =
             glow = (fields["glow"] as? Number)?.toFloat() ?: 1f,
             label = fields["label"] as? String ?: id,
         )
+    }
+
+fun resolveCanvasEdges(resolvedEdges: Any?): List<CanvasEdge> =
+    (resolvedEdges as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val from = fields["from"] as? String ?: return@mapNotNull null
+        val to = fields["to"] as? String ?: return@mapNotNull null
+        CanvasEdge(from, to)
     }

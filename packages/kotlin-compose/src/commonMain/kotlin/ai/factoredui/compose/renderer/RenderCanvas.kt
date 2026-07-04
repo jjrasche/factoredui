@@ -22,8 +22,11 @@ import ai.factoredui.compose.schema.FieldNodeEntry
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
+import ai.factoredui.compose.schema.CanvasEdge
+import ai.factoredui.compose.schema.CanvasProps
 import ai.factoredui.compose.schema.asCanvasProps
 import ai.factoredui.compose.schema.bindingPath
+import ai.factoredui.compose.schema.resolveCanvasEdges
 import ai.factoredui.compose.schema.resolveFieldNodeEntries
 import kotlinx.coroutines.launch
 
@@ -34,11 +37,12 @@ private val EDGE_COLOR = Color(0xFF8A94AD)
 fun RenderCanvas(node: SpecNode, context: RenderContext) {
     val liveData by context.dataFlow.collectAsState()
     val props = node.props.asCanvasProps()
+    val edges = effectiveCanvasEdges(props, liveData).connectorPairs()
     val liveEntries = liveFieldEntries(props.nodesBinding, liveData)
     if (liveEntries != null) {
-        LiveFieldCanvas(node, context, props.onNodeArranged, props.onNodeTapped, liveEntries, props.edges.connectorPairs())
+        LiveFieldCanvas(node, context, props.onNodeArranged, props.onNodeTapped, liveEntries, edges)
     } else {
-        StaticChildCanvas(node, context, liveData)
+        StaticChildCanvas(node, context, liveData, edges)
     }
 }
 
@@ -91,9 +95,13 @@ private fun tappedAction(action: String, nodeId: String) = ActionRef(
 )
 
 @Composable
-private fun StaticChildCanvas(node: SpecNode, context: RenderContext, liveData: Map<String, Any?>) {
+private fun StaticChildCanvas(
+    node: SpecNode,
+    context: RenderContext,
+    liveData: Map<String, Any?>,
+    edges: List<Pair<String, String>>,
+) {
     val positions = childPositions(node, liveData)
-    val edges = node.props.asCanvasProps().edges.connectorPairs()
     Box(modifier = Modifier.fillMaxSize().nodeTag(node.id)) {
         EdgeLayer(edges, positions)
         for (child in node.children) {
@@ -165,6 +173,12 @@ private fun liveFieldEntries(nodesBinding: String?, liveData: Map<String, Any?>)
     if (nodesBinding == null) return null
     val resolved = BindingResolver.resolveValue(SpecValue.StringValue(nodesBinding), liveData)
     return resolveFieldNodeEntries(resolved)
+}
+
+private fun effectiveCanvasEdges(props: CanvasProps, liveData: Map<String, Any?>): List<CanvasEdge> {
+    val binding = props.edgesBinding ?: return props.edges
+    val resolved = BindingResolver.resolveValue(SpecValue.StringValue(binding), liveData)
+    return resolveCanvasEdges(resolved)
 }
 
 private fun List<ai.factoredui.compose.schema.CanvasEdge>.connectorPairs(): List<Pair<String, String>> =
