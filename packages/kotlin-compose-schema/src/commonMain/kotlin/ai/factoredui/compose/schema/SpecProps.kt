@@ -335,12 +335,18 @@ fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
 
 data class CanvasEdge(val from: String, val to: String)
 
+data class CanvasViewport(val x: Float, val y: Float, val zoom: Float)
+
+val IDENTITY_VIEWPORT = CanvasViewport(0f, 0f, 1f)
+
 data class CanvasProps(
     val edges: List<CanvasEdge> = emptyList(),
     val nodesBinding: String? = null,
     val edgesBinding: String? = null,
+    val viewportBinding: String? = null,
     val onNodeArranged: String? = null,
     val onNodeTapped: String? = null,
+    val onViewportChanged: String? = null,
 )
 
 fun Map<String, SpecValue>.asCanvasProps(): CanvasProps = CanvasProps(
@@ -352,8 +358,10 @@ fun Map<String, SpecValue>.asCanvasProps(): CanvasProps = CanvasProps(
     },
     nodesBinding = string("nodes"),
     edgesBinding = string("edges"),
+    viewportBinding = string("viewport"),
     onNodeArranged = string("on_node_arranged"),
     onNodeTapped = string("on_node_tap"),
+    onViewportChanged = string("on_viewport_changed"),
 )
 
 data class FieldNodeEntry(
@@ -384,3 +392,40 @@ fun resolveCanvasEdges(resolvedEdges: Any?): List<CanvasEdge> =
         val to = fields["to"] as? String ?: return@mapNotNull null
         CanvasEdge(from, to)
     }
+
+fun resolveCanvasViewport(resolvedViewport: Any?): CanvasViewport {
+    val fields = resolvedViewport as? Map<*, *> ?: return IDENTITY_VIEWPORT
+    val zoom = (fields["zoom"] as? Number)?.toFloat() ?: 1f
+    return CanvasViewport(
+        x = (fields["x"] as? Number)?.toFloat() ?: 0f,
+        y = (fields["y"] as? Number)?.toFloat() ?: 0f,
+        zoom = if (zoom > 0f) zoom else 1f,
+    )
+}
+
+const val MIN_CANVAS_ZOOM = 0.2f
+const val MAX_CANVAS_ZOOM = 12f
+
+data class ViewportTransform(val translationX: Float, val translationY: Float, val scale: Float)
+
+fun CanvasViewport.transformFor(widthPx: Float, heightPx: Float): ViewportTransform =
+    ViewportTransform(translationX = -x * zoom * widthPx, translationY = -y * zoom * heightPx, scale = zoom)
+
+fun CanvasViewport.afterTransformGesture(
+    centroidXpx: Float,
+    centroidYpx: Float,
+    panXpx: Float,
+    panYpx: Float,
+    zoomDelta: Float,
+    widthPx: Float,
+    heightPx: Float,
+): CanvasViewport {
+    val newZoom = (zoom * zoomDelta).coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM)
+    val worldX = centroidXpx / (zoom * widthPx) + x
+    val worldY = centroidYpx / (zoom * heightPx) + y
+    return CanvasViewport(
+        x = worldX - (centroidXpx + panXpx) / (newZoom * widthPx),
+        y = worldY - (centroidYpx + panYpx) / (newZoom * heightPx),
+        zoom = newZoom,
+    )
+}

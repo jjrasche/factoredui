@@ -1,19 +1,30 @@
 package ai.factoredui.compose.renderer
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import ai.factoredui.compose.schema.ActionRef
@@ -24,10 +35,14 @@ import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.schema.CanvasEdge
 import ai.factoredui.compose.schema.CanvasProps
+import ai.factoredui.compose.schema.CanvasViewport
 import ai.factoredui.compose.schema.asCanvasProps
+import ai.factoredui.compose.schema.afterTransformGesture
 import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.resolveCanvasEdges
+import ai.factoredui.compose.schema.resolveCanvasViewport
 import ai.factoredui.compose.schema.resolveFieldNodeEntries
+import ai.factoredui.compose.schema.transformFor
 import kotlinx.coroutines.launch
 
 private const val NODE_CENTER_DP = 20f
@@ -40,14 +55,21 @@ fun RenderCanvas(node: SpecNode, context: RenderContext) {
     val edges = effectiveCanvasEdges(props, liveData).connectorPairs()
     val liveEntries = liveFieldEntries(props.nodesBinding, liveData)
     if (liveEntries != null) {
-        LiveFieldCanvas(node, context, props.onNodeArranged, props.onNodeTapped, liveEntries, edges)
+        val viewport = props.viewportBinding?.let { binding ->
+            resolveCanvasViewport(BindingResolver.resolveValue(SpecValue.StringValue(binding), liveData))
+        }
+        if (viewport == null) {
+            AbsoluteFieldCanvas(node, context, props.onNodeArranged, props.onNodeTapped, liveEntries, edges)
+        } else {
+            ZoomableFieldCanvas(node, context, props.onNodeTapped, props.onViewportChanged, liveEntries, edges, viewport)
+        }
     } else {
         StaticChildCanvas(node, context, liveData, edges)
     }
 }
 
 @Composable
-private fun LiveFieldCanvas(
+private fun AbsoluteFieldCanvas(
     node: SpecNode,
     context: RenderContext,
     onNodeArranged: String?,
@@ -69,6 +91,63 @@ private fun LiveFieldCanvas(
                     .arrangeDrag(scope, context, node.id, onNodeArranged, entry),
             ) {
                 RenderNode(labelNode(entry), context)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ZoomableFieldCanvas(
+    node: SpecNode,
+    context: RenderContext,
+    onNodeTapped: String?,
+    onViewportChanged: String?,
+    entries: List<FieldNodeEntry>,
+    edges: List<Pair<String, String>>,
+    hostViewport: CanvasViewport,
+) {
+    val scope = rememberCoroutineScope()
+    var viewport by remember { mutableStateOf(hostViewport) }
+    LaunchedEffect(hostViewport) { viewport = hostViewport }
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().nodeTag(node.id).clipToBounds()) {
+        val widthPx = constraints.maxWidth.toFloat()
+        val heightPx = constraints.maxHeight.toFloat()
+        val widthDp = maxWidth.value
+        val heightDp = maxHeight.value
+        val positions = entries.associate { it.id to Offset(it.x * widthDp, it.y * heightDp) }
+        Box(
+            modifier = Modifier.fillMaxSize().panZoomGestures(
+                widthPx, heightPx,
+                read = { viewport },
+                onPan = { viewport = it },
+                onSettled = {
+                    if (onViewportChanged != null) {
+                        scope.launch { context.dispatch(node.id, viewportAction(onViewportChanged, viewport)) }
+                    }
+                },
+            ),
+        )
+        val transform = viewport.transformFor(widthPx, heightPx)
+        Box(
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                translationX = transform.translationX
+                translationY = transform.translationY
+                scaleX = transform.scale
+                scaleY = transform.scale
+                transformOrigin = TransformOrigin(0f, 0f)
+            },
+        ) {
+            EdgeLayer(edges, positions)
+            for (entry in entries) {
+                Box(
+                    modifier = Modifier
+                        .offset((entry.x * widthDp).dp, (entry.y * heightDp).dp)
+                        .alpha(entry.glow)
+                        .nodeTag(entry.id)
+                        .nodeTapDispatch(scope, context, node.id, onNodeTapped, entry.id),
+                ) {
+                    RenderNode(labelNode(entry), context)
+                }
             }
         }
     }
@@ -160,6 +239,37 @@ private fun arrangedAction(action: String, nodeId: String, x: Float, y: Float) =
         "node_id" to SpecValue.StringValue(nodeId),
         "x" to SpecValue.NumberValue(x.toDouble()),
         "y" to SpecValue.NumberValue(y.toDouble()),
+    ),
+)
+
+private fun Modifier.panZoomGestures(
+    widthPx: Float,
+    heightPx: Float,
+    read: () -> CanvasViewport,
+    onPan: (CanvasViewport) -> Unit,
+    onSettled: () -> Unit,
+): Modifier = this
+    .pointerInput(widthPx, heightPx) {
+        detectTransformGestures { centroid, pan, zoom, _ ->
+            onPan(read().afterTransformGesture(centroid.x, centroid.y, pan.x, pan.y, zoom, widthPx, heightPx))
+        }
+    }
+    .pointerInput(Unit) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false)
+            do {
+                val event = awaitPointerEvent()
+            } while (event.changes.any { it.pressed })
+            onSettled()
+        }
+    }
+
+private fun viewportAction(action: String, viewport: CanvasViewport) = ActionRef(
+    action = action,
+    params = mapOf(
+        "x" to SpecValue.NumberValue(viewport.x.toDouble()),
+        "y" to SpecValue.NumberValue(viewport.y.toDouble()),
+        "zoom" to SpecValue.NumberValue(viewport.zoom.toDouble()),
     ),
 )
 
