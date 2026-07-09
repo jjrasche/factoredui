@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -34,34 +35,42 @@ import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.schema.CanvasEdge
+import ai.factoredui.compose.schema.CanvasPath
+import ai.factoredui.compose.schema.CanvasPathPoint
 import ai.factoredui.compose.schema.CanvasProps
 import ai.factoredui.compose.schema.CanvasViewport
 import ai.factoredui.compose.schema.asCanvasProps
 import ai.factoredui.compose.schema.afterTransformGesture
 import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.resolveCanvasEdges
+import ai.factoredui.compose.schema.resolveCanvasPaths
 import ai.factoredui.compose.schema.resolveCanvasViewport
+import ai.factoredui.compose.schema.trailSegmentAlpha
 import ai.factoredui.compose.schema.resolveFieldNodeEntries
 import ai.factoredui.compose.schema.transformFor
 import kotlinx.coroutines.launch
 
 private const val NODE_CENTER_DP = 20f
 private val EDGE_COLOR = Color(0xFF8A94AD)
+private const val TRAIL_STROKE_DP = 3f
+private const val TRAIL_HEAD_RADIUS_DP = 5f
+private val DEFAULT_TRAIL_COLOR = Color(0xFF8A94AD)
 
 @Composable
 fun RenderCanvas(node: SpecNode, context: RenderContext) {
     val liveData by context.dataFlow.collectAsState()
     val props = node.props.asCanvasProps()
     val edges = effectiveCanvasEdges(props, liveData).connectorPairs()
+    val paths = effectiveCanvasPaths(props, liveData)
     val liveEntries = liveFieldEntries(props.nodesBinding, liveData)
     if (liveEntries != null) {
         val viewport = props.viewportBinding?.let { binding ->
             resolveCanvasViewport(BindingResolver.resolveValue(SpecValue.StringValue(binding), liveData))
         }
         if (viewport == null) {
-            AbsoluteFieldCanvas(node, context, props.onNodeArranged, props.onNodeTapped, liveEntries, edges)
+            AbsoluteFieldCanvas(node, context, props.onNodeArranged, props.onNodeTapped, liveEntries, edges, paths)
         } else {
-            ZoomableFieldCanvas(node, context, props.onNodeTapped, props.onViewportChanged, liveEntries, edges, viewport)
+            ZoomableFieldCanvas(node, context, props.onNodeTapped, props.onViewportChanged, liveEntries, edges, paths, viewport)
         }
     } else {
         StaticChildCanvas(node, context, liveData, edges)
@@ -76,11 +85,13 @@ private fun AbsoluteFieldCanvas(
     onNodeTapped: String?,
     entries: List<FieldNodeEntry>,
     edges: List<Pair<String, String>>,
+    paths: List<CanvasPath>,
 ) {
     val scope = rememberCoroutineScope()
     val positions = entries.associate { it.id to Offset(it.x, it.y) }
     Box(modifier = Modifier.fillMaxSize().nodeTag(node.id)) {
         EdgeLayer(edges, positions)
+        PathLayer(paths) { point -> Offset(point.x, point.y) }
         for (entry in entries) {
             Box(
                 modifier = Modifier
@@ -104,6 +115,7 @@ private fun ZoomableFieldCanvas(
     onViewportChanged: String?,
     entries: List<FieldNodeEntry>,
     edges: List<Pair<String, String>>,
+    paths: List<CanvasPath>,
     hostViewport: CanvasViewport,
 ) {
     val scope = rememberCoroutineScope()
@@ -138,6 +150,7 @@ private fun ZoomableFieldCanvas(
             },
         ) {
             EdgeLayer(edges, positions)
+            PathLayer(paths) { point -> Offset(point.x * widthDp, point.y * heightDp) }
             for (entry in entries) {
                 Box(
                     modifier = Modifier
@@ -192,6 +205,44 @@ private fun StaticChildCanvas(
             }
         }
     }
+}
+
+@Composable
+private fun PathLayer(paths: List<CanvasPath>, toDp: (CanvasPathPoint) -> Offset) {
+    if (paths.isEmpty()) return
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        for (path in paths) {
+            drawFadingTrail(path.points.map(toDp), trailColor(path.color))
+        }
+    }
+}
+
+private fun DrawScope.drawFadingTrail(pointsDp: List<Offset>, color: Color) {
+    val pointsPx = pointsDp.map { Offset(it.x * density, it.y * density) }
+    val segmentCount = pointsPx.size - 1
+    for (index in 0 until segmentCount) {
+        drawLine(
+            color = color.copy(alpha = trailSegmentAlpha(index, segmentCount)),
+            start = pointsPx[index],
+            end = pointsPx[index + 1],
+            strokeWidth = TRAIL_STROKE_DP * density,
+        )
+    }
+    pointsPx.lastOrNull()?.let { head ->
+        drawCircle(color = color, radius = TRAIL_HEAD_RADIUS_DP * density, center = head)
+    }
+}
+
+private fun trailColor(hex: String): Color {
+    val body = hex.removePrefix("#")
+    if (body.length != 6) return DEFAULT_TRAIL_COLOR
+    return runCatching {
+        Color(
+            red = body.substring(0, 2).toInt(16) / 255f,
+            green = body.substring(2, 4).toInt(16) / 255f,
+            blue = body.substring(4, 6).toInt(16) / 255f,
+        )
+    }.getOrElse { DEFAULT_TRAIL_COLOR }
 }
 
 @Composable
@@ -289,6 +340,12 @@ private fun effectiveCanvasEdges(props: CanvasProps, liveData: Map<String, Any?>
     val binding = props.edgesBinding ?: return props.edges
     val resolved = BindingResolver.resolveValue(SpecValue.StringValue(binding), liveData)
     return resolveCanvasEdges(resolved)
+}
+
+private fun effectiveCanvasPaths(props: CanvasProps, liveData: Map<String, Any?>): List<CanvasPath> {
+    val binding = props.pathsBinding ?: return emptyList()
+    val resolved = BindingResolver.resolveValue(SpecValue.StringValue(binding), liveData)
+    return resolveCanvasPaths(resolved)
 }
 
 private fun List<ai.factoredui.compose.schema.CanvasEdge>.connectorPairs(): List<Pair<String, String>> =

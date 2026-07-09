@@ -335,6 +335,20 @@ fun Map<String, SpecValue>.asScene3dProps(): Scene3dProps = Scene3dProps(
 
 data class CanvasEdge(val from: String, val to: String)
 
+data class CanvasPathPoint(val x: Float, val y: Float)
+
+data class CanvasPath(val id: String, val color: String, val points: List<CanvasPathPoint>)
+
+const val DEFAULT_PATH_COLOR = "#8A94AD"
+
+const val TRAIL_MIN_ALPHA = 0.08f
+
+fun trailSegmentAlpha(segmentIndex: Int, segmentCount: Int): Float {
+    if (segmentCount <= 0) return 1f
+    val headFraction = (segmentIndex + 1).toFloat() / segmentCount
+    return TRAIL_MIN_ALPHA + (1f - TRAIL_MIN_ALPHA) * headFraction
+}
+
 data class CanvasViewport(val x: Float, val y: Float, val zoom: Float)
 
 val IDENTITY_VIEWPORT = CanvasViewport(0f, 0f, 1f)
@@ -343,6 +357,7 @@ data class CanvasProps(
     val edges: List<CanvasEdge> = emptyList(),
     val nodesBinding: String? = null,
     val edgesBinding: String? = null,
+    val pathsBinding: String? = null,
     val viewportBinding: String? = null,
     val onNodeArranged: String? = null,
     val onNodeTapped: String? = null,
@@ -358,6 +373,7 @@ fun Map<String, SpecValue>.asCanvasProps(): CanvasProps = CanvasProps(
     },
     nodesBinding = string("nodes"),
     edgesBinding = string("edges"),
+    pathsBinding = string("paths"),
     viewportBinding = string("viewport"),
     onNodeArranged = string("on_node_arranged"),
     onNodeTapped = string("on_node_tap"),
@@ -391,6 +407,25 @@ fun resolveCanvasEdges(resolvedEdges: Any?): List<CanvasEdge> =
         val from = fields["from"] as? String ?: return@mapNotNull null
         val to = fields["to"] as? String ?: return@mapNotNull null
         CanvasEdge(from, to)
+    }
+
+fun resolveCanvasPaths(resolvedPaths: Any?): List<CanvasPath> =
+    (resolvedPaths as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val id = fields["id"] as? String ?: return@mapNotNull null
+        CanvasPath(
+            id = id,
+            color = fields["color"] as? String ?: DEFAULT_PATH_COLOR,
+            points = resolveCanvasPathPoints(fields["points"]),
+        )
+    }
+
+private fun resolveCanvasPathPoints(resolvedPoints: Any?): List<CanvasPathPoint> =
+    (resolvedPoints as? List<*>).orEmpty().mapNotNull { point ->
+        val fields = point as? Map<*, *> ?: return@mapNotNull null
+        val x = (fields["x"] as? Number)?.toFloat() ?: return@mapNotNull null
+        val y = (fields["y"] as? Number)?.toFloat() ?: return@mapNotNull null
+        CanvasPathPoint(x, y)
     }
 
 fun resolveCanvasViewport(resolvedViewport: Any?): CanvasViewport {
