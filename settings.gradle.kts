@@ -15,8 +15,9 @@ dependencyResolutionManagement {
     }
 }
 
-include(":kotlin-compose-schema", ":kotlin-engine", ":kotlin-compose", ":kotlin-server", ":kotlin-compose-playground")
+include(":kotlin-compose-schema", ":kotlin-compose-capture", ":kotlin-engine", ":kotlin-compose", ":kotlin-server", ":kotlin-compose-playground")
 project(":kotlin-compose-schema").projectDir = file("packages/kotlin-compose-schema")
+project(":kotlin-compose-capture").projectDir = file("packages/kotlin-compose-capture")
 project(":kotlin-engine").projectDir = file("packages/kotlin-engine")
 project(":kotlin-compose").projectDir = file("packages/kotlin-compose")
 project(":kotlin-server").projectDir = file("packages/kotlin-server")

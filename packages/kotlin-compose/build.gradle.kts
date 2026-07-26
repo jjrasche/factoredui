@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = "0.16.0"
+version = "0.17.0"
 
 kotlin {
     androidTarget {
@@ -56,10 +56,10 @@ kotlin {
             dependencies {
                 // `api` so consumers of kotlin-compose transitively get the
                 // pure-Kotlin spec + capture wire types without having to
-                // declare kotlin-compose-schema separately. Server-side
-                // consumers depend on kotlin-compose-schema directly to
-                // avoid pulling Compose Multiplatform.
+                // declare them separately. Server-side consumers depend on
+                // kotlin-compose-schema directly to avoid pulling Compose.
                 api(project(":kotlin-compose-schema"))
+                api(project(":kotlin-compose-capture"))
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)
@@ -114,8 +114,18 @@ kotlin {
         val desktopMain by getting {
             dependsOn(nonWasmJsMain)
             dependencies {
-                implementation(compose.desktop.currentOs)
+                // `common`, NOT `currentOs`: currentOs resolves at OUR configuration time and
+                // hard-pins the publisher's OS variant into the published pom, so a Linux
+                // publish makes every Windows/macOS consumer hunt a skiko .dll that will never
+                // be there. The consumer contributes its own platform artifact.
+                implementation(compose.desktop.common)
                 implementation(libs.ktor.client.okhttp)
+            }
+        }
+
+        val desktopTest by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
             }
         }
 
@@ -157,11 +167,23 @@ extensions.configure<LibraryExtension>("android") {
 
 // Headless render entry for non-JVM callers (il-render's Python correctness gate):
 // ./gradlew :kotlin-compose:renderSpecCli --args="spec.json out.png [w] [h] [density]"
+// Local-only skiko natives. Kept out of every published configuration so the pom stays
+// OS-neutral (see the desktopMain comment), while local runs still get a real library.
+val desktopNativeRuntime: Configuration by configurations.creating
+
+dependencies {
+    desktopNativeRuntime(compose.desktop.currentOs)
+}
+
 tasks.register<JavaExec>("renderSpecCli") {
     group = "render"
     description = "Render an SDUI spec JSON file to a PNG headlessly (spec-in -> PNG-out)."
     val desktopCompilation = kotlin.jvm("desktop").compilations.getByName("main")
-    classpath(desktopCompilation.output.allOutputs, desktopCompilation.runtimeDependencyFiles)
+    classpath(
+        desktopCompilation.output.allOutputs,
+        desktopCompilation.runtimeDependencyFiles,
+        desktopNativeRuntime,
+    )
     mainClass.set("ai.factoredui.compose.render.RenderSpecCliKt")
 }
 

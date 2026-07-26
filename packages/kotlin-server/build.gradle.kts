@@ -22,9 +22,10 @@ java {
 
 dependencies {
     // Shared wire types (SpecNode schema + capture event/session types).
-    // kotlin-compose-schema is the pure-Kotlin half of the renderer split —
-    // no Compose Multiplatform on the server's classpath.
+    // Both are the pure-Kotlin half of the renderer split — no Compose
+    // Multiplatform on the server's classpath.
     implementation(project(":kotlin-compose-schema"))
+    implementation(project(":kotlin-compose-capture"))
 
     // Pure factor + experiment logic (factor types, k-means, bucketing,
     // targeting, governance, validation). The server adds only the Postgres

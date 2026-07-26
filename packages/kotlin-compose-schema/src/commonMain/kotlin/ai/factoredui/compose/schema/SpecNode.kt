@@ -98,7 +98,8 @@ enum class SpecNodeType {
 data class SpecNode(
     val id: String,
     val type: SpecNodeType,
-    val props: Map<String, @Serializable(with = SpecValueSerializer::class) SpecValue> = emptyMap(),
+    @Serializable(with = SpecPropsSerializer::class)
+    val props: Map<String, SpecValue> = emptyMap(),
     val children: List<SpecNode> = emptyList(),
     val visible: String? = null,
     val action: ActionRef? = null,
@@ -111,7 +112,8 @@ data class SpecNode(
 @Serializable
 data class ActionRef(
     val action: String,
-    val params: Map<String, @Serializable(with = SpecValueSerializer::class) SpecValue> = emptyMap(),
+    @Serializable(with = ActionParamsSerializer::class)
+    val params: Map<String, SpecValue> = emptyMap(),
 )
 
 /**
@@ -138,8 +140,17 @@ fun SpecValue.bindingPath(): String? =
     if (isBindingRef()) (this as SpecValue.StringValue).value.removeSurrounding("{", "}") else null
 
 /**
- * Custom serializer that reads/writes SpecValue as bare JSON primitives, arrays, or objects —
- * matching the TypeScript spec format exactly. No type discriminator wrapper.
+ * Prop keys declared to carry a nested [SpecNode]. Nodehood is declared, never inferred:
+ * the prior "object with `id` and `type` is a node" rule made a stored spec's meaning
+ * depend on a guess, and ordinary data carrying both keys either threw or silently
+ * decoded as a node. A node lives at a key listed here or it is data.
+ */
+val NODE_BEARING_PROP_KEYS: Set<String> = setOf("itemTemplate")
+
+/**
+ * Reads/writes SpecValue as bare JSON primitives, arrays, or objects — matching the
+ * TypeScript spec format exactly. No type discriminator wrapper. Never yields a
+ * [SpecValue.NodeValue]; only [SpecPropsSerializer] can see a key and decode a node.
  */
 object SpecValueSerializer : KSerializer<SpecValue> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("SpecValue")
@@ -156,7 +167,7 @@ object SpecValueSerializer : KSerializer<SpecValue> {
         return decodeFromJsonElement(jsonDecoder.decodeJsonElement())
     }
 
-    private fun encodeToJsonElement(value: SpecValue): JsonElement = when (value) {
+    internal fun encodeToJsonElement(value: SpecValue): JsonElement = when (value) {
         is SpecValue.StringValue -> JsonPrimitive(value.value)
         is SpecValue.NumberValue -> JsonPrimitive(value.value)
         is SpecValue.BooleanValue -> JsonPrimitive(value.value)
@@ -166,7 +177,7 @@ object SpecValueSerializer : KSerializer<SpecValue> {
         is SpecValue.ObjectValue -> JsonObject(value.value.mapValues { encodeToJsonElement(it.value) })
     }
 
-    private fun decodeFromJsonElement(element: JsonElement): SpecValue = when (element) {
+    internal fun decodeFromJsonElement(element: JsonElement): SpecValue = when (element) {
         is JsonPrimitive -> when {
             element.isString -> SpecValue.StringValue(element.content)
             element.content == "null" -> SpecValue.NullValue
@@ -176,17 +187,51 @@ object SpecValueSerializer : KSerializer<SpecValue> {
         }
         is kotlinx.serialization.json.JsonArray ->
             SpecValue.ArrayValue(element.map { decodeFromJsonElement(it) })
-        is JsonObject -> {
-            // Check if this looks like a SpecNode (has "id" and "type" fields)
-            if (element.containsKey("id") && element.containsKey("type")) {
-                SpecValue.NodeValue(kotlinx.serialization.json.Json.decodeFromJsonElement(SpecNode.serializer(), element))
-            } else {
-                SpecValue.ObjectValue(element.mapValues { decodeFromJsonElement(it.value) })
-            }
-        }
-        else -> SpecValue.NullValue
+        is JsonObject -> SpecValue.ObjectValue(element.mapValues { decodeFromJsonElement(it.value) })
     }
 }
+
+/**
+ * Serializes a `Map<String, SpecValue>` where the KEY decides whether an object value is a
+ * nested [SpecNode] — a value serializer alone cannot see its key, so it can only guess.
+ */
+sealed class SpecValueMapSerializer(
+    private val nodeBearingKeys: Set<String>,
+) : KSerializer<Map<String, SpecValue>> {
+
+    override val descriptor: SerialDescriptor =
+        MapSerializer(String.serializer(), SpecValueSerializer).descriptor
+
+    override fun serialize(encoder: Encoder, value: Map<String, SpecValue>) {
+        val jsonEncoder = encoder as? kotlinx.serialization.json.JsonEncoder
+            ?: error("SpecValueMapSerializer requires JSON encoding")
+        jsonEncoder.encodeJsonElement(
+            JsonObject(value.mapValues { SpecValueSerializer.encodeToJsonElement(it.value) })
+        )
+    }
+
+    override fun deserialize(decoder: Decoder): Map<String, SpecValue> {
+        val jsonDecoder = decoder as? kotlinx.serialization.json.JsonDecoder
+            ?: error("SpecValueMapSerializer requires JSON decoding")
+        val element = jsonDecoder.decodeJsonElement()
+        val obj = element as? JsonObject
+            ?: error("Expected a JSON object for a SpecValue map, got ${element::class.simpleName}")
+        return obj.mapValues { (key, value) ->
+            // Caller's Json, so a nested node never parses under stricter rules than its parent.
+            if (key in nodeBearingKeys && value is JsonObject) {
+                SpecValue.NodeValue(jsonDecoder.json.decodeFromJsonElement(SpecNode.serializer(), value))
+            } else {
+                SpecValueSerializer.decodeFromJsonElement(value)
+            }
+        }
+    }
+}
+
+/** Props map: object values at [NODE_BEARING_PROP_KEYS] decode as nested nodes. */
+object SpecPropsSerializer : SpecValueMapSerializer(NODE_BEARING_PROP_KEYS)
+
+/** Action params: pure data, never a node, regardless of key. */
+object ActionParamsSerializer : SpecValueMapSerializer(emptySet())
 
 /** Renderer version constant — must match RENDERER_VERSION in spec-types.ts. */
 const val RENDERER_VERSION = 1

@@ -31,7 +31,7 @@ kotlin {
         iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
-            baseName = "FactoredUISchema"
+            baseName = "FactoredUICapture"
             isStatic = true
         }
     }
@@ -61,7 +61,7 @@ kotlin {
 }
 
 extensions.configure<LibraryExtension>("android") {
-    namespace = "ai.factoredui.compose.schema"
+    namespace = "ai.factoredui.compose.capture"
     compileSdk = libs.versions.androidCompileSdk.get().toInt()
 
     defaultConfig {
@@ -77,12 +77,11 @@ extensions.configure<LibraryExtension>("android") {
 publishing {
     publications.withType<MavenPublication>().configureEach {
         pom {
-            name.set("FactoredUI Schema")
+            name.set("FactoredUI Capture")
             description.set(
-                "Pure-Kotlin SDUI spec types and capture wire-format types for FactoredUI. " +
-                    "No Compose Multiplatform dependency. Depend on this from server-side engines " +
-                    "that need to emit/validate specs or persist capture events without dragging " +
-                    "Compose UI runtime."
+                "Capture/telemetry wire types for FactoredUI. Split out of kotlin-compose-schema " +
+                    "so a consumer that wants only the SDUI spec grammar does not inherit a " +
+                    "capture concept by transitive dependency."
             )
             url.set("https://github.com/jjrasche/factoredui")
             licenses {
