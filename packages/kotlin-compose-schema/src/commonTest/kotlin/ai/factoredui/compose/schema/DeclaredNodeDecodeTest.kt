@@ -3,8 +3,10 @@ package ai.factoredui.compose.schema
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 /** Every case here threw or misparsed under the old "has id + type means node" inference. */
 class DeclaredNodeDecodeTest {
@@ -106,6 +108,35 @@ class DeclaredNodeDecodeTest {
 
         val action = assertNotNull(node.action)
         assertIs<SpecValue.ObjectValue>(action.params["itemTemplate"])
+    }
+
+    @Test
+    fun encodingANodeAtAnUndeclaredKeyFailsLoudly() {
+        val node = SpecNode(
+            id = "n",
+            type = SpecNodeType.LIST,
+            props = mapOf("notDeclared" to SpecValue.NodeValue(SpecNode("tpl", SpecNodeType.ROW))),
+        )
+
+        val thrown = assertFailsWith<IllegalStateException> {
+            json.encodeToString(SpecNode.serializer(), node)
+        }
+        assertTrue(
+            thrown.message!!.contains("notDeclared"),
+            "the error must name the offending key, got: ${thrown.message}",
+        )
+    }
+
+    @Test
+    fun encodingANodeIntoActionParamsFailsLoudly() {
+        val action = ActionRef(
+            action = "select",
+            params = mapOf("itemTemplate" to SpecValue.NodeValue(SpecNode("tpl", SpecNodeType.ROW))),
+        )
+
+        assertFailsWith<IllegalStateException> {
+            json.encodeToString(ActionRef.serializer(), action)
+        }
     }
 
     @Test

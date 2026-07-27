@@ -67,6 +67,19 @@ jobs:
           :kotlin-compose:publishAllPublicationsToLocalBuildRepoRepository
           :kotlin-server:publishAllPublicationsToLocalBuildRepoRepository
 
+      # Every published module must be staged before deploy. A new module is invisible to
+      # the explicit list above, and the miss is only visible to consumers: kotlin-compose's
+      # pom would reference a coordinate that 404s, on an immutable version.
+      - name: Verify every module was staged
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#kotlin-compose-v}"
+          for m in kotlin-compose kotlin-compose-schema kotlin-compose-capture kotlin-compose-desktop kotlin-compose-android; do
+            POM="build/maven-repo/ai/factoredui/$m/$VERSION/$m-$VERSION.pom"
+            test -f "$POM" || { echo "::error::$m $VERSION was not staged ($POM missing)"; exit 1; }
+            echo "staged: $m $VERSION"
+          done
+
       - name: Deploy Maven repo to gh-pages
         uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
@@ -76,3 +89,20 @@ jobs:
           destination_dir: .
           keep_files: true
           commit_message: "publish factoredui artifacts from ${{ github.ref_name }}"
+
+      # Deploying is not publishing. Until a consumer can fetch the coordinate over HTTPS
+      # the release has not happened, and a green deploy step does not prove that.
+      - name: Smoke-check the published coordinates
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#kotlin-compose-v}"
+          BASE="https://jjrasche.github.io/factoredui/ai/factoredui"
+          for m in kotlin-compose kotlin-compose-schema kotlin-compose-capture kotlin-compose-desktop kotlin-compose-android; do
+            URL="$BASE/$m/$VERSION/$m-$VERSION.pom"
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "$URL" || echo 000)
+              [ "$CODE" = "200" ] && { echo "ok: $m $VERSION"; break; }
+              [ "$attempt" = "10" ] && { echo "::error::$m $VERSION not fetchable after 10 tries (last $CODE) $URL"; exit 1; }
+              sleep 20
+            done
+          done

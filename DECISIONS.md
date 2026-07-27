@@ -376,13 +376,13 @@ lands, and changing the rule later changes what old rows mean.
 The failure was sharper than a misparse. That decode ran on a *default*
 strict `Json`, so an ordinary props object carrying `id` + `type` plus any
 third key **threw**, as did any `type` that wasn't a `SpecNodeType` name.
-`{"id":"u1","type":"admin"}` — ordinary data — was a crash. The silent case
+`{"id":"u1","type":"admin"}`, ordinary data, was a crash. The silent case
 was narrower: keys exactly `id` + `type` with `type` colliding with a
 primitive name.
 
 **Decision:** nodehood is declared by prop key via `NODE_BEARING_PROP_KEYS`,
 consulted by `SpecPropsSerializer`. `SpecValueSerializer` can no longer
-produce a `NodeValue` at all — a value serializer cannot see its own key,
+produce a `NodeValue` at all, because a value serializer cannot see its own key
 so it can only guess. Nested nodes decode with the *caller's* `Json`, so a
 nested node never parses under stricter rules than the spec containing it.
 
@@ -390,8 +390,8 @@ nested node never parses under stricter rules than the spec containing it.
 node-bearing prop in the schema, so the declared rule requires zero
 migration and no producer changes. A marker key would have invalidated
 every existing spec. ap-genesis ratified this: genesis never decodes a spec
-in a build that doesn't link the library — an unknown row shape is deferred
-wholesale, never parsed — so the case a visible marker would protect
+in a build that doesn't link the library. An unknown row shape is deferred
+wholesale, never parsed, so the case a visible marker would protect
 against cannot arise.
 
 `RENDERER_VERSION` stays in the schema module, against a request to move it
@@ -442,7 +442,7 @@ ap-genesis built the first real Android consumer and found `kotlin-compose`
 **undexable on minSdk < 34**. ktor 3.2.0 ships
 `io/ktor/client/plugins/Messages.class` carrying a nested class whose
 `SimpleName` contains literal spaces; D8 permits that only at DEX version
-040. Not a crash — the APK could not be assembled.
+040. Not a crash: the APK could not be assembled.
 
 Verified rather than assumed: pulled `ktor-client-core-jvm` 3.2.0 through
 3.5.1 and grepped the class bytes. 3.2.0 is the only affected release;
@@ -450,7 +450,7 @@ JetBrains fixed it in the next patch (KTOR-8583 / KTOR-8617). We were
 pinned exactly on the bad one. 0.17.1 moves to 3.2.4.
 
 **Why this belongs here:** a consumer rendering `column` / `text` /
-`textinput` / `button` — no images, no live lists, no capture — still
+`textinput` / `button` (no images, no live lists, no capture) still
 inherited an HTTP client stack and, through it, an unbuildable APK. That is
 precisely the cost the HTTP-zero decision predicts, arriving from a
 direction nobody anticipated: not a runtime violation, a *build* one.
@@ -461,8 +461,8 @@ worth recording: ktor is imported **directly** in `capture/HttpEventTransport`,
 coil, so the exclude silently disarms live lists, capture and scene3d. The
 loud build failure becomes a silent `NoClassDefFoundError` months later.
 
-It also means the frequently-proposed fix — "split images into their own
-module" — **cannot work**. Images are not the only door ktor comes through.
+It also means the frequently-proposed fix, "split images into their own
+module", **cannot work**. Images are not the only door ktor comes through.
 The acceptance test in the HTTP-zero decision is still the right one and is
 still binary: the module drops `ktor.client.*` entirely. Dependency
 inversion (core declares the seams; ktor/coil implementations become opt-in)
@@ -471,7 +471,7 @@ probing does not port to wasm/native, which we also ship.
 
 **Sequencing:** after agent-platform's Compose 1.7.3 → 1.10.3 + Kotlin bump
 lands. Stacking a second breaking change on an unfinished one stalls both,
-and no consumer is blocked in the meantime — 0.17.1 unbreaks the build
+and no consumer is blocked in the meantime. 0.17.1 unbreaks the build
 without any consumer-side workaround.
 
 ## Decision: the Android unit-test variant does not host Compose UI tests
@@ -481,7 +481,7 @@ without any consumer-side workaround.
 `./gradlew build` was red on every branch, and had been long enough that the
 redness was treated as ambient. Cause: the Compose UI tests live in
 `commonTest`, and Android's *unit*-test variant is a bare JVM with no
-Android runtime, so `runComposeUiTest` NPEs — 21 failures that say nothing
+Android runtime, so `runComposeUiTest` NPEs. 21 failures that say nothing
 about the code. Confirmed pre-existing by running a clean worktree at an
 older commit.
 
@@ -493,7 +493,7 @@ a filter if `androidUnitTest` ever gains its own tests.
 **The worse half, found while fixing it:** CI's renderer step carried a
 `--tests` filter added when `RenderControlsTest` had NPEs under
 `runComposeUiTest`. Those were fixed; the filter outlived them and was
-silently gating CI to **7 of 15 test classes** — every Compose UI render
+silently gating CI to **7 of 15 test classes**. Every Compose UI render
 test went unrun on every release. Widened to the whole suite after verifying
 118 tests / 35 classes / 0 failures under `--rerun-tasks`.
 

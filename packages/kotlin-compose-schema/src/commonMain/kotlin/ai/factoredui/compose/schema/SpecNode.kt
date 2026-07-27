@@ -205,9 +205,22 @@ sealed class SpecValueMapSerializer(
     override fun serialize(encoder: Encoder, value: Map<String, SpecValue>) {
         val jsonEncoder = encoder as? kotlinx.serialization.json.JsonEncoder
             ?: error("SpecValueMapSerializer requires JSON encoding")
+        requireNodesAtDeclaredKeys(value)
         jsonEncoder.encodeJsonElement(
             JsonObject(value.mapValues { SpecValueSerializer.encodeToJsonElement(it.value) })
         )
+    }
+
+    private fun requireNodesAtDeclaredKeys(value: Map<String, SpecValue>) {
+        val undeclared = value.filterValues { it is SpecValue.NodeValue }.keys - nodeBearingKeys
+        if (undeclared.isNotEmpty()) {
+            error(
+                "Cannot encode a nested SpecNode at prop(s) $undeclared: not declared " +
+                    "node-bearing keys. Declared keys are $nodeBearingKeys. Either add to " +
+                    "NODE_BEARING_PROP_KEYS, or store the value as data rather than a node. " +
+                    "Encoding it here would decode back as an ObjectValue."
+            )
+        }
     }
 
     override fun deserialize(decoder: Decoder): Map<String, SpecValue> {

@@ -1,0 +1,7 @@
+kotlin version: 2.3.21
+error message: org.jetbrains.kotlin.backend.common.CompilationException: Back-end: Please report this problem https://kotl.in/issue
+wasm/builtins/kotlin/Primitives.kt:-1:-1
+Details: Internal error in file lowering: java.lang.OutOfMemoryError: Java heap space
+Caused by: java.lang.OutOfMemoryError: Java heap space
+
+

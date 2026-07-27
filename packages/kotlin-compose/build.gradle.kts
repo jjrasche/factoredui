@@ -174,6 +174,27 @@ extensions.configure<LibraryExtension>("android") {
 tasks.matching { it.name == "testDebugUnitTest" || it.name == "testReleaseUnitTest" }
     .configureEach { enabled = false }
 
+// "All tests passed" is a number, not a proof, unless you also check how many ran. A stale
+// --tests filter once gated CI to 7 of 15 classes and stayed green for months. This floor
+// is what would have caught it: it trips only when the suite SHRINKS.
+val minimumDesktopTests = 100
+
+tasks.named<Test>("desktopTest") {
+    doLast {
+        val executed = reports.junitXml.outputLocation.get().asFile
+            .listFiles { file -> file.name.endsWith(".xml") }
+            .orEmpty()
+            .sumOf { xml ->
+                Regex("""tests="(\d+)"""").find(xml.readText())?.groupValues?.get(1)?.toInt() ?: 0
+            }
+        check(executed >= minimumDesktopTests) {
+            "desktopTest ran only $executed tests, below the floor of $minimumDesktopTests. " +
+                "Either the suite shrank or a --tests filter is narrowing it. Investigate " +
+                "before lowering this number."
+        }
+    }
+}
+
 // Headless render entry for non-JVM callers (il-render's Python correctness gate):
 // ./gradlew :kotlin-compose:renderSpecCli --args="spec.json out.png [w] [h] [density]"
 // Local-only skiko natives. Kept out of every published configuration so the pom stays
