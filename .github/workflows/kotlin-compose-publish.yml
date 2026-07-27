@@ -38,6 +38,9 @@ jobs:
       - name: Run schema tests (all targets via :build)
         run: ./gradlew :kotlin-compose-schema:build
 
+      - name: Build capture (all targets via :build)
+        run: ./gradlew :kotlin-compose-capture:build
+
       - name: Build engine (all targets via :build)
         run: ./gradlew :kotlin-engine:build
 
@@ -61,6 +64,7 @@ jobs:
         run: >
           ./gradlew
           :kotlin-compose-schema:publishAllPublicationsToLocalBuildRepoRepository
+          :kotlin-compose-capture:publishAllPublicationsToLocalBuildRepoRepository
           :kotlin-engine:publishAllPublicationsToLocalBuildRepoRepository
           :kotlin-compose:publishAllPublicationsToLocalBuildRepoRepository
           :kotlin-server:publishAllPublicationsToLocalBuildRepoRepository
