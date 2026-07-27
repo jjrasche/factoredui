@@ -9,7 +9,10 @@ androidCompileSdk = "35"
 androidMinSdk = "24"
 androidxActivityCompose = "1.9.3"
 coil = "3.2.0"
-ktor = "3.2.0"
+# 3.2.0 ships io/ktor/client/plugins/Messages.class with a space-containing SimpleName
+# ('use streaming syntax'), which D8 rejects below DEX 040 — undexable on minSdk < 34.
+# Verified by inspecting the class bytes: 3.2.0 carries it, 3.2.2+ does not. KTOR-8583/8617.
+ktor = "3.2.4"
 postgresql = "42.7.4"
 hikariCp = "5.1.0"
 testcontainers = "1.20.4"
