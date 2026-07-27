@@ -67,13 +67,34 @@ jobs:
           :kotlin-compose:publishAllPublicationsToLocalBuildRepoRepository
           :kotlin-server:publishAllPublicationsToLocalBuildRepoRepository
 
+      # Gradle is the authority on the version, not the ref: workflow_dispatch runs carry a
+      # BRANCH name in GITHUB_REF_NAME, so deriving the version from the ref only works for
+      # tag pushes. On a tag push we additionally assert the two agree, because tagging
+      # v0.17.2 while the build says 0.17.1 would publish 0.17.1 under the wrong name, and
+      # published versions are immutable.
+      - name: Resolve the version being published
+        id: ver
+        run: |
+          set -euo pipefail
+          VERSION=$(./gradlew -q :kotlin-compose:properties | awk -F': ' '/^version: /{print $2}')
+          test -n "$VERSION" || { echo "::error::could not resolve the project version"; exit 1; }
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG_VERSION="${GITHUB_REF_NAME#kotlin-compose-v}"
+            test "$TAG_VERSION" = "$VERSION" || {
+              echo "::error::tag $GITHUB_REF_NAME implies $TAG_VERSION but the build publishes $VERSION"
+              exit 1
+            }
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "publishing $VERSION"
+
       # Every published module must be staged before deploy. A new module is invisible to
       # the explicit list above, and the miss is only visible to consumers: kotlin-compose's
       # pom would reference a coordinate that 404s, on an immutable version.
       - name: Verify every module was staged
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#kotlin-compose-v}"
+          VERSION="${{ steps.ver.outputs.version }}"
           for m in kotlin-compose kotlin-compose-schema kotlin-compose-capture kotlin-compose-desktop kotlin-compose-android; do
             POM="build/maven-repo/ai/factoredui/$m/$VERSION/$m-$VERSION.pom"
             test -f "$POM" || { echo "::error::$m $VERSION was not staged ($POM missing)"; exit 1; }
@@ -95,7 +116,7 @@ jobs:
       - name: Smoke-check the published coordinates
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#kotlin-compose-v}"
+          VERSION="${{ steps.ver.outputs.version }}"
           BASE="https://jjrasche.github.io/factoredui/ai/factoredui"
           for m in kotlin-compose kotlin-compose-schema kotlin-compose-capture kotlin-compose-desktop kotlin-compose-android; do
             URL="$BASE/$m/$VERSION/$m-$VERSION.pom"
