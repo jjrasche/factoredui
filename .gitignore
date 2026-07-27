@@ -14,3 +14,6 @@ local.properties
 
 # Untracked screenshots from unrelated work-ontology project
 work-ontology-*.png
+
+# Kotlin compiler error dumps (build noise)
+.kotlin/
