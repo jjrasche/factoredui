@@ -25,6 +25,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import javax.imageio.ImageIO
 import kotlin.math.PI
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -137,12 +138,19 @@ class Scene3dDesktopRenderTest {
         renderSkeletonToPng(world, bodyHeight = 1.65f, fileName = "scene3d_skeleton_standing.png")
     }
 
+    // Reads frames from an out-of-repo scratch dir (see loadScratchFrames) and asserts
+    // nothing: it writes a PNG strip for a human to look at. It passed only on the one
+    // machine holding that dir, and went unnoticed because CI's --tests filter never ran
+    // it. Left in place for whoever owns scene3d rather than deleted; re-enable by moving
+    // the frame fixtures into the repo and asserting something about the output.
+    @Ignore("depends on an out-of-repo scratch dir and asserts nothing; see loadScratchFrames")
     @Test
     fun rendersWalkStripToPng() {
         renderWalkStrip("walk_kin.json", "scene3d_walk_kin_strip.png", trackLateral = false)
         renderWalkStrip("walk_tracked.json", "scene3d_walk_tracked_strip.png", trackLateral = false)
     }
 
+    @Ignore("depends on an out-of-repo scratch dir and asserts nothing; see loadScratchFrames")
     @Test
     fun rendersPokeStripToPng() {
         renderWalkStrip("walk_poke.json", "scene3d_walk_poke_strip.png", fromFrac = 0.35f, trackLateral = false)

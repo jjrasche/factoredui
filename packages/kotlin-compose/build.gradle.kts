@@ -181,11 +181,16 @@ val minimumDesktopTests = 100
 
 tasks.named<Test>("desktopTest") {
     doLast {
+        // Counts tests that actually RAN. `tests` includes skipped ones, so counting it
+        // alone would let @Ignore quietly erode the suite past this floor.
         val executed = reports.junitXml.outputLocation.get().asFile
             .listFiles { file -> file.name.endsWith(".xml") }
             .orEmpty()
             .sumOf { xml ->
-                Regex("""tests="(\d+)"""").find(xml.readText())?.groupValues?.get(1)?.toInt() ?: 0
+                val text = xml.readText()
+                fun attr(name: String) =
+                    Regex("""$name="(\d+)"""").find(text)?.groupValues?.get(1)?.toInt() ?: 0
+                attr("tests") - attr("skipped")
             }
         check(executed >= minimumDesktopTests) {
             "desktopTest ran only $executed tests, below the floor of $minimumDesktopTests. " +
