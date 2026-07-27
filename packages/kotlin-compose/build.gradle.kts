@@ -165,6 +165,15 @@ extensions.configure<LibraryExtension>("android") {
     }
 }
 
+// The Compose UI tests live in commonTest and need a real Compose runtime. Android's
+// UNIT-test variant is a bare JVM with no Android runtime, so runComposeUiTest NPEs
+// there — 21 failures that say nothing about the code and made `./gradlew build` red
+// on every branch. The same tests run for real on desktopTest (118 green). There are
+// no android-specific test sources, so disabling costs zero coverage; re-enable with a
+// filter if androidUnitTest ever gains its own tests.
+tasks.matching { it.name == "testDebugUnitTest" || it.name == "testReleaseUnitTest" }
+    .configureEach { enabled = false }
+
 // Headless render entry for non-JVM callers (il-render's Python correctness gate):
 // ./gradlew :kotlin-compose:renderSpecCli --args="spec.json out.png [w] [h] [density]"
 // Local-only skiko natives. Kept out of every published configuration so the pom stays

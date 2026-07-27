@@ -44,15 +44,13 @@ jobs:
       - name: Build engine (all targets via :build)
         run: ./gradlew :kotlin-engine:build
 
-      # Excludes RenderControlsTest pending #1 (6 pre-existing NPEs under
-      # runComposeUiTest, regressed sometime after kotlin-compose-v0.8.0).
-      # Remove the --tests filter once #1 lands.
+      # Runs the WHOLE suite. The old --tests filter was added when RenderControlsTest
+      # had NPEs under runComposeUiTest; those are long fixed, but the filter outlived
+      # them and was silently gating CI to 7 of 15 test classes — every Compose UI
+      # render test went unrun. Verified 118 tests / 35 classes / 0 failures under
+      # --rerun-tasks before widening. Do not narrow this again without a linked issue.
       - name: Run renderer desktop tests
-        run: >
-          ./gradlew :kotlin-compose:desktopTest
-          --tests "ai.factoredui.compose.capture.*"
-          --tests "ai.factoredui.compose.renderer.RenderContextTest"
-          --tests "ai.factoredui.compose.schema.ObservabilityTest"
+        run: ./gradlew :kotlin-compose:desktopTest
 
       - name: Build renderer (all targets)
         run: ./gradlew :kotlin-compose:assemble

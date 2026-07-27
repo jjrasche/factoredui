@@ -242,11 +242,66 @@ In your consumer `app/build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("ai.factoredui:kotlin-compose-android:0.8.0")
+    implementation("ai.factoredui:kotlin-compose-android:0.17.1")
 }
 ```
 
 That's the whole integration — no PAT, no credentials, no `.m2` tweaks.
+
+## Consumer contract — read before pinning a version
+
+Four things a consumer owns that the artifact cannot decide for you. Each one cost a real
+consumer real hours before it was written down here.
+
+### 1. Your Compose and Kotlin versions must match ours, and they move together
+
+The renderer is built against **Compose Multiplatform 1.10.3 / Kotlin 2.3.21**. A consumer on
+an older Compose gets a *latent* ABI mismatch: it links fine and dies at runtime with
+`UnsatisfiedLinkError` the first time our code calls a symbol your Compose doesn't have.
+
+The trap is that it stays invisible until some release of ours happens to touch a newer symbol
+— 0.16.0's `graphicsLayer` was the one that surfaced a mismatch present since before 0.15.5.
+A green build proves nothing here.
+
+`compose-compiler` is Kotlin-versioned, so **Compose and Kotlin bump together** — moving one
+without the other trades this error for a compiler-plugin error.
+
+### 2. Desktop consumers supply their own skiko native
+
+`kotlin-compose-desktop`'s pom depends on OS-neutral `desktop-jvm` on purpose. Declare the
+platform artifact yourself:
+
+```kotlin
+implementation(compose.desktop.currentOs)
+```
+
+If you cross-deploy (building on x64 for an arm64 box), name the variant explicitly instead of
+using `currentOs` — that's exactly the case this design preserves.
+
+Publishing with `compose.desktop.currentOs` in the library would resolve at *our* build time
+and stamp the publisher's OS into the pom, so a Linux CI publish sends every Windows and macOS
+consumer hunting a `.dll` that will never exist. If skiko is missing after you upgrade, you
+need this line — it is not a regression.
+
+### 3. Android: minSdk floor and the transitive HTTP stack
+
+Use **0.17.1 or later** on Android. Earlier releases pin ktor 3.2.0, which ships a class whose
+`SimpleName` contains literal spaces; D8 rejects that below DEX version 040, making the module
+**undexable on minSdk < 34** — the APK cannot be assembled at all.
+
+Do **not** work around it with `exclude(group = "io.ktor")`. The renderer imports ktor directly
+for live `data_source` lists, capture transport, and scene3d — not only transitively through
+coil for images. Excluding the group trades a loud build failure for a silent runtime
+`NoClassDefFoundError` in three features you may not have exercised yet. Upgrade instead.
+
+### 4. A 404 right after a tag is propagation, not failure
+
+Pushing a `kotlin-compose-v*` tag starts a CI run that takes several minutes, and the artifacts
+only exist once it commits to `gh-pages`. A coordinate that 404s immediately after tagging is
+almost always mid-flight. Check the workflow run before concluding a release failed.
+
+Published versions are **immutable** — a version is never re-published with different content.
+If you resolved a coordinate once, it means the same thing forever.
 
 **One-time repo setup**: after the first CI run creates the `gh-pages` branch,
 enable GitHub Pages in the repo settings (Settings → Pages → Source: "Deploy
