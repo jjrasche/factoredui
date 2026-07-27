@@ -1,0 +1,415 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "ai.factoredui",
+    "module": "kotlin-compose-schema",
+    "version": "0.17.1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "metadataApiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.platform.type": "common"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-schema-metadata-0.17.1.jar",
+          "url": "kotlin-compose-schema-0.17.1.jar",
+          "size": 10534,
+          "sha512": "41a107d599bd9553d5f9504ca93225b4292331ac05f348fbeeae7e37318f10606c0363e241da8ee2e7ce5fbb0be9386d8c6eec5421e50783bf722131fb9e34fa",
+          "sha256": "8fc988a2e1a1a7c43b67d41a66f404756b8c3227ae1510b35c60991515d716a6",
+          "sha1": "0c635b4457ccb6d845706d8d9e7c14012be0f209",
+          "md5": "fe7fcf2370e5a2dda181a7b90313e640"
+        }
+      ]
+    },
+    {
+      "name": "metadataSourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.platform.type": "common"
+      },
+      "files": [
+        {
+          "name": "kotlin-compose-schema-kotlin-0.17.1-sources.jar",
+          "url": "kotlin-compose-schema-0.17.1-sources.jar",
+          "size": 11046,
+          "sha512": "cae4c08ab3f9a8344d54c7e0e4fa9269ea8da377662bc4064d80a2cd79f09fee86747b36290041c447b7ad05a090b3b7bcfbbd8da350247fd6ee8dcdd79d58e9",
+          "sha256": "ed1a6fb4bff7ef3d57fa32ea9d4747fa020577883dfc09c1f4431e7d0ca4534d",
+          "sha1": "aef338a946cb47d02cec2a29e4662c43516a06c2",
+          "md5": "96bcd168f6e86923ea03d2264bc834ae"
+        }
+      ]
+    },
+    {
+      "name": "releaseApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-android/0.17.1/kotlin-compose-schema-android-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-android",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "releaseRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-android/0.17.1/kotlin-compose-schema-android-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-android",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "releaseSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-android/0.17.1/kotlin-compose-schema-android-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-android",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "iosArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-iosarm64/0.17.1/kotlin-compose-schema-iosarm64-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-iosarm64",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "iosArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-iosarm64/0.17.1/kotlin-compose-schema-iosarm64-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-iosarm64",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "iosArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-iosarm64/0.17.1/kotlin-compose-schema-iosarm64-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-iosarm64",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-iossimulatorarm64/0.17.1/kotlin-compose-schema-iossimulatorarm64-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-iossimulatorarm64",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-iossimulatorarm64/0.17.1/kotlin-compose-schema-iossimulatorarm64-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-iossimulatorarm64",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-iossimulatorarm64/0.17.1/kotlin-compose-schema-iossimulatorarm64-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-iossimulatorarm64",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "iosX64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-iosx64/0.17.1/kotlin-compose-schema-iosx64-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-iosx64",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "iosX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-iosx64/0.17.1/kotlin-compose-schema-iosx64-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-iosx64",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "iosX64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-iosx64/0.17.1/kotlin-compose-schema-iosx64-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-iosx64",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "jvmApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-jvm/0.17.1/kotlin-compose-schema-jvm-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-jvm",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "jvmRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-jvm/0.17.1/kotlin-compose-schema-jvm-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-jvm",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "jvmSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-jvm/0.17.1/kotlin-compose-schema-jvm-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-jvm",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "linuxX64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "linux_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-linuxx64/0.17.1/kotlin-compose-schema-linuxx64-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-linuxx64",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "linuxX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "linux_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-linuxx64/0.17.1/kotlin-compose-schema-linuxx64-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-linuxx64",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "wasmJsApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.platform.type": "wasm",
+        "org.jetbrains.kotlin.wasm.target": "js"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-wasm-js/0.17.1/kotlin-compose-schema-wasm-js-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-wasm-js",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "wasmJsRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.platform.type": "wasm",
+        "org.jetbrains.kotlin.wasm.target": "js"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-wasm-js/0.17.1/kotlin-compose-schema-wasm-js-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-wasm-js",
+        "version": "0.17.1"
+      }
+    },
+    {
+      "name": "wasmJsSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.platform.type": "wasm",
+        "org.jetbrains.kotlin.wasm.target": "js"
+      },
+      "available-at": {
+        "url": "../../kotlin-compose-schema-wasm-js/0.17.1/kotlin-compose-schema-wasm-js-0.17.1.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-compose-schema-wasm-js",
+        "version": "0.17.1"
+      }
+    }
+  ]
+}

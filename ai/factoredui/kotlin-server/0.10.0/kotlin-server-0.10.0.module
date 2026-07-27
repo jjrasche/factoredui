@@ -39,10 +39,10 @@
           "name": "kotlin-server-0.10.0.jar",
           "url": "kotlin-server-0.10.0.jar",
           "size": 12937,
-          "sha512": "cb86f558ed2ec74b5c52e4aa7ed16093b0e9eef5481a1b7639e35cbed740e24b7b03976ce4bc3a1c0a19a4a93a48ca0c96331602c433950f68bf1fa7161143e2",
-          "sha256": "cee6b0b2b419e262109cdec6f656d0289d23785f5e0d128009a636e336299466",
-          "sha1": "4b29fc51b3af7b25be284386d6860eab11941462",
-          "md5": "803b5f2cd6776a2b04303a8240ecd228"
+          "sha512": "bc7c534d7f08832d9eaf2adc376609b9193a283dc3581072abde6b8b10f907a222e1f9453610d495e815f51a9cd348af47c8ca0503f212a3a957ce4e537c0714",
+          "sha256": "0857b906ff02357e42b899902131f92bab39e766fd8891af37ce16078f886091",
+          "sha1": "627a20e1f9b26a57974b20ee995b8f7a7b55fd46",
+          "md5": "62544601e564a713abfa415dae18e08a"
         }
       ]
     },
@@ -62,14 +62,14 @@
           "group": "ai.factoredui",
           "module": "kotlin-compose-schema",
           "version": {
-            "requires": "0.17.0"
+            "requires": "0.17.1"
           }
         },
         {
           "group": "ai.factoredui",
           "module": "kotlin-compose-capture",
           "version": {
-            "requires": "0.17.0"
+            "requires": "0.17.1"
           }
         },
         {
@@ -127,10 +127,10 @@
           "name": "kotlin-server-0.10.0.jar",
           "url": "kotlin-server-0.10.0.jar",
           "size": 12937,
-          "sha512": "cb86f558ed2ec74b5c52e4aa7ed16093b0e9eef5481a1b7639e35cbed740e24b7b03976ce4bc3a1c0a19a4a93a48ca0c96331602c433950f68bf1fa7161143e2",
-          "sha256": "cee6b0b2b419e262109cdec6f656d0289d23785f5e0d128009a636e336299466",
-          "sha1": "4b29fc51b3af7b25be284386d6860eab11941462",
-          "md5": "803b5f2cd6776a2b04303a8240ecd228"
+          "sha512": "bc7c534d7f08832d9eaf2adc376609b9193a283dc3581072abde6b8b10f907a222e1f9453610d495e815f51a9cd348af47c8ca0503f212a3a957ce4e537c0714",
+          "sha256": "0857b906ff02357e42b899902131f92bab39e766fd8891af37ce16078f886091",
+          "sha1": "627a20e1f9b26a57974b20ee995b8f7a7b55fd46",
+          "md5": "62544601e564a713abfa415dae18e08a"
         }
       ]
     }
