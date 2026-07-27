@@ -29,7 +29,7 @@
           "group": "ai.factoredui",
           "module": "kotlin-compose-schema",
           "version": {
-            "requires": "0.16.0"
+            "requires": "0.17.0"
           }
         },
         {
@@ -96,7 +96,7 @@
           "group": "ai.factoredui",
           "module": "kotlin-compose-schema",
           "version": {
-            "requires": "0.16.0"
+            "requires": "0.17.0"
           }
         },
         {
@@ -119,10 +119,10 @@
           "name": "kotlin-engine-iossimulatorarm64-0.11.0-metadata.jar",
           "url": "kotlin-engine-iossimulatorarm64-0.11.0-metadata.jar",
           "size": 261,
-          "sha512": "4da22aa00c75aff77c45f83e24f89d2b57810f1ac5dec753935e82531f833d73872ac759328379fb1f80d1c6c3e1d1ba0c114ac80acd05e1fe76c3b9e4300cf3",
-          "sha256": "fb7bb4e5206d7fe7db27912756702c55bf3fadb83fc2a7018e73a07c47eac9b2",
-          "sha1": "8563c0b352139fc4be43afd637d5ef4477b8637d",
-          "md5": "d6fd09aaa1c325f3e3b2e5831f698071"
+          "sha512": "68c2526c128e1c57fe65370d692bfb111367a4f8b75f60009f6e8575410fa0b4bd98f58e83d7137e7a9291420fdec32aa64f362e1469ca1733a8d514c18496cc",
+          "sha256": "459495848ece95a79394a76176e0f98bb1241bbb70ce20b7a40439f0c54f94ae",
+          "sha1": "b9523d93f270d00dbcf21ecc3926cee34f329fd2",
+          "md5": "44d95ff579c69c4ab60b723101ec3de6"
         }
       ]
     }

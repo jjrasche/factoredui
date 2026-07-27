@@ -39,10 +39,10 @@
           "name": "kotlin-server-0.10.0.jar",
           "url": "kotlin-server-0.10.0.jar",
           "size": 12937,
-          "sha512": "67be6926ab532e71b64c56be96baf21be999a2bf639f0dbe96df146a9367b622f2fc209a1685918300e1ed2bd31a616ff395652f8ec36990423bb23f59f57d14",
-          "sha256": "0787ab6f87e2c3194963e8b29e7363c79915a6b728ba009eff0c9c810a1e75be",
-          "sha1": "dcda881aa6379a7303e785fb5f83e1eaf08f7960",
-          "md5": "6a7438e039b52e5c2789f3d2e8865c70"
+          "sha512": "cb86f558ed2ec74b5c52e4aa7ed16093b0e9eef5481a1b7639e35cbed740e24b7b03976ce4bc3a1c0a19a4a93a48ca0c96331602c433950f68bf1fa7161143e2",
+          "sha256": "cee6b0b2b419e262109cdec6f656d0289d23785f5e0d128009a636e336299466",
+          "sha1": "4b29fc51b3af7b25be284386d6860eab11941462",
+          "md5": "803b5f2cd6776a2b04303a8240ecd228"
         }
       ]
     },
@@ -62,7 +62,14 @@
           "group": "ai.factoredui",
           "module": "kotlin-compose-schema",
           "version": {
-            "requires": "0.16.0"
+            "requires": "0.17.0"
+          }
+        },
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-capture",
+          "version": {
+            "requires": "0.17.0"
           }
         },
         {
@@ -120,10 +127,10 @@
           "name": "kotlin-server-0.10.0.jar",
           "url": "kotlin-server-0.10.0.jar",
           "size": 12937,
-          "sha512": "67be6926ab532e71b64c56be96baf21be999a2bf639f0dbe96df146a9367b622f2fc209a1685918300e1ed2bd31a616ff395652f8ec36990423bb23f59f57d14",
-          "sha256": "0787ab6f87e2c3194963e8b29e7363c79915a6b728ba009eff0c9c810a1e75be",
-          "sha1": "dcda881aa6379a7303e785fb5f83e1eaf08f7960",
-          "md5": "6a7438e039b52e5c2789f3d2e8865c70"
+          "sha512": "cb86f558ed2ec74b5c52e4aa7ed16093b0e9eef5481a1b7639e35cbed740e24b7b03976ce4bc3a1c0a19a4a93a48ca0c96331602c433950f68bf1fa7161143e2",
+          "sha256": "cee6b0b2b419e262109cdec6f656d0289d23785f5e0d128009a636e336299466",
+          "sha1": "4b29fc51b3af7b25be284386d6860eab11941462",
+          "md5": "803b5f2cd6776a2b04303a8240ecd228"
         }
       ]
     }

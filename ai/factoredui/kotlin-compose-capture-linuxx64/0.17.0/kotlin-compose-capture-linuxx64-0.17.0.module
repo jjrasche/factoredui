@@ -1,0 +1,86 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../kotlin-compose-capture/0.17.0/kotlin-compose-capture-0.17.0.module",
+    "group": "ai.factoredui",
+    "module": "kotlin-compose-capture",
+    "version": "0.17.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "linuxX64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "linux_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-capture-linuxX64Main-0.17.0.klib",
+          "url": "kotlin-compose-capture-linuxx64-0.17.0.klib",
+          "size": 22642,
+          "sha512": "682488bab1ae5980cdb2b0c87f708af3e4a7263716c92807740773fc9dc01cdc1aa956ae45bd9eebb2f1b0a016f989d61ddc7fe6511cc925d66bc74c358de4d6",
+          "sha256": "9030784b33d90f7d973d8d5a55cb200837598cc8bd3d0ab3a779b29c153f9848",
+          "sha1": "5a05f45a1e28fa7b594ba523f6de27edb6483249",
+          "md5": "eead5e6511e94f13fe9c17efd11248c8"
+        }
+      ]
+    },
+    {
+      "name": "linuxX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "linux_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "files": [
+        {
+          "name": "kotlin-compose-capture-linuxx64-0.17.0-sources.jar",
+          "url": "kotlin-compose-capture-linuxx64-0.17.0-sources.jar",
+          "size": 2675,
+          "sha512": "2f30e91c5b3bb7af31334533cd53498c1f205f723d4956b8bd8d8d2c9480058b2ae47a8fdca96e615561199fa50a6a22b561bc5220848629ef7fe47dd537c6ef",
+          "sha256": "c82f37fc21d50fc8ecc030b86b4137334808ac44ee33a7e7732c739eb29d0700",
+          "sha1": "84a2b3c08bc728e17e68a868cfa57eada683f007",
+          "md5": "1ce993c162e5d1582ebec69fad7b8a80"
+        }
+      ]
+    }
+  ]
+}
