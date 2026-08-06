@@ -39,10 +39,10 @@
           "name": "kotlin-server-0.10.0.jar",
           "url": "kotlin-server-0.10.0.jar",
           "size": 12937,
-          "sha512": "1b795c2949b87a47f5a61c77d4561d665a352a067b2951597ed109eb58aba3a254b300976c5ac7a8cd5dcce504aa7f827f192604c0976fc74a91ff1a620e8134",
-          "sha256": "78e0362551efe0d275f2d394735fd01e3384a2277afcf8abbcbaa1dd9efaccf8",
-          "sha1": "5d075f29cdee5a8bde19ce7c8d24459ca55ba92c",
-          "md5": "021d8f80af2a1e453c522cbc6d231e05"
+          "sha512": "8898044fad5580d26bcf4a636f1436539a9714a874b325ad68b7e64094b2b000886347656b9d50331fd40cd4d3bc2cf40ec5175bcf780e85b63ff846feca65ff",
+          "sha256": "f03b6d5862c720765e959763139c22cc320a0cf1993c15906b18341f300a5457",
+          "sha1": "b51d8150794850c99bf8b2c2bff35685558985ef",
+          "md5": "2031b5fa45c7510fe2f12c74c4908ca0"
         }
       ]
     },
@@ -62,14 +62,14 @@
           "group": "ai.factoredui",
           "module": "kotlin-compose-schema",
           "version": {
-            "requires": "0.17.2"
+            "requires": "0.18.0"
           }
         },
         {
           "group": "ai.factoredui",
           "module": "kotlin-compose-capture",
           "version": {
-            "requires": "0.17.2"
+            "requires": "0.18.0"
           }
         },
         {
@@ -127,10 +127,10 @@
           "name": "kotlin-server-0.10.0.jar",
           "url": "kotlin-server-0.10.0.jar",
           "size": 12937,
-          "sha512": "1b795c2949b87a47f5a61c77d4561d665a352a067b2951597ed109eb58aba3a254b300976c5ac7a8cd5dcce504aa7f827f192604c0976fc74a91ff1a620e8134",
-          "sha256": "78e0362551efe0d275f2d394735fd01e3384a2277afcf8abbcbaa1dd9efaccf8",
-          "sha1": "5d075f29cdee5a8bde19ce7c8d24459ca55ba92c",
-          "md5": "021d8f80af2a1e453c522cbc6d231e05"
+          "sha512": "8898044fad5580d26bcf4a636f1436539a9714a874b325ad68b7e64094b2b000886347656b9d50331fd40cd4d3bc2cf40ec5175bcf780e85b63ff846feca65ff",
+          "sha256": "f03b6d5862c720765e959763139c22cc320a0cf1993c15906b18341f300a5457",
+          "sha1": "b51d8150794850c99bf8b2c2bff35685558985ef",
+          "md5": "2031b5fa45c7510fe2f12c74c4908ca0"
         }
       ]
     }
