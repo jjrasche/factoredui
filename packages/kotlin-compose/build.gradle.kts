@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = "0.17.2"
+version = "0.17.2-batched-SNAPSHOT"
 
 kotlin {
     androidTarget {
