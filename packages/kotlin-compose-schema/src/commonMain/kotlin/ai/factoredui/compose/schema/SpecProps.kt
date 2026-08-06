@@ -380,6 +380,95 @@ fun Map<String, SpecValue>.asCanvasProps(): CanvasProps = CanvasProps(
     onViewportChanged = string("on_viewport_changed"),
 )
 
+// --- GeomapProps ---
+
+data class GeoPoint(val lon: Double, val lat: Double)
+
+enum class GeomapLayerKind { FILL, LINE }
+
+data class GeomapFeature(
+    val id: String,
+    val rings: List<List<GeoPoint>>,
+    val fill: String? = null,
+    val stroke: String? = null,
+    val strokeWidth: Float = 1f,
+    val label: String? = null,
+)
+
+data class GeomapLayer(
+    val id: String,
+    val kind: GeomapLayerKind,
+    val features: List<GeomapFeature>,
+    val visible: Boolean = true,
+)
+
+data class GeomapViewport(val lon: Double, val lat: Double, val zoom: Float)
+
+data class GeomapProps(
+    val onFeatureTap: String? = null,
+    val onViewportChanged: String? = null,
+)
+
+fun Map<String, SpecValue>.asGeomapProps(): GeomapProps = GeomapProps(
+    onFeatureTap = string("on_feature_tap"),
+    onViewportChanged = string("on_viewport_changed"),
+)
+
+fun resolveGeomapLayers(resolvedLayers: Any?): List<GeomapLayer> =
+    (resolvedLayers as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val id = fields["id"] as? String ?: return@mapNotNull null
+        GeomapLayer(
+            id = id,
+            kind = if (fields["kind"] == "line") GeomapLayerKind.LINE else GeomapLayerKind.FILL,
+            features = resolveGeomapFeatures(fields["features"]),
+            visible = fields["visible"] as? Boolean ?: true,
+        )
+    }
+
+private fun resolveGeomapFeatures(resolvedFeatures: Any?): List<GeomapFeature> =
+    (resolvedFeatures as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val id = fields["id"] as? String ?: return@mapNotNull null
+        val rings = resolveGeomapRings(fields["rings"])
+        if (rings.isEmpty()) return@mapNotNull null
+        GeomapFeature(
+            id = id,
+            rings = rings,
+            fill = fields["fill"] as? String,
+            stroke = fields["stroke"] as? String,
+            strokeWidth = (fields["stroke_width"] as? Number)?.toFloat() ?: 1f,
+            label = fields["label"] as? String,
+        )
+    }
+
+private fun resolveGeomapRings(resolvedRings: Any?): List<List<GeoPoint>> {
+    val outer = resolvedRings as? List<*> ?: return emptyList()
+    val first = outer.firstOrNull() as? List<*> ?: return emptyList()
+    val isSingleRingOfPairs = first.firstOrNull() is Number
+    val ringLists: List<*> = if (isSingleRingOfPairs) listOf(outer) else outer
+    return ringLists.mapNotNull { ring ->
+        val points = (ring as? List<*>).orEmpty().mapNotNull { point ->
+            val pair = point as? List<*> ?: return@mapNotNull null
+            val lon = (pair.getOrNull(0) as? Number)?.toDouble() ?: return@mapNotNull null
+            val lat = (pair.getOrNull(1) as? Number)?.toDouble() ?: return@mapNotNull null
+            GeoPoint(lon, lat)
+        }
+        if (points.size >= 3) points else null
+    }
+}
+
+fun resolveGeomapViewport(resolvedViewport: Any?): GeomapViewport? {
+    val fields = resolvedViewport as? Map<*, *> ?: return null
+    val lon = (fields["lon"] as? Number)?.toDouble() ?: return null
+    val lat = (fields["lat"] as? Number)?.toDouble() ?: return null
+    return GeomapViewport(
+        lon = lon,
+        lat = lat,
+        zoom = (fields["zoom"] as? Number)?.toFloat() ?: 12f,
+    )
+}
+
 data class FieldNodeEntry(
     val id: String,
     val x: Float,
