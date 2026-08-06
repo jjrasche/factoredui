@@ -63,6 +63,12 @@ class Camera(
         target = target + right * (-deltaX * scale) + up * (deltaY * scale)
     }
 
+    fun setOrbit(yaw: Float, pitch: Float, distance: Float) {
+        yawRadians = yaw
+        pitchRadians = clampPitch(pitch)
+        this.distance = clampDistance(distance)
+    }
+
     private fun clampPitch(value: Float): Float = max(min(value, PITCH_LIMIT), -PITCH_LIMIT)
 
     private fun clampDistance(value: Float): Float = max(min(value, MAX_DISTANCE), MIN_DISTANCE)
