@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = "0.17.2-batched-SNAPSHOT"
+version = "0.18.0"
 
 kotlin {
     jvm()
