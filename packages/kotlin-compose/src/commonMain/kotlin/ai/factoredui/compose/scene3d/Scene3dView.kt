@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -246,9 +247,13 @@ fun Scene3dView(
 
             if (showGrid) drawGroundGrid(::screen)
 
-            val ordered = world.entities.sortedByDescending { entity ->
-                screen(personCenter(entity)).depth
+            for (entity in world.entities) {
+                val terrain = meshes[entity.id]?.terrain ?: continue
+                drawTerrain(terrain, entity, camera, proj * view, width, height)
             }
+            val ordered = world.entities
+                .filter { meshes[it.id]?.terrain == null }
+                .sortedByDescending { entity -> screen(personCenter(entity)).depth }
             for (entity in ordered) {
                 if (entity.kind == "goal") {
                     drawGoalMarker(entity, ::screen)
@@ -291,6 +296,27 @@ fun Scene3dView(
                 }
             }
             drawLights(world.lights, ::screen)
+        }
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTerrain(
+    terrain: TerrainGrid,
+    entity: Scene3dEntity,
+    camera: Camera,
+    viewProjection: Matrix4,
+    width: Float,
+    height: Float,
+) {
+    val base = entity.position.toVec3()
+    terrain.projectVertices(base, viewProjection, width, height)
+    val eye = camera.eyePosition()
+    val eyeLocalX = eye.x - base.x
+    val eyeLocalZ = eye.z - base.z
+    drawIntoCanvas { canvas ->
+        terrain.forEachChunkFarToNear(eyeLocalX, eyeLocalZ) { chunk ->
+            val vertexCount = terrain.fillChunkBatch(chunk, eyeLocalX, eyeLocalZ)
+            drawTriangleBatch(canvas, terrain.batchPositions, terrain.batchColors, vertexCount)
         }
     }
 }

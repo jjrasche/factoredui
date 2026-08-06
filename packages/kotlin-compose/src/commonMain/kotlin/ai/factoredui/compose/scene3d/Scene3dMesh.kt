@@ -1,6 +1,7 @@
 package ai.factoredui.compose.scene3d
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import ai.factoredui.compose.math.Vec3
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -18,6 +19,9 @@ data class Scene3dMesh(
     val parents: List<Int> = emptyList(),
     @SerialName("weight_joints") val weightJoints: List<Int> = emptyList(),
     @SerialName("weight_values") val weightValues: List<Float> = emptyList(),
+    // Set → vertices are a row-major heightfield grid; prepare() builds TerrainGrid.
+    @SerialName("grid_cells_x") val gridCellsX: Int = 0,
+    @SerialName("grid_cells_z") val gridCellsZ: Int = 0,
 )
 
 class PreparedMesh(
@@ -26,9 +30,20 @@ class PreparedMesh(
     val colors: List<Color>,
     val height: Float,
     val rig: Scene3dRig? = null,
+    val terrain: TerrainGrid? = null,
 )
 
 fun Scene3dMesh.prepare(): PreparedMesh {
+    val terrain = buildTerrainGrid()
+    if (terrain != null) {
+        return PreparedMesh(
+            vertices = emptyList(),
+            triangles = emptyList(),
+            colors = emptyList(),
+            height = height,
+            terrain = terrain,
+        )
+    }
     val points = ArrayList<Vec3>(vertices.size / 3)
     var index = 0
     while (index + 2 < vertices.size) {
@@ -42,6 +57,15 @@ fun Scene3dMesh.prepare(): PreparedMesh {
         height = height,
         rig = buildRig(points),
     )
+}
+
+private fun Scene3dMesh.buildTerrainGrid(): TerrainGrid? {
+    if (gridCellsX <= 0 || gridCellsZ <= 0) return null
+    val expectedVertexFloats = 3 * (gridCellsX + 1) * (gridCellsZ + 1)
+    val expectedTriangles = 2 * gridCellsX * gridCellsZ
+    if (vertices.size != expectedVertexFloats || triColors.size != expectedTriangles) return null
+    val cellColors = IntArray(expectedTriangles) { parseTriColor(triColors[it]).toArgb() }
+    return TerrainGrid(gridCellsX, gridCellsZ, vertices, cellColors)
 }
 
 private fun Scene3dMesh.buildRig(restVerts: List<Vec3>): Scene3dRig? {
