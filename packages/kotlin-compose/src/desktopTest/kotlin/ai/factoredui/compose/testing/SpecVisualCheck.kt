@@ -102,6 +102,14 @@ class SpecVisualCheck(private val scope: ComposeUiTest, private val context: Ren
         scope.waitForIdle()
     }
 
+    fun tapAt(nodeId: String, x: Float, y: Float) {
+        scope.onNodeWithTag(nodeId).performTouchInput {
+            down(Offset(x, y))
+            up()
+        }
+        scope.waitForIdle()
+    }
+
     fun drag(nodeId: String, dx: Float, dy: Float) {
         scope.onNodeWithTag(nodeId).performTouchInput {
             down(center)
