@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = "0.18.0"
+version = (findProperty("factoredUiVersion") as String?) ?: "0.18.0"
 
 kotlin {
     androidTarget {
