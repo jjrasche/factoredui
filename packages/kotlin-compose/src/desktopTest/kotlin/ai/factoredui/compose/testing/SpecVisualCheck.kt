@@ -26,15 +26,6 @@ import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import kotlin.test.assertTrue
 
-// One rendered spec node: its id/type, its resolved props (bindings applied), and the exact on-screen
-// region the renderer drew it into. The deterministic node<->pixels mapping a spec makes possible.
-data class SpecShadowNode(
-    val id: String,
-    val type: SpecNodeType,
-    val props: Map<String, Any?>,
-    val bounds: DpRect?,
-)
-
 // The visual-test substrate floor: render any spec headless, get a PNG + the ShadowTree (every node's
 // id/type/resolved-props/region), assert structure/order. Built on nodeTag + captureToImage + RenderSpec.
 @OptIn(ExperimentalTestApi::class)

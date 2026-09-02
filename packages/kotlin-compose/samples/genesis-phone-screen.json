@@ -1,0 +1,69 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "root",
+    "type": "column",
+    "children": [
+      {
+        "id": "title",
+        "type": "text",
+        "props": { "value": "genesis · phone", "variant": "heading" }
+      },
+      {
+        "id": "intent-box",
+        "type": "column",
+        "children": [
+          {
+            "id": "intent-field",
+            "type": "textinput",
+            "props": {
+              "placeholder": "what should I build?",
+              "multiline": true,
+              "value": "{composing.intent}"
+            }
+          },
+          {
+            "id": "intent-send",
+            "type": "button",
+            "props": { "label": "send" },
+            "action": { "action": "submit_intent", "params": { "from": "composing.intent" } }
+          }
+        ]
+      },
+      {
+        "id": "engine-box",
+        "type": "column",
+        "children": [
+          {
+            "id": "engine-field",
+            "type": "textinput",
+            "props": {
+              "placeholder": "engine url — temporary, dies with the mesh",
+              "value": "{engine.url}"
+            }
+          },
+          {
+            "id": "engine-save",
+            "type": "button",
+            "props": { "label": "set engine" },
+            "action": { "action": "set_engine_address", "params": { "from": "engine.url" } }
+          }
+        ]
+      },
+      {
+        "id": "intents",
+        "type": "column",
+        "children": [
+          { "id": "intents-title", "type": "text", "props": { "value": "recent intents  1", "variant": "subheading" } },
+          { "id": "intents-0", "type": "text", "props": { "value": "{intents.0}", "variant": "body" } }
+        ]
+      },
+      {
+        "id": "spend",
+        "type": "text",
+        "props": { "value": "rows 412 · spent 0.31 of 2.00 per chain across 7 chains", "variant": "caption" }
+      }
+    ]
+  }
+}

@@ -177,7 +177,7 @@ tasks.matching { it.name == "testDebugUnitTest" || it.name == "testReleaseUnitTe
 // "All tests passed" is a number, not a proof, unless you also check how many ran. A stale
 // --tests filter once gated CI to 7 of 15 classes and stayed green for months. This floor
 // is what would have caught it: it trips only when the suite SHRINKS.
-val minimumDesktopTests = 100
+val minimumDesktopTests = 140
 
 tasks.named<Test>("desktopTest") {
     doLast {
@@ -220,6 +220,24 @@ tasks.register<JavaExec>("renderSpecCli") {
         desktopNativeRuntime,
     )
     mainClass.set("ai.factoredui.compose.render.RenderSpecCliKt")
+}
+
+// Deterministic flow regression: crawl every action of a spec against a host action map, grade
+// every flow with named checks only, emit JSON + markdown + a PNG per step. No model is consulted.
+// ./gradlew :kotlin-compose:flowCrawl --args="spec.json my.HostClass [outDir] [depth] [w] [h]"
+tasks.register<JavaExec>("flowCrawl") {
+    group = "render"
+    description = "Crawl every action of an SDUI spec against an action map class and grade each flow."
+    val desktopCompilation = kotlin.jvm("desktop").compilations.getByName("main")
+    classpath(
+        desktopCompilation.output.allOutputs,
+        desktopCompilation.runtimeDependencyFiles,
+        desktopNativeRuntime,
+    )
+    // The action map is the caller's class, so the caller contributes the jar that holds it.
+    val hostClasspath = (findProperty("flowCrawlClasspath") as String?).orEmpty()
+    classpath(files(hostClasspath.split(File.pathSeparator).filter { it.isNotBlank() }))
+    mainClass.set("ai.factoredui.compose.crawl.FlowCrawlCliKt")
 }
 
 // Headed GPU fps spike (window opens on the workstation): measurement source lives in
