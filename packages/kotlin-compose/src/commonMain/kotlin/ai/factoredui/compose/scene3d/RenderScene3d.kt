@@ -66,8 +66,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlin.math.abs
 import kotlin.math.acos
-import kotlin.math.asin
-import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -1158,7 +1156,9 @@ private fun anyToJson(value: Any?): JsonElement = when (value) {
     else -> JsonPrimitive(value.toString())
 }
 
-private fun resolveAssetUrl(worldStateUrl: String, assetUrl: String): String {
+// A mesh_url is a path against the world state's own origin. Internal so a desktop
+// harness resolves meshes the same way the live renderer does.
+internal fun resolveAssetUrl(worldStateUrl: String, assetUrl: String): String {
     if (assetUrl.startsWith("http")) return assetUrl
     val schemeEnd = worldStateUrl.indexOf("://")
     if (schemeEnd < 0) return assetUrl
@@ -1167,17 +1167,6 @@ private fun resolveAssetUrl(worldStateUrl: String, assetUrl: String): String {
     return origin + assetUrl
 }
 
-private fun applyCameraState(camera: Camera, state: Scene3dCameraState) {
-    val target = state.target.toVec3()
-    val eye = state.position.toVec3()
-    val offset = eye - target
-    val distance = offset.length()
-    camera.target = target
-    if (distance > 1e-4f) {
-        camera.distance = distance
-        val direction = offset.normalize()
-        camera.pitchRadians = asin(direction.y.coerceIn(-1f, 1f))
-        camera.yawRadians = atan2(direction.x, direction.z)
-    }
-    state.fov?.let { camera.fovYRadians = it }
-}
+// One rule for "put the camera where the data says", shared with the headless capture path, so a
+// receipt cannot frame a scene differently from the window it is standing in for.
+private fun applyCameraState(camera: Camera, state: Scene3dCameraState) = camera.applyPose(state.toPose())

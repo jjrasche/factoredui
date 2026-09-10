@@ -222,6 +222,30 @@ tasks.register<JavaExec>("renderSpecCli") {
     mainClass.set("ai.factoredui.compose.render.RenderSpecCliKt")
 }
 
+tasks.register<JavaExec>("specWindow") {
+    group = "render"
+    description = "Open a real window on a spec (or a bare world_state_url) — drag to orbit, scroll to zoom."
+    val desktopCompilation = kotlin.jvm("desktop").compilations.getByName("main")
+    classpath(
+        desktopCompilation.output.allOutputs,
+        desktopCompilation.runtimeDependencyFiles,
+        desktopNativeRuntime,
+    )
+    mainClass.set("ai.factoredui.compose.render.SpecWindowKt")
+}
+
+tasks.register<JavaExec>("servedSceneReceipt") {
+    group = "render"
+    description = "Capture a served scene3d world headlessly and print what it drew, as JSON."
+    val desktopCompilation = kotlin.jvm("desktop").compilations.getByName("main")
+    classpath(
+        desktopCompilation.output.allOutputs,
+        desktopCompilation.runtimeDependencyFiles,
+        desktopNativeRuntime,
+    )
+    mainClass.set("ai.factoredui.compose.render.ServedSceneReceiptKt")
+}
+
 // Headed GPU fps spike (window opens on the workstation): measurement source lives in
 // desktopTest so it can reuse TerrainFixtures, but it is a plain main — never a @Test —
 // so the suite and its floor are untouched.

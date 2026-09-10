@@ -253,7 +253,7 @@ fun Scene3dView(
             }
             val ordered = world.entities
                 .filter { meshes[it.id]?.terrain == null }
-                .sortedByDescending { entity -> screen(personCenter(entity)).depth }
+                .sortedByDescending { entity -> screen(drawnCenter(entity, meshes[entity.id])).depth }
             for (entity in ordered) {
                 if (entity.kind == "goal") {
                     drawGoalMarker(entity, ::screen)
@@ -533,6 +533,24 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawGoalMarker(
     drawCircle(color, radius = r, center = Offset(p.x, p.y), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f))
     drawLine(color, Offset(p.x - r, p.y), Offset(p.x + r, p.y), strokeWidth = 2f)
     drawLine(color, Offset(p.x, p.y - r), Offset(p.x, p.y + r), strokeWidth = 2f)
+}
+
+// Painter order has to follow the geometry that gets DRAWN, not the position an entity declares.
+// A mesh carrying absolute world coordinates leaves every entity at the origin, which collapses a
+// position-based sort to a no-op and lets a far wall paint over a near one.
+private fun drawnCenter(entity: Scene3dEntity, mesh: PreparedMesh?): Vec3 {
+    val vertices = mesh?.vertices
+    if (vertices.isNullOrEmpty()) return personCenter(entity)
+    val base = entity.position.toVec3()
+    val scale = entity.scale
+    val spin = eulerRotation(entity.rotation)
+    val midpoint = Vec3(
+        (vertices.minOf { it.x } + vertices.maxOf { it.x }) / 2f,
+        (vertices.minOf { it.y } + vertices.maxOf { it.y }) / 2f,
+        (vertices.minOf { it.z } + vertices.maxOf { it.z }) / 2f,
+    )
+    val spun = spin.transform(Vec3(midpoint.x * scale, midpoint.y * scale, midpoint.z * scale))
+    return Vec3(base.x + spun[0], base.y + spun[1], base.z + spun[2])
 }
 
 private fun personCenter(entity: Scene3dEntity): Vec3 {

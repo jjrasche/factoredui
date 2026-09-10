@@ -87,13 +87,18 @@ private fun Scene3dMesh.buildRig(restVerts: List<Vec3>): Scene3dRig? {
     )
 }
 
+// Producers write both `b5c1ed` and CSS-style `#b5c1ed`; an unreadable digit falls back
+// to grey rather than failing the frame, so a grey mesh means "the wire colour was junk".
 private fun parseTriColor(hex: String): Color {
-    if (hex.length != 6) return Color(0xFF888888)
+    val digits = hex.removePrefix("#")
+    if (digits.length != 6) return UNREADABLE_TRI_COLOR
     return runCatching {
         Color(
-            red = hex.substring(0, 2).toInt(16) / 255f,
-            green = hex.substring(2, 4).toInt(16) / 255f,
-            blue = hex.substring(4, 6).toInt(16) / 255f,
+            red = digits.substring(0, 2).toInt(16) / 255f,
+            green = digits.substring(2, 4).toInt(16) / 255f,
+            blue = digits.substring(4, 6).toInt(16) / 255f,
         )
-    }.getOrElse { Color(0xFF888888) }
+    }.getOrElse { UNREADABLE_TRI_COLOR }
 }
+
+val UNREADABLE_TRI_COLOR: Color = Color(0xFF888888)
