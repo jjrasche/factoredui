@@ -26,7 +26,7 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
 
       - name: Cache Gradle
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -52,31 +52,13 @@ jobs:
       - name: Build kotlin-server
         run: ./gradlew :kotlin-server:build
 
-      # Renderer: compile every target, then run the non-UI desktop tests.
-      # runComposeUiTest tests (RenderControls/RenderList/Keybinding/SpecHotSwap)
-      # are excluded pending the known runComposeUiTest NPEs (#1) — they pass
-      # locally but are flaky on CI; the same allowlist the publish job uses.
+      - name: Build capture (all targets)
+        run: ./gradlew :kotlin-compose-capture:build
+
+      # The whole suite, same as the publish job: the render-correctness gate lives inside it, and
+      # the desktopTest floor fails any --tests filter that narrows the run.
+      - name: Run renderer desktop tests
+        run: ./gradlew :kotlin-compose:desktopTest
+
       - name: Assemble renderer (all targets)
         run: ./gradlew :kotlin-compose:assemble
-
-      - name: Run renderer desktop tests (non-UI)
-        run: >
-          ./gradlew :kotlin-compose:desktopTest
-          --tests "ai.factoredui.compose.capture.*"
-          --tests "ai.factoredui.compose.renderer.RenderContextTest"
-          --tests "ai.factoredui.compose.schema.ObservabilityTest"
-
-      # Render-correctness gate: headless renderSpecToPng paths only (no
-      # runComposeUiTest — these are immune to #1). The golden-pose silhouette
-      # gate reds if a scene3d change shifts a body's drawn silhouette; the rest
-      # guard the headless render seam (inline body_frame, bare-body, drive,
-      # topology-neutral bones, intent dispatch).
-      - name: Run render-correctness gate
-        run: >
-          ./gradlew :kotlin-compose:desktopTest
-          --tests "ai.factoredui.compose.render.*"
-          --tests "ai.factoredui.compose.scene3d.TopologyNeutralBonesTest"
-          --tests "ai.factoredui.compose.scene3d.Scene3dIntentDispatchCheck"
-          --tests "ai.factoredui.compose.scene3d.BodyFrameParseTest"
-          --tests "ai.factoredui.compose.scene3d.BodyFramesToMotionClipTest"
-          --tests "ai.factoredui.compose.scene3d.JointFrameDigestTest"
