@@ -59,7 +59,7 @@ enum class ShortcutKey {
 }
 
 /**
- * All 21 SDUI primitive types — matches SpecNodeType union in spec-types.ts.
+ * The closed set of SDUI primitive types — matches SpecNodeType union in spec-types.ts.
  */
 @Serializable
 enum class SpecNodeType {
@@ -85,6 +85,7 @@ enum class SpecNodeType {
     @SerialName("chip") CHIP,
     @SerialName("scene3d") SCENE3D,
     @SerialName("canvas") CANVAS,
+    @SerialName("geomap") GEOMAP,
 }
 
 /**
