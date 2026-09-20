@@ -453,11 +453,38 @@ private fun RenderList(node: SpecNode, context: RenderContext) {
     // streams result sets and we re-render on every emission. Falls back to the
     // static `data` key whenever either piece is absent, so existing specs are
     // unaffected.
+    val drawsRows = (host != null && !query.isNullOrEmpty()) || props.itemTemplate != null
+    if (!drawsRows && node.children.isNotEmpty()) {
+        RenderChildList(node, context)
+        return
+    }
     if (host != null && !query.isNullOrEmpty()) {
         RenderLiveList(props, context, host, query)
     } else {
         RenderStaticList(props, context)
     }
+    if (node.children.isNotEmpty()) IgnoredChildrenNotice(node.children.size)
+}
+
+// A list whose rows ARE its children: heterogeneous rows, each its own node, where one
+// template over uniform data is the wrong shape.
+@Composable
+private fun RenderChildList(node: SpecNode, context: RenderContext) {
+    LazyColumn {
+        items(node.children) { child -> RenderNode(node = child, context = context) }
+    }
+}
+
+// A node handed content it will not draw says so on the screen. Silently dropping it
+// renders an empty region that reads as a working screen with nothing in it.
+@Composable
+private fun IgnoredChildrenNotice(count: Int) {
+    Text(
+        text = "this list has $count child${if (count == 1) "" else "ren"} the renderer ignores: " +
+            "a list draws either its children or its data template, not both",
+        style = MaterialTheme.typography.bodySmall,
+        color = Color(0xFFB3261E),
+    )
 }
 
 /**
