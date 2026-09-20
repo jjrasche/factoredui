@@ -129,6 +129,21 @@ kotlin {
             }
         }
 
+        // Device-only proof for primitives whose behaviour is the platform's, not ours:
+        // ./gradlew :kotlin-compose:connectedDebugAndroidTest with a phone attached.
+        val androidInstrumentedTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.androidx.test.runner)
+                implementation(libs.androidx.test.junit)
+                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+                implementation(compose.uiTest)
+                implementation(libs.compose.ui.test.junit4.android)
+                implementation(libs.compose.ui.test.manifest)
+                implementation(libs.androidx.espresso.core)
+            }
+        }
+
         // Create iosMain explicitly (parent of all three iOS targets) so we can
         // add a single Ktor engine for the iOS platform.
         val iosMain by creating {
@@ -157,6 +172,7 @@ extensions.configure<LibraryExtension>("android") {
 
     defaultConfig {
         minSdk = libs.versions.androidMinSdk.get().toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
