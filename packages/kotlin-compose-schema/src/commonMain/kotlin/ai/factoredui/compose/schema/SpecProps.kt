@@ -144,6 +144,24 @@ fun Map<String, SpecValue>.asImageProps(): ImageProps = ImageProps(
     aspectRatio = double("aspectRatio")?.toFloat(),
 )
 
+// --- VideoProps ---
+
+data class VideoProps(
+    val source: String,
+    val autoplay: Boolean = false,
+    val loop: Boolean = false,
+    val position: Double? = null,
+    val aspectRatio: Float? = null,
+)
+
+fun Map<String, SpecValue>.asVideoProps(): VideoProps = VideoProps(
+    source = string("source") ?: "",
+    autoplay = boolean("autoplay") ?: false,
+    loop = boolean("loop") ?: false,
+    position = double("position"),
+    aspectRatio = double("aspectRatio")?.toFloat(),
+)
+
 // --- IconProps ---
 
 data class IconProps(

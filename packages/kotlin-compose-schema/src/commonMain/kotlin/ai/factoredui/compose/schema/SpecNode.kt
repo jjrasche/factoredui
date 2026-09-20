@@ -58,9 +58,7 @@ enum class ShortcutKey {
     @SerialName("tab") TAB,
 }
 
-/**
- * The closed set of SDUI primitive types — matches SpecNodeType union in spec-types.ts.
- */
+/** The closed set of SDUI primitive types. */
 @Serializable
 enum class SpecNodeType {
     @SerialName("column") COLUMN,
@@ -70,6 +68,7 @@ enum class SpecNodeType {
     @SerialName("grid") GRID,
     @SerialName("text") TEXT,
     @SerialName("image") IMAGE,
+    @SerialName("video") VIDEO,
     @SerialName("icon") ICON,
     @SerialName("divider") DIVIDER,
     @SerialName("spacer") SPACER,
