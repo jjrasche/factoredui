@@ -26,7 +26,7 @@ The rendering half of agent-platform. Kotlin Multiplatform + Compose Multiplatfo
 ```bash
 # 100% Kotlin/gradle — run from repo root
 ./gradlew build             # compile + test all modules, all targets
-./gradlew :kotlin-compose:wasmJsBrowserDevelopmentExecutableDistribution   # browser bundle
+./gradlew :kotlin-compose-playground:wasmJsBrowserDevelopmentRun           # playground in a browser (the renderer is a library: it has no browser-bundle task)
 ./gradlew :kotlin-compose:publish   # publish to local maven repo (CDN release = push a kotlin-compose-v* tag)
 ```
 

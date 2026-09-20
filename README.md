@@ -52,11 +52,11 @@ Props support literals, binding refs (`"{path.to.value}"`), nested nodes, arrays
 ## Build
 
 ```bash
-cd packages/kotlin-compose
-./gradlew assemble                                         # all targets
-./gradlew wasmJsBrowserDevelopmentExecutableDistribution   # browser bundle
-./gradlew allTests                                         # all tests
-./gradlew publish                                          # publish to local maven repo
+# the Gradle wrapper lives at the repo root
+./gradlew build                                            # compile + test every module, all targets
+./gradlew :kotlin-compose:assemble                         # renderer, all targets
+./gradlew :kotlin-compose-playground:wasmJsBrowserDevelopmentRun           # playground in a browser
+./gradlew :kotlin-compose:publish                          # publish to the local maven repo
 ```
 
 Published to `https://jjrasche.github.io/factoredui/` via a gh-pages workflow.
@@ -64,11 +64,16 @@ Published to `https://jjrasche.github.io/factoredui/` via a gh-pages workflow.
 ## Packages
 
 - `packages/kotlin-compose/` — the live renderer (Kotlin + Compose Multiplatform).
-- `packages/core/` — TypeScript. Holds `src/sdui/spec-types.ts` as the canonical TS mirror of the Kotlin `SpecNode` schema. Also holds dormant capture/factor/experiment pipeline code pending a Kotlin port (see agent-platform memory for the motivating thesis).
+- `packages/kotlin-compose-schema/` — pure-Kotlin spec and wire types; the schema source of truth.
+- `packages/kotlin-compose-capture/` — capture events and sessions.
+- `packages/kotlin-engine/` — the factor and experiment engine: bucketing, governance, targeting.
+- `packages/kotlin-server/` — server-side factor SQL and endpoints.
+- `packages/kotlin-compose-playground/` — wasmJs dev playground for authoring specs.
+- `packages/measure-minimal/` — the smallest wasmJs page that renders one spec, for payload measurement.
 
 ## History
 
-Previously FactoredUI shipped React and React-Native renderers plus a Supabase-backed capture/factor/experiment pipeline. On 2026-04-24 the React, React-Native, and adapter-supabase packages were deleted. Kotlin-compose is now the only renderer. The capture/factor/experiment concept survives as deferred TS pipeline code that will eventually be ported to Kotlin to support "AI-proactive UI improvement" loops in agent-platform.
+FactoredUI once shipped React and React-Native renderers plus a Supabase-backed capture/factor/experiment pipeline. The React, React-Native and adapter-supabase packages were deleted on 2026-04-24, leaving kotlin-compose as the only renderer. `packages/core/`, the last TypeScript, was deleted on 2026-06-25 once its port landed: capture in `kotlin-compose-capture`, experiments and factors in `kotlin-engine`, the spec types in `kotlin-compose-schema`. The repo is 100% Kotlin and Gradle, with no npm tooling.
 
 ## License
 
