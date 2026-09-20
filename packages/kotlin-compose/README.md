@@ -116,7 +116,7 @@ prop.
 
 ## Schema nodes ported
 
-All 23 SpecNodeType values are declared in the schema. The renderer handles:
+All 24 SpecNodeType values are declared in the schema. The renderer handles:
 
 | Node | Renderer |
 |------|----------|

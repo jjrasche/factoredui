@@ -76,7 +76,7 @@ single Compose Multiplatform renderer.
 - **One renderer surface across substrates** — Compose Multiplatform compiles
   the same primitives to Android, iOS, desktop JVM, and the browser. No
   per-platform translation layer.
-- **Closed primitive palette** — 23 enum cases (containers, leaves,
+- **Closed primitive palette** — 24 enum cases (containers, leaves,
   dense/semantic). Adding a primitive requires changing both the schema enum
   and the dispatch in `RenderNode.kt`. Low ceremony, high consistency.
 - **Storage-agnostic** — the renderer never knows about a backend. Specs come
