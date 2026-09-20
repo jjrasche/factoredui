@@ -10,6 +10,7 @@ import ai.factoredui.compose.scene3d.cameraOfPose
 import ai.factoredui.compose.scene3d.captureScene3dPoseView
 import ai.factoredui.compose.scene3d.currentPose
 import ai.factoredui.compose.scene3d.prepare
+import ai.factoredui.compose.testing.assertDiscriminates
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -68,7 +69,11 @@ class ServedSceneReceiptTest {
     @Test
     fun a_colour_that_never_reached_a_pixel_is_reported_as_never_drawn() {
         val receipt = receiptOfTwoBoxes()
-        assertContains(receipt.meshColorsNeverDrawn, "#$OUT_OF_VIEW_HEX")
+        assertDiscriminates(
+            intact = receipt,
+            broken = receipt.copy(meshColorsNeverDrawn = emptyList()),
+            brokenBy = "a receipt that never reports a colour as undrawn",
+        ) { assertContains(it.meshColorsNeverDrawn, "#$OUT_OF_VIEW_HEX") }
     }
 
     @Test
