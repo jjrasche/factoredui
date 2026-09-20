@@ -242,6 +242,7 @@ private fun resolveLayoutProps(node: SpecNode, resolved: Map<String, Any?>): Lay
         align = align,
         gap = (resolved["gap"] as? Number)?.toInt() ?: base.gap,
         padding = (resolved["padding"] as? Number)?.toInt() ?: base.padding,
+        background = (resolved["background"] as? String) ?: base.background,
     )
 }
 
@@ -250,7 +251,7 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val fillWidth = hasFlexChild || props.align != LayoutAlign.START
-    val colModifier = Modifier.nodeTag(node.id).padding(props.padding.dp)
+    val colModifier = Modifier.nodeTag(node.id).groundOf(props).padding(props.padding.dp)
         .let { if (fillWidth) it.fillMaxWidth() else it }
         .let { if (hasFlexChild) it.fillMaxHeight() else it }
     Column(
@@ -274,7 +275,7 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
     val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val fillWidth = hasFlexChild || props.justify != LayoutJustify.START
-    val rowModifier = Modifier.nodeTag(node.id).padding(props.padding.dp)
+    val rowModifier = Modifier.nodeTag(node.id).groundOf(props).padding(props.padding.dp)
         .let { if (fillWidth) it.fillMaxWidth() else it }
     Row(
         modifier = rowModifier,
@@ -290,6 +291,13 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
             }
         }
     }
+}
+
+// A declared ground is painted UNDER the padding, so the colour fills the container
+// rather than only the area inside its own inset.
+private fun Modifier.groundOf(props: LayoutProps): Modifier {
+    val ground = props.background?.parseColor() ?: return this
+    return this.background(ground)
 }
 
 internal fun Modifier.nodeTag(id: String): Modifier =

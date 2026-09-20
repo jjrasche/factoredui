@@ -98,12 +98,14 @@ data class LayoutProps(
     val align: LayoutAlign = LayoutAlign.START,
     val justify: LayoutJustify = LayoutJustify.START,
     val flex: Float = 0f,
+    val background: String? = null,
 )
 
 enum class LayoutAlign { START, CENTER, END, STRETCH }
 enum class LayoutJustify { START, CENTER, END, BETWEEN, AROUND }
 
 fun Map<String, SpecValue>.asLayoutProps(): LayoutProps = LayoutProps(
+    background = string("background"),
     gap = int("gap") ?: 0,
     padding = int("padding") ?: 0,
     align = when (string("align")) {
