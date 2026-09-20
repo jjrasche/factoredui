@@ -198,6 +198,7 @@ private fun RenderNodeByType(
                 chrome = sceneProps.chrome,
                 liveBody = liveBody,
                 onIntent = { action, params -> sceneScope.launch { intentDispatch(action, params) } },
+                modifier = Modifier.nodeTag(node.id),
             )
         }
         SpecNodeType.CANVAS -> RenderCanvas(node, context)
@@ -267,7 +268,7 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
     val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val fillWidth = hasFlexChild || props.justify != LayoutJustify.START
-    val rowModifier = Modifier.padding(props.padding.dp)
+    val rowModifier = Modifier.nodeTag(node.id).padding(props.padding.dp)
         .let { if (fillWidth) it.fillMaxWidth() else it }
     Row(
         modifier = rowModifier,
@@ -352,7 +353,7 @@ private fun RenderChunkedGrid(
     context: RenderContext,
     props: ai.factoredui.compose.schema.GridProps,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(props.gap.dp)) {
+    Column(modifier = Modifier.nodeTag(node.id), verticalArrangement = Arrangement.spacedBy(props.gap.dp)) {
         node.children.chunked(props.columns).forEach { rowItems ->
             Row(horizontalArrangement = Arrangement.spacedBy(props.gap.dp)) {
                 rowItems.forEach { child ->
@@ -379,7 +380,7 @@ private fun RenderLazyGrid(
         columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(props.columns),
         verticalArrangement = Arrangement.spacedBy(props.gap.dp),
         horizontalArrangement = Arrangement.spacedBy(props.gap.dp),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.nodeTag(node.id).fillMaxWidth(),
     ) {
         node.children.forEach { child ->
             item(key = child.id) {

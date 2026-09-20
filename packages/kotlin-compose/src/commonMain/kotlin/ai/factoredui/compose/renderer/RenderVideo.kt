@@ -21,12 +21,14 @@ import ai.factoredui.compose.schema.bindingPath
 internal fun RenderVideo(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val props = resolvedProps.asResolvedVideoProps()
     val positionPath = node.props["position"]?.bindingPath()
-    VideoSurface(
-        props = props,
-        onPositionChange = { positionMs ->
-            positionPath?.let { path -> context.setBinding(path, positionMs) }
-        },
-    )
+    Box(modifier = Modifier.nodeTag(node.id)) {
+        VideoSurface(
+            props = props,
+            onPositionChange = { positionMs ->
+                positionPath?.let { path -> context.setBinding(path, positionMs) }
+            },
+        )
+    }
 }
 
 internal fun Map<String, Any?>.asResolvedVideoProps(): VideoProps = VideoProps(
