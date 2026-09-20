@@ -243,7 +243,7 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val fillWidth = hasFlexChild || props.align != LayoutAlign.START
-    val colModifier = Modifier.padding(props.padding.dp)
+    val colModifier = Modifier.nodeTag(node.id).padding(props.padding.dp)
         .let { if (fillWidth) it.fillMaxWidth() else it }
         .let { if (hasFlexChild) it.fillMaxHeight() else it }
     Column(
@@ -318,14 +318,14 @@ private fun horizontalArrangement(justify: LayoutJustify, gap: Int): Arrangement
 
 @Composable
 private fun RenderStack(node: SpecNode, context: RenderContext) {
-    Box {
+    Box(modifier = Modifier.nodeTag(node.id)) {
         node.children.forEach { child -> RenderNode(node = child, context = context) }
     }
 }
 
 @Composable
 private fun RenderScrollView(node: SpecNode, context: RenderContext) {
-    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+    Column(modifier = Modifier.nodeTag(node.id).verticalScroll(rememberScrollState())) {
         node.children.forEach { child -> RenderNode(node = child, context = context) }
     }
 }
@@ -470,7 +470,7 @@ private fun RenderList(node: SpecNode, context: RenderContext) {
 // template over uniform data is the wrong shape.
 @Composable
 private fun RenderChildList(node: SpecNode, context: RenderContext) {
-    LazyColumn {
+    LazyColumn(modifier = Modifier.nodeTag(node.id)) {
         items(node.children) { child -> RenderNode(node = child, context = context) }
     }
 }
@@ -732,7 +732,7 @@ private fun RenderDivider(node: SpecNode) {
 private fun RenderSpacer(node: SpecNode) {
     val props = node.props.asSpacerProps()
     val height = if (props.size > 0) props.size.dp else RenderDefaults.SPACER_HEIGHT
-    Spacer(modifier = Modifier.height(height))
+    Spacer(modifier = Modifier.nodeTag(node.id).height(height))
 }
 
 @Composable
