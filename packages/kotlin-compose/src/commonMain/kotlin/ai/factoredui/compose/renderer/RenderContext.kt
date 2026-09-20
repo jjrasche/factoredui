@@ -35,6 +35,8 @@ class RenderContext private constructor(
      * to the static [data] path, so existing specs are unaffected.
      */
     val hostDataSource: HostDataSource?,
+    /** Ground and ink the host sets once; a spec that names no colour takes these. */
+    val theme: SpecTheme,
     private val store: MutableStateFlow<Map<String, Any?>>,
     private val overlay: Map<String, Any?>,
 ) {
@@ -44,11 +46,13 @@ class RenderContext private constructor(
         observability: Observability = NoOpObservability,
         experiments: Experiments = ControlExperiments,
         hostDataSource: HostDataSource? = null,
+        theme: SpecTheme = SpecTheme.LIGHT,
     ) : this(
         actions = actions,
         observability = observability,
         experiments = experiments,
         hostDataSource = hostDataSource,
+        theme = theme,
         store = MutableStateFlow(initialData),
         overlay = emptyMap(),
     )
@@ -87,6 +91,7 @@ class RenderContext private constructor(
         observability = observability,
         experiments = experiments,
         hostDataSource = hostDataSource,
+        theme = theme,
         store = store,
         overlay = overlay + extra,
     )

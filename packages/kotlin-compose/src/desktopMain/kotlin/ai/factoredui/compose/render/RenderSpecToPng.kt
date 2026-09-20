@@ -5,6 +5,8 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.unit.Density
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
+import ai.factoredui.compose.renderer.SpecTheme
+import androidx.compose.ui.graphics.Color
 import ai.factoredui.compose.schema.Spec
 import kotlinx.serialization.json.Json
 import org.jetbrains.skia.EncodedImageFormat
@@ -23,7 +25,8 @@ fun renderSpecToPng(
 ): ByteArray {
     val spec = specDecoder.decodeFromString(Spec.serializer(), specJson)
     val scene = ImageComposeScene(width = width, height = height, density = Density(density)) {
-        RenderSpec(spec = spec, context = RenderContext())
+        val theme = if (transparent) SpecTheme.LIGHT.copy(ground = Color.Transparent) else SpecTheme.LIGHT
+        RenderSpec(spec = spec, context = RenderContext(theme = theme))
     }
     try {
         return scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes ?: ByteArray(0)

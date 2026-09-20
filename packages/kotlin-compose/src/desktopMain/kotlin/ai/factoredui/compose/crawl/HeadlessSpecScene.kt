@@ -2,6 +2,7 @@ package ai.factoredui.compose.crawl
 
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
+import ai.factoredui.compose.renderer.SpecTheme
 import ai.factoredui.compose.schema.BindingResolver
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.compose.schema.SpecNode
@@ -39,8 +40,14 @@ class RenderedScreen(
  * region is directly comparable to the dp-stated layout floors the grader applies.
  */
 @OptIn(ExperimentalComposeUiApi::class)
-fun renderScreen(spec: Spec, store: Map<String, Any?>, viewportWidthDp: Int, viewportHeightDp: Int): RenderedScreen {
-    val context = RenderContext(initialData = store)
+fun renderScreen(
+    spec: Spec,
+    store: Map<String, Any?>,
+    viewportWidthDp: Int,
+    viewportHeightDp: Int,
+    theme: SpecTheme = SpecTheme.LIGHT,
+): RenderedScreen {
+    val context = RenderContext(initialData = store, theme = theme)
     val scene = ImageComposeScene(width = viewportWidthDp, height = viewportHeightDp, density = Density(1f)) {
         CompositionLocalProvider(LocalDensity provides Density(1f)) {
             Box(Modifier.fillMaxSize()) { RenderSpec(spec = spec, context = context) }
@@ -87,7 +94,7 @@ private fun shadowNodes(
 }
 
 /**
- * The region the node was laid out into, NOT clipped to its ancestors — `boundsInRoot` clips, which
+ * The region the node was laid out into, NOT clipped to its ancestors - `boundsInRoot` clips, which
  * would silently hide the very case the offscreen check exists to catch.
  */
 private fun SemanticsNode.unclippedBoundsInRoot(): DpRect {

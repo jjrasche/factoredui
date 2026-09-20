@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -97,11 +99,15 @@ fun RenderSpec(root: SpecNode, context: RenderContext) {
  */
 @Composable
 fun RenderSpec(spec: Spec, context: RenderContext) {
-    if (spec.keybindings.isEmpty()) {
-        RenderNode(node = spec.root, context = context)
-    } else {
-        KeybindingHost(keybindings = spec.keybindings, context = context) {
-            RenderNode(node = spec.root, context = context)
+    CompositionLocalProvider(LocalSpecTheme provides context.theme) {
+        Box(modifier = Modifier.fillMaxSize().background(context.theme.ground)) {
+            if (spec.keybindings.isEmpty()) {
+                RenderNode(node = spec.root, context = context)
+            } else {
+                KeybindingHost(keybindings = spec.keybindings, context = context) {
+                    RenderNode(node = spec.root, context = context)
+                }
+            }
         }
     }
 }
@@ -571,7 +577,7 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
         text = props.value,
         style = style.copy(
             fontWeight = if (props.bold) FontWeight.Bold else null,
-            color = props.colorValue ?: Color.Unspecified,
+            color = props.colorValue ?: LocalSpecTheme.current.ink,
         ),
         textAlign = when (props.align) {
             "center" -> TextAlign.Center
