@@ -141,6 +141,7 @@ kotlin {
                 implementation(libs.compose.ui.test.junit4.android)
                 implementation(libs.compose.ui.test.manifest)
                 implementation(libs.androidx.espresso.core)
+                implementation(libs.androidx.test.core)
             }
         }
 
