@@ -135,6 +135,7 @@ fun RenderSpec(specFlow: StateFlow<Spec>, context: RenderContext) {
  */
 @Composable
 fun RenderNode(node: SpecNode, context: RenderContext) {
+    @Suppress("NAME_SHADOWING") val node = PropReads.instrument(node)
     // Subscribe to reactive data so binding updates drive recomposition
     val liveData by context.dataFlow.collectAsState()
     val isVisible = BindingResolver.isVisible(node.visible, liveData)
@@ -146,7 +147,7 @@ fun RenderNode(node: SpecNode, context: RenderContext) {
     }
 
     val resolvedProps = remember(node.props, liveData) {
-        BindingResolver.resolveProps(node.props, liveData)
+        PropReads.watchResolved(node.id, BindingResolver.resolveProps(node.props, liveData))
     }
 
     RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context)
@@ -204,7 +205,9 @@ private fun RenderNodeByType(
                 chrome = sceneProps.chrome,
                 liveBody = liveBody,
                 onIntent = { action, params -> sceneScope.launch { intentDispatch(action, params) } },
-                modifier = Modifier.nodeTag(node.id),
+                modifier = Modifier.nodeTag(node.id).let { base ->
+                    if (resolveLayoutProps(node, resolvedProps).flex > 0f) base.fillMaxSize() else base
+                },
             )
         }
         SpecNodeType.CANVAS -> RenderCanvas(node, context)
