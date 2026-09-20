@@ -37,8 +37,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.datetime)
 
-    // Postgres-specific. The server target is *the* place where we commit
-    // to a backend — see DECISIONS.md for the rationale.
+    // Postgres-specific: the server target is the one place that commits to a backend.
     implementation(libs.postgresql)
     implementation(libs.hikari.cp)
 

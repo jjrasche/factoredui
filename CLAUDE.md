@@ -53,5 +53,4 @@ The rendering half of agent-platform. Kotlin Multiplatform + Compose Multiplatfo
 ## Project-Specific Notes
 
 - CONCEPT.md — the thesis (5-piece autonomy loop, three-tier factor model, novelty)
-- DECISIONS.md — architectural decisions and the porting roadmap (current state of the loop, what comes next)
 - packages/kotlin-compose/README.md — detailed setup / publish / consumer integration
