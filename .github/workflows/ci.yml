@@ -62,3 +62,8 @@ jobs:
 
       - name: Assemble renderer (all targets)
         run: ./gradlew :kotlin-compose:assemble
+
+      # Compiles the device tests without a device. They can only RUN on hardware, so
+      # nothing here would catch a break in them until a human plugged a phone in.
+      - name: Compile device tests (no device needed)
+        run: ./gradlew :kotlin-compose:assembleDebugAndroidTest
