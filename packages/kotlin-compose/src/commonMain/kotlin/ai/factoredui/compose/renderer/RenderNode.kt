@@ -250,10 +250,13 @@ private fun resolveLayoutProps(node: SpecNode, resolved: Map<String, Any?>): Lay
 private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
-    val fillWidth = hasFlexChild || props.align != LayoutAlign.START
+    // A node's OWN flex is honoured by whatever lays it out — except at the root, where
+    // nothing does. Filling here means a flex container claims its space wherever it sits.
+    val claimsSpace = props.flex > 0f
+    val fillWidth = hasFlexChild || claimsSpace || props.align != LayoutAlign.START
     val colModifier = Modifier.nodeTag(node.id).groundOf(props).padding(props.padding.dp)
         .let { if (fillWidth) it.fillMaxWidth() else it }
-        .let { if (hasFlexChild) it.fillMaxHeight() else it }
+        .let { if (hasFlexChild || claimsSpace) it.fillMaxHeight() else it }
     Column(
         modifier = colModifier,
         verticalArrangement = verticalArrangement(props.justify, props.gap),
@@ -274,9 +277,11 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
 private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
-    val fillWidth = hasFlexChild || props.justify != LayoutJustify.START
+    val claimsSpace = props.flex > 0f
+    val fillWidth = hasFlexChild || claimsSpace || props.justify != LayoutJustify.START
     val rowModifier = Modifier.nodeTag(node.id).groundOf(props).padding(props.padding.dp)
         .let { if (fillWidth) it.fillMaxWidth() else it }
+        .let { if (claimsSpace) it.fillMaxHeight() else it }
     Row(
         modifier = rowModifier,
         horizontalArrangement = horizontalArrangement(props.justify, props.gap),
