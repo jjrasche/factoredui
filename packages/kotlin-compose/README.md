@@ -10,9 +10,9 @@ As of 0.9.0 the schema types (Spec, SpecNode, capture wire types) live in a sepa
 
 | File | Artifact | Purpose |
 |---|---|---|
-| `schema/SpecNode.kt` | `kotlin-compose-schema` | Spec / SpecNode / SpecValue data classes; canonical Kotlin-side Spec schema. Mirrored (for now) by `packages/core/src/sdui/spec-types.ts`. |
+| `schema/SpecNode.kt` | `kotlin-compose-schema` | Spec / SpecNode / SpecValue data classes; the canonical Spec schema. |
 | `schema/BindingResolver.kt` | `kotlin-compose-schema` | Resolves `{path.to.value}` binding refs against a live data map. |
-| `schema/SpecProps.kt` | `kotlin-compose-schema` | Typed prop readers per primitive (`asButtonProps`, `asForceGraphProps`, ...). |
+| `schema/SpecProps.kt` | `kotlin-compose-schema` | Typed prop readers per primitive (`asButtonProps`, `asScene3dProps`, ...). |
 | `capture/CaptureEvent.kt` | `kotlin-compose-schema` | `CaptureEvent` / `EventType` / `CapturePlatform` wire types. |
 | `capture/Session.kt` | `kotlin-compose-schema` | `Session` data class (wire format). |
 | `capture/SessionManager.kt` | `kotlin-compose` | Runtime session state — mints session ids, rotates on inactivity. |
@@ -116,7 +116,7 @@ prop.
 
 ## Schema nodes ported
 
-All 20 SpecNodeType values are declared in the schema. The renderer handles:
+All 23 SpecNodeType values are declared in the schema. The renderer handles:
 
 | Node | Renderer |
 |------|----------|

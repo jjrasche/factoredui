@@ -40,7 +40,7 @@ The rendering half of agent-platform. Kotlin Multiplatform + Compose Multiplatfo
 
 - **Container primitives** — column, row, stack, scrollview, grid, list, card, tabs, modal.
 - **Widget leaves** — text, button, image, icon, divider, spacer, textinput, toggle, select, slider, chip.
-- **Dense/semantic primitives** — new category. `forcegraph` is the first. Takes typed data (topology) + physics config; runs its own simulation loop; no child components. Future members: timeline, heatmap, flow-field, scatterplot3d.
+- **Dense/semantic primitives** — `scene3d`, `canvas`, `geomap`. Take typed data (a world, a drawing, a topology) instead of child components; scene3d runs its own simulation loop. Future members: timeline, heatmap, flow-field, scatterplot3d.
 
 ### Spec schema
 

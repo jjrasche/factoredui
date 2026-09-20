@@ -8,7 +8,7 @@ The rendering half of [agent-platform](https://github.com/jjrasche/agent-platfor
 
 - **Container** — column, row, stack, scrollview, grid, list, card, tabs, modal
 - **Widget leaves** — text, button, image, icon, divider, spacer, textinput, toggle, select, slider, chip
-- **Dense/semantic** — `forcegraph` (first member). Future: timeline, heatmap, flow-field, scatterplot3d. These take typed data + physics/layout config instead of child components, and render dense perceptual channels rather than discrete widgets.
+- **Dense/semantic** — `scene3d`, `canvas`, `geomap`. Future: timeline, heatmap, flow-field, scatterplot3d. These take typed data plus layout or physics config instead of child components, and render dense perceptual channels rather than discrete widgets.
 
 ## Usage (Gradle)
 

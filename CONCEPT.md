@@ -25,9 +25,8 @@ Raw interaction data + errors
 factoredui is **the rendering half** of this loop. Specs are the change
 vocabulary; the renderer makes them perceptible on whichever substrate is
 running. The capture / factor / experiment / governance halves live in
-[agent-platform](https://github.com/jjrasche/agent-platform), or — for the
-TypeScript prototypes — as dormant code in `packages/core/` pending a Kotlin
-port.
+[agent-platform](https://github.com/jjrasche/agent-platform) and, since the
+2026-06-25 port, in `kotlin-compose-capture` and `kotlin-engine`.
 
 ## Three-tier factor model
 
@@ -62,9 +61,10 @@ every level.
 packages/
 ├── kotlin-compose/   — the live renderer. Compose Multiplatform; targets
 │                       Android, iOS (3 arches), JVM desktop, browser (wasmJs).
-└── core/             — TypeScript. Holds spec-types.ts as the canonical schema
-                        mirror. Capture / factor / experiment pipeline code is
-                        present but dormant pending a Kotlin port.
+├── kotlin-compose-schema/ — the canonical spec types (Compose-free).
+├── kotlin-compose-capture/ — capture events and sessions.
+├── kotlin-engine/    — factor + experiment engine: bucketing, governance, targeting.
+└── kotlin-server/    — factor SQL and endpoints.
 ```
 
 Previously also shipped: `@factoredui/react`, `@factoredui/react-native`,
@@ -76,7 +76,7 @@ single Compose Multiplatform renderer.
 - **One renderer surface across substrates** — Compose Multiplatform compiles
   the same primitives to Android, iOS, desktop JVM, and the browser. No
   per-platform translation layer.
-- **Closed primitive palette** — 22 enum cases (containers, leaves,
+- **Closed primitive palette** — 23 enum cases (containers, leaves,
   dense/semantic). Adding a primitive requires changing both the schema enum
   and the dispatch in `RenderNode.kt`. Low ceremony, high consistency.
 - **Storage-agnostic** — the renderer never knows about a backend. Specs come

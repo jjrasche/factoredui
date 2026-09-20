@@ -10,7 +10,7 @@ The thesis (see `CONCEPT.md`) is a 5-stage loop:
 
 | # | Stage | Built? |
 |---|---|---|
-| 1 | Standardized component vocabulary (observation = change unit) | **Done** — kotlin-compose, 22 primitives, all targets |
+| 1 | Standardized component vocabulary (observation = change unit) | **Done** — kotlin-compose, 23 primitives, all targets |
 | 2 | Multi-tier factor engine (alarm / diagnostic / structural) | **Engine ported to Kotlin** (`kotlin-engine/factors/`: KMeans, FactorModel, FactorDashboardSpec, bit-exact parity tested). Not yet wired into a live proactive loop. |
 | 3 | LLM hypothesis generation (read factors → propose component-level changes) | **Not built anywhere.** New work, slated for this repo (not agent-platform). |
 | 4 | Component-level experimentation (variant assignment, exposure, governance) | **Ported to Kotlin** (`kotlin-engine/experiments/`: Bucketing, Governance, Lifecycle, Targeting + `kotlin-compose/experiments/Experiments`). Not yet wired into a live loop. |
@@ -92,7 +92,7 @@ renderer in one publication. 0.9.0 splits this into:
   so existing consumers keep getting the schema types transitively.
   Holds the runtime: `RenderNode`, `RenderContext`, `SessionManager`,
   `CaptureClient`, `HttpEventTransport`, `CaptureObservability`,
-  observability, experiments, adapter, forcegraph, testing.
+  observability, experiments, adapter, scene3d, testing.
 
 **Why:** server-side engine consumers (agent-platform's factor / LLM
 hypothesis modules) need `SpecNode` to emit and validate specs without
@@ -330,8 +330,8 @@ exactly why `renderSpecToPng` is a pure function).
 **The violation:** `scene3d` predates the rule. It has **18 HTTP
 call-sites** (`world_state_url` fetch, action POSTs, SSE stream, preview/
 settle/drop/sit/prompt handlers) and forces `ktor.client.*` to be a
-renderer dependency. `forcegraph` adds 7 more (slated for deletion
-anyway). `capture/` posts telemetry (observability, movable host-side).
+renderer dependency. `capture/` posts telemetry (observability, movable
+host-side). The forcegraph primitive and its 7 call-sites are gone.
 
 **Acceptance test (binary, unfakeable):** the `kotlin-compose` module
 drops its `ktor.client.*` dependency. You cannot half-violate "no HTTP"
