@@ -15,19 +15,42 @@ fun unconsumedProps(
     viewportHeightDp: Int = 800,
     theme: SpecTheme = SpecTheme.LIGHT,
 ): List<UnconsumedProp> {
-    val (_, readsByNode) = PropReads.record {
+    val (_, log) = PropReads.record {
         renderScreen(spec, store, viewportWidthDp, viewportHeightDp, theme)
     }
     val unconsumed = mutableListOf<UnconsumedProp>()
     fun walk(node: SpecNode) {
-        val read = readsByNode[node.id].orEmpty()
-        node.props.keys.filterNot { it in read }.forEach { key ->
-            unconsumed += UnconsumedProp(node.id, node.type, key)
+        if (node.id in log.visited) {
+            val read = log.reads[node.id].orEmpty()
+            node.props.keys.filterNot { it in read }.forEach { key ->
+                unconsumed += UnconsumedProp(node.id, node.type, key)
+            }
         }
         node.children.forEach(::walk)
     }
     walk(spec.root)
     return unconsumed
+}
+
+data class UnreachedNode(val id: String, val type: SpecNodeType)
+
+fun unreachedNodes(
+    spec: Spec,
+    store: Map<String, Any?> = emptyMap(),
+    viewportWidthDp: Int = 400,
+    viewportHeightDp: Int = 800,
+    theme: SpecTheme = SpecTheme.LIGHT,
+): List<UnreachedNode> {
+    val (_, log) = PropReads.record {
+        renderScreen(spec, store, viewportWidthDp, viewportHeightDp, theme)
+    }
+    val unreached = mutableListOf<UnreachedNode>()
+    fun walk(node: SpecNode) {
+        if (node.id !in log.visited) unreached += UnreachedNode(node.id, node.type)
+        node.children.forEach(::walk)
+    }
+    walk(spec.root)
+    return unreached
 }
 
 fun assertEveryPropWasRead(

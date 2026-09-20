@@ -135,11 +135,12 @@ fun RenderSpec(specFlow: StateFlow<Spec>, context: RenderContext) {
  */
 @Composable
 fun RenderNode(node: SpecNode, context: RenderContext) {
-    @Suppress("NAME_SHADOWING") val node = PropReads.instrument(node)
     // Subscribe to reactive data so binding updates drive recomposition
     val liveData by context.dataFlow.collectAsState()
     val isVisible = BindingResolver.isVisible(node.visible, liveData)
     if (!isVisible) return
+    PropReads.visit(node.id)
+    @Suppress("NAME_SHADOWING") val node = PropReads.instrument(node)
 
     // Fire render observability hook — mirrors the path-context wrapping in the React renderer
     LaunchedEffect(node.id) {
