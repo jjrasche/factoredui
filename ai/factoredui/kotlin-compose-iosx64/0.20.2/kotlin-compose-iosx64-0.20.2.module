@@ -1,0 +1,470 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../kotlin-compose/0.20.2/kotlin-compose-0.20.2.module",
+    "group": "ai.factoredui",
+    "module": "kotlin-compose",
+    "version": "0.20.2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "iosX64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-schema",
+          "version": {
+            "requires": "0.20.2"
+          }
+        },
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-capture",
+          "version": {
+            "requires": "0.20.2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-darwin",
+          "version": {
+            "requires": "3.2.4"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.runtime",
+          "module": "runtime",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.foundation",
+          "module": "foundation",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.material3",
+          "module": "material3",
+          "version": {
+            "requires": "1.9.0-beta03"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.ui",
+          "module": "ui",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.10.2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-compose",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-network-ktor3",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-svg",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-core",
+          "version": {
+            "requires": "3.2.4"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-content-negotiation",
+          "version": {
+            "requires": "3.2.4"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-serialization-kotlinx-json",
+          "version": {
+            "requires": "3.2.4"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-iosX64Main-0.20.2.klib",
+          "url": "kotlin-compose-iosx64-0.20.2.klib",
+          "size": 618650,
+          "sha512": "77a4a51086fb99ca94ebfdc200543e5a35744f798059e419b873a6b841b3b349c2d076a81c1d0cfb91615efc4f82b6cea001af9083f1ceb43541855732d916b9",
+          "sha256": "075c13d9683f4717195503b6cbdc6dd1cd3c0ed26b4d17599b4e69102de6b210",
+          "sha1": "5d11384a60734f29fbf160f0cb2d06deea13a284",
+          "md5": "936a5bdd3995225b91b38d92cd5aebb0"
+        }
+      ]
+    },
+    {
+      "name": "iosX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "files": [
+        {
+          "name": "kotlin-compose-iosx64-0.20.2-sources.jar",
+          "url": "kotlin-compose-iosx64-0.20.2-sources.jar",
+          "size": 86805,
+          "sha512": "42e8aafdd1f6c305919ed7b823717cb0637cc0702f0c2570cef01292b8fa9ec18b35e40a0796e66d33418c9a8ce229c313c0d3f653ab50240b1e01460e1aef32",
+          "sha256": "e143839e3692a635cbae31b057079ec2187a44c651916aeab1dd2fdd81020faf",
+          "sha1": "694ba01d6b4b37a189adca6acb4944057575f735",
+          "md5": "4ef10196c9e42717615da5d632c443b6"
+        }
+      ]
+    },
+    {
+      "name": "iosX64ResourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.libraryelements": "kotlin-multiplatformresources",
+        "org.gradle.usage": "kotlin-multiplatformresources",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-schema",
+          "version": {
+            "requires": "0.20.2"
+          }
+        },
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-capture",
+          "version": {
+            "requires": "0.20.2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-darwin",
+          "version": {
+            "requires": "3.2.4"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.runtime",
+          "module": "runtime",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.foundation",
+          "module": "foundation",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.material3",
+          "module": "material3",
+          "version": {
+            "requires": "1.9.0-beta03"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.ui",
+          "module": "ui",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.10.2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-compose",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-network-ktor3",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-svg",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-core",
+          "version": {
+            "requires": "3.2.4"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-content-negotiation",
+          "version": {
+            "requires": "3.2.4"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-serialization-kotlinx-json",
+          "version": {
+            "requires": "3.2.4"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-0.20.2.kotlin_resources.zip",
+          "url": "kotlin-compose-iosx64-0.20.2-kotlin_resources.kotlin_resources.zip",
+          "size": 344,
+          "sha512": "c269ac1cf47f332079b50adba163bc20d529926edb1daa100be47721766b5a5b65d15a091eb524cd3a71594b7e949fcb06b84c36983a1a4e7a4bc7366ffc39d6",
+          "sha256": "8701734d0a2d6330dd5898f992537a66ca93d1c320db152c36ad82806622515c",
+          "sha1": "37dbf202e8b8470a7212fc0b91bc47b573b1a262",
+          "md5": "e5f05ed2d9a57975b55f5c508c00d9c3"
+        }
+      ]
+    },
+    {
+      "name": "iosX64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-schema",
+          "version": {
+            "requires": "0.20.2"
+          }
+        },
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-capture",
+          "version": {
+            "requires": "0.20.2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-darwin",
+          "version": {
+            "requires": "3.2.4"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.runtime",
+          "module": "runtime",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.foundation",
+          "module": "foundation",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.material3",
+          "module": "material3",
+          "version": {
+            "requires": "1.9.0-beta03"
+          }
+        },
+        {
+          "group": "org.jetbrains.compose.ui",
+          "module": "ui",
+          "version": {
+            "requires": "1.10.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.10.2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-compose",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-network-ktor3",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.coil-kt.coil3",
+          "module": "coil-svg",
+          "version": {
+            "requires": "3.2.0"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-core",
+          "version": {
+            "requires": "3.2.4"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-client-content-negotiation",
+          "version": {
+            "requires": "3.2.4"
+          }
+        },
+        {
+          "group": "io.ktor",
+          "module": "ktor-serialization-kotlinx-json",
+          "version": {
+            "requires": "3.2.4"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-iosx64-0.20.2-metadata.jar",
+          "url": "kotlin-compose-iosx64-0.20.2-metadata.jar",
+          "size": 3220,
+          "sha512": "fef10bdcf29ad1ed9b9b74bcc133aac63c9d8ed9ee68ebaa5669c7708269a7cc30546c09c4274df4664bdbdec0d0a65a0998892d9ad44f4cbd5bbcf8b566c7d3",
+          "sha256": "56d62d9db0e83aef845649caee078f216e51504422f5bdf7318994e7d02d54a7",
+          "sha1": "b4760c1e8ab91341fb271ddb0cea64c2a5387f84",
+          "md5": "44c510113c58fb0d3d08124c9ab182cb"
+        }
+      ]
+    }
+  ]
+}
