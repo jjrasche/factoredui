@@ -57,6 +57,18 @@ fun worldBoundsOf(rings: List<List<GeoPoint>>): WorldBounds? {
     return if (seen) WorldBounds(minX, minY, maxX, maxY) else null
 }
 
+fun WorldBounds.intersects(other: WorldBounds): Boolean =
+    minX <= other.maxX && maxX >= other.minX && minY <= other.maxY && maxY >= other.minY
+
+fun visibleWorldBounds(viewport: GeomapViewport, widthPx: Float, heightPx: Float): WorldBounds {
+    val scale = geomapScalePx(viewport.zoom)
+    val centerX = lonToWorldX(viewport.lon)
+    val centerY = latToWorldY(viewport.lat)
+    val halfWidth = widthPx / 2.0 / scale
+    val halfHeight = heightPx / 2.0 / scale
+    return WorldBounds(centerX - halfWidth, centerY - halfHeight, centerX + halfWidth, centerY + halfHeight)
+}
+
 fun WorldBounds.union(other: WorldBounds): WorldBounds = WorldBounds(
     minX = min(minX, other.minX),
     minY = min(minY, other.minY),

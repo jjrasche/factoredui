@@ -44,6 +44,7 @@ internal class TessellatedFeature(
     val strokeWidth: Float,
     val worldRings: List<DoubleArray>,
     val triangleWorld: DoubleArray,
+    val bounds: WorldBounds?,
 )
 
 internal class TessellatedLayer(
@@ -114,17 +115,16 @@ internal fun tessellateGeomapLayers(layers: List<GeomapLayer>): GeomapTessellati
     var bounds: WorldBounds? = null
     val tessellatedLayers = layers.map { layer ->
         val features = layer.features.map { feature ->
-            worldBoundsOf(feature.rings)?.let { featureBounds ->
-                bounds = bounds?.union(featureBounds) ?: featureBounds
-            }
-            tessellateFeature(feature, layer.kind)
+            val featureBounds = worldBoundsOf(feature.rings)
+            featureBounds?.let { bounds = bounds?.union(it) ?: it }
+            tessellateFeature(feature, layer.kind, featureBounds)
         }
         TessellatedLayer(layer.id, layer.kind, layer.visible, features)
     }
     return GeomapTessellation(tessellatedLayers, bounds)
 }
 
-private fun tessellateFeature(feature: GeomapFeature, kind: GeomapLayerKind): TessellatedFeature {
+private fun tessellateFeature(feature: GeomapFeature, kind: GeomapLayerKind, bounds: WorldBounds?): TessellatedFeature {
     val worldRings = feature.rings.map { ring ->
         DoubleArray(ring.size * 2).also { flat ->
             ring.forEachIndexed { index, point ->
@@ -143,7 +143,23 @@ private fun tessellateFeature(feature: GeomapFeature, kind: GeomapLayerKind): Te
         strokeWidth = feature.strokeWidth,
         worldRings = worldRings,
         triangleWorld = triangleWorld,
+        bounds = bounds,
     )
+}
+
+// Drawing every feature every frame is what made a county of parcels unusable; a feature
+// whose bounds miss the view contributes no pixels, so it is skipped before any vertex work.
+private fun TessellatedLayer.featuresIn(view: WorldBounds): List<TessellatedFeature> =
+    features.filter { feature -> feature.bounds?.intersects(view) ?: false }
+
+internal fun drawnGeomapFeatureIds(
+    tessellation: GeomapTessellation,
+    viewport: GeomapViewport,
+    widthPx: Float,
+    heightPx: Float,
+): List<String> {
+    val view = visibleWorldBounds(viewport, widthPx, heightPx)
+    return tessellation.layers.filter { it.visible }.flatMap { layer -> layer.featuresIn(view).map { it.featureId } }
 }
 
 private fun expandTriangles(worldRings: List<DoubleArray>): DoubleArray {
@@ -191,17 +207,19 @@ private fun DrawScope.drawGeomapTessellation(
     val centerY = latToWorldY(viewport.lat)
     fun screenX(worldX: Double): Float = ((worldX - centerX) * scale + widthPx / 2.0).toFloat()
     fun screenY(worldY: Double): Float = ((worldY - centerY) * scale + heightPx / 2.0).toFloat()
+    val view = visibleWorldBounds(viewport, widthPx, heightPx)
 
     drawIntoCanvas { canvas ->
         for (layer in tessellation.layers) {
             if (!layer.visible || layer.kind != GeomapLayerKind.FILL) continue
+            val inView = layer.featuresIn(view)
             var vertexCount = 0
-            for (feature in layer.features) vertexCount += feature.triangleWorld.size / 2
+            for (feature in inView) vertexCount += feature.triangleWorld.size / 2
             if (vertexCount < 3) continue
             val positions = FloatArray(vertexCount * 2)
             val colors = IntArray(vertexCount)
             var vertex = 0
-            for (feature in layer.features) {
+            for (feature in inView) {
                 val fill = feature.fillArgb ?: continue
                 val triangles = feature.triangleWorld
                 for (index in 0 until triangles.size / 2) {
@@ -217,7 +235,7 @@ private fun DrawScope.drawGeomapTessellation(
 
     for (layer in tessellation.layers) {
         if (!layer.visible) continue
-        for (feature in layer.features) {
+        for (feature in layer.featuresIn(view)) {
             val strokeArgb = feature.strokeArgb ?: continue
             val path = Path()
             for (ring in feature.worldRings) {
