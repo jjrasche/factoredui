@@ -13,6 +13,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import ai.factoredui.compose.schema.GeomapLegendEntry
 import ai.factoredui.compose.schema.GeomapPattern
 import ai.factoredui.compose.schema.resolveGeomapLegend
@@ -52,6 +57,8 @@ import ai.factoredui.compose.schema.resolveGeomapViewport
 import kotlinx.coroutines.launch
 
 private const val DEFAULT_STROKE_ARGB = 0xFF2C3E50.toInt()
+private const val LABEL_FIT = 0.9f
+private val LABEL_FONT_SIZE = 12.sp
 
 internal class TessellatedFeature(
     val featureId: String,
@@ -62,6 +69,7 @@ internal class TessellatedFeature(
     val triangleWorld: DoubleArray,
     val bounds: WorldBounds?,
     val pattern: GeomapPattern?,
+    val label: String?,
 )
 
 internal class TessellatedLayer(
@@ -86,6 +94,8 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val hostViewport = resolveGeomapViewport(resolvedProps["viewport"])
     val legend = resolveGeomapLegend(resolvedProps["legend"])
     val scope = rememberCoroutineScope()
+    val labelMeasurer = rememberTextMeasurer()
+    val labelInk = LocalSpecTheme.current.ink
     BoxWithConstraints(modifier = Modifier.fillMaxSize().nodeTag(node.id).clipToBounds()) {
         val widthPx = constraints.maxWidth.toFloat()
         val heightPx = constraints.maxHeight.toFloat()
@@ -124,7 +134,7 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
                     }
                 },
         ) {
-            drawGeomapTessellation(tessellation, viewport, widthPx, heightPx)
+            drawGeomapTessellation(tessellation, viewport, widthPx, heightPx, labelMeasurer, labelInk)
         }
         if (legend.isNotEmpty()) GeomapLegend(legend, Modifier.align(Alignment.BottomStart))
     }
@@ -164,6 +174,7 @@ private fun tessellateFeature(feature: GeomapFeature, kind: GeomapLayerKind, bou
         triangleWorld = triangleWorld,
         bounds = bounds,
         pattern = if (kind == GeomapLayerKind.FILL) feature.pattern else null,
+        label = feature.label?.takeIf { it.isNotBlank() },
     )
 }
 
@@ -221,6 +232,8 @@ private fun DrawScope.drawGeomapTessellation(
     viewport: GeomapViewport,
     widthPx: Float,
     heightPx: Float,
+    labelMeasurer: TextMeasurer,
+    labelInk: Color,
 ) {
     val scale = geomapScalePx(viewport.zoom)
     val centerX = lonToWorldX(viewport.lon)
@@ -281,6 +294,26 @@ private fun DrawScope.drawGeomapTessellation(
                 if (layer.kind == GeomapLayerKind.FILL) path.close()
             }
             drawPath(path, color = Color(strokeArgb), style = Stroke(width = feature.strokeWidth * density))
+        }
+    }
+
+    for (layer in tessellation.layers) {
+        if (!layer.visible) continue
+        for (feature in layer.featuresIn(view)) {
+            val label = feature.label ?: continue
+            val world = feature.bounds ?: continue
+            val left = screenX(world.minX)
+            val right = screenX(world.maxX)
+            val top = minOf(screenY(world.minY), screenY(world.maxY))
+            val bottom = maxOf(screenY(world.minY), screenY(world.maxY))
+            val measured = labelMeasurer.measure(label, TextStyle(color = labelInk, fontSize = LABEL_FONT_SIZE))
+            // A label wider or taller than its feature on screen is not drawn, which is also what keeps
+            // eleven thousand parcel names off a county-scale view without a separate zoom threshold.
+            if (measured.size.width > (right - left) * LABEL_FIT || measured.size.height > (bottom - top) * LABEL_FIT) continue
+            drawText(
+                measured,
+                topLeft = Offset((left + right - measured.size.width) / 2f, (top + bottom - measured.size.height) / 2f),
+            )
         }
     }
 }
