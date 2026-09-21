@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -152,7 +153,7 @@ private fun tessellateFeature(feature: GeomapFeature, kind: GeomapLayerKind, bou
         }
     }
     val fillArgb = if (kind == GeomapLayerKind.FILL) parseGeomapColor(feature.fill) else null
-    val triangleWorld = if (fillArgb != null) expandTriangles(worldRings) else DoubleArray(0)
+    val triangleWorld = if (fillArgb != null && worldRings.size == 1) expandTriangles(worldRings) else DoubleArray(0)
     return TessellatedFeature(
         featureId = feature.id,
         fillArgb = fillArgb,
@@ -228,13 +229,12 @@ private fun DrawScope.drawGeomapTessellation(
     fun screenY(worldY: Double): Float = ((worldY - centerY) * scale + heightPx / 2.0).toFloat()
     val view = visibleWorldBounds(viewport, widthPx, heightPx)
 
-    drawIntoCanvas { canvas ->
-        for (layer in tessellation.layers) {
-            if (!layer.visible || layer.kind != GeomapLayerKind.FILL) continue
-            val inView = layer.featuresIn(view)
-            var vertexCount = 0
-            for (feature in inView) vertexCount += feature.triangleWorld.size / 2
-            if (vertexCount < 3) continue
+    for (layer in tessellation.layers) {
+        if (!layer.visible || layer.kind != GeomapLayerKind.FILL) continue
+        val inView = layer.featuresIn(view)
+        var vertexCount = 0
+        for (feature in inView) vertexCount += feature.triangleWorld.size / 2
+        if (vertexCount >= 3) {
             val positions = FloatArray(vertexCount * 2)
             val colors = IntArray(vertexCount)
             var vertex = 0
@@ -248,7 +248,13 @@ private fun DrawScope.drawGeomapTessellation(
                     vertex++
                 }
             }
-            drawTriangleBatch(canvas, positions, colors, vertex)
+            drawIntoCanvas { canvas -> drawTriangleBatch(canvas, positions, colors, vertex) }
+        }
+        // Inner rings are holes: even-odd fills them as empty, which the triangle batch cannot express.
+        for (feature in inView) {
+            val fill = feature.fillArgb ?: continue
+            if (feature.worldRings.size < 2) continue
+            drawPath(screenPathOf(feature.worldRings, closed = true, ::screenX, ::screenY), Color(fill))
         }
     }
 
@@ -285,7 +291,7 @@ private fun screenPathOf(
     screenX: (Double) -> Float,
     screenY: (Double) -> Float,
 ): Path {
-    val path = Path()
+    val path = Path().apply { fillType = PathFillType.EvenOdd }
     for (ring in worldRings) {
         val pointCount = ring.size / 2
         if (pointCount < 2) continue
