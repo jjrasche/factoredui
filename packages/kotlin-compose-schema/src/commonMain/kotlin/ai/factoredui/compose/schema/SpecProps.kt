@@ -406,6 +406,17 @@ data class GeoPoint(val lon: Double, val lat: Double)
 
 enum class GeomapLayerKind { FILL, LINE }
 
+enum class GeomapPatternKind { HATCH, CROSS, DOTS }
+
+data class GeomapPattern(
+    val kind: GeomapPatternKind,
+    val color: String,
+    val angle: Float = 45f,
+    val spacing: Float = 8f,
+    val lineWidth: Float = 2.5f,
+    val background: String? = null,
+)
+
 data class GeomapFeature(
     val id: String,
     val rings: List<List<GeoPoint>>,
@@ -413,7 +424,10 @@ data class GeomapFeature(
     val stroke: String? = null,
     val strokeWidth: Float = 1f,
     val label: String? = null,
+    val pattern: GeomapPattern? = null,
 )
+
+data class GeomapLegendEntry(val label: String, val fill: String? = null, val pattern: GeomapPattern? = null)
 
 data class GeomapLayer(
     val id: String,
@@ -459,7 +473,33 @@ private fun resolveGeomapFeatures(resolvedFeatures: Any?): List<GeomapFeature> =
             stroke = fields["stroke"] as? String,
             strokeWidth = (fields["stroke_width"] as? Number)?.toFloat() ?: 1f,
             label = fields["label"] as? String,
+            pattern = resolveGeomapPattern(fields["pattern"]),
         )
+    }
+
+fun resolveGeomapPattern(resolvedPattern: Any?): GeomapPattern? {
+    val fields = resolvedPattern as? Map<*, *> ?: return null
+    val color = fields["color"] as? String ?: return null
+    val kind = when (fields["kind"]) {
+        "cross" -> GeomapPatternKind.CROSS
+        "dots" -> GeomapPatternKind.DOTS
+        else -> GeomapPatternKind.HATCH
+    }
+    return GeomapPattern(
+        kind = kind,
+        color = color,
+        angle = (fields["angle"] as? Number)?.toFloat() ?: 45f,
+        spacing = (fields["spacing"] as? Number)?.toFloat() ?: 8f,
+        lineWidth = (fields["line_width"] as? Number)?.toFloat() ?: 2.5f,
+        background = fields["background"] as? String,
+    )
+}
+
+fun resolveGeomapLegend(resolvedLegend: Any?): List<GeomapLegendEntry> =
+    (resolvedLegend as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val label = fields["label"] as? String ?: return@mapNotNull null
+        GeomapLegendEntry(label = label, fill = fields["fill"] as? String, pattern = resolveGeomapPattern(fields["pattern"]))
     }
 
 private fun resolveGeomapRings(resolvedRings: Any?): List<List<GeoPoint>> {

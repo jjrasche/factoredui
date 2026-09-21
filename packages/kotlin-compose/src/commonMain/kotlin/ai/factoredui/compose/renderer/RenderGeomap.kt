@@ -1,6 +1,21 @@
 package ai.factoredui.compose.renderer
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.unit.dp
+import ai.factoredui.compose.schema.GeomapLegendEntry
+import ai.factoredui.compose.schema.GeomapPattern
+import ai.factoredui.compose.schema.resolveGeomapLegend
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -45,6 +60,7 @@ internal class TessellatedFeature(
     val worldRings: List<DoubleArray>,
     val triangleWorld: DoubleArray,
     val bounds: WorldBounds?,
+    val pattern: GeomapPattern?,
 )
 
 internal class TessellatedLayer(
@@ -67,6 +83,7 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val layersData = resolvedProps["layers"]
     val tessellation = remember(layersData) { tessellateGeomapLayers(resolveGeomapLayers(layersData)) }
     val hostViewport = resolveGeomapViewport(resolvedProps["viewport"])
+    val legend = resolveGeomapLegend(resolvedProps["legend"])
     val scope = rememberCoroutineScope()
     BoxWithConstraints(modifier = Modifier.fillMaxSize().nodeTag(node.id).clipToBounds()) {
         val widthPx = constraints.maxWidth.toFloat()
@@ -108,6 +125,7 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         ) {
             drawGeomapTessellation(tessellation, viewport, widthPx, heightPx)
         }
+        if (legend.isNotEmpty()) GeomapLegend(legend, Modifier.align(Alignment.BottomStart))
     }
 }
 
@@ -144,6 +162,7 @@ private fun tessellateFeature(feature: GeomapFeature, kind: GeomapLayerKind, bou
         worldRings = worldRings,
         triangleWorld = triangleWorld,
         bounds = bounds,
+        pattern = if (kind == GeomapLayerKind.FILL) feature.pattern else null,
     )
 }
 
@@ -236,6 +255,14 @@ private fun DrawScope.drawGeomapTessellation(
     for (layer in tessellation.layers) {
         if (!layer.visible) continue
         for (feature in layer.featuresIn(view)) {
+            val pattern = feature.pattern ?: continue
+            paintGeomapPattern(screenPathOf(feature.worldRings, closed = true, ::screenX, ::screenY), pattern)
+        }
+    }
+
+    for (layer in tessellation.layers) {
+        if (!layer.visible) continue
+        for (feature in layer.featuresIn(view)) {
             val strokeArgb = feature.strokeArgb ?: continue
             val path = Path()
             for (ring in feature.worldRings) {
@@ -248,6 +275,47 @@ private fun DrawScope.drawGeomapTessellation(
                 if (layer.kind == GeomapLayerKind.FILL) path.close()
             }
             drawPath(path, color = Color(strokeArgb), style = Stroke(width = feature.strokeWidth * density))
+        }
+    }
+}
+
+private fun screenPathOf(
+    worldRings: List<DoubleArray>,
+    closed: Boolean,
+    screenX: (Double) -> Float,
+    screenY: (Double) -> Float,
+): Path {
+    val path = Path()
+    for (ring in worldRings) {
+        val pointCount = ring.size / 2
+        if (pointCount < 2) continue
+        path.moveTo(screenX(ring[0]), screenY(ring[1]))
+        for (index in 1 until pointCount) path.lineTo(screenX(ring[index * 2]), screenY(ring[index * 2 + 1]))
+        if (closed) path.close()
+    }
+    return path
+}
+
+@Composable
+private fun GeomapLegend(entries: List<GeomapLegendEntry>, modifier: Modifier) {
+    Column(
+        modifier = modifier.padding(8.dp).background(LocalSpecTheme.current.ground.copy(alpha = 0.9f)).padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        entries.forEach { entry ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Canvas(modifier = Modifier.size(width = 28.dp, height = 18.dp)) {
+                    val swatch = Path().apply { addRect(Rect(Offset.Zero, size)) }
+                    entry.fill?.let(::parseGeomapColor)?.let { drawPath(swatch, Color(it)) }
+                    entry.pattern?.let { paintGeomapPattern(swatch, it) }
+                }
+                Text(
+                    text = entry.label,
+                    modifier = Modifier.padding(start = 6.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalSpecTheme.current.ink,
+                )
+            }
         }
     }
 }
