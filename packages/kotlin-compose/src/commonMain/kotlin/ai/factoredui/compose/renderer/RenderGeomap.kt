@@ -89,7 +89,13 @@ internal class TessellatedLayer(
     val kind: GeomapLayerKind,
     val visible: Boolean,
     val features: List<TessellatedFeature>,
+    val minZoom: Float? = null,
+    val maxZoom: Float? = null,
 )
+
+// The style-spec convention: hidden below min_zoom, and already hidden AT max_zoom.
+internal fun TessellatedLayer.isShownAt(zoom: Float): Boolean =
+    visible && (minZoom == null || zoom >= minZoom) && (maxZoom == null || zoom < maxZoom)
 
 internal class GeomapTessellation(
     val layers: List<TessellatedLayer>,
@@ -218,7 +224,7 @@ internal fun tessellateGeomapLayers(layers: List<GeomapLayer>): GeomapTessellati
             featureBounds?.let { bounds = bounds?.union(it) ?: it }
             tessellateFeature(feature, layer.kind, featureBounds, geometry)
         }
-        TessellatedLayer(layer.id, layer.kind, layer.visible, features)
+        TessellatedLayer(layer.id, layer.kind, layer.visible, features, layer.minZoom, layer.maxZoom)
     }
     return GeomapTessellation(tessellatedLayers, bounds)
 }
@@ -271,7 +277,9 @@ internal fun GeomapTessellation.withVisibility(overrides: Map<String, Boolean>):
     if (overrides.isEmpty()) this
     else GeomapTessellation(
         layers.map { layer ->
-            TessellatedLayer(layer.layerId, layer.kind, layer.visible && (overrides[layer.layerId] ?: true), layer.features)
+            TessellatedLayer(
+                layer.layerId, layer.kind, layer.visible && (overrides[layer.layerId] ?: true), layer.features, layer.minZoom, layer.maxZoom,
+            )
         },
         worldBounds,
     )
@@ -283,7 +291,7 @@ internal fun drawnGeomapFeatureIds(
     heightPx: Float,
 ): List<String> {
     val view = visibleWorldBounds(viewport, widthPx, heightPx)
-    return tessellation.layers.filter { it.visible }.flatMap { layer -> layer.featuresIn(view).map { it.featureId } }
+    return tessellation.layers.filter { it.isShownAt(viewport.zoom) }.flatMap { layer -> layer.featuresIn(view).map { it.featureId } }
 }
 
 private fun expandTriangles(worldRings: List<DoubleArray>): DoubleArray {
@@ -310,7 +318,7 @@ internal fun hitTestGeomap(
     val worldX = lonToWorldX(viewport.lon) + (tapXpx - widthPx / 2.0) / scale
     val worldY = latToWorldY(viewport.lat) + (tapYpx - heightPx / 2.0) / scale
     for (layer in tessellation.layers.asReversed()) {
-        if (!layer.visible) continue
+        if (!layer.isShownAt(viewport.zoom)) continue
         for (feature in layer.features.asReversed()) {
             if (isPointInRings(worldX, worldY, feature.worldRings)) {
                 return GeomapHit(layer.layerId, feature.featureId)
@@ -338,7 +346,7 @@ private fun DrawScope.drawGeomapTessellation(
     val view = visibleWorldBounds(viewport, widthPx, heightPx)
 
     for (layer in tessellation.layers) {
-        if (!layer.visible || layer.kind != GeomapLayerKind.FILL) continue
+        if (!layer.isShownAt(viewport.zoom) || layer.kind != GeomapLayerKind.FILL) continue
         val inView = layer.featuresIn(view)
         var vertexCount = 0
         for (feature in inView) vertexCount += feature.triangleWorld.size / 2
@@ -367,7 +375,7 @@ private fun DrawScope.drawGeomapTessellation(
     }
 
     for (layer in tessellation.layers) {
-        if (!layer.visible) continue
+        if (!layer.isShownAt(viewport.zoom)) continue
         for (feature in layer.featuresIn(view)) {
             val pattern = feature.pattern ?: continue
             paintGeomapPattern(screenPathOf(feature.worldRings, closed = true, ::screenX, ::screenY), pattern)
@@ -375,7 +383,7 @@ private fun DrawScope.drawGeomapTessellation(
     }
 
     for (layer in tessellation.layers) {
-        if (!layer.visible) continue
+        if (!layer.isShownAt(viewport.zoom)) continue
         for (feature in layer.featuresIn(view)) {
             val strokeArgb = feature.strokeArgb ?: continue
             val path = Path()
@@ -397,7 +405,7 @@ private fun DrawScope.drawGeomapTessellation(
 
     if (selection.isNotEmpty()) {
         for (layer in tessellation.layers) {
-            if (!layer.visible) continue
+            if (!layer.isShownAt(viewport.zoom)) continue
             for (feature in layer.featuresIn(view)) {
                 if (feature.featureId !in selection) continue
                 drawPath(
@@ -410,7 +418,7 @@ private fun DrawScope.drawGeomapTessellation(
     }
 
     for (layer in tessellation.layers) {
-        if (!layer.visible) continue
+        if (!layer.isShownAt(viewport.zoom)) continue
         for (feature in layer.featuresIn(view)) {
             val label = feature.label ?: continue
             val measured = labelMeasurer.measure(label, TextStyle(color = labelInk, fontSize = LABEL_FONT_SIZE))

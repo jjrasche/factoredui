@@ -441,6 +441,8 @@ data class GeomapLayer(
     val kind: GeomapLayerKind,
     val features: List<GeomapFeature>,
     val visible: Boolean = true,
+    val minZoom: Float? = null,
+    val maxZoom: Float? = null,
 )
 
 data class GeomapViewport(val lon: Double, val lat: Double, val zoom: Float)
@@ -475,6 +477,8 @@ fun resolveGeomapLayers(resolvedLayers: Any?, resolvedGeometries: Any? = null): 
             kind = if (fields["kind"] == "line") GeomapLayerKind.LINE else GeomapLayerKind.FILL,
             features = resolveGeomapFeatures(fields["features"], geometries),
             visible = fields["visible"] as? Boolean ?: true,
+            minZoom = (fields["min_zoom"] as? Number)?.toFloat(),
+            maxZoom = (fields["max_zoom"] as? Number)?.toFloat(),
         )
     }
 }
