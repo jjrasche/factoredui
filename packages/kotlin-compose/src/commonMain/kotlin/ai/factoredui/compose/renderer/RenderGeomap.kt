@@ -24,6 +24,7 @@ import ai.factoredui.compose.schema.resolveGeomapLegend
 import ai.factoredui.compose.schema.GeoPoint
 import ai.factoredui.compose.schema.GeomapBoundsRequest
 import ai.factoredui.compose.schema.resolveGeomapBoundsRequest
+import ai.factoredui.compose.schema.unresolvedGeometryRefs
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -95,7 +96,11 @@ internal data class GeomapHit(val layerId: String, val featureId: String)
 internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val props = node.props.asGeomapProps()
     val layersData = resolvedProps["layers"]
-    val tessellation = remember(layersData) { tessellateGeomapLayers(resolveGeomapLayers(layersData)) }
+    val geometriesData = resolvedProps["geometries"]
+    val tessellation = remember(layersData, geometriesData) {
+        tessellateGeomapLayers(resolveGeomapLayers(layersData, geometriesData))
+    }
+    val missingGeometries = remember(layersData, geometriesData) { unresolvedGeometryRefs(layersData, geometriesData) }
     val hostCentreViewport = resolveGeomapViewport(resolvedProps["viewport"])
     val hostBounds = resolveGeomapBoundsRequest(resolvedProps["viewport"])
     val legend = resolveGeomapLegend(resolvedProps["legend"])
@@ -148,33 +153,64 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
             drawGeomapTessellation(tessellation, viewport, widthPx, heightPx, labelMeasurer, labelInk)
         }
         if (legend.isNotEmpty()) GeomapLegend(legend, Modifier.align(Alignment.BottomStart))
+        if (missingGeometries.isNotEmpty()) {
+            Text(
+                text = "${missingGeometries.size} geometry reference(s) have no entry in `geometries`: " +
+                    missingGeometries.joinToString(", "),
+                modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalSpecTheme.current.ink,
+            )
+        }
     }
+}
+
+// A geometry referenced by several layers is projected and triangulated ONCE and shared by
+// reference — the point of the table, since four views of 83 counties are one set of outlines.
+private class SharedGeometry(val worldRings: List<DoubleArray>, val bounds: WorldBounds?) {
+    var triangles: DoubleArray? = null
 }
 
 internal fun tessellateGeomapLayers(layers: List<GeomapLayer>): GeomapTessellation {
     var bounds: WorldBounds? = null
+    val shared = mutableMapOf<String, SharedGeometry>()
     val tessellatedLayers = layers.map { layer ->
         val features = layer.features.map { feature ->
-            val featureBounds = worldBoundsOf(feature.rings)
+            val geometry = feature.geometryId?.let { id ->
+                shared.getOrPut(id) { SharedGeometry(projectRings(feature.rings), worldBoundsOf(feature.rings)) }
+            }
+            val featureBounds = geometry?.bounds ?: worldBoundsOf(feature.rings)
             featureBounds?.let { bounds = bounds?.union(it) ?: it }
-            tessellateFeature(feature, layer.kind, featureBounds)
+            tessellateFeature(feature, layer.kind, featureBounds, geometry)
         }
         TessellatedLayer(layer.id, layer.kind, layer.visible, features)
     }
     return GeomapTessellation(tessellatedLayers, bounds)
 }
 
-private fun tessellateFeature(feature: GeomapFeature, kind: GeomapLayerKind, bounds: WorldBounds?): TessellatedFeature {
-    val worldRings = feature.rings.map { ring ->
-        DoubleArray(ring.size * 2).also { flat ->
-            ring.forEachIndexed { index, point ->
-                flat[index * 2] = lonToWorldX(point.lon)
-                flat[index * 2 + 1] = latToWorldY(point.lat)
-            }
+private fun projectRings(rings: List<List<GeoPoint>>): List<DoubleArray> = rings.map { ring ->
+    DoubleArray(ring.size * 2).also { flat ->
+        ring.forEachIndexed { index, point ->
+            flat[index * 2] = lonToWorldX(point.lon)
+            flat[index * 2 + 1] = latToWorldY(point.lat)
         }
     }
+}
+
+private fun tessellateFeature(
+    feature: GeomapFeature,
+    kind: GeomapLayerKind,
+    bounds: WorldBounds?,
+    shared: SharedGeometry?,
+): TessellatedFeature {
+    val worldRings = shared?.worldRings ?: projectRings(feature.rings)
     val fillArgb = if (kind == GeomapLayerKind.FILL) parseGeomapColor(feature.fill) else null
-    val triangleWorld = if (fillArgb != null && worldRings.size == 1) expandTriangles(worldRings) else DoubleArray(0)
+    val needsTriangles = fillArgb != null && worldRings.size == 1
+    val triangleWorld = when {
+        !needsTriangles -> DoubleArray(0)
+        shared != null -> shared.triangles ?: expandTriangles(worldRings).also { shared.triangles = it }
+        else -> expandTriangles(worldRings)
+    }
     return TessellatedFeature(
         featureId = feature.id,
         fillArgb = fillArgb,

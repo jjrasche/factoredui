@@ -426,6 +426,7 @@ data class GeomapFeature(
     val label: String? = null,
     val pattern: GeomapPattern? = null,
     val dash: List<Float>? = null,
+    val geometryId: String? = null,
 )
 
 data class GeomapLegendEntry(val label: String, val fill: String? = null, val pattern: GeomapPattern? = null)
@@ -449,23 +450,45 @@ fun Map<String, SpecValue>.asGeomapProps(): GeomapProps = GeomapProps(
     onViewportChanged = string("on_viewport_changed"),
 )
 
-fun resolveGeomapLayers(resolvedLayers: Any?): List<GeomapLayer> =
-    (resolvedLayers as? List<*>).orEmpty().mapNotNull { entry ->
+fun resolveGeomapGeometries(resolvedGeometries: Any?): Map<String, List<List<GeoPoint>>> =
+    (resolvedGeometries as? Map<*, *>).orEmpty().mapNotNull { (key, rings) ->
+        val id = key as? String ?: return@mapNotNull null
+        val resolved = resolveGeomapRings(rings)
+        if (resolved.isEmpty()) null else id to resolved
+    }.toMap()
+
+fun resolveGeomapLayers(resolvedLayers: Any?, resolvedGeometries: Any? = null): List<GeomapLayer> {
+    val geometries = resolveGeomapGeometries(resolvedGeometries)
+    return (resolvedLayers as? List<*>).orEmpty().mapNotNull { entry ->
         val fields = entry as? Map<*, *> ?: return@mapNotNull null
         val id = fields["id"] as? String ?: return@mapNotNull null
         GeomapLayer(
             id = id,
             kind = if (fields["kind"] == "line") GeomapLayerKind.LINE else GeomapLayerKind.FILL,
-            features = resolveGeomapFeatures(fields["features"]),
+            features = resolveGeomapFeatures(fields["features"], geometries),
             visible = fields["visible"] as? Boolean ?: true,
         )
     }
+}
 
-private fun resolveGeomapFeatures(resolvedFeatures: Any?): List<GeomapFeature> =
+fun unresolvedGeometryRefs(resolvedLayers: Any?, resolvedGeometries: Any?): List<String> {
+    val known = resolveGeomapGeometries(resolvedGeometries).keys
+    return (resolvedLayers as? List<*>).orEmpty()
+        .flatMap { layer -> ((layer as? Map<*, *>)?.get("features") as? List<*>).orEmpty() }
+        .mapNotNull { feature -> (feature as? Map<*, *>)?.get("geometry") as? String }
+        .filterNot { it in known }
+        .distinct()
+}
+
+private fun resolveGeomapFeatures(
+    resolvedFeatures: Any?,
+    geometries: Map<String, List<List<GeoPoint>>>,
+): List<GeomapFeature> =
     (resolvedFeatures as? List<*>).orEmpty().mapNotNull { entry ->
         val fields = entry as? Map<*, *> ?: return@mapNotNull null
         val id = fields["id"] as? String ?: return@mapNotNull null
-        val rings = resolveGeomapRings(fields["rings"])
+        val geometryId = fields["geometry"] as? String
+        val rings = if (geometryId != null) geometries[geometryId].orEmpty() else resolveGeomapRings(fields["rings"])
         if (rings.isEmpty()) return@mapNotNull null
         GeomapFeature(
             id = id,
@@ -476,6 +499,7 @@ private fun resolveGeomapFeatures(resolvedFeatures: Any?): List<GeomapFeature> =
             label = fields["label"] as? String,
             pattern = resolveGeomapPattern(fields["pattern"]),
             dash = (fields["dash"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() }?.takeIf { it.size >= 2 },
+            geometryId = geometryId,
         )
     }
 
