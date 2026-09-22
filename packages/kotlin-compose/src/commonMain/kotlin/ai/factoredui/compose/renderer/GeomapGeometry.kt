@@ -255,3 +255,95 @@ fun parseGeomapColor(hex: String?): Int? {
         }
     }.getOrNull()
 }
+
+internal data class GeomapLabelAnchor(val x: Double, val y: Double)
+
+private const val LABEL_GRID = 24
+private const val LABEL_CANDIDATE_LIMIT = 40
+
+// Candidate label positions on the county's LARGEST part, the roomiest for a WIDE label first:
+// a grid of points inside the land, ranked by room shaped like a label rather than by plain
+// distance to an edge, which favours tall round spaces a label cannot use. The bounding box
+// centre is never assumed, since for an island county it is open water.
+internal fun geomapLabelCandidatesOf(worldRings: List<DoubleArray>): List<GeomapLabelAnchor> {
+    val largest = worldRings.maxByOrNull { kotlin.math.abs(ringArea(it)) } ?: return emptyList()
+    val box = ringBounds(largest) ?: return emptyList()
+    val scored = mutableListOf<Pair<GeomapLabelAnchor, Double>>()
+    for (column in 0..LABEL_GRID) for (row in 0..LABEL_GRID) {
+        val x = box.minX + box.width * column / LABEL_GRID
+        val y = box.minY + box.height * row / LABEL_GRID
+        if (!isPointInRings(x, y, worldRings)) continue
+        scored += GeomapLabelAnchor(x, y) to labelRoomAt(x, y, worldRings)
+    }
+    return scored.sortedByDescending { it.second }.take(LABEL_CANDIDATE_LIMIT).map { it.first }
+}
+
+private const val LABEL_ASPECT = 4.0
+
+private fun labelRoomAt(x: Double, y: Double, worldRings: List<DoubleArray>): Double {
+    val across = spanThrough(x, y, worldRings, horizontal = true) ?: return 0.0
+    val down = spanThrough(x, y, worldRings, horizontal = false) ?: return 0.0
+    val horizontalRoom = min(x - across.first, across.second - x)
+    val verticalRoom = min(y - down.first, down.second - y)
+    return min(horizontalRoom, verticalRoom * LABEL_ASPECT)
+}
+
+private fun spanThrough(x: Double, y: Double, worldRings: List<DoubleArray>, horizontal: Boolean): Pair<Double, Double>? {
+    val along = if (horizontal) x else y
+    val at = if (horizontal) y else x
+    val crossings = mutableListOf<Double>()
+    for (ring in worldRings) {
+        val count = ring.size / 2
+        for (index in 0 until count) {
+            val next = (index + 1) % count
+            val a1 = if (horizontal) ring[index * 2 + 1] else ring[index * 2]
+            val b1 = if (horizontal) ring[index * 2] else ring[index * 2 + 1]
+            val a2 = if (horizontal) ring[next * 2 + 1] else ring[next * 2]
+            val b2 = if (horizontal) ring[next * 2] else ring[next * 2 + 1]
+            if ((a1 <= at) != (a2 <= at)) crossings += b1 + (at - a1) / (a2 - a1) * (b2 - b1)
+        }
+    }
+    crossings.sort()
+    return crossings.chunked(2).filter { it.size == 2 }.map { it[0] to it[1] }.firstOrNull { (low, high) -> along in low..high }
+}
+
+internal fun geomapLabelAnchorOf(worldRings: List<DoubleArray>): GeomapLabelAnchor? =
+    geomapLabelCandidatesOf(worldRings).firstOrNull()
+
+// A label is placed at the first candidate where its WHOLE box sits on the county's own land —
+// corners, edge midpoints and centre — or not at all.
+internal fun placeGeomapLabel(
+    candidates: List<GeomapLabelAnchor>,
+    worldRings: List<DoubleArray>,
+    halfWidthWorld: Double,
+    halfHeightWorld: Double,
+): GeomapLabelAnchor? = candidates.firstOrNull { anchor ->
+    listOf(-1.0, 0.0, 1.0).all { dx ->
+        listOf(-1.0, 0.0, 1.0).all { dy ->
+            isPointInRings(anchor.x + dx * halfWidthWorld, anchor.y + dy * halfHeightWorld, worldRings)
+        }
+    }
+}
+
+private fun ringArea(ring: DoubleArray): Double {
+    val count = ring.size / 2
+    var twice = 0.0
+    for (index in 0 until count) {
+        val next = (index + 1) % count
+        twice += ring[index * 2] * ring[next * 2 + 1] - ring[next * 2] * ring[index * 2 + 1]
+    }
+    return twice / 2.0
+}
+
+private fun ringBounds(ring: DoubleArray): WorldBounds? {
+    if (ring.size < 6) return null
+    var minX = Double.MAX_VALUE
+    var minY = Double.MAX_VALUE
+    var maxX = -Double.MAX_VALUE
+    var maxY = -Double.MAX_VALUE
+    for (index in 0 until ring.size / 2) {
+        minX = min(minX, ring[index * 2]); maxX = kotlin.math.max(maxX, ring[index * 2])
+        minY = min(minY, ring[index * 2 + 1]); maxY = kotlin.math.max(maxY, ring[index * 2 + 1])
+    }
+    return WorldBounds(minX, minY, maxX, maxY)
+}

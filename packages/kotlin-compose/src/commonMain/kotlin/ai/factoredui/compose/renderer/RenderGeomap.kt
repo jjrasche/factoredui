@@ -76,6 +76,7 @@ internal class TessellatedFeature(
     val pattern: GeomapPattern?,
     val label: String?,
     val dash: List<Float>?,
+    val labelCandidates: List<GeomapLabelAnchor>,
 )
 
 internal class TessellatedLayer(
@@ -223,6 +224,7 @@ private fun tessellateFeature(
         pattern = if (kind == GeomapLayerKind.FILL) feature.pattern else null,
         label = feature.label?.takeIf { it.isNotBlank() },
         dash = feature.dash,
+        labelCandidates = if (feature.label.isNullOrBlank()) emptyList() else geomapLabelCandidatesOf(worldRings),
     )
 }
 
@@ -352,18 +354,18 @@ private fun DrawScope.drawGeomapTessellation(
         if (!layer.visible) continue
         for (feature in layer.featuresIn(view)) {
             val label = feature.label ?: continue
-            val world = feature.bounds ?: continue
-            val left = screenX(world.minX)
-            val right = screenX(world.maxX)
-            val top = minOf(screenY(world.minY), screenY(world.maxY))
-            val bottom = maxOf(screenY(world.minY), screenY(world.maxY))
             val measured = labelMeasurer.measure(label, TextStyle(color = labelInk, fontSize = LABEL_FONT_SIZE))
-            // A label wider or taller than its feature on screen is not drawn, which is also what keeps
-            // eleven thousand parcel names off a county-scale view without a separate zoom threshold.
-            if (measured.size.width > (right - left) * LABEL_FIT || measured.size.height > (bottom - top) * LABEL_FIT) continue
+            // The whole label box must sit on the county's own land, which is also what keeps eleven
+            // thousand parcel names off a county-scale view without a separate zoom threshold.
+            val anchor = placeGeomapLabel(
+                feature.labelCandidates,
+                feature.worldRings,
+                halfWidthWorld = measured.size.width / 2.0 / scale / LABEL_FIT,
+                halfHeightWorld = measured.size.height / 2.0 / scale / LABEL_FIT,
+            ) ?: continue
             drawText(
                 measured,
-                topLeft = Offset((left + right - measured.size.width) / 2f, (top + bottom - measured.size.height) / 2f),
+                topLeft = Offset(screenX(anchor.x) - measured.size.width / 2f, screenY(anchor.y) - measured.size.height / 2f),
             )
         }
     }
