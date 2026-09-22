@@ -45,9 +45,10 @@ private fun inkRows(spec: Spec): Map<Int, Int> {
 
 private fun inkOf(spec: Spec) = inkRows(spec).values.sum()
 
-// At zoom 12 near 43N one degree of latitude is roughly 4,000px: 0.002 degrees puts two
-// 16px-tall labels 8px apart, 0.015 puts them 60px apart and both well inside the view.
-private const val CROWDED = 0.002
+// At zoom 12 near 43N one degree of latitude is roughly 4,000px. 0.001 degrees is 4px, so
+// labels a step either side of a middle one are 8px apart — under any 12sp font's line
+// height, on CI's fonts as well as a desktop's. 0.015 is 60px: clear, and inside the view.
+private const val CROWDED = 0.001
 private const val APART = 0.015
 
 class GeomapLabelCollisionTest {
