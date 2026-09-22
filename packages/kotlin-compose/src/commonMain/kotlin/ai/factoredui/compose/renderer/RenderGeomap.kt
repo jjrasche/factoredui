@@ -64,6 +64,7 @@ import ai.factoredui.compose.schema.asGeomapProps
 import ai.factoredui.compose.schema.resolveGeomapLayers
 import ai.factoredui.compose.schema.resolveGeomapViewport
 import ai.factoredui.compose.schema.resolveGeomapSelection
+import ai.factoredui.compose.schema.DEFAULT_POINT_RADIUS
 import kotlinx.coroutines.launch
 
 private const val DEFAULT_STROKE_ARGB = 0xFF2C3E50.toInt()
@@ -82,6 +83,7 @@ internal class TessellatedFeature(
     val label: String?,
     val dash: List<Float>?,
     val labelCandidates: List<GeomapLabelAnchor>,
+    val radius: Float = DEFAULT_POINT_RADIUS,
 )
 
 internal class TessellatedLayer(
@@ -150,7 +152,7 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
                 .pointerInput(shownTessellation, props.onFeatureTap, selection, selectedPath) {
                     val onFeatureTap = props.onFeatureTap
                     detectTapGestures(onTap = { offset ->
-                        val hit = hitTestGeomap(shownTessellation, viewport, widthPx, heightPx, offset.x, offset.y)
+                        val hit = hitTestGeomap(shownTessellation, viewport, widthPx, heightPx, offset.x, offset.y, density)
                         val nextSelection = selectionAfterTap(selection, hit)
                         if (selectedPath != null) context.setBinding(selectedPath, nextSelection)
                         else localSelection = nextSelection.toSet()
@@ -245,8 +247,12 @@ private fun tessellateFeature(
     shared: SharedGeometry?,
 ): TessellatedFeature {
     val worldRings = shared?.worldRings ?: projectRings(feature.rings)
-    val fillArgb = if (kind == GeomapLayerKind.FILL) parseGeomapColor(feature.fill) else null
-    val needsTriangles = fillArgb != null && worldRings.size == 1
+    val fillArgb = when (kind) {
+        GeomapLayerKind.FILL -> parseGeomapColor(feature.fill)
+        GeomapLayerKind.POINT -> parseGeomapColor(feature.fill) ?: DEFAULT_STROKE_ARGB
+        GeomapLayerKind.LINE -> null
+    }
+    val needsTriangles = kind == GeomapLayerKind.FILL && fillArgb != null && worldRings.size == 1
     val triangleWorld = when {
         !needsTriangles -> DoubleArray(0)
         shared != null -> shared.triangles ?: expandTriangles(worldRings).also { shared.triangles = it }
@@ -264,7 +270,8 @@ private fun tessellateFeature(
         pattern = if (kind == GeomapLayerKind.FILL) feature.pattern else null,
         label = feature.label?.takeIf { it.isNotBlank() },
         dash = feature.dash,
-        labelCandidates = if (feature.label.isNullOrBlank()) emptyList() else geomapLabelCandidatesOf(worldRings),
+        labelCandidates = if (feature.label.isNullOrBlank() || kind != GeomapLayerKind.FILL) emptyList() else geomapLabelCandidatesOf(worldRings),
+        radius = feature.radius,
     )
 }
 
@@ -272,6 +279,20 @@ private fun tessellateFeature(
 // whose bounds miss the view contributes no pixels, so it is skipped before any vertex work.
 private fun TessellatedLayer.featuresIn(view: WorldBounds): List<TessellatedFeature> =
     features.filter { feature -> feature.bounds?.intersects(view) ?: false }
+
+// A point's bounds are a single position but its disc has a pixel radius, so the view is
+// widened by that radius or a well just off-screen would vanish while its edge still shows.
+private fun TessellatedLayer.pointsIn(view: WorldBounds, scale: Double, density: Float): List<TessellatedFeature> =
+    features.filter { feature -> feature.bounds?.intersects(view.inflatedBy(feature.radius * density / scale)) ?: false }
+
+private fun isTapOnPoint(feature: TessellatedFeature, worldX: Double, worldY: Double, reachWorld: Double): Boolean {
+    val deltaX = worldX - feature.worldRings[0][0]
+    val deltaY = worldY - feature.worldRings[0][1]
+    return deltaX * deltaX + deltaY * deltaY <= reachWorld * reachWorld
+}
+
+private const val POINT_TAP_SLOP = 4f
+private const val POINT_LABEL_GAP = 4f
 
 internal fun GeomapTessellation.withVisibility(overrides: Map<String, Boolean>): GeomapTessellation =
     if (overrides.isEmpty()) this
@@ -313,6 +334,7 @@ internal fun hitTestGeomap(
     heightPx: Float,
     tapXpx: Float,
     tapYpx: Float,
+    density: Float = 1f,
 ): GeomapHit? {
     val scale = geomapScalePx(viewport.zoom)
     val worldX = lonToWorldX(viewport.lon) + (tapXpx - widthPx / 2.0) / scale
@@ -320,7 +342,12 @@ internal fun hitTestGeomap(
     for (layer in tessellation.layers.asReversed()) {
         if (!layer.isShownAt(viewport.zoom)) continue
         for (feature in layer.features.asReversed()) {
-            if (isPointInRings(worldX, worldY, feature.worldRings)) {
+            val isHit = if (layer.kind == GeomapLayerKind.POINT) {
+                isTapOnPoint(feature, worldX, worldY, (feature.radius + POINT_TAP_SLOP) * density / scale)
+            } else {
+                isPointInRings(worldX, worldY, feature.worldRings)
+            }
+            if (isHit) {
                 return GeomapHit(layer.layerId, feature.featureId)
             }
         }
@@ -383,7 +410,7 @@ private fun DrawScope.drawGeomapTessellation(
     }
 
     for (layer in tessellation.layers) {
-        if (!layer.isShownAt(viewport.zoom)) continue
+        if (!layer.isShownAt(viewport.zoom) || layer.kind == GeomapLayerKind.POINT) continue
         for (feature in layer.featuresIn(view)) {
             val strokeArgb = feature.strokeArgb ?: continue
             val path = Path()
@@ -403,9 +430,32 @@ private fun DrawScope.drawGeomapTessellation(
         }
     }
 
+    for (layer in tessellation.layers) {
+        if (!layer.isShownAt(viewport.zoom) || layer.kind != GeomapLayerKind.POINT) continue
+        for (feature in layer.pointsIn(view, scale, density)) {
+            val centre = Offset(screenX(feature.worldRings[0][0]), screenY(feature.worldRings[0][1]))
+            feature.fillArgb?.let { drawCircle(Color(it), radius = feature.radius * density, center = centre) }
+            feature.strokeArgb?.let {
+                drawCircle(Color(it), radius = feature.radius * density, center = centre, style = Stroke(width = feature.strokeWidth * density))
+            }
+        }
+    }
+
     if (selection.isNotEmpty()) {
         for (layer in tessellation.layers) {
             if (!layer.isShownAt(viewport.zoom)) continue
+            if (layer.kind == GeomapLayerKind.POINT) {
+                for (feature in layer.pointsIn(view, scale, density)) {
+                    if (feature.featureId !in selection) continue
+                    drawCircle(
+                        Color(selectionStyle.strokeArgb),
+                        radius = (feature.radius + selectionStyle.strokeWidth) * density,
+                        center = Offset(screenX(feature.worldRings[0][0]), screenY(feature.worldRings[0][1])),
+                        style = Stroke(width = selectionStyle.strokeWidth * density),
+                    )
+                }
+                continue
+            }
             for (feature in layer.featuresIn(view)) {
                 if (feature.featureId !in selection) continue
                 drawPath(
@@ -418,7 +468,22 @@ private fun DrawScope.drawGeomapTessellation(
     }
 
     for (layer in tessellation.layers) {
-        if (!layer.isShownAt(viewport.zoom)) continue
+        if (!layer.isShownAt(viewport.zoom) || layer.kind != GeomapLayerKind.POINT) continue
+        for (feature in layer.pointsIn(view, scale, density)) {
+            val label = feature.label ?: continue
+            val measured = labelMeasurer.measure(label, TextStyle(color = labelInk, fontSize = LABEL_FONT_SIZE))
+            drawText(
+                measured,
+                topLeft = Offset(
+                    screenX(feature.worldRings[0][0]) + (feature.radius + POINT_LABEL_GAP) * density,
+                    screenY(feature.worldRings[0][1]) - measured.size.height / 2f,
+                ),
+            )
+        }
+    }
+
+    for (layer in tessellation.layers) {
+        if (!layer.isShownAt(viewport.zoom) || layer.kind == GeomapLayerKind.POINT) continue
         for (feature in layer.featuresIn(view)) {
             val label = feature.label ?: continue
             val measured = labelMeasurer.measure(label, TextStyle(color = labelInk, fontSize = LABEL_FONT_SIZE))

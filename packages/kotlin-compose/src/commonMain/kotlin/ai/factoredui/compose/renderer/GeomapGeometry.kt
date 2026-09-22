@@ -37,6 +37,8 @@ data class WorldBounds(val minX: Double, val minY: Double, val maxX: Double, val
     val centerY: Double get() = (minY + maxY) / 2.0
     val width: Double get() = maxX - minX
     val height: Double get() = maxY - minY
+
+    fun inflatedBy(margin: Double) = WorldBounds(minX - margin, minY - margin, maxX + margin, maxY + margin)
 }
 
 fun worldBoundsOf(rings: List<List<GeoPoint>>): WorldBounds? {

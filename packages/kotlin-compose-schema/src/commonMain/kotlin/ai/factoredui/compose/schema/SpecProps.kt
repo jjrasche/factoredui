@@ -404,7 +404,7 @@ fun Map<String, SpecValue>.asCanvasProps(): CanvasProps = CanvasProps(
 
 data class GeoPoint(val lon: Double, val lat: Double)
 
-enum class GeomapLayerKind { FILL, LINE }
+enum class GeomapLayerKind(val fewestPoints: Int) { FILL(3), LINE(2), POINT(1) }
 
 enum class GeomapPatternKind { HATCH, CROSS, DOTS }
 
@@ -427,7 +427,10 @@ data class GeomapFeature(
     val pattern: GeomapPattern? = null,
     val dash: List<Float>? = null,
     val geometryId: String? = null,
+    val radius: Float = DEFAULT_POINT_RADIUS,
 )
+
+const val DEFAULT_POINT_RADIUS = 5f
 
 data class GeomapLegendEntry(
     val label: String,
@@ -463,7 +466,7 @@ fun resolveGeomapSelection(resolvedSelected: Any?): Set<String> =
 fun resolveGeomapGeometries(resolvedGeometries: Any?): Map<String, List<List<GeoPoint>>> =
     (resolvedGeometries as? Map<*, *>).orEmpty().mapNotNull { (key, rings) ->
         val id = key as? String ?: return@mapNotNull null
-        val resolved = resolveGeomapRings(rings)
+        val resolved = resolveGeomapRings(rings, GeomapLayerKind.LINE.fewestPoints)
         if (resolved.isEmpty()) null else id to resolved
     }.toMap()
 
@@ -472,10 +475,15 @@ fun resolveGeomapLayers(resolvedLayers: Any?, resolvedGeometries: Any? = null): 
     return (resolvedLayers as? List<*>).orEmpty().mapNotNull { entry ->
         val fields = entry as? Map<*, *> ?: return@mapNotNull null
         val id = fields["id"] as? String ?: return@mapNotNull null
+        val kind = when (fields["kind"]) {
+            "line" -> GeomapLayerKind.LINE
+            "point" -> GeomapLayerKind.POINT
+            else -> GeomapLayerKind.FILL
+        }
         GeomapLayer(
             id = id,
-            kind = if (fields["kind"] == "line") GeomapLayerKind.LINE else GeomapLayerKind.FILL,
-            features = resolveGeomapFeatures(fields["features"], geometries),
+            kind = kind,
+            features = resolveGeomapFeatures(fields["features"], geometries, kind),
             visible = fields["visible"] as? Boolean ?: true,
             minZoom = (fields["min_zoom"] as? Number)?.toFloat(),
             maxZoom = (fields["max_zoom"] as? Number)?.toFloat(),
@@ -495,12 +503,17 @@ fun unresolvedGeometryRefs(resolvedLayers: Any?, resolvedGeometries: Any?): List
 private fun resolveGeomapFeatures(
     resolvedFeatures: Any?,
     geometries: Map<String, List<List<GeoPoint>>>,
+    kind: GeomapLayerKind,
 ): List<GeomapFeature> =
     (resolvedFeatures as? List<*>).orEmpty().mapNotNull { entry ->
         val fields = entry as? Map<*, *> ?: return@mapNotNull null
         val id = fields["id"] as? String ?: return@mapNotNull null
         val geometryId = fields["geometry"] as? String
-        val rings = if (geometryId != null) geometries[geometryId].orEmpty() else resolveGeomapRings(fields["rings"])
+        val rings = when {
+            geometryId != null -> geometries[geometryId].orEmpty()
+            kind == GeomapLayerKind.POINT -> listOfNotNull(resolveGeoPoint(fields["point"])?.let(::listOf))
+            else -> resolveGeomapRings(fields["rings"], kind.fewestPoints)
+        }
         if (rings.isEmpty()) return@mapNotNull null
         GeomapFeature(
             id = id,
@@ -512,6 +525,7 @@ private fun resolveGeomapFeatures(
             pattern = resolveGeomapPattern(fields["pattern"]),
             dash = (fields["dash"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() }?.takeIf { it.size >= 2 },
             geometryId = geometryId,
+            radius = (fields["radius"] as? Number)?.toFloat() ?: DEFAULT_POINT_RADIUS,
         )
     }
 
@@ -545,19 +559,21 @@ fun resolveGeomapLegend(resolvedLegend: Any?): List<GeomapLegendEntry> =
         )
     }
 
-private fun resolveGeomapRings(resolvedRings: Any?): List<List<GeoPoint>> {
+private fun resolveGeoPoint(resolvedPoint: Any?): GeoPoint? {
+    val pair = resolvedPoint as? List<*> ?: return null
+    val lon = (pair.getOrNull(0) as? Number)?.toDouble() ?: return null
+    val lat = (pair.getOrNull(1) as? Number)?.toDouble() ?: return null
+    return GeoPoint(lon, lat)
+}
+
+private fun resolveGeomapRings(resolvedRings: Any?, fewestPoints: Int = GeomapLayerKind.FILL.fewestPoints): List<List<GeoPoint>> {
     val outer = resolvedRings as? List<*> ?: return emptyList()
     val first = outer.firstOrNull() as? List<*> ?: return emptyList()
     val isSingleRingOfPairs = first.firstOrNull() is Number
     val ringLists: List<*> = if (isSingleRingOfPairs) listOf(outer) else outer
     return ringLists.mapNotNull { ring ->
-        val points = (ring as? List<*>).orEmpty().mapNotNull { point ->
-            val pair = point as? List<*> ?: return@mapNotNull null
-            val lon = (pair.getOrNull(0) as? Number)?.toDouble() ?: return@mapNotNull null
-            val lat = (pair.getOrNull(1) as? Number)?.toDouble() ?: return@mapNotNull null
-            GeoPoint(lon, lat)
-        }
-        if (points.size >= 3) points else null
+        val points = (ring as? List<*>).orEmpty().mapNotNull(::resolveGeoPoint)
+        if (points.size >= fewestPoints) points else null
     }
 }
 
