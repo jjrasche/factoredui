@@ -45,19 +45,23 @@ private fun inkRows(spec: Spec): Map<Int, Int> {
 
 private fun inkOf(spec: Spec) = inkRows(spec).values.sum()
 
-// At zoom 12 near 43N one degree of latitude is roughly 1,400px, so 0.002 degrees is under
-// 3px: close enough that two labels would print over each other.
+// At zoom 12 near 43N one degree of latitude is roughly 4,000px: 0.002 degrees puts two
+// 16px-tall labels 8px apart, 0.015 puts them 60px apart and both well inside the view.
 private const val CROWDED = 0.002
-private const val APART = 0.05
+private const val APART = 0.015
 
 class GeomapLabelCollisionTest {
 
     @Test
-    fun of_two_labels_that_would_overprint_only_one_is_drawn() {
-        val one = inkOf(placesSpec(place("a", CENTRE_LAT, "Ada"), place("b", CENTRE_LAT + CROWDED, null)))
-        val both = inkOf(placesSpec(place("a", CENTRE_LAT, "Ada"), place("b", CENTRE_LAT + CROWDED, "Ada")))
-        assertTrue(one > 20, "the lone label drew no ink, so the comparison means nothing")
-        assertEquals(one, both, "a second label printed over the first")
+    fun of_three_crowded_labels_one_takes_each_side_and_the_third_is_not_drawn() {
+        val two = inkOf(
+            placesSpec(place("a", CENTRE_LAT, "Ada"), place("b", CENTRE_LAT + CROWDED, "Ada"), place("c", CENTRE_LAT - CROWDED, null)),
+        )
+        val three = inkOf(
+            placesSpec(place("a", CENTRE_LAT, "Ada"), place("b", CENTRE_LAT + CROWDED, "Ada"), place("c", CENTRE_LAT - CROWDED, "Ada")),
+        )
+        assertTrue(two > 40, "the two labels drew no ink, so the comparison means nothing")
+        assertEquals(two, three, "a third label printed over the two already placed")
     }
 
     @Test
@@ -68,11 +72,24 @@ class GeomapLabelCollisionTest {
     }
 
     @Test
-    fun the_label_on_the_upper_layer_wins_the_collision() {
-        val upperAlone = inkRows(placesSpec(place("low", CENTRE_LAT, null, "towns"), place("high", CENTRE_LAT + CROWDED, "Grand Rapids", "cities")))
-        val contested = inkRows(
+    fun the_label_on_the_upper_layer_keeps_the_first_choice_of_side() {
+        val pointX = 54
+        val upperAlone = inkColumnsRightOf(pointX, placesSpec(place("low", CENTRE_LAT, null, "towns"), place("high", CENTRE_LAT + CROWDED, "Grand Rapids", "cities")))
+        val contested = inkColumnsRightOf(
+            pointX,
             placesSpec(place("low", CENTRE_LAT, "Walker", "towns"), place("high", CENTRE_LAT + CROWDED, "Grand Rapids", "cities")),
         )
-        assertEquals(upperAlone, contested, "the lower layer's label was drawn instead of, or over, the upper layer's")
+        assertTrue(upperAlone > 20, "the upper label drew no ink, so the comparison means nothing")
+        assertEquals(upperAlone, contested, "the lower layer's label took the right-hand side from the upper layer's")
     }
+}
+
+private fun inkColumnsRightOf(xPx: Int, spec: Spec): Int {
+    val image = ImageIO.read(ByteArrayInputStream(renderScreen(spec, emptyMap(), 400, 400, theme = SpecTheme.LIGHT).png))
+    var count = 0
+    for (y in 0 until image.height) for (x in xPx until image.width) {
+        val rgb = image.getRGB(x, y) and 0xFFFFFF
+        if (((rgb shr 16) and 0xFF) < 110 && ((rgb shr 8) and 0xFF) < 110 && (rgb and 0xFF) < 110) count++
+    }
+    return count
 }

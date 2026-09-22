@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
@@ -136,6 +137,7 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val scope = rememberCoroutineScope()
     val labelMeasurer = rememberTextMeasurer()
     val labelInk = LocalSpecTheme.current.ink
+    val labelHalo = LocalSpecTheme.current.ground
     BoxWithConstraints(modifier = Modifier.fillMaxSize().nodeTag(node.id).clipToBounds()) {
         val widthPx = constraints.maxWidth.toFloat()
         val heightPx = constraints.maxHeight.toFloat()
@@ -182,7 +184,7 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
                     }
                 },
         ) {
-            drawGeomapTessellation(shownTessellation, viewport, widthPx, heightPx, labelMeasurer, labelInk, selection, selectionStyle)
+            drawGeomapTessellation(shownTessellation, viewport, widthPx, heightPx, labelMeasurer, labelInk, labelHalo, selection, selectionStyle)
         }
         if (legend.isNotEmpty()) {
             GeomapLegend(
@@ -363,6 +365,7 @@ private fun DrawScope.drawGeomapTessellation(
     heightPx: Float,
     labelMeasurer: TextMeasurer,
     labelInk: Color,
+    labelHalo: Color,
     selection: Set<String>,
     selectionStyle: GeomapSelectionStyle,
 ) {
@@ -477,11 +480,12 @@ private fun DrawScope.drawGeomapTessellation(
         for (feature in candidates.asReversed()) {
             val label = feature.label ?: continue
             val measured = labelMeasurer.measure(label, TextStyle(color = labelInk, fontSize = LABEL_FONT_SIZE))
-            val topLeft = if (layer.kind == GeomapLayerKind.POINT) {
-                Offset(
-                    screenX(feature.worldRings[0][0]) + (feature.radius + POINT_LABEL_GAP) * density,
-                    screenY(feature.worldRings[0][1]) - measured.size.height / 2f,
-                )
+            val labelSize = Size(measured.size.width.toFloat(), measured.size.height.toFloat())
+            val candidateCorners = if (layer.kind == GeomapLayerKind.POINT) {
+                val centreX = screenX(feature.worldRings[0][0])
+                val top = screenY(feature.worldRings[0][1]) - labelSize.height / 2f
+                val gap = (feature.radius + POINT_LABEL_GAP) * density
+                listOf(Offset(centreX + gap, top), Offset(centreX - gap - labelSize.width, top))
             } else {
                 // The whole label box must sit on the county's own land, which is also what keeps eleven
                 // thousand parcel names off a county-scale view without a separate zoom threshold.
@@ -491,15 +495,22 @@ private fun DrawScope.drawGeomapTessellation(
                     halfWidthWorld = measured.size.width / 2.0 / scale / LABEL_FIT,
                     halfHeightWorld = measured.size.height / 2.0 / scale / LABEL_FIT,
                 ) ?: continue
-                Offset(screenX(anchor.x) - measured.size.width / 2f, screenY(anchor.y) - measured.size.height / 2f)
+                listOf(Offset(screenX(anchor.x) - labelSize.width / 2f, screenY(anchor.y) - labelSize.height / 2f))
             }
-            val box = Rect(topLeft, Size(measured.size.width.toFloat(), measured.size.height.toFloat()))
-            if (claimedBoxes.any { it.overlaps(box) }) continue
+            val box = candidateCorners.map { Rect(it, labelSize) }.firstOrNull { candidate ->
+                candidate.isWithin(widthPx, heightPx) && claimedBoxes.none { it.overlaps(candidate) }
+            } ?: continue
             claimedBoxes += box
-            drawText(measured, topLeft = topLeft)
+            drawText(measured, color = labelHalo, topLeft = box.topLeft, drawStyle = Stroke(width = LABEL_HALO_WIDTH * density, join = StrokeJoin.Round))
+            drawText(measured, topLeft = box.topLeft)
         }
     }
 }
+
+private fun Rect.isWithin(widthPx: Float, heightPx: Float): Boolean =
+    left >= 0f && top >= 0f && right <= widthPx && bottom <= heightPx
+
+private const val LABEL_HALO_WIDTH = 3f
 
 private fun worldBoundsOfRequest(request: GeomapBoundsRequest): WorldBounds? = worldBoundsOf(
     listOf(listOf(GeoPoint(request.minLon, request.minLat), GeoPoint(request.maxLon, request.maxLat))),
