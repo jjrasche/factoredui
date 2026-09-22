@@ -455,6 +455,9 @@ fun Map<String, SpecValue>.asGeomapProps(): GeomapProps = GeomapProps(
     onViewportChanged = string("on_viewport_changed"),
 )
 
+fun resolveGeomapSelection(resolvedSelected: Any?): Set<String> =
+    (resolvedSelected as? List<*>).orEmpty().filterIsInstance<String>().toSet()
+
 fun resolveGeomapGeometries(resolvedGeometries: Any?): Map<String, List<List<GeoPoint>>> =
     (resolvedGeometries as? Map<*, *>).orEmpty().mapNotNull { (key, rings) ->
         val id = key as? String ?: return@mapNotNull null

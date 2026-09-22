@@ -70,6 +70,16 @@ class DrivenScreen internal constructor(
         return recorded.drop(before)
     }
 
+    fun tapAt(xDp: Float, yDp: Float): List<DrivenIntent> {
+        val before = recorded.size
+        scene.sendPointerEvent(PointerEventType.Press, Offset(xDp, yDp))
+        scene.sendPointerEvent(PointerEventType.Release, Offset(xDp, yDp))
+        settle()
+        return recorded.drop(before)
+    }
+
+    fun store(): Map<String, Any?> = context.data
+
     fun type(path: String, value: Any?) {
         context.setBinding(path, value)
         settle()

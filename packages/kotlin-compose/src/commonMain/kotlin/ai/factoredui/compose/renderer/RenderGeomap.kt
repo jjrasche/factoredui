@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.PathFillType
@@ -62,6 +63,7 @@ import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.schema.asGeomapProps
 import ai.factoredui.compose.schema.resolveGeomapLayers
 import ai.factoredui.compose.schema.resolveGeomapViewport
+import ai.factoredui.compose.schema.resolveGeomapSelection
 import kotlinx.coroutines.launch
 
 private const val DEFAULT_STROKE_ARGB = 0xFF2C3E50.toInt()
@@ -115,6 +117,13 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     var localVisibility by remember { mutableStateOf(emptyMap<String, Boolean>()) }
     val layerVisibility = if (visibilityPath != null) boundVisibility else localVisibility
     val shownTessellation = remember(tessellation, layerVisibility) { tessellation.withVisibility(layerVisibility) }
+    val selectedPath = node.props["selected"]?.bindingPath()
+    var localSelection by remember { mutableStateOf(resolveGeomapSelection(resolvedProps["selected"])) }
+    val selection = if (selectedPath != null) resolveGeomapSelection(resolvedProps["selected"]) else localSelection
+    val selectionStyle = GeomapSelectionStyle(
+        strokeArgb = parseGeomapColor(resolvedProps["selection_stroke"] as? String) ?: LocalSpecTheme.current.ink.toArgb(),
+        strokeWidth = (resolvedProps["selection_stroke_width"] as? Number)?.toFloat() ?: DEFAULT_SELECTION_STROKE_WIDTH,
+    )
     val scope = rememberCoroutineScope()
     val labelMeasurer = rememberTextMeasurer()
     val labelInk = LocalSpecTheme.current.ink
@@ -132,10 +141,13 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         LaunchedEffect(hostViewport) { hostViewport?.let { viewport = it } }
         Canvas(
             modifier = Modifier.fillMaxSize()
-                .pointerInput(shownTessellation, props.onFeatureTap) {
+                .pointerInput(shownTessellation, props.onFeatureTap, selection, selectedPath) {
                     val onFeatureTap = props.onFeatureTap
                     detectTapGestures(onTap = { offset ->
                         val hit = hitTestGeomap(shownTessellation, viewport, widthPx, heightPx, offset.x, offset.y)
+                        val nextSelection = selectionAfterTap(selection, hit)
+                        if (selectedPath != null) context.setBinding(selectedPath, nextSelection)
+                        else localSelection = nextSelection.toSet()
                         if (hit != null && onFeatureTap != null) {
                             scope.launch { context.dispatch(node.id, featureTapAction(onFeatureTap, hit)) }
                         }
@@ -161,7 +173,7 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
                     }
                 },
         ) {
-            drawGeomapTessellation(shownTessellation, viewport, widthPx, heightPx, labelMeasurer, labelInk)
+            drawGeomapTessellation(shownTessellation, viewport, widthPx, heightPx, labelMeasurer, labelInk, selection, selectionStyle)
         }
         if (legend.isNotEmpty()) {
             GeomapLegend(
@@ -315,6 +327,8 @@ private fun DrawScope.drawGeomapTessellation(
     heightPx: Float,
     labelMeasurer: TextMeasurer,
     labelInk: Color,
+    selection: Set<String>,
+    selectionStyle: GeomapSelectionStyle,
 ) {
     val scale = geomapScalePx(viewport.zoom)
     val centerX = lonToWorldX(viewport.lon)
@@ -378,6 +392,20 @@ private fun DrawScope.drawGeomapTessellation(
                 PathEffect.dashPathEffect(intervals.map { it * density }.toFloatArray())
             }
             drawPath(path, color = Color(strokeArgb), style = Stroke(width = feature.strokeWidth * density, pathEffect = dashEffect))
+        }
+    }
+
+    if (selection.isNotEmpty()) {
+        for (layer in tessellation.layers) {
+            if (!layer.visible) continue
+            for (feature in layer.featuresIn(view)) {
+                if (feature.featureId !in selection) continue
+                drawPath(
+                    screenPathOf(feature.worldRings, closed = layer.kind == GeomapLayerKind.FILL, ::screenX, ::screenY),
+                    color = Color(selectionStyle.strokeArgb),
+                    style = Stroke(width = selectionStyle.strokeWidth * density),
+                )
+            }
         }
     }
 
@@ -461,6 +489,16 @@ private fun GeomapLegend(
             }
         }
     }
+}
+
+private class GeomapSelectionStyle(val strokeArgb: Int, val strokeWidth: Float)
+
+private const val DEFAULT_SELECTION_STROKE_WIDTH = 3f
+
+internal fun selectionAfterTap(selection: Set<String>, hit: GeomapHit?): List<String> = when {
+    hit == null -> emptyList()
+    selection == setOf(hit.featureId) -> emptyList()
+    else -> listOf(hit.featureId)
 }
 
 private fun featureTapAction(action: String, hit: GeomapHit) = ActionRef(
