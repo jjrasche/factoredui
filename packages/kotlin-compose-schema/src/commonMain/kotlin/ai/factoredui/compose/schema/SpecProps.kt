@@ -429,7 +429,12 @@ data class GeomapFeature(
     val geometryId: String? = null,
 )
 
-data class GeomapLegendEntry(val label: String, val fill: String? = null, val pattern: GeomapPattern? = null)
+data class GeomapLegendEntry(
+    val label: String,
+    val fill: String? = null,
+    val pattern: GeomapPattern? = null,
+    val layer: String? = null,
+)
 
 data class GeomapLayer(
     val id: String,
@@ -525,7 +530,12 @@ fun resolveGeomapLegend(resolvedLegend: Any?): List<GeomapLegendEntry> =
     (resolvedLegend as? List<*>).orEmpty().mapNotNull { entry ->
         val fields = entry as? Map<*, *> ?: return@mapNotNull null
         val label = fields["label"] as? String ?: return@mapNotNull null
-        GeomapLegendEntry(label = label, fill = fields["fill"] as? String, pattern = resolveGeomapPattern(fields["pattern"]))
+        GeomapLegendEntry(
+            label = label,
+            fill = fields["fill"] as? String,
+            pattern = resolveGeomapPattern(fields["pattern"]),
+            layer = fields["layer"] as? String,
+        )
     }
 
 private fun resolveGeomapRings(resolvedRings: Any?): List<List<GeoPoint>> {

@@ -2,6 +2,9 @@ package ai.factoredui.compose.renderer
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.alpha
+import ai.factoredui.compose.schema.bindingPath
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -105,6 +108,13 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val hostCentreViewport = resolveGeomapViewport(resolvedProps["viewport"])
     val hostBounds = resolveGeomapBoundsRequest(resolvedProps["viewport"])
     val legend = resolveGeomapLegend(resolvedProps["legend"])
+    val visibilityPath = node.props["layer_visibility"]?.bindingPath()
+    val boundVisibility = (resolvedProps["layer_visibility"] as? Map<*, *>)
+        ?.mapNotNull { (key, value) -> (key as? String)?.let { id -> (value as? Boolean)?.let { id to it } } }
+        ?.toMap().orEmpty()
+    var localVisibility by remember { mutableStateOf(emptyMap<String, Boolean>()) }
+    val layerVisibility = if (visibilityPath != null) boundVisibility else localVisibility
+    val shownTessellation = remember(tessellation, layerVisibility) { tessellation.withVisibility(layerVisibility) }
     val scope = rememberCoroutineScope()
     val labelMeasurer = rememberTextMeasurer()
     val labelInk = LocalSpecTheme.current.ink
@@ -122,10 +132,10 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         LaunchedEffect(hostViewport) { hostViewport?.let { viewport = it } }
         Canvas(
             modifier = Modifier.fillMaxSize()
-                .pointerInput(tessellation, props.onFeatureTap) {
+                .pointerInput(shownTessellation, props.onFeatureTap) {
                     val onFeatureTap = props.onFeatureTap
                     detectTapGestures(onTap = { offset ->
-                        val hit = hitTestGeomap(tessellation, viewport, widthPx, heightPx, offset.x, offset.y)
+                        val hit = hitTestGeomap(shownTessellation, viewport, widthPx, heightPx, offset.x, offset.y)
                         if (hit != null && onFeatureTap != null) {
                             scope.launch { context.dispatch(node.id, featureTapAction(onFeatureTap, hit)) }
                         }
@@ -151,9 +161,21 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
                     }
                 },
         ) {
-            drawGeomapTessellation(tessellation, viewport, widthPx, heightPx, labelMeasurer, labelInk)
+            drawGeomapTessellation(shownTessellation, viewport, widthPx, heightPx, labelMeasurer, labelInk)
         }
-        if (legend.isNotEmpty()) GeomapLegend(legend, Modifier.align(Alignment.BottomStart))
+        if (legend.isNotEmpty()) {
+            GeomapLegend(
+                entries = legend,
+                nodeId = node.id,
+                isLayerShown = { layerId -> layerVisibility[layerId] ?: true },
+                onToggleLayer = { layerId ->
+                    val shown = layerVisibility[layerId] ?: true
+                    if (visibilityPath != null) context.setBinding("$visibilityPath.$layerId", !shown)
+                    else localVisibility = localVisibility + (layerId to !shown)
+                },
+                modifier = Modifier.align(Alignment.BottomStart),
+            )
+        }
         if (missingGeometries.isNotEmpty()) {
             Text(
                 text = "${missingGeometries.size} geometry reference(s) have no entry in `geometries`: " +
@@ -232,6 +254,15 @@ private fun tessellateFeature(
 // whose bounds miss the view contributes no pixels, so it is skipped before any vertex work.
 private fun TessellatedLayer.featuresIn(view: WorldBounds): List<TessellatedFeature> =
     features.filter { feature -> feature.bounds?.intersects(view) ?: false }
+
+internal fun GeomapTessellation.withVisibility(overrides: Map<String, Boolean>): GeomapTessellation =
+    if (overrides.isEmpty()) this
+    else GeomapTessellation(
+        layers.map { layer ->
+            TessellatedLayer(layer.layerId, layer.kind, layer.visible && (overrides[layer.layerId] ?: true), layer.features)
+        },
+        worldBounds,
+    )
 
 internal fun drawnGeomapFeatureIds(
     tessellation: GeomapTessellation,
@@ -393,13 +424,29 @@ private fun screenPathOf(
 }
 
 @Composable
-private fun GeomapLegend(entries: List<GeomapLegendEntry>, modifier: Modifier) {
+private fun GeomapLegend(
+    entries: List<GeomapLegendEntry>,
+    nodeId: String,
+    isLayerShown: (String) -> Boolean,
+    onToggleLayer: (String) -> Unit,
+    modifier: Modifier,
+) {
     Column(
         modifier = modifier.padding(8.dp).background(LocalSpecTheme.current.ground.copy(alpha = 0.9f)).padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        entries.forEach { entry ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        entries.forEachIndexed { index, entry ->
+            // An entry that names a layer is its switch; one that names none — a class within a
+            // single choropleth — is a key only, and tapping it does nothing.
+            val layerId = entry.layer
+            val shown = layerId == null || isLayerShown(layerId)
+            val rowModifier = Modifier.nodeTag("$nodeId:legend:${layerId ?: index}")
+                .let { base ->
+                    if (layerId == null) base
+                    else base.clickable(interactionSource = null, indication = null) { onToggleLayer(layerId) }
+                }
+                .alpha(if (shown) 1f else 0.35f)
+            Row(modifier = rowModifier, verticalAlignment = Alignment.CenterVertically) {
                 Canvas(modifier = Modifier.size(width = 28.dp, height = 18.dp)) {
                     val swatch = Path().apply { addRect(Rect(Offset.Zero, size)) }
                     entry.fill?.let(::parseGeomapColor)?.let { drawPath(swatch, Color(it)) }
