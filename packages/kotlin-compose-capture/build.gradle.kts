@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = (findProperty("factoredUiVersion") as String?) ?: "0.20.3"
+version = (findProperty("factoredUiVersion") as String?) ?: "0.20.4"
 
 kotlin {
     jvm()
