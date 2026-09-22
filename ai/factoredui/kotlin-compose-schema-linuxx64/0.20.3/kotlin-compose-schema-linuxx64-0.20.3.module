@@ -1,0 +1,86 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../kotlin-compose-schema/0.20.3/kotlin-compose-schema-0.20.3.module",
+    "group": "ai.factoredui",
+    "module": "kotlin-compose-schema",
+    "version": "0.20.3",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "linuxX64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "linux_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-schema-linuxX64Main-0.20.3.klib",
+          "url": "kotlin-compose-schema-linuxx64-0.20.3.klib",
+          "size": 137463,
+          "sha512": "2631377a9f94882f64b3d6732481545573879ef3f41f830e730013da9ca5338ccce95a49fce328826991606d4718a6f3e318f000ffb2723639ad769e80815db3",
+          "sha256": "49f6b938fbc32d0f59a8299ae40827a2a1d520b83eb7dd741bc9d65ba956208d",
+          "sha1": "d54a7957383e4619c3696807595cdd7de130b5bf",
+          "md5": "566e864351a1608f811ec6e09c0135b1"
+        }
+      ]
+    },
+    {
+      "name": "linuxX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "linux_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "files": [
+        {
+          "name": "kotlin-compose-schema-linuxx64-0.20.3-sources.jar",
+          "url": "kotlin-compose-schema-linuxx64-0.20.3-sources.jar",
+          "size": 12655,
+          "sha512": "56fad55d8e0c43351bd16088455a1bcfe12f22e93d50a58a236ed4270d4ec6cd9dc6294debd66a00473cdbecf915c1c94c703765246c9188668de7ea1df4a028",
+          "sha256": "65da5477d0683a86e9ca2d230a6999774e17b1fd8a4c299c586afb10a628fd3a",
+          "sha1": "0f80938d4b52e433a40a5785fa813e91cc17238d",
+          "md5": "34413440d782b0b921f92eced8f06fa3"
+        }
+      ]
+    }
+  ]
+}
