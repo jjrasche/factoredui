@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -467,38 +468,35 @@ private fun DrawScope.drawGeomapTessellation(
         }
     }
 
-    for (layer in tessellation.layers) {
-        if (!layer.isShownAt(viewport.zoom) || layer.kind != GeomapLayerKind.POINT) continue
-        for (feature in layer.pointsIn(view, scale, density)) {
+    // Labels never overprint: the upper layer, and the later feature within a layer, claims its
+    // box first — the same order a tap resolves in.
+    val claimedBoxes = mutableListOf<Rect>()
+    for (layer in tessellation.layers.asReversed()) {
+        if (!layer.isShownAt(viewport.zoom)) continue
+        val candidates = if (layer.kind == GeomapLayerKind.POINT) layer.pointsIn(view, scale, density) else layer.featuresIn(view)
+        for (feature in candidates.asReversed()) {
             val label = feature.label ?: continue
             val measured = labelMeasurer.measure(label, TextStyle(color = labelInk, fontSize = LABEL_FONT_SIZE))
-            drawText(
-                measured,
-                topLeft = Offset(
+            val topLeft = if (layer.kind == GeomapLayerKind.POINT) {
+                Offset(
                     screenX(feature.worldRings[0][0]) + (feature.radius + POINT_LABEL_GAP) * density,
                     screenY(feature.worldRings[0][1]) - measured.size.height / 2f,
-                ),
-            )
-        }
-    }
-
-    for (layer in tessellation.layers) {
-        if (!layer.isShownAt(viewport.zoom) || layer.kind == GeomapLayerKind.POINT) continue
-        for (feature in layer.featuresIn(view)) {
-            val label = feature.label ?: continue
-            val measured = labelMeasurer.measure(label, TextStyle(color = labelInk, fontSize = LABEL_FONT_SIZE))
-            // The whole label box must sit on the county's own land, which is also what keeps eleven
-            // thousand parcel names off a county-scale view without a separate zoom threshold.
-            val anchor = placeGeomapLabel(
-                feature.labelCandidates,
-                feature.worldRings,
-                halfWidthWorld = measured.size.width / 2.0 / scale / LABEL_FIT,
-                halfHeightWorld = measured.size.height / 2.0 / scale / LABEL_FIT,
-            ) ?: continue
-            drawText(
-                measured,
-                topLeft = Offset(screenX(anchor.x) - measured.size.width / 2f, screenY(anchor.y) - measured.size.height / 2f),
-            )
+                )
+            } else {
+                // The whole label box must sit on the county's own land, which is also what keeps eleven
+                // thousand parcel names off a county-scale view without a separate zoom threshold.
+                val anchor = placeGeomapLabel(
+                    feature.labelCandidates,
+                    feature.worldRings,
+                    halfWidthWorld = measured.size.width / 2.0 / scale / LABEL_FIT,
+                    halfHeightWorld = measured.size.height / 2.0 / scale / LABEL_FIT,
+                ) ?: continue
+                Offset(screenX(anchor.x) - measured.size.width / 2f, screenY(anchor.y) - measured.size.height / 2f)
+            }
+            val box = Rect(topLeft, Size(measured.size.width.toFloat(), measured.size.height.toFloat()))
+            if (claimedBoxes.any { it.overlaps(box) }) continue
+            claimedBoxes += box
+            drawText(measured, topLeft = topLeft)
         }
     }
 }
