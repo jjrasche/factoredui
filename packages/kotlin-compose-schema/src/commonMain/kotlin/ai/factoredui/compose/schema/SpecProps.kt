@@ -425,6 +425,7 @@ data class GeomapFeature(
     val strokeWidth: Float = 1f,
     val label: String? = null,
     val pattern: GeomapPattern? = null,
+    val dash: List<Float>? = null,
 )
 
 data class GeomapLegendEntry(val label: String, val fill: String? = null, val pattern: GeomapPattern? = null)
@@ -474,6 +475,7 @@ private fun resolveGeomapFeatures(resolvedFeatures: Any?): List<GeomapFeature> =
             strokeWidth = (fields["stroke_width"] as? Number)?.toFloat() ?: 1f,
             label = fields["label"] as? String,
             pattern = resolveGeomapPattern(fields["pattern"]),
+            dash = (fields["dash"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() }?.takeIf { it.size >= 2 },
         )
     }
 

@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -73,6 +74,7 @@ internal class TessellatedFeature(
     val bounds: WorldBounds?,
     val pattern: GeomapPattern?,
     val label: String?,
+    val dash: List<Float>?,
 )
 
 internal class TessellatedLayer(
@@ -184,6 +186,7 @@ private fun tessellateFeature(feature: GeomapFeature, kind: GeomapLayerKind, bou
         bounds = bounds,
         pattern = if (kind == GeomapLayerKind.FILL) feature.pattern else null,
         label = feature.label?.takeIf { it.isNotBlank() },
+        dash = feature.dash,
     )
 }
 
@@ -302,7 +305,10 @@ private fun DrawScope.drawGeomapTessellation(
                 }
                 if (layer.kind == GeomapLayerKind.FILL) path.close()
             }
-            drawPath(path, color = Color(strokeArgb), style = Stroke(width = feature.strokeWidth * density))
+            val dashEffect = feature.dash?.let { intervals ->
+                PathEffect.dashPathEffect(intervals.map { it * density }.toFloatArray())
+            }
+            drawPath(path, color = Color(strokeArgb), style = Stroke(width = feature.strokeWidth * density, pathEffect = dashEffect))
         }
     }
 
