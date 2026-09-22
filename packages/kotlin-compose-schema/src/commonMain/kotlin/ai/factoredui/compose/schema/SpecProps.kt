@@ -518,6 +518,15 @@ private fun resolveGeomapRings(resolvedRings: Any?): List<List<GeoPoint>> {
     }
 }
 
+data class GeomapBoundsRequest(val minLon: Double, val minLat: Double, val maxLon: Double, val maxLat: Double)
+
+fun resolveGeomapBoundsRequest(resolvedViewport: Any?): GeomapBoundsRequest? {
+    val fields = resolvedViewport as? Map<*, *> ?: return null
+    val corners = (fields["bounds"] as? List<*>)?.mapNotNull { (it as? Number)?.toDouble() } ?: return null
+    if (corners.size != 4) return null
+    return GeomapBoundsRequest(corners[0], corners[1], corners[2], corners[3])
+}
+
 fun resolveGeomapViewport(resolvedViewport: Any?): GeomapViewport? {
     val fields = resolvedViewport as? Map<*, *> ?: return null
     val lon = (fields["lon"] as? Number)?.toDouble() ?: return null

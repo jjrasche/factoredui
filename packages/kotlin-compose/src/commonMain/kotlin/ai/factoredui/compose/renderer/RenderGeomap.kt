@@ -21,6 +21,9 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import ai.factoredui.compose.schema.GeomapLegendEntry
 import ai.factoredui.compose.schema.GeomapPattern
 import ai.factoredui.compose.schema.resolveGeomapLegend
+import ai.factoredui.compose.schema.GeoPoint
+import ai.factoredui.compose.schema.GeomapBoundsRequest
+import ai.factoredui.compose.schema.resolveGeomapBoundsRequest
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -91,7 +94,8 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val props = node.props.asGeomapProps()
     val layersData = resolvedProps["layers"]
     val tessellation = remember(layersData) { tessellateGeomapLayers(resolveGeomapLayers(layersData)) }
-    val hostViewport = resolveGeomapViewport(resolvedProps["viewport"])
+    val hostCentreViewport = resolveGeomapViewport(resolvedProps["viewport"])
+    val hostBounds = resolveGeomapBoundsRequest(resolvedProps["viewport"])
     val legend = resolveGeomapLegend(resolvedProps["legend"])
     val scope = rememberCoroutineScope()
     val labelMeasurer = rememberTextMeasurer()
@@ -99,6 +103,11 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     BoxWithConstraints(modifier = Modifier.fillMaxSize().nodeTag(node.id).clipToBounds()) {
         val widthPx = constraints.maxWidth.toFloat()
         val heightPx = constraints.maxHeight.toFloat()
+        // Only the renderer knows its pixel size, so a host asking to frame a region hands over
+        // bounds and the fit is done here rather than guessed from outside.
+        val hostViewport = hostCentreViewport ?: hostBounds?.let { request ->
+            fitGeomapViewport(worldBoundsOfRequest(request), widthPx, heightPx)
+        }
         var viewport by remember(widthPx, heightPx) {
             mutableStateOf(hostViewport ?: fitGeomapViewport(tessellation.worldBounds, widthPx, heightPx))
         }
@@ -317,6 +326,10 @@ private fun DrawScope.drawGeomapTessellation(
         }
     }
 }
+
+private fun worldBoundsOfRequest(request: GeomapBoundsRequest): WorldBounds? = worldBoundsOf(
+    listOf(listOf(GeoPoint(request.minLon, request.minLat), GeoPoint(request.maxLon, request.maxLat))),
+)
 
 private fun screenPathOf(
     worldRings: List<DoubleArray>,
