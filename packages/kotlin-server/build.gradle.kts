@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = "0.20.5"
+version = "0.20.6"
 
 kotlin {
     compilerOptions {
