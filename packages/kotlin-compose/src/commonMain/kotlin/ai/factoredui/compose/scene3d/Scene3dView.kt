@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import ai.factoredui.compose.math.Camera
 import ai.factoredui.compose.math.Matrix4
@@ -119,7 +120,12 @@ fun Scene3dView(
                     var dragBasePose: Array<Matrix4>? = null
                     var moveBasis: Vec3? = null
                     var moveGrabOffset = Vec3(0f, 0f, 0f)
-                    when (latestPoseMode) {
+                    // Right-drag pans; it preempts pose-mode entity picking so panning
+                    // always works regardless of the active pose tool.
+                    val panRequested = currentEvent.buttons.isSecondaryPressed
+                    if (panRequested) {
+                        mode = DragKind.PAN
+                    } else when (latestPoseMode) {
                         PoseMode.MOVE -> {
                             val hit = nearestEntity(latestWorld.entities.filter { it.selected }, camera, width, height, start)
                             if (hit != null) {
@@ -206,6 +212,12 @@ fun Scene3dView(
                                 DragKind.ORBIT -> {
                                     val delta = change.position - change.previousPosition
                                     camera.drag(delta.x, delta.y)
+                                    cameraGeneration++
+                                    onCameraChange()
+                                }
+                                DragKind.PAN -> {
+                                    val delta = change.position - change.previousPosition
+                                    camera.pan(delta.x, delta.y)
                                     cameraGeneration++
                                     onCameraChange()
                                 }
@@ -321,7 +333,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTerrain(
     }
 }
 
-private enum class DragKind { ORBIT, MOVE, JOINT, ROTATE_JOINT }
+private enum class DragKind { ORBIT, PAN, MOVE, JOINT, ROTATE_JOINT }
 
 enum class PoseMode(val label: String) { MOVE("Move"), POSE("Pose"), ROTATE("Rotate") }
 
