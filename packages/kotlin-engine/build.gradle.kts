@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "ai.factoredui"
-version = "0.20.7"
+version = "0.21.0"
 
 kotlin {
     jvm()
