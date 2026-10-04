@@ -37,6 +37,8 @@ private const val EXTENT_MARGIN = 16f
 private const val ORDERING_SWEEPS = 12
 private const val RELAXATION_SWEEPS = 8
 private const val PORT_INSET = 4f
+private const val CONSUMER_VOTE = 2
+private const val PRODUCER_VOTE = 1
 private const val STRIP_GAP = 12f
 private const val STRIP_SEPARATION = 18f
 private const val MIN_STRIP_WIDTH = 360f
@@ -65,8 +67,9 @@ fun layoutFlowGraph(
     val oriented = orientAcyclic(flowing.map { it.id }, routable)
     val rawLayers = assignLayers(flowing, oriented)
     val layerOf = compactLayers(if (compactSources) pullSourcesRight(flowing, oriented, rawLayers) else rawLayers)
-    val groups = orderGroups(specs, groupOrder)
-    val laneOf = specs.associate { it.id to groups.indexOf(it.group) }
+    val groupOf = inheritGroups(specs, routable, groupOrder)
+    val groups = orderGroups(specs.map { groupOf.getValue(it.id) }, groupOrder)
+    val laneOf = specs.associate { it.id to groups.indexOf(groupOf.getValue(it.id)) }
     val items = HashMap<String, ChainItem>()
     specs.forEach { items[it.id] = ChainItem(it.id, laneOf.getValue(it.id), it.height, it.width, isWaypoint = false) }
     val chains = oriented.mapIndexed { index, edge -> buildChain(index, edge, layerOf, laneOf, items) }
@@ -85,6 +88,27 @@ fun layoutFlowGraph(
 private fun partitionParked(specs: List<FlowNodeSpec>, edges: List<FlowEdgeSpec>): Pair<List<FlowNodeSpec>, List<FlowNodeSpec>> {
     val connected = edges.flatMap { listOf(it.from, it.to) }.toSet()
     return specs.partition { it.id !in connected && it.rank == null }
+}
+
+private fun inheritGroups(specs: List<FlowNodeSpec>, edges: List<FlowEdgeSpec>, groupOrder: List<String>): Map<String, String?> {
+    val groupOf = specs.associate { it.id to it.group }.toMutableMap()
+    val tieOrder = orderGroups(specs.mapNotNull { it.group }, groupOrder)
+    do {
+        val adopted = groupOf.filterValues { it == null }.keys.mapNotNull { id ->
+            neighbourGroupVotes(id, edges, groupOf).maxWithOrNull(compareBy({ it.value }, { -tieOrder.indexOf(it.key) }))?.let { id to it.key }
+        }
+        adopted.forEach { (id, group) -> groupOf[id] = group }
+    } while (adopted.isNotEmpty())
+    return groupOf
+}
+
+private fun neighbourGroupVotes(id: String, edges: List<FlowEdgeSpec>, groupOf: Map<String, String?>): Map<String, Int> {
+    val votes = HashMap<String, Int>()
+    edges.forEach { edge ->
+        if (edge.from == id) groupOf[edge.to]?.let { votes[it] = (votes[it] ?: 0) + CONSUMER_VOTE }
+        if (edge.to == id) groupOf[edge.from]?.let { votes[it] = (votes[it] ?: 0) + PRODUCER_VOTE }
+    }
+    return votes
 }
 
 private fun routableEdges(specs: List<FlowNodeSpec>, edges: List<FlowEdgeSpec>): List<FlowEdgeSpec> {
@@ -167,8 +191,8 @@ private fun compactLayers(layerOf: Map<String, Int>): Map<String, Int> {
     return layerOf.mapValues { dense.getValue(it.value) }
 }
 
-private fun orderGroups(specs: List<FlowNodeSpec>, groupOrder: List<String>): List<String?> {
-    val present = specs.map { it.group }.distinct()
+private fun orderGroups(nodeGroups: List<String?>, groupOrder: List<String>): List<String?> {
+    val present = nodeGroups.distinct()
     val declared = groupOrder.filter { it in present }
     return declared + present.filter { it !in declared }
 }

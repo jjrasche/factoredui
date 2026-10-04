@@ -14,10 +14,11 @@ fun fitFlowView(
     viewHeight: Float,
     maxScale: Float = DEFAULT_FIT_MAX_SCALE,
     margin: Float = DEFAULT_FIT_MARGIN,
+    zoom: Float = 1f,
 ): FlowView {
     if (contentWidth <= 0f || contentHeight <= 0f) return FlowView(1f, 0f, 0f)
-    val scale = minOf((viewWidth - 2 * margin) / contentWidth, (viewHeight - 2 * margin) / contentHeight, maxScale)
-        .coerceAtLeast(MIN_FLOW_SCALE)
+    val fitScale = minOf((viewWidth - 2 * margin) / contentWidth, (viewHeight - 2 * margin) / contentHeight, maxScale)
+    val scale = (fitScale * zoom).coerceIn(MIN_FLOW_SCALE, MAX_FLOW_SCALE)
     return FlowView(
         scale = scale,
         translateX = (viewWidth - contentWidth * scale) / 2f,

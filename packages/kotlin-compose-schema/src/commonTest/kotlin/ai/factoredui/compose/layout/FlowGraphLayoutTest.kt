@@ -338,6 +338,40 @@ class FlowGraphLayoutTest {
     }
 
     @Test
+    fun anUngroupedChainJoinsTheLaneOfTheGroupedNodeItFeeds() {
+        val layout = layoutFlowGraph(
+            nodes = listOf(node("weather"), node("pet"), node("soil_water", "soil"), node("herd", "livestock")),
+            edges = listOf(edge("weather", "pet"), edge("pet", "soil_water"), edge("herd", "soil_water")),
+        )
+        assertEquals(listOf("soil", "livestock"), layout.lanes.map { it.group }, "no unlabelled lane is created for nodes that can inherit one")
+        val soilLane = layout.lanes.first { it.group == "soil" }
+        listOf("weather", "pet", "soil_water").forEach { id ->
+            val box = layout.nodes.getValue(id)
+            assertTrue(box.y >= soilLane.top && box.y + box.height <= soilLane.top + soilLane.height, "$id sits in the soil lane")
+        }
+    }
+
+    @Test
+    fun anUngroupedNodePrefersTheLaneOfWhatItFeedsOverWhatFeedsIt() {
+        val layout = layoutFlowGraph(
+            nodes = listOf(node("producer", "livestock"), node("middle"), node("consumer", "soil")),
+            edges = listOf(edge("producer", "middle"), edge("middle", "consumer")),
+        )
+        val soilLane = layout.lanes.first { it.group == "soil" }
+        val middle = layout.nodes.getValue("middle")
+        assertTrue(middle.y >= soilLane.top && middle.y + middle.height <= soilLane.top + soilLane.height)
+    }
+
+    @Test
+    fun anUngroupedNodeWithNoGroupedNeighbourKeepsAnUnlabelledLane() {
+        val layout = layoutFlowGraph(
+            nodes = listOf(node("a", "soil"), node("b", "soil"), node("loner")),
+            edges = listOf(edge("a", "b")),
+        )
+        assertEquals(listOf("soil", null), layout.lanes.map { it.group })
+    }
+
+    @Test
     fun aLeftGutterKeepsEveryNodeClearOfTheLaneLabels() {
         val layout = layoutFlowGraph(
             nodes = listOf(node("a", "x"), node("b", "y")),

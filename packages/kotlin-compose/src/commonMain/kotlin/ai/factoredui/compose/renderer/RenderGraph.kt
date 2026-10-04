@@ -5,13 +5,17 @@ import ai.factoredui.compose.layout.FlowEdgeSpec
 import ai.factoredui.compose.layout.FlowLayout
 import ai.factoredui.compose.layout.FlowNodeBox
 import ai.factoredui.compose.layout.FlowNodeSpec
+import ai.factoredui.compose.layout.FlowPoint
 import ai.factoredui.compose.layout.FlowView
 import ai.factoredui.compose.layout.afterGesture
 import ai.factoredui.compose.layout.fitFlowView
+import ai.factoredui.compose.layout.flowRouteMidpoint
+import ai.factoredui.compose.layout.hitTestFlowEdge
 import ai.factoredui.compose.layout.layoutFlowGraph
 import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.GraphEdgeEntry
 import ai.factoredui.compose.schema.GraphKindStyle
+import ai.factoredui.compose.schema.GraphLegendEntry
 import ai.factoredui.compose.schema.GraphNodeEntry
 import ai.factoredui.compose.schema.GraphNodeShape
 import ai.factoredui.compose.schema.SpecNode
@@ -22,17 +26,26 @@ import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.resolveGraphEdges
 import ai.factoredui.compose.schema.resolveGraphGroupOrder
 import ai.factoredui.compose.schema.resolveGraphKindStyles
+import ai.factoredui.compose.schema.resolveGraphLegend
 import ai.factoredui.compose.schema.resolveGraphNodes
 import ai.factoredui.compose.schema.resolveGraphStringMap
+import ai.factoredui.compose.schema.resolveGraphZoom
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,6 +99,7 @@ import kotlinx.coroutines.launch
 private val NODE_TEXT = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
 private val COMPACT_TEXT = TextStyle(fontSize = 10.sp, lineHeight = 13.sp, fontWeight = FontWeight.Medium)
 private val LANE_TEXT = TextStyle(fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.SemiBold)
+private val LEGEND_TEXT = TextStyle(fontSize = 11.sp, lineHeight = 14.sp)
 private const val NODE_PAD_X_DP = 10f
 private const val NODE_PAD_Y_DP = 6f
 private const val COMPACT_PAD_X_DP = 6f
@@ -113,6 +128,13 @@ private const val BADGE_DP = 14f
 private const val BADGE_STROKE_DP = 1.5f
 private const val SELF_LOOP_START_DEGREES = 40.0
 private const val SELF_LOOP_END_DEGREES = 320.0
+private const val EDGE_HIT_TOLERANCE_DP = 8f
+private const val MARKER_RADIUS_DP = 3.2f
+private const val LEGEND_NODE_W_DP = 24f
+private const val LEGEND_NODE_H_DP = 14f
+private const val LEGEND_COMPACT_W_DP = 18f
+private const val LEGEND_COMPACT_H_DP = 10f
+private const val LEGEND_EDGE_W_DP = 30f
 private val UNSTATED_FILL = Color(0xFFE3E6EE)
 
 private class NodeLook(
@@ -136,6 +158,20 @@ private fun lookOf(entry: GraphNodeEntry, kindStyles: Map<String, GraphKindStyle
     )
 }
 
+private class GraphFocus(val nodes: Set<String>, val edges: Set<Pair<String, String>>)
+
+private fun focusOf(selectedNode: String?, selectedEdge: Pair<String, String>?, layout: FlowLayout): GraphFocus? {
+    if (selectedEdge != null && layout.edges.any { it.from == selectedEdge.first && it.to == selectedEdge.second }) {
+        return GraphFocus(setOf(selectedEdge.first, selectedEdge.second), setOf(selectedEdge))
+    }
+    if (selectedNode == null || selectedNode !in layout.nodes) return null
+    val incident = layout.edges.filter { it.from == selectedNode || it.to == selectedNode }
+    return GraphFocus(
+        nodes = setOf(selectedNode) + incident.flatMap { listOf(it.from, it.to) },
+        edges = incident.map { it.from to it.to }.toSet(),
+    )
+}
+
 @Composable
 internal fun RenderGraph(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val props = node.props.asGraphProps()
@@ -144,6 +180,8 @@ internal fun RenderGraph(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     val groupOrder = resolveGraphGroupOrder(resolvedProps["group_order"])
     val kindStyles = resolveGraphKindStyles(resolvedProps["kind_styles"])
     val statusOutlines = resolveGraphStringMap(resolvedProps["status_outlines"])
+    val legend = resolveGraphLegend(resolvedProps["legend"])
+    val zoom = resolveGraphZoom(resolvedProps["zoom"])
     val statusColors = assignGraphColors(
         entries.mapNotNull { it.status } + edgeEntries.mapNotNull { it.status },
         resolveGraphStringMap(resolvedProps["status_colors"]),
@@ -165,92 +203,114 @@ internal fun RenderGraph(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     val wired = remember(layout) { layout.edges.flatMap { listOf(it.from, it.to) }.toSet() }
     val edgeStyles = remember(edgeEntries) { edgeEntries.distinctBy { it.from to it.to }.associateBy { it.from to it.to } }
     val selectedPath = node.props["selected"]?.bindingPath()
+    val selectedEdgePath = node.props["selected_edge"]?.bindingPath()
     var localSelected by remember { mutableStateOf<String?>(null) }
+    var localSelectedEdge by remember { mutableStateOf<Pair<String, String>?>(null) }
     val selected = if (selectedPath != null) resolvedProps["selected"] as? String else localSelected
-    val focus = remember(selected, layout) { focusOf(selected, layout) }
+    val selectedEdge = if (selectedEdgePath != null) edgeOfBinding(resolvedProps["selected_edge"]) else localSelectedEdge
+    val focus = remember(selected, selectedEdge, layout) { focusOf(selected, selectedEdge, layout) }
     val scope = rememberCoroutineScope()
 
-    fun select(id: String?) {
-        if (selectedPath != null) context.setBinding(selectedPath, id) else localSelected = id
+    fun select(nodeId: String?, edge: Pair<String, String>?) {
+        if (selectedPath != null) context.setBinding(selectedPath, nodeId) else localSelected = nodeId
+        if (selectedEdgePath != null) {
+            context.setBinding(selectedEdgePath, edge?.let { mapOf("from" to it.first, "to" to it.second) })
+        } else {
+            localSelectedEdge = edge
+        }
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize().nodeTag(node.id).clipToBounds()) {
-        val viewWidthPx = constraints.maxWidth.toFloat()
-        val viewHeightPx = constraints.maxHeight.toFloat()
-        val fit = remember(layout, viewWidthPx, viewHeightPx, density.density) {
-            fitFlowView(layout.width * density.density, layout.height * density.density, viewWidthPx, viewHeightPx)
-        }
-        var gestureView by remember(layout, viewWidthPx, viewHeightPx) { mutableStateOf<FlowView?>(null) }
-        val view = gestureView ?: fit
-        Box(
-            modifier = Modifier.fillMaxSize()
-                .pointerInput(selected) { detectTapGestures(onTap = { select(null) }) }
-                .pointerInput(fit) {
-                    detectTransformGestures { centroid, pan, zoom, _ ->
-                        gestureView = (gestureView ?: fit).afterGesture(centroid.x, centroid.y, pan.x, pan.y, zoom)
+    Column(modifier = Modifier.fillMaxSize().nodeTag(node.id)) {
+        BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
+            val viewWidthPx = constraints.maxWidth.toFloat()
+            val viewHeightPx = constraints.maxHeight.toFloat()
+            val fit = remember(layout, viewWidthPx, viewHeightPx, density.density, zoom) {
+                fitFlowView(layout.width * density.density, layout.height * density.density, viewWidthPx, viewHeightPx, zoom = zoom)
+            }
+            var gestureView by remember(layout, viewWidthPx, viewHeightPx, zoom) { mutableStateOf<FlowView?>(null) }
+            val view = gestureView ?: fit
+            val latestView by rememberUpdatedState(view)
+            Box(
+                modifier = Modifier.fillMaxSize()
+                    .pointerInput(layout, selected, selectedEdge) {
+                        detectTapGestures(onTap = { offset ->
+                            val tapped = edgeAt(layout, offset, latestView, density.density)
+                            select(null, tapped?.let { it.from to it.to })
+                            val onEdgeTapped = props.onEdgeTapped
+                            if (tapped != null && onEdgeTapped != null) {
+                                scope.launch { context.dispatch(node.id, edgeTappedAction(onEdgeTapped, tapped)) }
+                            }
+                        })
                     }
-                }
-                .pointerInput(fit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            if (event.type != PointerEventType.Scroll) continue
-                            val change = event.changes.first()
-                            val zoom = exp(-change.scrollDelta.y * WHEEL_ZOOM_RATE)
-                            gestureView = (gestureView ?: fit).afterGesture(change.position.x, change.position.y, 0f, 0f, zoom)
-                            change.consume()
+                    .pointerInput(fit) {
+                        detectTransformGestures { centroid, pan, zoomDelta, _ ->
+                            gestureView = (gestureView ?: fit).afterGesture(centroid.x, centroid.y, pan.x, pan.y, zoomDelta)
                         }
                     }
-                },
-        ) {
-            Box(
-                modifier = Modifier.wrapContentSize(Alignment.TopStart, unbounded = true).size(layout.width.dp, layout.height.dp).graphicsLayer {
-                    transformOrigin = TransformOrigin(0f, 0f)
-                    scaleX = view.scale
-                    scaleY = view.scale
-                    translationX = view.translateX
-                    translationY = view.translateY
-                },
+                    .pointerInput(fit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                if (event.type != PointerEventType.Scroll) continue
+                                val change = event.changes.first()
+                                val zoomDelta = exp(-change.scrollDelta.y * WHEEL_ZOOM_RATE)
+                                gestureView = (gestureView ?: fit).afterGesture(change.position.x, change.position.y, 0f, 0f, zoomDelta)
+                                change.consume()
+                            }
+                        }
+                    },
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawLanes(layout, groupColors, measurer, theme.muted)
-                    drawEdges(layout, edgeStyles, statusColors, theme.muted, focus)
-                }
-                for (entry in entries) {
-                    val box = layout.nodes[entry.id] ?: continue
-                    val look = looks.getValue(entry.id)
-                    val parked = entry.id !in wired
-                    val dim = if (focus == null || entry.id in focus.nodes) 1f else DIMMED_NODE_ALPHA
-                    GraphNodeBox(
-                        entry = entry,
-                        box = box,
-                        look = look,
-                        fill = nodeFill(entry, statusColors),
-                        border = entry.group?.let { colorOf(groupColors[it], theme.muted) } ?: theme.muted,
-                        isSelected = entry.id == selected,
-                        alpha = if (parked) dim * PARKED_ALPHA else dim,
-                        onTap = {
-                            select(if (entry.id == selected) null else entry.id)
-                            val onNodeTapped = props.onNodeTapped
-                            if (onNodeTapped != null) scope.launch { context.dispatch(node.id, nodeTappedAction(onNodeTapped, entry.id)) }
-                        },
-                    )
-                    if (entry.selfLoop) SelfLoopBadge(box, theme.ink, if (parked) dim * PARKED_ALPHA else dim)
+                Box(
+                    modifier = Modifier.wrapContentSize(Alignment.TopStart, unbounded = true).size(layout.width.dp, layout.height.dp).graphicsLayer {
+                        transformOrigin = TransformOrigin(0f, 0f)
+                        scaleX = view.scale
+                        scaleY = view.scale
+                        translationX = view.translateX
+                        translationY = view.translateY
+                    },
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        drawLanes(layout, groupColors, measurer, theme.muted)
+                        drawEdges(layout, edgeStyles, statusColors, theme.muted, focus)
+                    }
+                    for (entry in entries) {
+                        val box = layout.nodes[entry.id] ?: continue
+                        val parked = entry.id !in wired
+                        val dim = if (focus == null || entry.id in focus.nodes) 1f else DIMMED_NODE_ALPHA
+                        GraphNodeBox(
+                            entry = entry,
+                            box = box,
+                            look = looks.getValue(entry.id),
+                            fill = nodeFill(entry, statusColors),
+                            border = entry.group?.let { colorOf(groupColors[it], theme.muted) } ?: theme.muted,
+                            isSelected = entry.id == selected,
+                            alpha = if (parked) dim * PARKED_ALPHA else dim,
+                            onTap = {
+                                select(if (entry.id == selected) null else entry.id, null)
+                                val onNodeTapped = props.onNodeTapped
+                                if (onNodeTapped != null) scope.launch { context.dispatch(node.id, nodeTappedAction(onNodeTapped, entry.id)) }
+                            },
+                        )
+                        if (entry.selfLoop) SelfLoopBadge(box, if (parked) dim * PARKED_ALPHA else dim)
+                    }
                 }
             }
         }
+        if (legend.isNotEmpty()) GraphLegend(node.id, legend)
     }
 }
 
-private class GraphFocus(val nodes: Set<String>, val edges: Set<Pair<String, String>>)
+private fun edgeOfBinding(raw: Any?): Pair<String, String>? {
+    val fields = raw as? Map<*, *> ?: return null
+    val from = fields["from"] as? String ?: return null
+    val to = fields["to"] as? String ?: return null
+    return from to to
+}
 
-private fun focusOf(selected: String?, layout: FlowLayout): GraphFocus? {
-    if (selected == null || selected !in layout.nodes) return null
-    val incident = layout.edges.filter { it.from == selected || it.to == selected }
-    return GraphFocus(
-        nodes = setOf(selected) + incident.flatMap { listOf(it.from, it.to) },
-        edges = incident.map { it.from to it.to }.toSet(),
-    )
+private fun edgeAt(layout: FlowLayout, tap: Offset, view: FlowView, density: Float): FlowEdgeRoute? {
+    val contentX = (tap.x - view.translateX) / view.scale / density
+    val contentY = (tap.y - view.translateY) / view.scale / density
+    return hitTestFlowEdge(layout.edges, contentX, contentY, EDGE_HIT_TOLERANCE_DP / view.scale)
 }
 
 private fun measuredSpec(entry: GraphNodeEntry, look: NodeLook, measurer: TextMeasurer, density: Density): FlowNodeSpec {
@@ -286,6 +346,9 @@ private fun readableOn(fill: Color, ink: Color): Color =
 
 private fun Color.luminance(): Float = 0.2126f * red + 0.7152f * green + 0.0722f * blue
 
+private fun shapeOf(shape: GraphNodeShape) =
+    if (shape == GraphNodeShape.PILL) RoundedCornerShape(50) else RoundedCornerShape(NODE_CORNER_DP.dp)
+
 @Composable
 private fun GraphNodeBox(
     entry: GraphNodeEntry,
@@ -298,7 +361,7 @@ private fun GraphNodeBox(
     onTap: () -> Unit,
 ) {
     val theme = LocalSpecTheme.current
-    val shape = if (look.shape == GraphNodeShape.PILL) RoundedCornerShape(50) else RoundedCornerShape(NODE_CORNER_DP.dp)
+    val shape = shapeOf(look.shape)
     val shownFill = if (look.muted) lerp(fill, theme.ground, MUTED_BLEND) else fill
     val outlineColor = if (isSelected || look.dashedOutline) theme.ink else border
     val outlineDp = if (isSelected) maxOf(SELECTED_BORDER_DP, look.borderDp) else look.borderDp
@@ -343,7 +406,7 @@ private fun DrawScope.drawDashedOutline(color: Color, widthDp: Float, shape: Gra
 }
 
 @Composable
-private fun SelfLoopBadge(box: FlowNodeBox, ink: Color, alpha: Float) {
+private fun SelfLoopBadge(box: FlowNodeBox, alpha: Float) {
     val theme = LocalSpecTheme.current
     Canvas(
         modifier = Modifier
@@ -351,36 +414,45 @@ private fun SelfLoopBadge(box: FlowNodeBox, ink: Color, alpha: Float) {
             .size(BADGE_DP.dp)
             .alpha(alpha),
     ) {
-        val stroke = BADGE_STROKE_DP * density
-        val radius = size.minDimension / 2f - stroke
-        val center = Offset(size.width / 2f, size.height / 2f)
-        drawCircle(theme.ground, radius = size.minDimension / 2f, center = center)
-        drawArc(
-            color = ink,
-            startAngle = SELF_LOOP_START_DEGREES.toFloat(),
-            sweepAngle = (SELF_LOOP_END_DEGREES - SELF_LOOP_START_DEGREES).toFloat(),
-            useCenter = false,
-            topLeft = Offset(center.x - radius, center.y - radius),
-            size = Size(radius * 2, radius * 2),
-            style = Stroke(width = stroke),
-        )
-        val endAngle = SELF_LOOP_END_DEGREES * PI / 180.0
-        val end = Offset(center.x + radius * cos(endAngle).toFloat(), center.y + radius * sin(endAngle).toFloat())
-        val tangent = Offset(-sin(endAngle).toFloat(), cos(endAngle).toFloat())
-        val normal = Offset(-tangent.y, tangent.x)
-        val head = Path().apply {
-            moveTo(end.x + tangent.x * stroke * 2.4f, end.y + tangent.y * stroke * 2.4f)
-            lineTo(end.x + normal.x * stroke * 1.8f, end.y + normal.y * stroke * 1.8f)
-            lineTo(end.x - normal.x * stroke * 1.8f, end.y - normal.y * stroke * 1.8f)
-            close()
-        }
-        drawPath(head, ink, style = Fill)
+        drawSelfLoopGlyph(theme.ink, theme.ground)
     }
+}
+
+private fun DrawScope.drawSelfLoopGlyph(ink: Color, ground: Color) {
+    val stroke = BADGE_STROKE_DP * density
+    val radius = size.minDimension / 2f - stroke
+    val center = Offset(size.width / 2f, size.height / 2f)
+    drawCircle(ground, radius = size.minDimension / 2f, center = center)
+    drawArc(
+        color = ink,
+        startAngle = SELF_LOOP_START_DEGREES.toFloat(),
+        sweepAngle = (SELF_LOOP_END_DEGREES - SELF_LOOP_START_DEGREES).toFloat(),
+        useCenter = false,
+        topLeft = Offset(center.x - radius, center.y - radius),
+        size = Size(radius * 2, radius * 2),
+        style = Stroke(width = stroke),
+    )
+    val endAngle = SELF_LOOP_END_DEGREES * PI / 180.0
+    val end = Offset(center.x + radius * cos(endAngle).toFloat(), center.y + radius * sin(endAngle).toFloat())
+    val tangent = Offset(-sin(endAngle).toFloat(), cos(endAngle).toFloat())
+    val normal = Offset(-tangent.y, tangent.x)
+    val head = Path().apply {
+        moveTo(end.x + tangent.x * stroke * 2.4f, end.y + tangent.y * stroke * 2.4f)
+        lineTo(end.x + normal.x * stroke * 1.8f, end.y + normal.y * stroke * 1.8f)
+        lineTo(end.x - normal.x * stroke * 1.8f, end.y - normal.y * stroke * 1.8f)
+        close()
+    }
+    drawPath(head, ink, style = Fill)
 }
 
 private fun nodeTappedAction(action: String, nodeId: String) = ActionRef(
     action = action,
     params = mapOf("node_id" to SpecValue.StringValue(nodeId)),
+)
+
+private fun edgeTappedAction(action: String, route: FlowEdgeRoute) = ActionRef(
+    action = action,
+    params = mapOf("from" to SpecValue.StringValue(route.from), "to" to SpecValue.StringValue(route.to)),
 )
 
 private fun DrawScope.drawLanes(layout: FlowLayout, groupColors: Map<String, String>, measurer: TextMeasurer, labelColor: Color) {
@@ -414,8 +486,9 @@ private fun DrawScope.drawEdges(
     focus: GraphFocus?,
 ) {
     val (lit, rest) = layout.edges.partition { focus != null && (it.from to it.to) in focus.edges }
-    for (route in rest) drawEdge(route, styles[route.from to route.to], statusColors, fallback, restingAlpha = if (focus == null) RESTING_EDGE_ALPHA else DIMMED_EDGE_ALPHA, highlighted = false)
-    for (route in lit) drawEdge(route, styles[route.from to route.to], statusColors, fallback, restingAlpha = 1f, highlighted = true)
+    val restAlpha = if (focus == null) RESTING_EDGE_ALPHA else DIMMED_EDGE_ALPHA
+    for (route in rest) drawEdge(route, styles[route.from to route.to], statusColors, fallback, restAlpha, highlighted = false)
+    for (route in lit) drawEdge(route, styles[route.from to route.to], statusColors, fallback, 1f, highlighted = true)
 }
 
 private fun DrawScope.drawEdge(
@@ -455,4 +528,58 @@ private fun DrawScope.drawEdge(
         close()
     }
     drawPath(head, color, style = Fill)
+    if (style?.marker == "dot") drawEdgeDot(flowRouteMidpoint(route), color)
+}
+
+private fun DrawScope.drawEdgeDot(midpoint: FlowPoint, color: Color) {
+    drawCircle(color, radius = MARKER_RADIUS_DP * density, center = Offset(midpoint.x * density, midpoint.y * density))
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GraphLegend(nodeId: String, entries: List<GraphLegendEntry>) {
+    val theme = LocalSpecTheme.current
+    FlowRow(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        entries.forEachIndexed { index, entry ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                LegendSwatch(entry, Modifier.nodeTag("$nodeId:legend:$index"))
+                Text(text = entry.label, style = LEGEND_TEXT.copy(color = theme.ink), maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegendSwatch(entry: GraphLegendEntry, modifier: Modifier) {
+    val theme = LocalSpecTheme.current
+    when {
+        entry.kind == "badge" && entry.icon == "circular-arrow" ->
+            Canvas(modifier = modifier.size(BADGE_DP.dp)) { drawSelfLoopGlyph(theme.ink, theme.ground) }
+        entry.kind == "edge" -> Canvas(modifier = modifier.size(LEGEND_EDGE_W_DP.dp, LEGEND_NODE_H_DP.dp)) {
+            val middle = LEGEND_NODE_H_DP / 2f
+            val route = FlowEdgeRoute("", "", listOf(FlowPoint(2f, middle), FlowPoint(LEGEND_EDGE_W_DP - 2f, middle)), isBackEdge = false)
+            drawEdge(route, GraphEdgeEntry("", "", color = entry.color, dash = entry.dash, marker = entry.marker), emptyMap(), theme.muted, 1f, highlighted = false)
+        }
+        else -> LegendChip(entry, modifier)
+    }
+}
+
+@Composable
+private fun LegendChip(entry: GraphLegendEntry, modifier: Modifier) {
+    val theme = LocalSpecTheme.current
+    val shape = shapeOf(entry.shape ?: GraphNodeShape.BOX)
+    val fill = colorOf(entry.color, UNSTATED_FILL).let { if (entry.muted) lerp(it, theme.ground, MUTED_BLEND) else it }
+    val width = if (entry.compact) LEGEND_COMPACT_W_DP else LEGEND_NODE_W_DP
+    val height = if (entry.compact) LEGEND_COMPACT_H_DP else LEGEND_NODE_H_DP
+    val outlineDp = entry.borderWidth ?: DEFAULT_BORDER_DP
+    val outline = if (entry.outline == "dashed") {
+        Modifier.drawBehind { drawDashedOutline(theme.ink, outlineDp, entry.shape ?: GraphNodeShape.BOX, density) }
+    } else {
+        Modifier.border(outlineDp.dp, theme.muted, shape)
+    }
+    Box(modifier = modifier.size(width.dp, height.dp).clip(shape).background(fill).then(outline))
 }

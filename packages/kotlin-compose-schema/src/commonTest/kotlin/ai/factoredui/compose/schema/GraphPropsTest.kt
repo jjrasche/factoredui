@@ -120,6 +120,57 @@ class GraphPropsTest {
     }
 
     @Test
+    fun anEdgeMayCarryAMarker() {
+        val edges = resolveGraphEdges(listOf(mapOf("from" to "a", "to" to "b", "marker" to "dot"), mapOf("from" to "b", "to" to "c")))
+        assertEquals("dot", edges[0].marker)
+        assertEquals(null, edges[1].marker)
+    }
+
+    @Test
+    fun theLegendTakesNodeEdgeAndBadgeSwatchesAndSkipsUnknownKinds() {
+        val legend = resolveGraphLegend(
+            listOf(
+                mapOf("label" to "missing", "kind" to "badge", "color" to "#C0392B", "outline" to "dashed"),
+                mapOf("label" to "input", "kind" to "node", "shape" to "pill"),
+                mapOf("label" to "aux", "kind" to "node", "compact" to true, "muted" to true, "border_width" to 3),
+                mapOf("label" to "feedback", "kind" to "edge", "dash" to true),
+                mapOf("label" to "scale", "kind" to "edge", "marker" to "dot"),
+                mapOf("label" to "loops", "kind" to "badge", "icon" to "circular-arrow"),
+                mapOf("label" to "mystery", "kind" to "hologram"),
+                mapOf("kind" to "node"),
+            ),
+        )
+        assertEquals(listOf("missing", "input", "aux", "feedback", "scale", "loops"), legend.map { it.label })
+        assertEquals("dashed", legend[0].outline)
+        assertEquals(GraphNodeShape.PILL, legend[1].shape)
+        assertTrue(legend[2].compact && legend[2].muted)
+        assertEquals(3f, legend[2].borderWidth)
+        assertTrue(legend[3].dash)
+        assertEquals("dot", legend[4].marker)
+        assertEquals("circular-arrow", legend[5].icon)
+    }
+
+    @Test
+    fun aMissingLegendIsEmpty() {
+        assertEquals(emptyList(), resolveGraphLegend(null))
+    }
+
+    @Test
+    fun zoomDefaultsToOneAndIsClamped() {
+        assertEquals(1f, resolveGraphZoom(null))
+        assertEquals(1.6f, resolveGraphZoom(1.6))
+        assertEquals(8f, resolveGraphZoom(500))
+        assertEquals(0.2f, resolveGraphZoom(0.001))
+        assertEquals(1f, resolveGraphZoom("big"))
+    }
+
+    @Test
+    fun edgeTapAndSelectedEdgeAreReadFromTheProps() {
+        val props = mapOf("on_edge_tap" to SpecValue.StringValue("flow.edgeTapped"))
+        assertEquals("flow.edgeTapped", props.asGraphProps().onEdgeTapped)
+    }
+
+    @Test
     fun onNodeTapIsReadFromThePropsMap() {
         val props = mapOf("on_node_tap" to SpecValue.StringValue("flow.nodeTapped"))
         assertEquals("flow.nodeTapped", props.asGraphProps().onNodeTapped)

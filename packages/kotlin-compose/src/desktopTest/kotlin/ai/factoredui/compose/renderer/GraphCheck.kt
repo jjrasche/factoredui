@@ -31,6 +31,10 @@ class GraphCheck {
             "kind_styles" to SpecValue.StringValue("{flow_kinds}"),
             "status_outlines" to SpecValue.StringValue("{flow_outlines}"),
             "on_node_tap" to SpecValue.StringValue("flow.nodeTapped"),
+            "on_edge_tap" to SpecValue.StringValue("flow.edgeTapped"),
+            "selected_edge" to SpecValue.StringValue("{flow_selected_edge}"),
+            "legend" to SpecValue.StringValue("{flow_legend}"),
+            "zoom" to SpecValue.StringValue("{flow_zoom}"),
         ),
     )
 
@@ -40,11 +44,15 @@ class GraphCheck {
         nodes: List<Map<String, Any?>>,
         edges: List<Map<String, Any?>>,
         actions: Map<String, ActionHandler> = emptyMap(),
+        legend: List<Map<String, Any?>> = emptyList(),
+        zoom: Double = 1.0,
     ) = RenderContext(
         actions = actions,
         initialData = mapOf(
             "flow_nodes" to nodes,
             "flow_edges" to edges,
+            "flow_legend" to legend,
+            "flow_zoom" to zoom,
             "flow_colors" to statusColors,
             "flow_groups" to listOf("soil", "livestock"),
             "flow_kinds" to mapOf(
@@ -206,6 +214,91 @@ class GraphCheck {
         }
         assertTrue(inkAboveRightCorner("stock"), "the badge arc is drawn above the corner")
         assertTrue(!inkAboveRightCorner("rain"), "a node that does not loop has no badge")
+    }
+
+    private fun sameLaneEdge(extra: Map<String, Any?> = emptyMap()) =
+        listOf(mapOf("from" to "rain", "to" to "intake", "color" to "#0000FF") + extra)
+
+    @Test
+    fun tappingAnEdgeDispatchesItsEndpointsAndSelectsIt() = runComposeUiTest {
+        var tappedFrom: Any? = null
+        var tappedTo: Any? = null
+        val capture: ActionHandler = { params ->
+            tappedFrom = params["from"]
+            tappedTo = params["to"]
+        }
+        val context = contextOf(sameLane(), sameLaneEdge(), mapOf("flow.edgeTapped" to capture))
+        val check = SpecVisualCheck(this, context)
+        check.render(graph, viewport = 500.dp)
+        val rain = check.region("rain")
+        val intake = check.region("intake")
+        check.tapAt("flow", ((rain.right + intake.left) / 2).value, (rain.centerY() + 4.dp).value)
+        assertEquals("rain", tappedFrom)
+        assertEquals("intake", tappedTo)
+        assertEquals(mapOf("from" to "rain", "to" to "intake"), check.binding("flow_selected_edge"))
+    }
+
+    @Test
+    fun tappingEmptySpaceSelectsNoEdgeAndFiresNothing() = runComposeUiTest {
+        var fired = false
+        val capture: ActionHandler = { fired = true }
+        val check = SpecVisualCheck(this, contextOf(sameLane(), sameLaneEdge(), mapOf("flow.edgeTapped" to capture)))
+        check.render(graph, viewport = 500.dp)
+        check.tapAt("flow", 480f, 20f)
+        assertTrue(!fired, "a tap far from any edge dispatches no edge action")
+        assertEquals(null, check.binding("flow_selected_edge"))
+    }
+
+    private fun midpointPixel(marker: String?): Color {
+        var sampled: Color? = null
+        runComposeUiTest {
+            val edge = if (marker == null) sameLaneEdge() else sameLaneEdge(mapOf("marker" to marker))
+            val check = SpecVisualCheck(this, contextOf(sameLane(), edge))
+            check.render(graph, viewport = 500.dp)
+            val rain = check.region("rain")
+            val intake = check.region("intake")
+            sampled = check.pixel((rain.right + intake.left) / 2, rain.centerY() + 2.dp)
+        }
+        return sampled!!
+    }
+
+    @Test
+    fun aDotMarkerDrawsABeadOnTheEdgeAndNoMarkerDoesNot() {
+        val blue = Color(0xFF0000FF)
+        assertTrue(midpointPixel("dot").isNear(blue, 0.3f) && midpointPixel("dot").alpha > 0.4f, "the bead covers a pixel just off the line")
+        assertTrue(midpointPixel(null).alpha < 0.3f, "without the marker that pixel is empty")
+    }
+
+    @Test
+    fun theLegendSitsBelowTheGraphAndPaintsItsSwatches() = runComposeUiTest {
+        val legend = listOf(
+            mapOf("label" to "missing", "kind" to "badge", "color" to "#C0392B", "outline" to "dashed"),
+            mapOf("label" to "input", "kind" to "node", "shape" to "pill"),
+            mapOf("label" to "feedback", "kind" to "edge", "dash" to true),
+        )
+        val check = SpecVisualCheck(this, contextOf(sameLane(), sameLaneEdge(), legend = legend))
+        check.render(graph, viewport = 500.dp)
+        listOf(0, 1, 2).forEach { check.assertPresent("flow:legend:$it") }
+        assertTrue(check.region("flow:legend:0").top >= check.region("rain").bottom, "the legend strip starts below the graph's nodes")
+        val chip = check.region("flow:legend:0")
+        assertTrue(check.pixel(chip.left + 3.dp, chip.centerY()).isFilledWith(Color(0xFFC0392B)), "the badge chip carries its colour")
+    }
+
+    private fun nodeGap(zoom: Double): Float {
+        var gap = 0f
+        runComposeUiTest {
+            val check = SpecVisualCheck(this, contextOf(sameLane(), sameLaneEdge(), zoom = zoom))
+            check.render(graph, viewport = 500.dp)
+            gap = check.region("intake").left.value - check.region("rain").left.value
+        }
+        return gap
+    }
+
+    @Test
+    fun aZoomPropMagnifiesTheDefaultView() {
+        val normal = nodeGap(1.0)
+        val zoomed = nodeGap(1.5)
+        assertTrue(abs(zoomed - normal * 1.5f) < normal * 0.05f, "node spacing grew by the zoom factor: normal=$normal zoomed=$zoomed")
     }
 
     @Test

@@ -714,11 +714,55 @@ data class GraphEdgeEntry(
     val status: String? = null,
     val color: String? = null,
     val dash: Boolean = false,
+    val marker: String? = null,
 )
 
-data class GraphProps(val onNodeTapped: String? = null)
+data class GraphLegendEntry(
+    val label: String,
+    val kind: String,
+    val color: String? = null,
+    val outline: String? = null,
+    val shape: GraphNodeShape? = null,
+    val compact: Boolean = false,
+    val muted: Boolean = false,
+    val borderWidth: Float? = null,
+    val dash: Boolean = false,
+    val marker: String? = null,
+    val icon: String? = null,
+)
 
-fun Map<String, SpecValue>.asGraphProps(): GraphProps = GraphProps(onNodeTapped = string("on_node_tap"))
+data class GraphProps(val onNodeTapped: String? = null, val onEdgeTapped: String? = null)
+
+fun Map<String, SpecValue>.asGraphProps(): GraphProps =
+    GraphProps(onNodeTapped = string("on_node_tap"), onEdgeTapped = string("on_edge_tap"))
+
+private val GRAPH_LEGEND_KINDS = setOf("node", "edge", "badge")
+
+fun resolveGraphLegend(resolvedLegend: Any?): List<GraphLegendEntry> =
+    (resolvedLegend as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val label = fields["label"] as? String ?: return@mapNotNull null
+        val kind = (fields["kind"] as? String)?.takeIf { it in GRAPH_LEGEND_KINDS } ?: return@mapNotNull null
+        GraphLegendEntry(
+            label = label,
+            kind = kind,
+            color = fields["color"] as? String,
+            outline = fields["outline"] as? String,
+            shape = graphShapeOf(fields["shape"]),
+            compact = fields["compact"] as? Boolean ?: false,
+            muted = fields["muted"] as? Boolean ?: false,
+            borderWidth = (fields["border_width"] as? Number)?.toFloat(),
+            dash = fields["dash"] as? Boolean ?: false,
+            marker = fields["marker"] as? String,
+            icon = fields["icon"] as? String,
+        )
+    }
+
+private const val MIN_GRAPH_ZOOM = 0.2f
+private const val MAX_GRAPH_ZOOM = 8f
+
+fun resolveGraphZoom(resolvedZoom: Any?): Float =
+    (resolvedZoom as? Number)?.toFloat()?.coerceIn(MIN_GRAPH_ZOOM, MAX_GRAPH_ZOOM) ?: 1f
 
 fun resolveGraphNodes(resolvedNodes: Any?): List<GraphNodeEntry> =
     (resolvedNodes as? List<*>).orEmpty().mapNotNull { entry ->
@@ -769,6 +813,7 @@ fun resolveGraphEdges(resolvedEdges: Any?): List<GraphEdgeEntry> =
             status = fields["status"] as? String,
             color = fields["color"] as? String,
             dash = fields["dash"] as? Boolean ?: false,
+            marker = fields["marker"] as? String,
         )
     }
 

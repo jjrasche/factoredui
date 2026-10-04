@@ -32,6 +32,14 @@ class FlowViewTest {
     }
 
     @Test
+    fun aZoomMultipliesTheFitScaleAndStaysCentred() {
+        val fit = fitFlowView(contentWidth = 1000f, contentHeight = 500f, viewWidth = 500f, viewHeight = 500f, margin = 0f)
+        val zoomed = fitFlowView(contentWidth = 1000f, contentHeight = 500f, viewWidth = 500f, viewHeight = 500f, margin = 0f, zoom = 1.6f)
+        assertNear(fit.scale * 1.6f, zoomed.scale, "scale")
+        assertNear((500f - 1000f * zoomed.scale) / 2f, zoomed.translateX, "content centre stays at the view centre")
+    }
+
+    @Test
     fun theFittedGraphLiesInsideTheView() {
         val view = fitFlowView(contentWidth = 1234f, contentHeight = 777f, viewWidth = 640f, viewHeight = 480f, margin = 10f)
         assertTrue(view.translateX >= 0f && view.translateY >= 0f)
