@@ -1,0 +1,60 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "explorer",
+    "type": "column",
+    "props": { "background": "#FFFFFF" },
+    "children": [
+      {
+        "id": "flow",
+        "type": "graph",
+        "props": {
+          "flex": 1,
+          "zoom": 1.3,
+          "nodes": "{nodes}",
+          "edges": "{edges}",
+          "group_order": "{group_order}",
+          "status_colors": "{status_colors}",
+          "kind_styles": "{kind_styles}",
+          "status_outlines": "{status_outlines}",
+          "legend": "{legend}",
+          "selected": "{sel_id}",
+          "selected_node": "{sel_node}",
+          "selected_edge": "{sel_edge}"
+        }
+      },
+      {
+        "id": "hint",
+        "type": "text",
+        "props": { "value": "tap a node or an edge for its details · drag to pan · scroll to zoom", "variant": "caption" }
+      },
+      {
+        "id": "node-card",
+        "type": "column",
+        "visible": "{sel_node}",
+        "props": { "padding": 12, "gap": 4, "background": "#F1F3F8" },
+        "children": [
+          { "id": "node-title", "type": "text", "props": { "value": "{sel_node.label}", "variant": "heading" } },
+          { "id": "node-ident", "type": "text", "props": { "value": "id {sel_node.id}  ·  kind {sel_node.kind}  ·  status {sel_node.status}  ·  group {sel_node.group}" } },
+          { "id": "node-role", "type": "text", "props": { "value": "role {sel_node.stock_flow_role}  ·  unit {sel_node.unit}" } },
+          { "id": "node-scale", "type": "text", "props": { "value": "time scale {sel_node.timescale.step} {sel_node.timescale.unit}  ({sel_node.timescale.basis})" } },
+          { "id": "node-scale-reason", "type": "text", "props": { "value": "{sel_node.timescale.reason}", "variant": "caption" } },
+          { "id": "node-note", "type": "text", "props": { "value": "{sel_node.note}", "variant": "caption" } }
+        ]
+      },
+      {
+        "id": "edge-card",
+        "type": "column",
+        "visible": "{sel_edge}",
+        "props": { "padding": 12, "gap": 4, "background": "#F1F3F8" },
+        "children": [
+          { "id": "edge-title", "type": "text", "props": { "value": "{sel_edge.from}  →  {sel_edge.to}", "variant": "heading" } },
+          { "id": "edge-ident", "type": "text", "props": { "value": "kind {sel_edge.kind}  ·  status {sel_edge.status}  ·  equation {sel_edge.via}" } },
+          { "id": "edge-coupling", "type": "text", "props": { "value": "coupling {sel_edge.coupling.method}  ·  producer time scale {sel_edge.coupling.producer_timescale.step} {sel_edge.coupling.producer_timescale.unit}" } },
+          { "id": "edge-coupling-reason", "type": "text", "props": { "value": "{sel_edge.coupling.reason}", "variant": "caption" } }
+        ]
+      }
+    ]
+  }
+}

@@ -33,6 +33,8 @@ class GraphCheck {
             "on_node_tap" to SpecValue.StringValue("flow.nodeTapped"),
             "on_edge_tap" to SpecValue.StringValue("flow.edgeTapped"),
             "selected_edge" to SpecValue.StringValue("{flow_selected_edge}"),
+            "selected_node" to SpecValue.StringValue("{flow_selected_node}"),
+            "selected" to SpecValue.StringValue("{flow_selected}"),
             "legend" to SpecValue.StringValue("{flow_legend}"),
             "zoom" to SpecValue.StringValue("{flow_zoom}"),
         ),
@@ -235,7 +237,27 @@ class GraphCheck {
         check.tapAt("flow", ((rain.right + intake.left) / 2).value, (rain.centerY() + 4.dp).value)
         assertEquals("rain", tappedFrom)
         assertEquals("intake", tappedTo)
-        assertEquals(mapOf("from" to "rain", "to" to "intake"), check.binding("flow_selected_edge"))
+        val record = check.binding("flow_selected_edge") as Map<*, *>
+        assertEquals("rain", record["from"])
+        assertEquals("intake", record["to"])
+        assertEquals("#0000FF", record["color"], "the whole edge record is bound, not just its endpoints")
+    }
+
+    @Test
+    fun tappingANodeBindsItsWholeRecordAndTappingAnEdgeReplacesIt() = runComposeUiTest {
+        val context = contextOf(sameLane().map { it + ("unit" to "kg") }, sameLaneEdge())
+        val check = SpecVisualCheck(this, context)
+        check.render(graph, viewport = 500.dp)
+        check.tap("rain")
+        val record = check.binding("flow_selected_node") as Map<*, *>
+        assertEquals("rain", record["label"])
+        assertEquals("kg", record["unit"], "fields the renderer does not read still reach the card")
+        assertEquals("rain", check.binding("flow_selected"))
+        val rain = check.region("rain")
+        val intake = check.region("intake")
+        check.tapAt("flow", ((rain.right + intake.left) / 2).value, (rain.centerY() + 4.dp).value)
+        assertEquals(null, check.binding("flow_selected_node"), "selecting an edge clears the node record")
+        assertEquals("intake", (check.binding("flow_selected_edge") as Map<*, *>)["to"])
     }
 
     @Test

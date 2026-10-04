@@ -95,7 +95,7 @@ private fun pointerType(name: String?): PointerEventType = when (name) {
     else -> PointerEventType.Move
 }
 
-private fun jsonObjectToMap(obj: JsonObject): Map<String, Any?> =
+internal fun jsonObjectToMap(obj: JsonObject): Map<String, Any?> =
     obj.mapValues { (_, value) -> jsonToAny(value) }
 
 private fun jsonToAny(element: JsonElement): Any? = when (element) {

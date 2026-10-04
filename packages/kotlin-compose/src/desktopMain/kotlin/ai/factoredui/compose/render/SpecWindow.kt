@@ -16,18 +16,36 @@ import java.net.URI
 
 private val specDecoder = Json { ignoreUnknownKeys = true }
 
-// A real window on a real spec — the pointer-driven counterpart to renderSpecToPng, so a spec can
-// be orbited and zoomed rather than only asserted against. A world_state_url may be handed in
-// directly; a served world becomes lookable without anyone hand-writing a spec around it.
-// args = <spec or world-state json: file path or http URL> [width] [height]
+private const val DEFAULT_WIDTH = 1280
+private const val DEFAULT_HEIGHT = 800
+private const val DATA_FLAG = "--data"
+
+data class WindowArgs(val source: String, val width: Int, val height: Int, val dataPath: String?)
+
+fun parseWindowArgs(args: Array<String>): WindowArgs? {
+    if (args.isEmpty()) return null
+    val dataIndex = args.indexOf(DATA_FLAG)
+    if (dataIndex >= 0 && dataIndex + 1 >= args.size) return null
+    val dataPath = if (dataIndex >= 0) args[dataIndex + 1] else null
+    val positional = args.filterIndexed { index, _ -> dataIndex < 0 || (index != dataIndex && index != dataIndex + 1) }
+    val sizes = positional.drop(1).mapNotNull { it.toIntOrNull() }
+    return WindowArgs(
+        source = positional.first(),
+        width = sizes.getOrNull(0) ?: DEFAULT_WIDTH,
+        height = sizes.getOrNull(1) ?: DEFAULT_HEIGHT,
+        dataPath = dataPath,
+    )
+}
+
+// The pointer-driven counterpart to renderSpecToPng. --data seeds the spec's bindings from a JSON
+// file's top-level keys, so a host's own JSON opens under a generic spec with no generated wrapper.
 fun main(args: Array<String>) {
-    if (args.isEmpty()) {
-        System.err.println("usage: spec-window <spec.json | world.json — path or http URL> [width=1280] [height=800]")
+    val parsed = parseWindowArgs(args)
+    if (parsed == null) {
+        System.err.println("usage: spec-window <spec.json | world.json — path or http URL> [width=1280] [height=800] [--data data.json]")
         kotlin.system.exitProcess(2)
     }
-    val source = args[0]
-    val width = args.getOrNull(1)?.toIntOrNull() ?: 1280
-    val height = args.getOrNull(2)?.toIntOrNull() ?: 800
+    val source = parsed.source
 
     val sourceJson = runCatching { readSource(source) }.getOrElse { failure ->
         System.err.println("spec-window: cannot read $source — ${failure.message ?: failure::class.simpleName}")
@@ -37,13 +55,19 @@ fun main(args: Array<String>) {
         System.err.println("spec-window: $source is neither a spec nor a world state — ${failure.message ?: failure::class.simpleName}")
         kotlin.system.exitProcess(4)
     }
+    val data = parsed.dataPath?.let { path ->
+        runCatching { jsonObjectToMap(specDecoder.parseToJsonElement(File(path).readText()) as JsonObject) }.getOrElse { failure ->
+            System.err.println("spec-window: cannot read data file $path — ${failure.message ?: failure::class.simpleName}")
+            kotlin.system.exitProcess(5)
+        }
+    } ?: emptyMap()
 
-    println("spec-window: ${spec.root.type} '${spec.root.id}' from $source — drag to orbit, scroll to zoom")
+    println("spec-window: ${spec.root.type} '${spec.root.id}' from $source with ${data.size} data keys — drag to pan, scroll to zoom")
     singleWindowApplication(
-        state = WindowState(size = DpSize(width.dp, height.dp), position = WindowPosition.Aligned(Alignment.Center)),
+        state = WindowState(size = DpSize(parsed.width.dp, parsed.height.dp), position = WindowPosition.Aligned(Alignment.Center)),
         title = "factoredui — ${spec.root.id}",
     ) {
-        RenderSpec(spec = spec, context = RenderContext())
+        RenderSpec(spec = spec, context = RenderContext(initialData = data))
     }
 }
 

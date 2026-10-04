@@ -204,6 +204,9 @@ internal fun RenderGraph(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     val edgeStyles = remember(edgeEntries) { edgeEntries.distinctBy { it.from to it.to }.associateBy { it.from to it.to } }
     val selectedPath = node.props["selected"]?.bindingPath()
     val selectedEdgePath = node.props["selected_edge"]?.bindingPath()
+    val selectedNodePath = node.props["selected_node"]?.bindingPath()
+    val nodeRecords = remember(resolvedProps["nodes"]) { recordsById(resolvedProps["nodes"]) }
+    val edgeRecords = remember(resolvedProps["edges"]) { recordsByEnds(resolvedProps["edges"]) }
     var localSelected by remember { mutableStateOf<String?>(null) }
     var localSelectedEdge by remember { mutableStateOf<Pair<String, String>?>(null) }
     val selected = if (selectedPath != null) resolvedProps["selected"] as? String else localSelected
@@ -213,8 +216,9 @@ internal fun RenderGraph(node: SpecNode, resolvedProps: Map<String, Any?>, conte
 
     fun select(nodeId: String?, edge: Pair<String, String>?) {
         if (selectedPath != null) context.setBinding(selectedPath, nodeId) else localSelected = nodeId
+        if (selectedNodePath != null) context.setBinding(selectedNodePath, nodeId?.let { nodeRecords[it] })
         if (selectedEdgePath != null) {
-            context.setBinding(selectedEdgePath, edge?.let { mapOf("from" to it.first, "to" to it.second) })
+            context.setBinding(selectedEdgePath, edge?.let { edgeRecords[it] ?: mapOf("from" to it.first, "to" to it.second) })
         } else {
             localSelectedEdge = edge
         }
@@ -299,6 +303,20 @@ internal fun RenderGraph(node: SpecNode, resolvedProps: Map<String, Any?>, conte
         if (legend.isNotEmpty()) GraphLegend(node.id, legend)
     }
 }
+
+private fun recordsById(resolvedNodes: Any?): Map<String, Map<*, *>> =
+    (resolvedNodes as? List<*>).orEmpty().mapNotNull { entry ->
+        val record = entry as? Map<*, *> ?: return@mapNotNull null
+        (record["id"] as? String)?.let { it to record }
+    }.toMap()
+
+private fun recordsByEnds(resolvedEdges: Any?): Map<Pair<String, String>, Map<*, *>> =
+    (resolvedEdges as? List<*>).orEmpty().mapNotNull { entry ->
+        val record = entry as? Map<*, *> ?: return@mapNotNull null
+        val from = record["from"] as? String ?: return@mapNotNull null
+        val to = record["to"] as? String ?: return@mapNotNull null
+        (from to to) to record
+    }.reversed().toMap()
 
 private fun edgeOfBinding(raw: Any?): Pair<String, String>? {
     val fields = raw as? Map<*, *> ?: return null
