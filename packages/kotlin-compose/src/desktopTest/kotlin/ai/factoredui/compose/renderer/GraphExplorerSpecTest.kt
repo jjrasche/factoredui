@@ -22,6 +22,9 @@ class GraphExplorerSpecTest {
             mapOf(
                 "id" to "rain", "label" to "rain", "group" to "soil", "status" to "implemented", "kind" to "state",
                 "unit" to "mm", "stock_flow_role" to "stock",
+                "form" to "rain [mm] = hourly sum of the weather series",
+                "parameters_summary" to "2 declared", "sources_summary" to "1 banked", "measurement_summary" to "rain gauge, 5 USD",
+                "tasks_summary" to "read gauge weekly", "overlay_status" to "complete",
                 "timescale" to mapOf("step" to 1.0, "unit" to "hour", "basis" to "implemented", "reason" to "stepped hourly"),
             ),
             mapOf("id" to "growth", "label" to "growth", "group" to "soil", "status" to "missing", "kind" to "state"),
@@ -51,6 +54,20 @@ class GraphExplorerSpecTest {
         assertEquals("rain", check.node("node-title").props["value"])
         assertEquals("id rain  ·  kind state  ·  status implemented  ·  group soil", check.node("node-ident").props["value"])
         assertEquals("time scale 1 hour  (implemented)", check.node("node-scale").props["value"].toString().replace("1.0", "1"))
+    }
+
+    @Test
+    fun theNodeCardCarriesTheLabelledSummaryLinesFormFirst() = runComposeUiTest {
+        val check = SpecVisualCheck(this, RenderContext(initialData = hostData))
+        check.render(spec.root, viewport = 600.dp)
+        check.tap("rain")
+        assertEquals("form: rain [mm] = hourly sum of the weather series", check.node("node-form").props["value"])
+        assertEquals("parameters: 2 declared", check.node("node-parameters").props["value"])
+        assertEquals("sources: 1 banked", check.node("node-sources").props["value"])
+        assertEquals("measured by: rain gauge, 5 USD", check.node("node-measurement").props["value"])
+        assertEquals("tasks: read gauge weekly", check.node("node-tasks").props["value"])
+        assertEquals("overlay: complete", check.node("node-overlay").props["value"])
+        assertTrue(check.region("node-form").top < check.region("node-parameters").top, "form leads the summary lines")
     }
 
     @Test

@@ -40,7 +40,13 @@
           { "id": "node-role", "type": "text", "props": { "value": "role {sel_node.stock_flow_role}  ·  unit {sel_node.unit}" } },
           { "id": "node-scale", "type": "text", "props": { "value": "time scale {sel_node.timescale.step} {sel_node.timescale.unit}  ({sel_node.timescale.basis})" } },
           { "id": "node-scale-reason", "type": "text", "props": { "value": "{sel_node.timescale.reason}", "variant": "caption" } },
-          { "id": "node-note", "type": "text", "props": { "value": "{sel_node.note}", "variant": "caption" } }
+          { "id": "node-note", "type": "text", "props": { "value": "{sel_node.note}", "variant": "caption" } },
+          { "id": "node-form", "type": "text", "props": { "value": "form: {sel_node.form}" } },
+          { "id": "node-parameters", "type": "text", "props": { "value": "parameters: {sel_node.parameters_summary}", "variant": "caption" } },
+          { "id": "node-sources", "type": "text", "props": { "value": "sources: {sel_node.sources_summary}", "variant": "caption" } },
+          { "id": "node-measurement", "type": "text", "props": { "value": "measured by: {sel_node.measurement_summary}", "variant": "caption" } },
+          { "id": "node-tasks", "type": "text", "props": { "value": "tasks: {sel_node.tasks_summary}", "variant": "caption" } },
+          { "id": "node-overlay", "type": "text", "props": { "value": "overlay: {sel_node.overlay_status}", "variant": "caption" } }
         ]
       },
       {
