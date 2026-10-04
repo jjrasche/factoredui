@@ -18,7 +18,7 @@ class GraphPropsTest {
         assertEquals(2, nodes.size)
         assertEquals(GraphNodeEntry(id = "soil_water", label = "Soil water", group = "soil", status = "implemented", kind = "state"), nodes[0])
         assertEquals("rain", nodes[1].label)
-        assertEquals(GraphNodeShape.BOX, nodes[1].shape)
+        assertEquals(null, nodes[1].shape, "no shape stated, so the kind style or the default decides")
     }
 
     @Test
@@ -39,8 +39,8 @@ class GraphPropsTest {
     }
 
     @Test
-    fun anUnknownShapeFallsBackToABox() {
-        assertEquals(GraphNodeShape.BOX, resolveGraphNodes(listOf(mapOf("id" to "a", "shape" to "hexagon"))).single().shape)
+    fun anUnknownShapeIsLeftUnstated() {
+        assertEquals(null, resolveGraphNodes(listOf(mapOf("id" to "a", "shape" to "hexagon"))).single().shape)
     }
 
     @Test
@@ -66,10 +66,10 @@ class GraphPropsTest {
     }
 
     @Test
-    fun aColourMapKeepsOnlyStringPairs() {
+    fun aStringMapKeepsOnlyStringPairs() {
         assertEquals(
             mapOf("implemented" to "#3FA34D"),
-            resolveGraphColorMap(mapOf("implemented" to "#3FA34D", "missing" to 4, 7 to "#000000")),
+            resolveGraphStringMap(mapOf("implemented" to "#3FA34D", "missing" to 4, 7 to "#000000")),
         )
     }
 
@@ -88,6 +88,35 @@ class GraphPropsTest {
     fun paletteAssignmentIsStableForTheSameKeys() {
         val keys = listOf("a", "b", "c")
         assertEquals(assignGraphColors(keys, emptyMap()), assignGraphColors(keys, emptyMap()))
+    }
+
+    @Test
+    fun aNodeIsNotASelfLoopUnlessItSaysSo() {
+        val nodes = resolveGraphNodes(listOf(mapOf("id" to "a"), mapOf("id" to "stock", "self_loop" to true)))
+        assertFalse(nodes[0].selfLoop)
+        assertTrue(nodes[1].selfLoop)
+    }
+
+    @Test
+    fun kindStylesMapEachHostKindToHowItIsDrawn() {
+        val styles = resolveGraphKindStyles(
+            mapOf(
+                "input" to mapOf("shape" to "pill"),
+                "aux" to mapOf("compact" to true, "muted" to true),
+                "output" to mapOf("border_width" to 3),
+                "plain" to mapOf<String, Any?>(),
+            ),
+        )
+        assertEquals(GraphNodeShape.PILL, styles.getValue("input").shape)
+        assertTrue(styles.getValue("aux").compact && styles.getValue("aux").muted)
+        assertEquals(3f, styles.getValue("output").borderWidth)
+        assertEquals(GraphKindStyle(), styles.getValue("plain"))
+    }
+
+    @Test
+    fun aMalformedKindStyleIsIgnored() {
+        assertEquals(emptyMap(), resolveGraphKindStyles(mapOf("a" to "pill")))
+        assertEquals(emptyMap(), resolveGraphKindStyles(null))
     }
 
     @Test

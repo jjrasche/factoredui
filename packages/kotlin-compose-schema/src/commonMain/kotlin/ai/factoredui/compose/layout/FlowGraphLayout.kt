@@ -1,7 +1,5 @@
 package ai.factoredui.compose.layout
 
-import kotlin.math.ceil
-
 data class FlowNodeSpec(
     val id: String,
     val width: Float,
@@ -39,9 +37,9 @@ private const val EXTENT_MARGIN = 16f
 private const val ORDERING_SWEEPS = 12
 private const val RELAXATION_SWEEPS = 8
 private const val PORT_INSET = 4f
-private const val PORT_PITCH = 5f
-private const val MAX_HEIGHT_GROWTH = 3f
-private const val MIN_ISOLATED_STACK = 3
+private const val STRIP_GAP = 12f
+private const val STRIP_SEPARATION = 18f
+private const val MIN_STRIP_WIDTH = 360f
 
 private class OrientedEdge(val from: String, val to: String, val isBackEdge: Boolean)
 
@@ -62,18 +60,18 @@ fun layoutFlowGraph(
 ): FlowLayout {
     val specs = nodes.distinctBy { it.id }
     if (specs.isEmpty()) return FlowLayout(emptyMap(), emptyList(), emptyList(), 0f, 0f)
-    val oriented = orientAcyclic(specs.map { it.id }, routableEdges(specs, edges))
-    val rawLayers = assignLayers(specs, oriented)
-    val pulled = if (compactSources) pullSourcesRight(specs, oriented, rawLayers) else rawLayers
-    val layerOf = compactLayers(wrapIsolatedNodes(specs, oriented, pulled))
+    val routable = routableEdges(specs, edges)
+    val (parked, flowing) = partitionParked(specs, routable)
+    val oriented = orientAcyclic(flowing.map { it.id }, routable)
+    val rawLayers = assignLayers(flowing, oriented)
+    val layerOf = compactLayers(if (compactSources) pullSourcesRight(flowing, oriented, rawLayers) else rawLayers)
     val groups = orderGroups(specs, groupOrder)
     val laneOf = specs.associate { it.id to groups.indexOf(it.group) }
     val items = HashMap<String, ChainItem>()
-    val portCount = portCounts(oriented)
-    specs.forEach { items[it.id] = ChainItem(it.id, laneOf.getValue(it.id), roomyHeight(it.height, portCount[it.id] ?: 0), it.width, isWaypoint = false) }
+    specs.forEach { items[it.id] = ChainItem(it.id, laneOf.getValue(it.id), it.height, it.width, isWaypoint = false) }
     val chains = oriented.mapIndexed { index, edge -> buildChain(index, edge, layerOf, laneOf, items) }
-    val ordering = orderWithinLayers(specs, chains, items, layerOf)
-    val placement = placeItems(ordering, items, groups.size, gutter)
+    val ordering = orderWithinLayers(flowing, chains, items, layerOf)
+    val placement = placeItems(ordering, items, groups.size, gutter, parked.map { items.getValue(it.id) })
     val boxes = pinNodes(specs, placement.boxes)
     return FlowLayout(
         nodes = boxes,
@@ -82,6 +80,11 @@ fun layoutFlowGraph(
         width = placement.width,
         height = placement.height,
     )
+}
+
+private fun partitionParked(specs: List<FlowNodeSpec>, edges: List<FlowEdgeSpec>): Pair<List<FlowNodeSpec>, List<FlowNodeSpec>> {
+    val connected = edges.flatMap { listOf(it.from, it.to) }.toSet()
+    return specs.partition { it.id !in connected && it.rank == null }
 }
 
 private fun routableEdges(specs: List<FlowNodeSpec>, edges: List<FlowEdgeSpec>): List<FlowEdgeSpec> {
@@ -158,30 +161,6 @@ private fun pullSourcesRight(specs: List<FlowNodeSpec>, edges: List<OrientedEdge
         if (id in hasDependency || id in hinted || nearest == null) layer else maxOf(layer, nearest - 1)
     }
 }
-
-private fun wrapIsolatedNodes(specs: List<FlowNodeSpec>, edges: List<OrientedEdge>, layerOf: Map<String, Int>): Map<String, Int> {
-    val connected = edges.flatMap { listOf(it.from, it.to) }.toSet()
-    val isolated = specs.filter { it.id !in connected && it.rank == null }
-    if (isolated.isEmpty()) return layerOf
-    val wrapped = layerOf.toMutableMap()
-    isolated.groupBy { it.group }.forEach { (group, inLane) ->
-        val connectedStack = specs.filter { it.id in connected && it.group == group }
-            .groupingBy { layerOf.getValue(it.id) }.eachCount().values.maxOrNull() ?: 0
-        val perColumn = maxOf(connectedStack, MIN_ISOLATED_STACK)
-        val columns = ceil(inLane.size.toDouble() / perColumn).toInt()
-        inLane.forEachIndexed { index, spec -> wrapped[spec.id] = index % columns }
-    }
-    return wrapped
-}
-
-private fun portCounts(edges: List<OrientedEdge>): Map<String, Int> {
-    val entering = edges.groupingBy { it.to }.eachCount()
-    val leaving = edges.groupingBy { it.from }.eachCount()
-    return (entering.keys + leaving.keys).associateWith { maxOf(entering[it] ?: 0, leaving[it] ?: 0) }
-}
-
-private fun roomyHeight(labelHeight: Float, portCount: Int): Float =
-    maxOf(labelHeight, minOf(labelHeight * MAX_HEIGHT_GROWTH, PORT_PITCH * (portCount + 1) + 2 * PORT_INSET))
 
 private fun compactLayers(layerOf: Map<String, Int>): Map<String, Int> {
     val dense = layerOf.values.distinct().sorted().withIndex().associate { it.value to it.index }
@@ -275,13 +254,43 @@ private class Placement(
     val height: Float,
 )
 
-private fun placeItems(ordering: Ordering, items: Map<String, ChainItem>, laneCount: Int, gutter: Float): Placement {
+private class Strip(val offsets: List<Triple<String, Float, Float>>, val width: Float, val height: Float)
+
+private fun packStrip(parked: List<ChainItem>, availableWidth: Float): Strip {
+    if (parked.isEmpty()) return Strip(emptyList(), 0f, 0f)
+    val offsets = ArrayList<Triple<String, Float, Float>>()
+    var x = 0f
+    var y = 0f
+    var rowHeight = 0f
+    var widest = 0f
+    for (item in parked) {
+        if (x > 0f && x + item.width > availableWidth) {
+            y += rowHeight + ROW_GAP
+            x = 0f
+            rowHeight = 0f
+        }
+        offsets.add(Triple(item.id, x, y))
+        widest = maxOf(widest, x + item.width)
+        x += item.width + STRIP_GAP
+        rowHeight = maxOf(rowHeight, item.height)
+    }
+    return Strip(offsets, widest, y + rowHeight)
+}
+
+private fun placeItems(ordering: Ordering, items: Map<String, ChainItem>, laneCount: Int, gutter: Float, parked: List<ChainItem>): Placement {
     val layers = ordering.layers
     val columnWidth = layers.map { layer -> layer.maxOfOrNull { items.getValue(it).width } ?: 0f }
     val columnLeft = columnLefts(columnWidth, gutter)
-    val laneContent = laneContentHeights(layers, items, laneCount)
+    val flowLeft = columnLeft.first()
+    val flowRight = columnLeft.last() + columnWidth.last()
+    val flowContent = laneContentHeights(layers, items, laneCount)
+    val strips = (0 until laneCount).map { lane -> packStrip(parked.filter { it.lane == lane }, maxOf(flowRight - flowLeft, MIN_STRIP_WIDTH)) }
+    val stripOffsetY = flowContent.map { if (it > 0f) it + STRIP_SEPARATION else 0f }
+    val laneContent = flowContent.indices.map { lane ->
+        if (strips[lane].offsets.isEmpty()) flowContent[lane] else stripOffsetY[lane] + strips[lane].height
+    }
     val laneTops = laneTops(laneContent)
-    val topOf = relaxVertically(ordering, items, laneCount, laneTops, laneContent)
+    val topOf = relaxVertically(ordering, items, laneCount, laneTops, flowContent)
     val boxes = HashMap<String, FlowNodeBox>()
     val waypoints = HashMap<String, FlowPoint>()
     layers.forEachIndexed { layerIndex, layer ->
@@ -296,13 +305,20 @@ private fun placeItems(ordering: Ordering, items: Map<String, ChainItem>, laneCo
             }
         }
     }
-    val lastRight = columnLeft.last() + columnWidth.last()
+    strips.forEachIndexed { lane, strip ->
+        val baseY = laneTops[lane] + LANE_PADDING + stripOffsetY[lane]
+        for ((id, dx, dy) in strip.offsets) {
+            val item = items.getValue(id)
+            boxes[id] = FlowNodeBox(id, flowLeft + dx, baseY + dy, item.width, item.height)
+        }
+    }
+    val right = maxOf(flowRight, flowLeft + (strips.maxOfOrNull { it.width } ?: 0f))
     val lastBottom = laneTops.last() + laneContent.last() + 2 * LANE_PADDING
     return Placement(
         boxes = boxes,
         waypoints = waypoints,
         lanes = laneTops.indices.map { laneTops[it] to laneContent[it] + 2 * LANE_PADDING },
-        width = lastRight + EXTENT_MARGIN,
+        width = right + EXTENT_MARGIN,
         height = lastBottom + EXTENT_MARGIN,
     )
 }

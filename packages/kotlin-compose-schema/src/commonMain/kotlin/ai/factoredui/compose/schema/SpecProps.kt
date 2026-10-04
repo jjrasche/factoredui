@@ -692,11 +692,19 @@ data class GraphNodeEntry(
     val group: String? = null,
     val status: String? = null,
     val kind: String? = null,
-    val shape: GraphNodeShape = GraphNodeShape.BOX,
+    val shape: GraphNodeShape? = null,
     val color: String? = null,
     val rank: Int? = null,
     val x: Float? = null,
     val y: Float? = null,
+    val selfLoop: Boolean = false,
+)
+
+data class GraphKindStyle(
+    val shape: GraphNodeShape? = null,
+    val compact: Boolean = false,
+    val muted: Boolean = false,
+    val borderWidth: Float? = null,
 )
 
 data class GraphEdgeEntry(
@@ -722,13 +730,32 @@ fun resolveGraphNodes(resolvedNodes: Any?): List<GraphNodeEntry> =
             group = fields["group"] as? String,
             status = fields["status"] as? String,
             kind = fields["kind"] as? String,
-            shape = if ((fields["shape"] as? String) == "pill") GraphNodeShape.PILL else GraphNodeShape.BOX,
+            shape = graphShapeOf(fields["shape"]),
             color = fields["color"] as? String,
             rank = (fields["rank"] as? Number)?.toInt(),
             x = (fields["x"] as? Number)?.toFloat(),
             y = (fields["y"] as? Number)?.toFloat(),
+            selfLoop = fields["self_loop"] as? Boolean ?: false,
         )
     }
+
+private fun graphShapeOf(raw: Any?): GraphNodeShape? = when (raw as? String) {
+    "pill" -> GraphNodeShape.PILL
+    "box" -> GraphNodeShape.BOX
+    else -> null
+}
+
+fun resolveGraphKindStyles(resolvedStyles: Any?): Map<String, GraphKindStyle> =
+    (resolvedStyles as? Map<*, *>).orEmpty().mapNotNull { (key, value) ->
+        val kind = key as? String ?: return@mapNotNull null
+        val fields = value as? Map<*, *> ?: return@mapNotNull null
+        kind to GraphKindStyle(
+            shape = graphShapeOf(fields["shape"]),
+            compact = fields["compact"] as? Boolean ?: false,
+            muted = fields["muted"] as? Boolean ?: false,
+            borderWidth = (fields["border_width"] as? Number)?.toFloat(),
+        )
+    }.toMap()
 
 fun resolveGraphEdges(resolvedEdges: Any?): List<GraphEdgeEntry> =
     (resolvedEdges as? List<*>).orEmpty().mapNotNull { entry ->
@@ -748,8 +775,8 @@ fun resolveGraphEdges(resolvedEdges: Any?): List<GraphEdgeEntry> =
 fun resolveGraphGroupOrder(resolvedOrder: Any?): List<String> =
     (resolvedOrder as? List<*>).orEmpty().filterIsInstance<String>()
 
-fun resolveGraphColorMap(resolvedColors: Any?): Map<String, String> =
-    (resolvedColors as? Map<*, *>).orEmpty().mapNotNull { (key, value) ->
+fun resolveGraphStringMap(resolved: Any?): Map<String, String> =
+    (resolved as? Map<*, *>).orEmpty().mapNotNull { (key, value) ->
         val name = key as? String ?: return@mapNotNull null
         val hex = value as? String ?: return@mapNotNull null
         name to hex

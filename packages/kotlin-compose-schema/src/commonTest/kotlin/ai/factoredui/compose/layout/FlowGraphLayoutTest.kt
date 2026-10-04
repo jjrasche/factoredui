@@ -283,24 +283,58 @@ class FlowGraphLayoutTest {
     }
 
     @Test
-    fun unconnectedNodesWrapIntoColumnsInsteadOfOneTallStack() {
+    fun unconnectedNodesSitInAStripBelowTheConnectedFlowOfTheirLane() {
         val layout = layoutFlowGraph(
-            nodes = (1..12).map { node("lonely$it", "vegetation") },
-            edges = emptyList(),
+            nodes = listOf(node("a", "v"), node("b", "v"), node("u1", "v"), node("u2", "v"), node("u3", "v")),
+            edges = listOf(edge("a", "b")),
         )
-        assertTrue(layout.nodes.values.map { it.x }.toSet().size >= 2, "twelve unconnected nodes use more than one column")
-        assertTrue(layout.height < 12 * 46f, "and the lane is shorter than a single stack of twelve")
+        val flowBottom = maxOf(layout.nodes.getValue("a").let { it.y + it.height }, layout.nodes.getValue("b").let { it.y + it.height })
+        listOf("u1", "u2", "u3").forEach { id ->
+            assertTrue(layout.nodes.getValue(id).y >= flowBottom, "$id is parked below the connected nodes")
+        }
+        val lane = layout.lanes.single()
+        listOf("u1", "u2", "u3").forEach { id ->
+            val box = layout.nodes.getValue(id)
+            assertTrue(box.y >= lane.top && box.y + box.height <= lane.top + lane.height, "$id stays in its lane band")
+        }
     }
 
     @Test
-    fun aHubNodeGrowsTallEnoughForItsEdgesToLandApart() {
+    fun unconnectedNodesDoNotMoveTheConnectedFlow() {
+        val connectedOnly = layoutFlowGraph(listOf(node("a", "v"), node("b", "v")), listOf(edge("a", "b")))
+        val withParked = layoutFlowGraph(listOf(node("a", "v"), node("b", "v"), node("u1", "v"), node("u2", "v")), listOf(edge("a", "b")))
+        assertEquals(connectedOnly.nodes.getValue("a"), withParked.nodes.getValue("a"))
+        assertEquals(connectedOnly.nodes.getValue("b"), withParked.nodes.getValue("b"))
+    }
+
+    @Test
+    fun manyUnconnectedNodesWrapIntoRowsInsteadOfOneTallStack() {
+        val layout = layoutFlowGraph(
+            nodes = listOf(node("a", "v"), node("b", "v"), node("c", "v")) + (1..12).map { node("lonely$it", "v") },
+            edges = listOf(edge("a", "b"), edge("b", "c")),
+        )
+        val parkedXs = (1..12).map { layout.nodes.getValue("lonely$it").x }.toSet()
+        assertTrue(parkedXs.size >= 2, "the strip uses more than one column")
+        assertTrue(layout.height < 12 * 46f, "and is shorter than a single stack of twelve")
+    }
+
+    @Test
+    fun aGraphOfOnlyUnconnectedNodesStillLaysOutWithoutOverlap() {
+        val layout = layoutFlowGraph((1..9).map { node("u$it", "v") }, emptyList())
+        assertEquals(9, layout.nodes.size)
+        assertTrue(layout.width > 0f && layout.height > 0f)
+        assertEquals(emptyList(), layout.overlappingPairs())
+    }
+
+    @Test
+    fun aHubNodeKeepsItsLabelHeightSoSizeNeverReadsAsImportance() {
         val sources = (1..7).map { node("in$it") }
         val layout = layoutFlowGraph(
             nodes = sources + node("hub") + node("leaf"),
             edges = sources.map { edge(it.id, "hub") } + edge("hub", "leaf"),
         )
-        assertTrue(layout.nodes.getValue("hub").height > layout.nodes.getValue("leaf").height, "seven edges need more room than one")
-        assertTrue(layout.nodes.getValue("hub").height <= 3 * 32f, "growth is capped at three times the label height")
+        assertEquals(32f, layout.nodes.getValue("hub").height)
+        assertEquals(32f, layout.nodes.getValue("leaf").height)
     }
 
     @Test
