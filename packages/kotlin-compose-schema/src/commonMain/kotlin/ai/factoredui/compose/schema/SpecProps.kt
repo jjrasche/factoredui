@@ -681,3 +681,87 @@ fun CanvasViewport.afterTransformGesture(
         zoom = newZoom,
     )
 }
+
+// --- GraphProps ---
+
+enum class GraphNodeShape { BOX, PILL }
+
+data class GraphNodeEntry(
+    val id: String,
+    val label: String,
+    val group: String? = null,
+    val status: String? = null,
+    val kind: String? = null,
+    val shape: GraphNodeShape = GraphNodeShape.BOX,
+    val color: String? = null,
+    val rank: Int? = null,
+    val x: Float? = null,
+    val y: Float? = null,
+)
+
+data class GraphEdgeEntry(
+    val from: String,
+    val to: String,
+    val kind: String? = null,
+    val status: String? = null,
+    val color: String? = null,
+    val dash: Boolean = false,
+)
+
+data class GraphProps(val onNodeTapped: String? = null)
+
+fun Map<String, SpecValue>.asGraphProps(): GraphProps = GraphProps(onNodeTapped = string("on_node_tap"))
+
+fun resolveGraphNodes(resolvedNodes: Any?): List<GraphNodeEntry> =
+    (resolvedNodes as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val id = fields["id"] as? String ?: return@mapNotNull null
+        GraphNodeEntry(
+            id = id,
+            label = fields["label"] as? String ?: id,
+            group = fields["group"] as? String,
+            status = fields["status"] as? String,
+            kind = fields["kind"] as? String,
+            shape = if ((fields["shape"] as? String) == "pill") GraphNodeShape.PILL else GraphNodeShape.BOX,
+            color = fields["color"] as? String,
+            rank = (fields["rank"] as? Number)?.toInt(),
+            x = (fields["x"] as? Number)?.toFloat(),
+            y = (fields["y"] as? Number)?.toFloat(),
+        )
+    }
+
+fun resolveGraphEdges(resolvedEdges: Any?): List<GraphEdgeEntry> =
+    (resolvedEdges as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val from = fields["from"] as? String ?: return@mapNotNull null
+        val to = fields["to"] as? String ?: return@mapNotNull null
+        GraphEdgeEntry(
+            from = from,
+            to = to,
+            kind = fields["kind"] as? String,
+            status = fields["status"] as? String,
+            color = fields["color"] as? String,
+            dash = fields["dash"] as? Boolean ?: false,
+        )
+    }
+
+fun resolveGraphGroupOrder(resolvedOrder: Any?): List<String> =
+    (resolvedOrder as? List<*>).orEmpty().filterIsInstance<String>()
+
+fun resolveGraphColorMap(resolvedColors: Any?): Map<String, String> =
+    (resolvedColors as? Map<*, *>).orEmpty().mapNotNull { (key, value) ->
+        val name = key as? String ?: return@mapNotNull null
+        val hex = value as? String ?: return@mapNotNull null
+        name to hex
+    }.toMap()
+
+private val GRAPH_PALETTE = listOf(
+    "#3FA34D", "#4C78C9", "#D98E04", "#C0392B", "#8E5BC9", "#1F9DA8", "#B5651D", "#6B7A8F",
+)
+
+fun assignGraphColors(keys: List<String>, explicit: Map<String, String>): Map<String, String> {
+    val distinct = keys.distinct()
+    val needsPalette = distinct.filter { it !in explicit }
+    val fromPalette = needsPalette.withIndex().associate { (index, key) -> key to GRAPH_PALETTE[index % GRAPH_PALETTE.size] }
+    return distinct.associateWith { explicit[it] ?: fromPalette.getValue(it) }
+}

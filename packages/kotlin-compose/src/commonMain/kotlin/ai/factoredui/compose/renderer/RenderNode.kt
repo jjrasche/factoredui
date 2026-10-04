@@ -213,6 +213,7 @@ private fun RenderNodeByType(
         }
         SpecNodeType.CANVAS -> RenderCanvas(node, context)
         SpecNodeType.GEOMAP -> RenderGeomap(node, resolvedProps, context)
+        SpecNodeType.GRAPH -> RenderGraph(node, resolvedProps, context)
         SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)
         SpecNodeType.VIDEO -> RenderVideo(node, resolvedProps, context)
         SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)

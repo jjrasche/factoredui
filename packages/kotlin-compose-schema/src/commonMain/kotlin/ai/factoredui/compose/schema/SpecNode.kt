@@ -85,6 +85,7 @@ enum class SpecNodeType {
     @SerialName("scene3d") SCENE3D,
     @SerialName("canvas") CANVAS,
     @SerialName("geomap") GEOMAP,
+    @SerialName("graph") GRAPH,
 }
 
 /**
