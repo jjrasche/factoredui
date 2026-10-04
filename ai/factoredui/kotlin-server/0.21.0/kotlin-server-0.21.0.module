@@ -1,0 +1,138 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "ai.factoredui",
+    "module": "kotlin-server",
+    "version": "0.21.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 11,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-server-0.21.0.jar",
+          "url": "kotlin-server-0.21.0.jar",
+          "size": 12937,
+          "sha512": "822fae3190dabc6244934ec53b187a767496f7d6eb1ae9049577e26941d0de400cb9799b252650f9259f329572e4f35487fffc8b27fc961ab2543826a413e806",
+          "sha256": "4d5491a756bdd3b30d85bbd28e6cbb2b4d5374ec2df498e229af325b4c606c7d",
+          "sha1": "19b0f8749226eaf5d07223c722a679237af27228",
+          "md5": "08d2e2aa8d79c676d4a99b464a389bfa"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 11,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-schema",
+          "version": {
+            "requires": "0.21.0"
+          }
+        },
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-capture",
+          "version": {
+            "requires": "0.21.0"
+          }
+        },
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-engine",
+          "version": {
+            "requires": "0.21.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-core",
+          "version": {
+            "requires": "1.10.2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        },
+        {
+          "group": "org.postgresql",
+          "module": "postgresql",
+          "version": {
+            "requires": "42.7.4"
+          }
+        },
+        {
+          "group": "com.zaxxer",
+          "module": "HikariCP",
+          "version": {
+            "requires": "5.1.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-server-0.21.0.jar",
+          "url": "kotlin-server-0.21.0.jar",
+          "size": 12937,
+          "sha512": "822fae3190dabc6244934ec53b187a767496f7d6eb1ae9049577e26941d0de400cb9799b252650f9259f329572e4f35487fffc8b27fc961ab2543826a413e806",
+          "sha256": "4d5491a756bdd3b30d85bbd28e6cbb2b4d5374ec2df498e229af325b4c606c7d",
+          "sha1": "19b0f8749226eaf5d07223c722a679237af27228",
+          "md5": "08d2e2aa8d79c676d4a99b464a389bfa"
+        }
+      ]
+    }
+  ]
+}
