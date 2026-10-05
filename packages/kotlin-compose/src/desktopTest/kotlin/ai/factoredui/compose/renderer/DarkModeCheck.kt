@@ -166,7 +166,8 @@ class DarkModeCheck {
     fun treesWaterAndBlocksStandOutFromTheDarkGround() = runComposeUiTest {
         val placed = darkWorld(SpecVisualCheck(this, worldContext()))
         val ground = luminance(placed.pixelAt(4, 3))
-        assertTrue(luminance(placed.pixelAt(2, 2, dy = -30f)) > ground + 0.12f, "tree canopy is clearly lighter than the ground")
+        val leaf = (-20..-6 step 2).maxOf { luminance(placed.pixelAt(2, 2, dy = it.toFloat())) }
+        assertTrue(leaf > ground + 0.12f, "a tree's foliage is clearly lighter than the ground")
         assertTrue(luminance(placed.pixelAt(1, 1)) > ground + 0.12f, "water is clearly lighter than the ground")
         assertTrue(luminance(placed.pixelAt(3, 1, dy = -32f)) > ground + 0.15f, "a block roof is clearly lighter than the ground")
     }
@@ -175,7 +176,7 @@ class DarkModeCheck {
     fun aBlocksShadedSidesAreLighterThanTheGroundEdge() = runComposeUiTest {
         val placed = darkWorld(SpecVisualCheck(this, worldContext()))
         val ground = luminance(placed.pixelAt(4, 3))
-        assertTrue(luminance(placed.pixelAt(3, 1, dx = -10f)) > ground + 0.08f, "the left wall stays lighter than the ground in dark")
+        assertTrue(luminance(placed.pixelAt(3, 1, dx = -10f)) > ground + 0.08f, "the left wall stays lighter than the ground in dark: wall=${placed.pixelAt(3, 1, dx = -10f)} ground=$ground")
     }
 
     @Test

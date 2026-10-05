@@ -852,6 +852,7 @@ data class TilemapUse(
     val color: String? = null,
     val sprite: TileSprite = TileSprite.FLAT,
     val height: Float? = null,
+    val critter: String? = null,
 )
 
 data class TilemapProps(val onTileTapped: String? = null)
@@ -871,6 +872,7 @@ fun resolveTilemapUses(resolvedUses: Any?): List<TilemapUse> =
             color = fields["color"] as? String,
             sprite = tileSpriteOf(fields["sprite"]),
             height = (fields["height"] as? Number)?.toFloat(),
+            critter = fields["critter"] as? String,
         )
     }
 

@@ -80,6 +80,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.exp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 internal const val TILEMAP_TILE_WIDTH_DP = 64f
@@ -110,8 +111,9 @@ private class TileStyle(val use: TilemapUse, val color: Color)
 private class TileLook(val dark: Boolean, val ground: Color, val groundAlt: Color) {
     val gridLine = if (dark) GRID_LINE_NIGHT else GRID_LINE
     val outline: Color? = if (dark) OUTLINE_NIGHT else null
-    val leftSide = if (dark) 0.14f else 0.28f
-    val rightSide = if (dark) 0.26f else 0.42f
+    val leftSide = if (dark) 0.10f else 0.28f
+    val rightSide = if (dark) 0.18f else 0.42f
+    val brickStep = if (dark) 0.05f else BRICK_SHADE_STEP
     val topLift = if (dark) 0.30f else 0.18f
     val useLift = if (dark) 0.12f else 0f
     val treeLift = if (dark) 0.28f else 0f
@@ -173,6 +175,7 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     val order = remember(shape, cols, rows) { tileDrawOrder(shape, cols, rows) }
     val byTile = remember(cells) { cells.associateBy { TileCoord(it.col, it.row) } }
     val scope = rememberCoroutineScope()
+    val phase = rememberTilemapPhase(resolvedProps["animate"] == true)
 
     LaunchedEffect(cells, tileArea) {
         val counts = uses.associate { it.id to 0 } + countUses(cells)
@@ -242,7 +245,7 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
                     translate(current.translateX, current.translateY)
                     scale(current.scale, current.scale, pivot = Offset.Zero)
                 }) {
-                    drawTilemap(shape, space, order, byTile, styles, look, hovered, density)
+                    drawTilemap(shape, space, order, byTile, styles, look, hovered, phase, density)
                 }
             }
         }
@@ -258,6 +261,13 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
 }
 
 private fun wholeWhenIntegral(value: Double): Any = if (value % 1.0 == 0.0) value.toLong() else value
+
+@Composable
+private fun rememberTilemapPhase(animate: Boolean): Int {
+    var phase by remember { mutableStateOf(0) }
+    if (animate) LaunchedEffect(Unit) { while (true) { delay(PHASE_MILLIS); phase++ } }
+    return phase
+}
 
 private fun cellRecord(cell: TileCell): Map<String, Any?> = mapOf("col" to cell.col, "row" to cell.row, "use" to cell.use)
 
@@ -297,6 +307,7 @@ private fun DrawScope.drawTilemap(
     styles: Map<String, TileStyle>,
     look: TileLook,
     hovered: TileCoord?,
+    phase: Int,
     density: Float,
 ) {
     for (tile in order) {
@@ -305,7 +316,7 @@ private fun DrawScope.drawTilemap(
         val base = if ((tile.col + tile.row) % 2 == 0) look.ground else look.groundAlt
         val style = byTile[tile]?.let { styles[it.use] }
         drawTileSurface(corners, style, base, look, density)
-        if (style != null) drawSprite(style, corners, centre, space.tileWidthPx, look, density)
+        if (style != null) drawSprite(style, tile, corners, centre, space.tileWidthPx, look, phase, density)
         if (tile == hovered) drawPath(polygon(corners), HOVER_LINE, style = Stroke(width = 2.5f * density))
     }
 }
@@ -327,21 +338,32 @@ private fun DrawScope.drawTileSurface(corners: List<Offset>, style: TileStyle?, 
 }
 
 private const val FENCE_GROUND_BLEND = 0.45f
+private const val BRICK_COURSE_PIXELS = 3
+private const val BRICK_SHADE_STEP = 0.1f
+private const val TREE_LIGHT_MIX = 0.35f
+private const val TREE_DARK_MIX = 0.3f
+private const val TREE_OUTLINE_MIX = 0.6f
+private const val TREE_FOOT_PIXELS = 1f
+private const val CRITTER_FOOT_PIXELS = 2f
+private const val SHIMMER_ALPHA = 0.7f
+private const val PHASE_MILLIS = 180L
 
-private fun DrawScope.drawSprite(style: TileStyle, corners: List<Offset>, centre: Offset, tileWidth: Float, look: TileLook, density: Float) {
+private fun DrawScope.drawSprite(style: TileStyle, tile: TileCoord, corners: List<Offset>, centre: Offset, tileWidth: Float, look: TileLook, phase: Int, density: Float) {
+    val pixel = tileWidth / PIXELS_PER_TILE_WIDTH
     when (style.use.sprite) {
         TileSprite.FLAT -> Unit
-        TileSprite.BLOCK -> drawPrism(corners, (style.use.height ?: BLOCK_DEFAULT_HEIGHT) * tileWidth * BLOCK_UNIT_FACTOR, style.color, look, density)
-        TileSprite.ARCH -> drawArch(corners, (style.use.height ?: ARCH_DEFAULT_HEIGHT) * tileWidth * BLOCK_UNIT_FACTOR, style.color, look, density)
-        TileSprite.TREE -> drawTree(centre, tileWidth, look.lifted(style.color, look.treeLift), look, density)
-        TileSprite.WATER -> drawWater(corners, centre, look.lifted(style.color, look.waterLift), density)
+        TileSprite.BLOCK -> drawPrism(corners, (style.use.height ?: BLOCK_DEFAULT_HEIGHT) * tileWidth * BLOCK_UNIT_FACTOR, style.color, look, pixel, bricks = true, density)
+        TileSprite.ARCH -> drawArch(corners, (style.use.height ?: ARCH_DEFAULT_HEIGHT) * tileWidth * BLOCK_UNIT_FACTOR, style.color, look, pixel, density)
+        TileSprite.TREE -> drawPixelTree(tile, centre, pixel, look.lifted(style.color, look.treeLift), look)
+        TileSprite.WATER -> drawWater(corners, centre, look.lifted(style.color, look.waterLift), pixel, phase, density)
         TileSprite.FENCE -> drawFence(corners, tileWidth * FENCE_POST_FACTOR, style.color, look, density)
     }
+    style.use.critter?.takeIf { critterOnTile(tile.col, tile.row) }?.let { drawCritter(it, tile, centre, pixel, phase) }
 }
 
 private fun shade(color: Color, towardBlack: Float): Color = lerp(color, Color.Black, towardBlack)
 
-private fun DrawScope.drawPrism(corners: List<Offset>, lift: Float, color: Color, look: TileLook, density: Float) {
+private fun DrawScope.drawPrism(corners: List<Offset>, lift: Float, color: Color, look: TileLook, pixel: Float, bricks: Boolean, density: Float) {
     val centreX = corners.map { it.x }.average().toFloat()
     val centreY = corners.map { it.y }.average().toFloat()
     corners.indices.forEach { index ->
@@ -357,6 +379,7 @@ private fun DrawScope.drawPrism(corners: List<Offset>, lift: Float, color: Color
                 close()
             }
             drawPath(face, shade(color, darker), style = Fill)
+            if (bricks) drawBrickCourses(a, b, lift, shade(color, darker + look.brickStep), pixel)
         }
     }
     val roof = polygon(corners.map { Offset(it.x, it.y - lift) })
@@ -364,37 +387,59 @@ private fun DrawScope.drawPrism(corners: List<Offset>, lift: Float, color: Color
     look.outline?.let { drawPath(roof, it, style = Stroke(width = density)) }
 }
 
-private fun DrawScope.drawArch(corners: List<Offset>, lift: Float, color: Color, look: TileLook, density: Float) {
-    drawPrism(corners, lift, color, look, density)
+private fun DrawScope.drawArch(corners: List<Offset>, lift: Float, color: Color, look: TileLook, pixel: Float, density: Float) {
+    drawPrism(corners, lift, color, look, pixel, bricks = false, density)
     val top = corners.map { Offset(it.x, it.y - lift) }
     val ridgeStart = Offset((top[0].x + top[3].x) / 2f, (top[0].y + top[3].y) / 2f)
     val ridgeEnd = Offset((top[1].x + top[2].x) / 2f, (top[1].y + top[2].y) / 2f)
     drawLine(Color.White.copy(alpha = 0.7f), ridgeStart, ridgeEnd, strokeWidth = 2f * density)
 }
 
-private fun DrawScope.drawTree(centre: Offset, tileWidth: Float, color: Color, look: TileLook, density: Float) {
-    drawRect(TRUNK, topLeft = Offset(centre.x - 0.03f * tileWidth, centre.y - 0.16f * tileWidth), size = androidx.compose.ui.geometry.Size(0.06f * tileWidth, 0.2f * tileWidth))
-    val tiers = listOf(
-        Triple(0.40f, 0.18f, 0.12f),
-        Triple(0.58f, 0.14f, 0.28f),
-    )
-    tiers.forEachIndexed { index, (apexRise, halfWidth, baseRise) ->
-        val tier = Path().apply {
-            moveTo(centre.x, centre.y - apexRise * tileWidth - 0.2f * tileWidth)
-            lineTo(centre.x + halfWidth * tileWidth, centre.y - baseRise * tileWidth)
-            lineTo(centre.x - halfWidth * tileWidth, centre.y - baseRise * tileWidth)
-            close()
+private fun DrawScope.drawBrickCourses(a: Offset, b: Offset, lift: Float, color: Color, pixel: Float) {
+    val course = BRICK_COURSE_PIXELS * pixel
+    var rowIndex = 0
+    var start = 0f
+    while (start < lift) {
+        val end = minOf(lift, start + course)
+        if (brickTone(rowIndex * BRICK_COURSE_PIXELS) == 1) {
+            val band = Path().apply {
+                moveTo(a.x, a.y - start)
+                lineTo(b.x, b.y - start)
+                lineTo(b.x, b.y - end)
+                lineTo(a.x, a.y - end)
+                close()
+            }
+            drawPath(band, color, style = Fill)
         }
-        drawPath(tier, shade(color, if (index == 0) 0.2f else 0f), style = Fill)
-        look.outline?.let { drawPath(tier, it, style = Stroke(width = density)) }
+        start = end
+        rowIndex++
     }
 }
 
-private fun DrawScope.drawWater(corners: List<Offset>, centre: Offset, color: Color, density: Float) {
+private fun DrawScope.drawPixelTree(tile: TileCoord, centre: Offset, pixel: Float, color: Color, look: TileLook) {
+    val palette = PixelPalette(
+        light = lerp(color, Color.White, TREE_LIGHT_MIX),
+        mid = color,
+        dark = shade(color, TREE_DARK_MIX),
+        outline = look.outline ?: shade(color, TREE_OUTLINE_MIX),
+        wood = look.lifted(TRUNK, look.treeLift),
+    )
+    drawPixelSprite(treeSprite(treeVariantFor(tile.col, tile.row)), centre.x, centre.y + TREE_FOOT_PIXELS * pixel, pixel, palette::colorOf)
+}
+
+private fun DrawScope.drawCritter(name: String, tile: TileCoord, centre: Offset, pixel: Float, phase: Int) {
+    val sprite = critterSpriteOrNull(name, critterFrameFor(phase)) ?: return
+    val hash = tileHash(tile.col + 11, tile.row + 17)
+    val dx = ((hash % 7) - 3) * pixel
+    val dy = (((hash / 7) % 5) - 2) * pixel
+    drawPixelSprite(sprite, centre.x + dx, centre.y + CRITTER_FOOT_PIXELS * pixel + dy, pixel, ::critterColorOf)
+}
+
+private fun DrawScope.drawWater(corners: List<Offset>, centre: Offset, color: Color, pixel: Float, phase: Int, density: Float) {
     val inset = corners.map { Offset(centre.x + (it.x - centre.x) * 0.78f, centre.y + (it.y - centre.y) * 0.78f) }
     drawPath(polygon(inset), color, style = Fill)
     drawPath(polygon(inset), shade(color, 0.25f), style = Stroke(width = 1.5f * density))
-    drawLine(Color.White.copy(alpha = 0.6f), Offset(centre.x - 0.12f * (inset[1].x - inset[0].x), centre.y), Offset(centre.x + 0.1f * (inset[1].x - inset[0].x), centre.y), strokeWidth = 2f * density)
+    drawShimmer(centre, pixel, phase, Color.White.copy(alpha = SHIMMER_ALPHA))
 }
 
 private fun DrawScope.drawFence(corners: List<Offset>, postHeight: Float, color: Color, look: TileLook, density: Float) {

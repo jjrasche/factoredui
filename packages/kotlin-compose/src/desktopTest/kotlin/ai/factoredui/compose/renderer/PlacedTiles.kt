@@ -46,4 +46,10 @@ internal class PlacedTiles(
         val (x, y) = screenOf(col, row)
         check.tapAt("world:map", x - region.left.value, y - region.top.value)
     }
+
+    fun pixelsAround(col: Int, row: Int, dx: IntRange, dy: IntRange): List<Color> {
+        val (x, y) = screenOf(col, row)
+        val image = check.png().toPixelMap()
+        return dy.flatMap { offsetY -> dx.map { offsetX -> image[(x + offsetX * fit.scale).toInt(), (y + offsetY * fit.scale).toInt()] } }
+    }
 }
