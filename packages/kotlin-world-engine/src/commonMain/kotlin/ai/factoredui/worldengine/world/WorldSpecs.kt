@@ -162,5 +162,3 @@ data class LinkSpec(val raw: JsonObject) {
 
     val isPresent: Boolean get() = raw.isNotEmpty()
 }
-
-fun JsonElement?.isNumberLiteral(): Boolean = this is JsonPrimitive && !isString && this !is kotlinx.serialization.json.JsonNull

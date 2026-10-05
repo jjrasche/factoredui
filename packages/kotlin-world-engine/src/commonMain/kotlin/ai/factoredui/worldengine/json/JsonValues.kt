@@ -1,6 +1,5 @@
 package ai.factoredui.worldengine.json
 
-import ai.factoredui.worldengine.text.pythonRepr
 import ai.factoredui.worldengine.text.pythonStrRepr
 import ai.factoredui.worldengine.text.pythonStrip
 import kotlinx.serialization.json.JsonArray
@@ -123,5 +122,3 @@ private fun numericOf(primitive: JsonPrimitive): Double? {
     if (isBooleanLiteral(primitive)) return if (primitive.content == "true") 1.0 else 0.0
     return primitive.doubleOrNull
 }
-
-fun describeForMessage(element: JsonElement): String = pythonRepr(element)
