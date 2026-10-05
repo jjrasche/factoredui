@@ -39,6 +39,7 @@ fun applyDocumentEdit(document: JsonElement, edit: JsonObject): JsonElement {
     val leaf: (JsonElement?) -> JsonElement? = when (val operation = edit.requiredText("op")) {
         "set" -> { _ -> edit["value"] ?: throw MalformedDataException("a set edit has no value") }
         "set_repeated" -> { _ -> JsonPrimitive(edit.requiredText("unit").repeat(pythonInt(edit["times"]).toInt()) + edit.requiredText("tail")) }
+        "set_items" -> { _ -> numberedItems(edit) }
         "delete" -> { _ -> null }
         else -> throw MalformedDataException("mutations.json uses unknown op $operation")
     }
@@ -79,4 +80,16 @@ private fun indexOfStep(node: JsonArray, step: JsonElement): Int {
     val resolved = if (index < 0) node.size + index else index
     if (resolved !in node.indices) throw MalformedDataException("list index out of range")
     return resolved
+}
+
+private fun numberedItems(edit: JsonObject): JsonArray {
+    val template = edit["template"] ?: throw MalformedDataException("a set_items edit has no template")
+    return JsonArray((1..pythonInt(edit["times"]).toInt()).map { index -> numberTemplate(template, index) })
+}
+
+private fun numberTemplate(template: JsonElement, index: Int): JsonElement = when {
+    template is JsonPrimitive && template.isString -> JsonPrimitive(template.content.replace("{i}", index.toString()))
+    template is JsonArray -> JsonArray(template.map { numberTemplate(it, index) })
+    template is JsonObject -> JsonObject(template.mapValues { numberTemplate(it.value, index) })
+    else -> template
 }

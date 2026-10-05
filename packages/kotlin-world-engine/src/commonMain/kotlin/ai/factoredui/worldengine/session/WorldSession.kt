@@ -31,7 +31,7 @@ sealed interface DispatchResult {
     data class Failed(val kind: String, val message: String) : DispatchResult
 }
 
-data class ScoreView(val id: String, val label: String?, val value: Double, val unit: String, val isBinding: Boolean)
+data class ScoreView(val id: String, val label: String?, val value: Double?, val unit: String, val isBinding: Boolean)
 
 @OptIn(ExperimentalTime::class)
 fun utcTimestamp(): String = Clock.System.now().toString()

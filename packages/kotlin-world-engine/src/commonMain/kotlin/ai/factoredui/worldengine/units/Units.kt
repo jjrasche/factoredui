@@ -33,6 +33,7 @@ data class ParsedUnit(val factor: Double, val dimension: Dimension)
 
 val UNIT_TABLE: Map<String, UnitDefinition> = linkedMapOf(
     "ft" to UnitDefinition(1.0, Dimension.of(BaseDimension.FT to 1)),
+    "mm" to UnitDefinition(1.0 / 304.8, Dimension.of(BaseDimension.FT to 1)),
     "sq_ft" to UnitDefinition(1.0, Dimension.of(BaseDimension.FT to 2)),
     "acre" to UnitDefinition(43560.0, Dimension.of(BaseDimension.FT to 2)),
     "lb" to UnitDefinition(1.0, Dimension.of(BaseDimension.LB to 1)),

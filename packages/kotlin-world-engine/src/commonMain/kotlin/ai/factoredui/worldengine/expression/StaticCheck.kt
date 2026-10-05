@@ -12,6 +12,7 @@ sealed interface ValueType {
     data object Bool : ValueType
     data object Str : ValueType
     data object TileType : ValueType
+    data object InstanceType : ValueType
 }
 
 fun describeType(type: ValueType): String = when (type) {
@@ -19,11 +20,16 @@ fun describeType(type: ValueType): String = when (type) {
     ValueType.Bool -> "bool"
     ValueType.Str -> "str"
     ValueType.TileType -> "tile"
+    ValueType.InstanceType -> "instance"
 }
 
 val DIRECTIONS: Map<String, Pair<Int, Int>> = linkedMapOf("north" to (0 to -1), "south" to (0 to 1), "east" to (1 to 0), "west" to (-1 to 0))
 
-enum class ScopeSite { RULE, EQUATION, STOCK, SCORING, AGENT }
+val INSTANCE_VERBS: List<String> = listOf("place_instance", "remove_instance")
+
+enum class ScopeSite { RULE, INSTANCE_RULE, EQUATION, STOCK, SCORING, AGENT }
+
+fun ruleSiteFor(on: String?): ScopeSite = if (on in INSTANCE_VERBS) ScopeSite.INSTANCE_RULE else ScopeSite.RULE
 
 private val TILE_DIMENSION: Dimension = parseUnit("tile").dimension
 private val FT_DIMENSION: Dimension = parseUnit("ft").dimension
@@ -35,6 +41,10 @@ class Scope(val world: World, val site: ScopeSite, val agentType: String? = null
         if (name == "tile") {
             if (site == ScopeSite.RULE) return ValueType.TileType
             throw ExpressionException("unknown_word", "'tile' exists only inside a rule")
+        }
+        if (name == "instance") {
+            if (site == ScopeSite.INSTANCE_RULE) return ValueType.InstanceType
+            throw ExpressionException("unknown_word", "'instance' exists only inside a place_instance or remove_instance rule")
         }
         if (name == "tile_area") return numberOfUnit("sq_ft/tile")
         if (name == "now" || name == "tick_length") return numberOfUnit("hour")
@@ -172,6 +182,8 @@ private fun checkCall(function: String, arguments: List<ExprNode>, scope: Scope)
     "if" -> checkIf(arguments, scope)
     "min", "max" -> checkExtreme(function, arguments, scope)
     "projected_support" -> checkProjectedSupport(arguments, scope)
+    "count_instances" -> checkCountInstances(arguments, scope)
+    "min_distance_mm" -> checkMinDistance(arguments, scope)
     else -> throw ExpressionException("unknown_word", "function '$function' is not in the closed vocabulary")
 }
 
@@ -237,6 +249,26 @@ private fun checkExtreme(function: String, arguments: List<ExprNode>, scope: Sco
     requireNumber(left, function)
     if (left != right) throw ExpressionException("unit_mismatch", "$function joins ${describeType(left)} and ${describeType(right)}")
     return left
+}
+
+private fun requireInstanceSet(argument: ExprNode, scope: Scope, function: String) {
+    if (argument is ExprNode.StringLiteral) {
+        literalUse(argument, scope, function)
+        return
+    }
+    if (checkExpression(argument, scope) != ValueType.InstanceType) throw ExpressionException("unit_mismatch", "$function takes a quoted use or 'instance'")
+}
+
+private fun checkCountInstances(arguments: List<ExprNode>, scope: Scope): ValueType {
+    requireArity("count_instances", arguments, listOf(1))
+    literalUse(arguments[0], scope, "count_instances")
+    return ValueType.Num(Dimension.NONE)
+}
+
+private fun checkMinDistance(arguments: List<ExprNode>, scope: Scope): ValueType {
+    requireArity("min_distance_mm", arguments, listOf(2))
+    arguments.forEach { requireInstanceSet(it, scope, "min_distance_mm") }
+    return ValueType.Num(FT_DIMENSION)
 }
 
 private fun checkProjectedSupport(arguments: List<ExprNode>, scope: Scope): ValueType {

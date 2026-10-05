@@ -2,6 +2,7 @@ package ai.factoredui.worldengine.state
 
 import ai.factoredui.worldengine.expression.Value
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -33,6 +34,36 @@ class AgentRecord(
 
 data class Endorsement(val actor: String, val weightClass: String)
 
+data class InstanceRecord(
+    val id: String,
+    val type: String,
+    val xMm: JsonElement,
+    val yMm: JsonElement,
+    val zMm: JsonElement,
+    val rotationDeg: JsonElement,
+    val heightMm: JsonElement,
+    val crownRadiusMm: JsonElement,
+    val provenance: String,
+    val source: JsonElement,
+    val error: JsonElement,
+) {
+    fun drawnFields(): JsonObject = JsonObject(
+        linkedMapOf(
+            "id" to JsonPrimitive(id),
+            "type" to JsonPrimitive(type),
+            "x_mm" to xMm,
+            "y_mm" to yMm,
+            "z_mm" to zMm,
+            "rotation_deg" to rotationDeg,
+            "height_mm" to heightMm,
+            "crown_radius_mm" to crownRadiusMm,
+            "provenance" to JsonPrimitive(provenance),
+        ),
+    )
+
+    fun toJson(): JsonObject = JsonObject(drawnFields() + linkedMapOf("source" to source, "error" to error))
+}
+
 class State {
     val instances: MutableMap<String, Instance> = LinkedHashMap()
     val cells: MutableMap<Tile, String> = LinkedHashMap()
@@ -40,6 +71,7 @@ class State {
     var ticks: Long = 0
     val agents: MutableMap<String, AgentRecord> = LinkedHashMap()
     val endorsements: MutableList<Endorsement> = mutableListOf()
+    val instanceLayer: MutableMap<String, InstanceRecord> = LinkedHashMap()
 
     fun copy(): State {
         val copied = State()
@@ -49,6 +81,7 @@ class State {
         copied.ticks = ticks
         agents.forEach { (id, agent) -> copied.agents[id] = agent.copy() }
         copied.endorsements.addAll(endorsements)
+        copied.instanceLayer.putAll(instanceLayer)
         return copied
     }
 
@@ -65,15 +98,19 @@ class State {
 
     fun instanceAt(col: Int, row: Int): Instance? = cells[Tile(col, row)]?.let { instances[it] }
 
-    fun snapshot(): JsonObject = JsonObject(
-        mapOf(
+    fun sortedInstanceRecords(): List<InstanceRecord> = instanceLayer.entries.sortedBy { it.key }.map { it.value }
+
+    fun snapshot(): JsonObject {
+        val canonical = linkedMapOf<String, JsonElement>(
             "cells" to JsonArray(cells.entries.sortedBy { it.key }.map { cellEntry(it.key, it.value) }),
             "stocks" to JsonObject(stocks.entries.sortedBy { it.key }.associate { it.key to JsonPrimitive(it.value) }),
             "ticks" to JsonPrimitive(ticks),
             "agents" to JsonObject(agents.entries.sortedBy { it.key }.associate { it.key to agentSnapshot(it.value) }),
             "endorsements" to JsonArray(endorsements.map { JsonObject(mapOf("actor" to JsonPrimitive(it.actor), "weight_class" to JsonPrimitive(it.weightClass))) }),
-        ),
-    )
+        )
+        if (instanceLayer.isNotEmpty()) canonical["instances"] = JsonObject(instanceLayer.entries.sortedBy { it.key }.associate { it.key to it.value.toJson() })
+        return JsonObject(canonical)
+    }
 
     private fun cellEntry(tile: Tile, instanceId: String): JsonArray =
         JsonArray(listOf(JsonPrimitive(tile.col), JsonPrimitive(tile.row), JsonPrimitive(instances.getValue(instanceId).type)))

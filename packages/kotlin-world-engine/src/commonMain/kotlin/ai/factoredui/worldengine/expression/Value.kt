@@ -3,6 +3,7 @@ package ai.factoredui.worldengine.expression
 import ai.factoredui.worldengine.json.MalformedDataException
 import ai.factoredui.worldengine.json.pythonFloat
 import ai.factoredui.worldengine.state.Instance
+import ai.factoredui.worldengine.state.InstanceRecord
 import ai.factoredui.worldengine.text.pythonFloatRepr
 import ai.factoredui.worldengine.units.parseUnit
 import ai.factoredui.worldengine.world.PropertySpec
@@ -16,6 +17,7 @@ sealed interface Value {
     data class Bool(val value: Boolean) : Value
     data class Text(val value: String) : Value
     data class TileRef(val instance: Instance?) : Value
+    data class InstanceRef(val record: InstanceRecord?) : Value
     data object Null : Value
 }
 
@@ -24,6 +26,7 @@ fun isTruthyValue(value: Value): Boolean = when (value) {
     is Value.Bool -> value.value
     is Value.Text -> value.value.isNotEmpty()
     is Value.TileRef -> value.instance != null
+    is Value.InstanceRef -> value.record != null
     Value.Null -> false
 }
 
@@ -40,6 +43,7 @@ fun describeValue(value: Value): String = when (value) {
     is Value.Bool -> if (value.value) "True" else "False"
     is Value.Text -> value.value
     is Value.TileRef -> value.instance?.id ?: "None"
+    is Value.InstanceRef -> value.record?.id ?: "None"
     Value.Null -> "None"
 }
 

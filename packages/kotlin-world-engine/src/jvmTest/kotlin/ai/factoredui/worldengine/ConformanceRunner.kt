@@ -17,7 +17,9 @@ import ai.factoredui.worldengine.log.LogResult
 import ai.factoredui.worldengine.outputs.TapDecision
 import ai.factoredui.worldengine.outputs.WorldOutputs
 import ai.factoredui.worldengine.outputs.actionForTap
+import ai.factoredui.worldengine.outputs.renderProps
 import ai.factoredui.worldengine.outputs.reportOutputs
+import ai.factoredui.worldengine.state.State
 import ai.factoredui.worldengine.script.scriptTimestamp
 import ai.factoredui.worldengine.text.pythonStr
 import ai.factoredui.worldengine.units.BaseDimension
@@ -55,7 +57,8 @@ const val FROZEN_SUFFIX = ".frozen.world.json"
 private const val RELATIVE_TOLERANCE = 1e-9
 private const val ABSOLUTE_TOLERANCE = 1e-12
 private val CASE_FIELDS = listOf("id", "kind", "source", "world", "input", "expect", "notes")
-private val KINDS = listOf("expression", "world_load", "action_sequence", "replay", "branching", "clock", "agents")
+private val KINDS = listOf("expression", "world_load", "action_sequence", "replay", "branching", "clock", "agents", "report")
+private val STATED_SECTIONS = listOf("render", "outputs", "expressions")
 private val SOURCES = listOf("hand", "generated")
 private val OUTPUT_SECTIONS = listOf("counts", "areas", "equations", "stocks", "scoring")
 private val UNIT_PART = Regex("([*/]?)\\s*([a-z_]+)(?:\\^(\\d+))?")
@@ -74,7 +77,7 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
     fun findFrozenWorldChanges(): List<String> {
         val sumsFile = locations.frozenWorldsDir.resolve("SHA256SUMS")
         if (!Files.exists(sumsFile)) return listOf("$sumsFile is missing, so nothing proves the frozen worlds are the ones the cases were written against")
-        val sums = Files.readAllLines(sumsFile).filter { it.isNotBlank() }.associate { line -> line.trim().split(Regex("\\s+"), 2).let { it[1].trim() to it[0] } }
+        val sums = readFrozenSums()
         val present = locations.frozenWorldsDir.listDirectoryEntries("*$FROZEN_SUFFIX").map { it.name }.toSet()
         val unlisted = (present - sums.keys).sorted().map { "$it is not listed in SHA256SUMS" }
         val missing = (sums.keys - present).sorted().map { "$it is listed in SHA256SUMS but missing" }
@@ -82,6 +85,10 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
             .map { "${it.key} changed: sha256 ${hashFrozenWorld(locations.frozenWorldsDir.resolve(it.key))}, frozen as ${it.value}" }
         return unlisted + missing + changed
     }
+
+    private fun readFrozenSums(): Map<String, String> =
+        locations.frozenWorldsDir.listDirectoryEntries("SHA256SUMS*").sortedBy { it.name }.flatMap { Files.readAllLines(it) }.filter { it.isNotBlank() }
+            .associate { line -> line.trim().split(Regex("\\s+"), 2).let { it[1].trim() to it[0] } }
 
     private fun hashFrozenWorld(path: Path): String {
         val text = String(Files.readAllBytes(path), Charsets.ISO_8859_1).replace("\r\n", "\n")
@@ -119,6 +126,7 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
             "expression" -> observeExpression(worlds, case)
             "world_load" -> observeWorldLoad(worlds, case)
             "replay" -> observeReplay(worlds, case)
+            "report" -> observeReport(worlds, case)
             else -> observeScript(worlds, case)
         }
     } catch (problem: Exception) {
@@ -156,6 +164,7 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
         ValueType.Bool -> mapOf("type" to "bool", "value" to plainValue(value))
         ValueType.Str -> mapOf("type" to "str", "value" to plainValue(value))
         ValueType.TileType -> mapOf("type" to "tile", "value" to plainValue(value))
+        ValueType.InstanceType -> mapOf("type" to "instance", "value" to plainValue(value))
     }
 
     private fun plainValue(value: Value): Any? = when (value) {
@@ -163,6 +172,7 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
         is Value.Bool -> value.value
         is Value.Text -> value.value
         is Value.TileRef -> value.instance?.id
+        is Value.InstanceRef -> value.record?.id
         Value.Null -> null
     }
 
@@ -199,6 +209,51 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
             return observed + mapOf("loads" to false, "reason" to describeReplayRefusal(problem))
         }
         return observed + mapOf("loads" to true, "replayed" to snapshotBranches(replayed), "replayed_log" to canonicalJson(replayed.dump()))
+    }
+
+    private fun observeReport(worlds: Map<String, String>, case: JsonObject): Observation {
+        val world = WorldLoader.load(worldFile(case), MapWorldLibrary(worlds))
+        val log = EventLog(world)
+        val input = case.getValue("input").jsonObject
+        val steps = runSteps(log, input["steps"] as? JsonArray ?: JsonArray(emptyList()))
+        val state = log.stateOf(input["branch"]?.let { pythonStr(it) } ?: "main")
+        val values = try {
+            (input["expressions"] as? JsonArray ?: JsonArray(emptyList())).map { evaluateStated(world, state, it.jsonObject) }
+        } catch (problem: ExpressionException) {
+            return mapOf("steps" to steps, "crash" to "expression refused: ${problem.kind}: ${problem.message}")
+        }
+        return mapOf(
+            "steps" to steps,
+            "render" to jsonOfObserved(renderProps(world, state)),
+            "outputs" to jsonOfOutputs(reportOutputs(world, state)),
+            "expressions" to JsonArray(values),
+        )
+    }
+
+    private fun evaluateStated(world: World, state: State, entry: JsonObject): JsonElement {
+        val tree = parseExpression(pythonStr(entry.getValue("text")))
+        val site = ScopeSite.valueOf((entry["site"]?.let { pythonStr(it) } ?: "equation").uppercase())
+        checkExpression(tree, Scope(world, site))
+        return when (val value = Evaluation(world, state).valueOf(tree)) {
+            Value.Null -> JsonNull
+            is Value.Bool -> JsonPrimitive(value.value)
+            else -> JsonPrimitive((value as Value.Num).value / parseExpectedUnit(entry["unit"]?.let { pythonStr(it) }).first)
+        }
+    }
+
+    private fun jsonOfOutputs(outputs: WorldOutputs): JsonElement = jsonOfObserved(
+        mapOf("counts" to outputs.counts, "areas" to outputs.areas, "equations" to outputs.equations, "stocks" to outputs.stocks, "scoring" to outputs.scoring, "ticks" to outputs.ticks),
+    )
+
+    private fun jsonOfObserved(value: Any?): JsonElement = when (value) {
+        null -> JsonNull
+        is JsonElement -> value
+        is String -> JsonPrimitive(value)
+        is Boolean -> JsonPrimitive(value)
+        is Number -> JsonPrimitive(value)
+        is Map<*, *> -> JsonObject(value.entries.associate { (key, item) -> key.toString() to jsonOfObserved(item) })
+        is List<*> -> JsonArray(value.map { jsonOfObserved(it) })
+        else -> error("an observation holds a ${value::class.simpleName}")
     }
 
     private fun describeReplayRefusal(problem: Exception): String = when (problem) {
@@ -262,8 +317,41 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
             "expression" -> compareExpression(expect, observed)
             "world_load" -> compareWorldLoad(expect, observed)
             "replay" -> compareReplay(expect, observed)
+            "report" -> compareReport(expect, observed)
             else -> compareScript(expect, observed)
         }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun compareReport(expect: JsonObject, observed: Observation): List<String> {
+        val problems = mutableListOf<String>()
+        expect["steps"]?.let { problems += compareSteps(it.jsonArray, observed.getValue("steps") as List<Map<String, String>>) }
+        STATED_SECTIONS.forEach { section -> expect[section]?.let { problems += compareStated(section, it, observed.getValue(section) as JsonElement) } }
+        val render = observed.getValue("render") as JsonObject
+        (expect["render_absent"] as? JsonArray)?.map { pythonStr(it) }?.filter { it in render }?.forEach { problems += "render.$it: expected absent, observed ${render[it]}" }
+        return problems
+    }
+
+    private fun compareStated(where: String, expected: JsonElement, observed: JsonElement): List<String> = when {
+        expected is JsonObject -> compareStatedObject(where, expected, observed)
+        expected is JsonArray -> compareStatedList(where, expected, observed)
+        isLiteral(expected) -> if (observed == expected) emptyList() else listOf("$where: expected $expected, observed $observed")
+        isNumber(observed) && isClose(observed.jsonPrimitive.content.toDouble(), expected.jsonPrimitive) -> emptyList()
+        else -> listOf("$where: expected $expected, observed $observed")
+    }
+
+    private fun isLiteral(element: JsonElement): Boolean = element is JsonNull || element.jsonPrimitive.isString || element.jsonPrimitive.booleanOrNull != null
+
+    private fun isNumber(element: JsonElement): Boolean = element is JsonPrimitive && element !is JsonNull && !isLiteral(element)
+
+    private fun compareStatedObject(where: String, expected: JsonObject, observed: JsonElement): List<String> {
+        if (observed !is JsonObject) return listOf("$where: expected an object, observed $observed")
+        return expected.flatMap { (key, value) -> observed[key]?.let { compareStated("$where.$key", value, it) } ?: listOf("$where.$key: missing") }
+    }
+
+    private fun compareStatedList(where: String, expected: JsonArray, observed: JsonElement): List<String> {
+        if (observed !is JsonArray || observed.size != expected.size) return listOf("$where: expected ${expected.size} items, observed $observed".take(400))
+        return expected.indices.flatMap { compareStated("$where[$it]", expected[it], observed[it]) }
     }
 
     private fun compareExpression(expect: JsonObject, observed: Observation): List<String> {
@@ -352,7 +440,7 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
     private fun compareOutputs(branch: String, expected: JsonObject, observed: WorldOutputs): List<String> {
         val problems = mutableListOf<String>()
         expected["ticks"]?.let { if (observed.ticks.toDouble() != it.jsonPrimitive.doubleOrNull) problems += "$branch ticks: expected $it, observed ${observed.ticks}" }
-        val sections: Map<String, Map<String, Any>> = mapOf(
+        val sections: Map<String, Map<String, Any?>> = mapOf(
             "counts" to observed.counts,
             "areas" to observed.areas,
             "equations" to observed.equations,
@@ -361,9 +449,10 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
         )
         OUTPUT_SECTIONS.forEach { section ->
             (expected[section] as? JsonObject ?: JsonObject(emptyMap())).forEach { (key, value) ->
-                val actual = sections.getValue(section)[key]
+                val observedSection = sections.getValue(section)
+                val actual = observedSection[key]
                 when {
-                    actual == null -> problems += "$branch $section.$key: missing"
+                    key !in observedSection -> problems += "$branch $section.$key: missing"
                     !isClose(actual, value.jsonPrimitive) -> problems += "$branch $section.$key: expected $value, observed $actual"
                 }
             }

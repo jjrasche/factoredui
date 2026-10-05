@@ -5,6 +5,7 @@ import kotlin.math.round
 
 private const val ROUNDING_SCALE = 100.0
 private const val UNITLESS = "1"
+private const val NOT_MEASURED = "not-measured"
 
 internal fun formatNumber(value: Double): String {
     val rounded = round(value * ROUNDING_SCALE) / ROUNDING_SCALE
@@ -21,7 +22,7 @@ internal fun scoreLines(scores: List<ScoreView>): String =
     scores.joinToString("\n") { score ->
         val unit = if (score.unit == UNITLESS) "" else " ${score.unit}"
         val binding = if (score.isBinding) " (binding)" else ""
-        "${score.label ?: score.id}: ${formatNumber(score.value)}$unit$binding"
+        "${score.label ?: score.id}: ${score.value?.let { formatNumber(it) } ?: NOT_MEASURED}$unit$binding"
     }
 
 internal fun diffLine(branch: String, parent: String?, diff: Map<String, Int>, labels: Map<String, String>): String {

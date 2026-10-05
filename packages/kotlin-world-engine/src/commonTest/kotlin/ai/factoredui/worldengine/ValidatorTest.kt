@@ -37,7 +37,7 @@ class ValidatorTest {
         val report = WorldValidator.validate(REFERENCE_WORLD_FILES)
         assertEquals(emptyList(), report.fired)
         assertEquals(emptyList(), report.blind)
-        assertEquals(listOf(DUNGEON_FILE, LOCALITY_FILE, PARCEL_FILE), report.valid.sorted())
+        assertEquals(listOf(DUNGEON_FILE, LOCALITY_FILE, PARCEL_FILE, LIDAR_FILE), report.valid.sorted())
     }
 
     @Test
@@ -64,6 +64,11 @@ class ValidatorTest {
     @Test fun broken_copy_projection_not_binding() = assertEveryBrokenCopyTrips("projection-not-binding")
     @Test fun broken_copy_figure_sourced() = assertEveryBrokenCopyTrips("figure-sourced")
     @Test fun broken_copy_sprite_known() = assertEveryBrokenCopyTrips("sprite-known")
+    @Test fun broken_copy_footprint_mm_agrees() = assertEveryBrokenCopyTrips("footprint-mm-agrees")
+    @Test fun broken_copy_instance_id_unique() = assertEveryBrokenCopyTrips("instance-id-unique")
+    @Test fun broken_copy_instance_source() = assertEveryBrokenCopyTrips("instance-source")
+    @Test fun broken_copy_instance_error() = assertEveryBrokenCopyTrips("instance-error")
+    @Test fun broken_copy_instance_error_reason() = assertEveryBrokenCopyTrips("instance-error-reason")
 
     @Test
     fun an_empty_worlds_directory_is_blind_not_green() {
@@ -123,7 +128,8 @@ class ValidatorTest {
         val RULES_WITH_A_TEST = setOf(
             "blind-worlds", "world-parses", "world-schema", "expression-parses", "unknown-word", "unit-mismatch", "expression-bound",
             "name-cycle", "seed-replays", "rule-message", "unknown-target", "action-emits", "link-resolves", "link-fits",
-            "projection-not-binding", "figure-sourced", "sprite-known",
+            "projection-not-binding", "figure-sourced", "sprite-known", "footprint-mm-agrees", "instance-id-unique", "instance-source",
+            "instance-error", "instance-error-reason",
         )
     }
 }

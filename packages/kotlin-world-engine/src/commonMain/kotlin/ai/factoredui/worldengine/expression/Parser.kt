@@ -8,7 +8,7 @@ import ai.factoredui.worldengine.units.parseUnit
 const val MAX_NODES = 256
 const val MAX_DEPTH = 24
 
-val FUNCTIONS: List<String> = listOf("count", "sum", "neighbors", "side", "edge", "distance", "if", "min", "max", "projected_support")
+val FUNCTIONS: List<String> = listOf("count", "sum", "neighbors", "side", "edge", "distance", "if", "min", "max", "projected_support", "count_instances", "min_distance_mm")
 val KEYWORDS: List<String> = listOf("and", "or", "not", "true", "false")
 val COMPARATORS: List<String> = listOf("<", "<=", ">", ">=", "==", "!=")
 

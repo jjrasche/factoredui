@@ -54,9 +54,11 @@ fun describeStep(step: JsonObject, result: LogResult): String {
 fun formatOutputs(world: World, outputs: WorldOutputs): List<String> {
     val lines = mutableListOf<String>()
     outputs.counts.forEach { (typeId, count) -> lines += "count $typeId $count tiles ${formatGeneral(outputs.areas.getValue(typeId), 6)} sq_ft" }
-    outputs.equations.forEach { (id, value) -> lines += "equation $id ${formatGeneral(value, 6)} ${world.equations.getValue(id).unit}" }
+    outputs.equations.forEach { (id, value) -> lines += "equation $id ${formatMeasured(value)} ${world.equations.getValue(id).unit}" }
     outputs.stocks.forEach { (id, value) -> lines += "stock $id ${formatGeneral(value, 6)} ${world.stocks.getValue(id).unit}" }
-    outputs.scoring.forEach { (id, value) -> lines += "score $id ${formatGeneral(value, 6)} ${world.scoring.getValue(id).unit}" }
+    outputs.scoring.forEach { (id, value) -> lines += "score $id ${formatMeasured(value)} ${world.scoring.getValue(id).unit}" }
     lines += "ticks ${outputs.ticks}"
     return lines
 }
+
+private fun formatMeasured(value: Double?): String = value?.let { formatGeneral(it, 6) } ?: "not-measured"

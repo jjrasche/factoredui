@@ -1,7 +1,7 @@
 package ai.factoredui.worldengine.events
 
 import ai.factoredui.worldengine.expression.Evaluation
-import ai.factoredui.worldengine.expression.isTruthyValue
+import ai.factoredui.worldengine.expression.Value
 import ai.factoredui.worldengine.expression.storedProperty
 import ai.factoredui.worldengine.json.MalformedDataException
 import ai.factoredui.worldengine.json.isTruthy
@@ -16,6 +16,7 @@ import ai.factoredui.worldengine.json.asTextOrNull
 import ai.factoredui.worldengine.state.AgentRecord
 import ai.factoredui.worldengine.state.Endorsement
 import ai.factoredui.worldengine.state.Instance
+import ai.factoredui.worldengine.state.InstanceRecord
 import ai.factoredui.worldengine.state.State
 import ai.factoredui.worldengine.state.Tile
 import ai.factoredui.worldengine.units.parseUnit
@@ -44,6 +45,8 @@ fun refuse(rule: String, message: String): Nothing = throw RefusalException(Refu
 fun applyEvent(world: World, state: State, event: AppliedEvent, lookup: EventLookup): State = when (event.action) {
     "place" -> applyPlace(world, state, event)
     "remove" -> applyRemove(world, state, event)
+    "place_instance" -> applyPlaceInstance(world, state, event)
+    "remove_instance" -> applyRemoveInstance(world, state, event)
     "tick" -> applyTick(world, state, event)
     "enroll" -> applyEnroll(world, state, event)
     "opt_in" -> applyOptIn(world, state, event)
@@ -55,11 +58,23 @@ fun applyEvent(world: World, state: State, event: AppliedEvent, lookup: EventLoo
 }
 
 fun footprintTiles(world: World, typeId: String, col: Int, row: Int): List<Tile> {
-    val (width, height) = world.types[typeId]?.footprint() ?: throw ai.factoredui.worldengine.json.missingKey(typeId)
+    val (width, height) = world.footprintOf(typeId)
     return (0 until height).flatMap { dy -> (0 until width).map { dx -> Tile(col + dx, row + dy) } }
 }
 
 fun isOnGrid(world: World, tile: Tile): Boolean = tile.col in 0 until world.cols && tile.row in 0 until world.rows
+
+sealed interface RuleSubject {
+    val type: String
+
+    data class TileObject(val instance: Instance) : RuleSubject {
+        override val type: String get() = instance.type
+    }
+
+    data class PointObject(val record: InstanceRecord) : RuleSubject {
+        override val type: String get() = record.type
+    }
+}
 
 private fun ruleTargets(world: World, rule: RuleSpec, typeId: String): Boolean {
     rule.appliesTo?.let { return typeId in it }
@@ -70,21 +85,26 @@ private fun ruleTargets(world: World, rule: RuleSpec, typeId: String): Boolean {
 private fun ruleApplies(world: World, rule: RuleSpec, verb: String, typeId: String): Boolean =
     (rule.on ?: "place") == verb && ruleTargets(world, rule, typeId)
 
-fun checkRules(world: World, state: State, verb: String, instance: Instance) {
+fun checkRules(world: World, state: State, verb: String, acted: RuleSubject) {
     world.rules.filter { it.hasRequire }.forEach { rule ->
-        val subjects = ruleSubjects(world, state, rule, verb, instance)
+        val subjects = ruleSubjects(world, state, rule, verb, acted)
         val tree = world.ast(rule.require)
         subjects.forEach { subject ->
-            if (!isTruthyValue(Evaluation(world, state, tileInstance = subject).valueOf(tree))) {
+            if (bindingFor(world, state, subject).valueOf(tree) == Value.Bool(false)) {
                 refuse(rule.id, rule.message?.takeIf { it.isNotEmpty() } ?: "refused")
             }
         }
     }
 }
 
-private fun ruleSubjects(world: World, state: State, rule: RuleSpec, verb: String, instance: Instance): List<Instance> = when {
-    rule.on == "always" -> state.instances.entries.sortedBy { it.key }.map { it.value }.filter { ruleTargets(world, rule, it.type) }
-    ruleApplies(world, rule, verb, instance.type) -> listOf(instance)
+private fun bindingFor(world: World, state: State, subject: RuleSubject): Evaluation = when (subject) {
+    is RuleSubject.TileObject -> Evaluation(world, state, tileInstance = subject.instance)
+    is RuleSubject.PointObject -> Evaluation(world, state, actedInstance = subject.record)
+}
+
+private fun ruleSubjects(world: World, state: State, rule: RuleSpec, verb: String, acted: RuleSubject): List<RuleSubject> = when {
+    rule.on == "always" -> state.instances.entries.sortedBy { it.key }.map { it.value }.filter { ruleTargets(world, rule, it.type) }.map { RuleSubject.TileObject(it) }
+    ruleApplies(world, rule, verb, acted.type) -> listOf(acted)
     else -> emptyList()
 }
 
@@ -97,7 +117,7 @@ private fun applyEffects(world: World, state: State, verb: String, instance: Ins
     }
 }
 
-private fun requireWorldVerb(world: World, verb: String) {
+internal fun requireWorldVerb(world: World, verb: String) {
     if (verb !in world.actions) refuse("unknown-action", "world ${world.id} declares no action '$verb'")
 }
 
@@ -120,7 +140,7 @@ private fun applyPlace(world: World, state: State, event: AppliedEvent): State {
     val instance = Instance(event.id, typeId, col, row, tiles, placedProperties(world, typeId, parameters))
     val candidate = state.copy()
     candidate.addInstance(instance)
-    checkRules(world, candidate, "place", instance)
+    checkRules(world, candidate, "place", RuleSubject.TileObject(instance))
     applyEffects(world, candidate, "place", instance)
     return candidate
 }
@@ -144,7 +164,7 @@ private fun applyRemove(world: World, state: State, event: AppliedEvent): State 
         ?: refuse("empty-tile", "nothing to remove at ${pythonStr(parameters.getValue("col"))},${pythonStr(parameters.getValue("row"))}")
     val candidate = state.copy()
     val removed = candidate.dropInstance(instance.id)
-    checkRules(world, candidate, "remove", removed)
+    checkRules(world, candidate, "remove", RuleSubject.TileObject(removed))
     return candidate
 }
 

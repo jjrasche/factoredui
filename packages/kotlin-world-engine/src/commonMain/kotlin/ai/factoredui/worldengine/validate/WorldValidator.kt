@@ -33,7 +33,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
-val SCANS: List<String> = listOf("worlds", "expressions", "names", "seeds", "rules", "actions", "links", "projections", "figures", "object_types")
+val SCANS: List<String> = listOf("worlds", "expressions", "names", "seeds", "rules", "actions", "links", "projections", "figures", "object_types", "footprints", "instances")
+val ERROR_FIELDS: List<String> = listOf("position_mm", "height_mm", "crown_radius_mm")
 val SOURCED_KINDS: List<String> = listOf("price", "labor", "yield", "regulation", "demographic")
 val GENERIC_SPRITES: List<String> = listOf("flat", "block", "tree", "arch", "water", "fence")
 
@@ -75,6 +76,8 @@ object WorldValidator {
         facts.getValue("projections") += projectionFacts(name, world)
         facts.getValue("figures") += figureFacts(name, world)
         facts.getValue("object_types") += typeFacts(name, world)
+        facts.getValue("footprints") += footprintFacts(name, world)
+        facts.getValue("instances") += instanceFacts(name, world)
     }
 
     private fun classifySiteProblem(kind: String?, message: String?): List<Pair<String, Any?>> {
@@ -191,6 +194,37 @@ object WorldValidator {
         val extensions = (world.doc.requiredObject("sprites")["extensions"] as? JsonArray ?: JsonArray(emptyList())).objects().map { it.requiredText("id") }
         val known = GENERIC_SPRITES.toSet() + extensions
         return world.types.values.map { fact("world" to name, "type" to it.id, "sprite" to it.sprite, "sprite_known" to (it.sprite in known)) }
+    }
+
+    private fun footprintFacts(name: String, world: World): List<JsonObject> =
+        world.types.values.filter { it.hasTileFootprint && "footprint_mm" in it.raw }.map { type ->
+            val derived = JsonArray(world.derivedFootprint(type.id).map { JsonPrimitive(it) })
+            val declared = type.raw.getValue("footprint")
+            fact("world" to name, "type" to type.id, "footprint" to declared, "derived" to derived, "agrees" to pythonEquals(declared, derived))
+        }
+
+    private fun instanceFacts(name: String, world: World): List<JsonObject> {
+        val entries = world.doc.optionalList("seed").objects().filter { it.requiredText("action") == "place_instance" }
+        val idCounts = entries.groupingBy { it.requiredText("id") }.eachCount()
+        return entries.map { entry ->
+            val parameters = entry.requiredObject("parameters")
+            val error = parameters["error"] as? JsonObject ?: JsonObject(emptyMap())
+            fact(
+                "world" to name,
+                "id" to entry.requiredText("id"),
+                "is_unique" to (idCounts[entry.requiredText("id")] == 1),
+                "has_source" to ("source" in parameters),
+                "missing_error_fields" to ERROR_FIELDS.filter { it !in error },
+                "unreasoned" to ERROR_FIELDS.filter { it in error && !isFigureReasoned(error.getValue(it)) },
+            )
+        }
+    }
+
+    private fun isFigureReasoned(figure: JsonElement): Boolean {
+        val fields = figure as? JsonObject ?: JsonObject(emptyMap())
+        val value = fields["value"]
+        if (value == null || value is JsonNull) return isTruthy(fields["null_reason"])
+        return "source" in fields
     }
 
     fun judge(facts: Map<String, List<JsonObject>>, rules: List<JsonObject>): ValidationReport {

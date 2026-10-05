@@ -31,7 +31,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-val MERGEABLE_VERBS: List<String> = listOf("place", "remove", "tick", "enroll", "opt_in", "revert")
+val MERGEABLE_VERBS: List<String> = listOf("place", "remove", "tick", "enroll", "opt_in", "revert", "place_instance", "remove_instance")
 
 data class BranchMeta(val from: String?, val isProposal: Boolean)
 
@@ -93,7 +93,7 @@ class EventLog(val world: World) {
         } catch (refused: RefusalException) {
             return LogResult.Refused(refused.refusal)
         }
-        val committed = event.copy(touches = touchesOf(event, prior), removed = removedRecord(event, prior))
+        val committed = event.copy(touches = touchesOf(event, prior), removed = removedRecord(event, prior), removedInstance = removedInstanceRecord(event, prior))
         append(committed, following)
         return LogResult.Committed(committed)
     }
@@ -109,6 +109,12 @@ class EventLog(val world: World) {
                 "properties" to declaredProperties(removed),
             ),
         )
+    }
+
+    private fun removedInstanceRecord(event: LogEvent, prior: State): JsonObject? {
+        if (event.action != "remove_instance") return null
+        val instanceId = pythonStr(event.parameters.required("id"))
+        return (prior.instanceLayer[instanceId] ?: throw missingKey(instanceId)).toJson()
     }
 
     private fun instanceAtParameters(event: LogEvent, prior: State): Instance {
@@ -140,6 +146,8 @@ class EventLog(val world: World) {
         return when (event.action) {
             "place" -> footprintTiles(world, requiredTypeText(parameters), pythonInt(parameters.required("col")).toInt(), pythonInt(parameters.required("row")).toInt()).map { it.touchKey() }
             "remove" -> instanceAtParameters(event, prior).tiles.map { it.touchKey() }
+            "place_instance" -> listOf("instance:${event.id}")
+            "remove_instance" -> listOf("instance:${pythonStr(parameters.required("id"))}")
             "tick" -> listOf("clock")
             "enroll", "opt_in" -> listOf("agent:${pythonStr(parameters.required("agent_id"))}")
             "revert" -> lookup(pythonStr(parameters.required("event"))).touches
@@ -172,7 +180,7 @@ class EventLog(val world: World) {
         val name = pythonStr(event.parameters.required("name"))
         if (name in headMap) throw WorldLoadException("branch $name is opened twice")
         val from = event.parameters.required("from").asTextOrNull()
-        val opened = event.copy(touches = emptyList(), removed = null)
+        val opened = event.copy(touches = emptyList(), removed = null, removedInstance = null)
         branchMetaMap[name] = BranchMeta(from, isTruthy(event.parameters.required("proposal")))
         eventList += opened
         byId[opened.id] = opened
@@ -319,5 +327,6 @@ private fun jsonOfValue(value: Value): JsonElement = when (value) {
     is Value.Bool -> JsonPrimitive(value.value)
     is Value.Text -> JsonPrimitive(value.value)
     is Value.TileRef -> JsonPrimitive(value.instance?.id)
+    is Value.InstanceRef -> JsonPrimitive(value.record?.id)
     Value.Null -> JsonNull
 }

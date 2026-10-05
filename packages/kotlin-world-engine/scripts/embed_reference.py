@@ -35,6 +35,7 @@ def main() -> None:
                     [("PARCEL_WORLD_JSON", "worlds/parcel-five-acre.world.json"),
                      ("LOCALITY_WORLD_JSON", "worlds/locality-stub.world.json"),
                      ("DUNGEON_WORLD_JSON", "worlds/dungeon-tiny.world.json"),
+                     ("LIDAR_WORLD_JSON", "worlds/parcel-lidar-sample.world.json"),
                      ("PARCEL_DEMO_JSON", "demos/parcel-five-acre.demo.json"),
                      ("DUNGEON_DEMO_JSON", "demos/dungeon-tiny.demo.json"),
                      ("MUTATIONS_JSON", "mutations.json")],

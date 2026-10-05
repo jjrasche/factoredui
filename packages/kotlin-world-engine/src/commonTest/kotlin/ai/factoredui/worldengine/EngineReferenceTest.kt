@@ -31,10 +31,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class EngineReferenceTest {
-    private fun assertNear(expected: Double, actual: Double) {
+    private fun assertNear(expected: Double, measured: Double?) {
+        val actual = assertNotNull(measured, "expected $expected, found not-measured")
         assertTrue(abs(expected - actual) <= 1e-6 * maxOf(1.0, abs(expected)), "expected $expected, found $actual")
     }
 
@@ -51,7 +53,7 @@ class EngineReferenceTest {
         assertNear(2 * 75.5 / (96 * 20) * 625, outputs.scoring.getValue("hoop_house_labor"))
         assertNear(12 * 625 / 43560.0 * 4.0, outputs.equations.getValue("pasture_yield"))
         assertNear(12 * 625 / 43560.0 * 4.0, outputs.stocks.getValue("standing_forage"))
-        val support = outputs.scoring.getValue("neighbor_support")
+        val support = assertNotNull(outputs.scoring.getValue("neighbor_support"))
         assertTrue(support > 0.0 && support < 1.0)
     }
 
@@ -237,7 +239,7 @@ class EngineReferenceTest {
     fun test_projected_support_falls_when_van_pads_appear_for_a_van_averse_neighbour() {
         val log = EventLog(parcelWorld())
         listOf(9 to 12, 10 to 12).forEach { (col, row) -> log.place("paddock", col, row) }
-        val before = reportOutputs(log.world, log.stateOf()).scoring.getValue("neighbor_support")
+        val before = assertNotNull(reportOutputs(log.world, log.stateOf()).scoring.getValue("neighbor_support"))
         val optIn = buildJsonObject {
             put("agent_id", "neighbor-1")
             putJsonObject("attributes") {
@@ -248,7 +250,7 @@ class EngineReferenceTest {
         log.attempt("main", "jim", "opt_in", optIn, STAMP)
         log.layPath(6 to 2)
         log.place("van_pad", 7, 2)
-        val after = reportOutputs(log.world, log.stateOf()).scoring.getValue("neighbor_support")
+        val after = assertNotNull(reportOutputs(log.world, log.stateOf()).scoring.getValue("neighbor_support"))
         assertTrue(after < before)
     }
 

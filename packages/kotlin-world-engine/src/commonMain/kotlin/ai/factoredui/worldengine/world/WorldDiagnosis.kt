@@ -1,6 +1,8 @@
 package ai.factoredui.worldengine.world
 
 import ai.factoredui.worldengine.expression.ExpressionException
+import ai.factoredui.worldengine.expression.INSTANCE_VERBS
+import ai.factoredui.worldengine.expression.ruleSiteFor
 import ai.factoredui.worldengine.expression.Scope
 import ai.factoredui.worldengine.expression.ScopeSite
 import ai.factoredui.worldengine.expression.ValueType
@@ -35,9 +37,10 @@ fun expressionSites(world: World): List<ExpressionSite> = ruleSites(world) + equ
 
 private fun ruleSites(world: World): List<ExpressionSite> = (world.ownRules + world.inheritedRules).flatMap { rule ->
     val where = if (rule.isInherited) "inherited.${rule.id}" else "rules.${rule.id}"
+    val site = ruleSiteFor(rule.on)
     val sites = mutableListOf<ExpressionSite>()
-    if (rule.hasRequire) sites += ExpressionSite("$where.require", rule.require, Scope(world, ScopeSite.RULE), Expectation.OfType(ValueType.Bool))
-    if (rule.hasEffect) sites += ExpressionSite("$where.effect", rule.effect?.to ?: "", Scope(world, ScopeSite.RULE), effectExpectation(world, rule))
+    if (rule.hasRequire) sites += ExpressionSite("$where.require", rule.require, Scope(world, site), Expectation.OfType(ValueType.Bool))
+    if (rule.hasEffect) sites += ExpressionSite("$where.effect", rule.effect?.to ?: "", Scope(world, site), effectExpectation(world, rule))
     sites
 }
 
@@ -61,6 +64,7 @@ private fun agentSites(world: World): List<ExpressionSite> = world.agents.values
 
 private fun effectExpectation(world: World, rule: RuleSpec): Expectation {
     val target = rule.effect?.set
+    if (rule.on in INSTANCE_VERBS) return Expectation.MissingTarget("an instance carries no properties, so an ${rule.on} rule cannot set '${target ?: "None"}'")
     val typeId = rule.appliesTo.orEmpty().firstOrNull { it in world.types } ?: return Expectation.Anything
     val spec = target?.let { world.propertySpec(typeId, it) } ?: return Expectation.MissingTarget("type $typeId has no property '${target ?: "None"}'")
     return Expectation.OfType(if (spec.isText) ValueType.Str else numberOfUnit(spec.unit))

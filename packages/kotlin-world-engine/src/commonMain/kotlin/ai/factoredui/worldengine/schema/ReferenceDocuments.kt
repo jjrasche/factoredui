@@ -47,6 +47,19 @@ internal const val WORLD_SCHEMA_JSON: String = """{
         "north": {"enum": ["row_0"], "description": "row 0 is the north edge; south is increasing row"}
       }
     },
+    "frame": {
+      "description": "Optional: places the grid on the earth. The origin is the grid's south-west corner in the named EPSG coordinate reference, in metres; x runs east and y north, and an instance at x_mm, y_mm stands at origin + (x_mm, y_mm) / 1000. Without a frame, instance positions are local millimetres from that same corner.",
+      "type": "object",
+      "required": ["epsg", "origin_east_m", "origin_north_m", "x_axis", "y_axis"],
+      "additionalProperties": false,
+      "properties": {
+        "epsg": {"type": "integer", "minimum": 1},
+        "origin_east_m": {"type": "number"},
+        "origin_north_m": {"type": "number"},
+        "x_axis": {"const": "east"},
+        "y_axis": {"const": "north"}
+      }
+    },
     "clock": {
       "type": "object",
       "required": ["tick_unit", "tick_length"],
@@ -103,8 +116,9 @@ internal const val WORLD_SCHEMA_JSON: String = """{
       }
     },
     "object_type": {
+      "description": "A type is sized in tiles (footprint), in millimetres (footprint_mm, x then y), or both. With only footprint_mm, each axis covers ceil(footprint_mm / (tile_ft x 304.8)) tiles, computed exactly on the decimals as written; with both, they must agree on that or validate.py refuses the world (footprint-mm-agrees).",
       "type": "object",
-      "required": ["id", "label", "sprite", "color", "footprint"],
+      "required": ["id", "label", "sprite", "color"],
       "additionalProperties": false,
       "properties": {
         "id": {"${'$'}ref": "#/${'$'}defs/identifier"},
@@ -112,9 +126,12 @@ internal const val WORLD_SCHEMA_JSON: String = """{
         "sprite": {"${'$'}ref": "#/${'$'}defs/identifier"},
         "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}${'$'}"},
         "footprint": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": 64}, "minItems": 2, "maxItems": 2},
+        "footprint_mm": {"type": "array", "items": {"type": "number", "exclusiveMinimum": 0}, "minItems": 2, "maxItems": 2},
+        "height_mm": {"type": "number", "exclusiveMinimum": 0},
         "tags": {"type": "array", "items": {"${'$'}ref": "#/${'$'}defs/identifier"}},
         "properties": {"type": "array", "items": {"${'$'}ref": "#/${'$'}defs/property"}}
-      }
+      },
+      "anyOf": [{"required": ["footprint"]}, {"required": ["footprint_mm"]}]
     },
     "rule": {
       "description": "Checked against the state an action would produce. on place or remove: `tile` is the acted-on object. on always: checked after every place and remove for every object the rule targets, with `tile` bound to each in turn, so an invariant holds through removals, merges and reverts too. A `require` that evaluates false refuses the action with `message`. An `effect` sets one property of the acted-on object once, after every require holds; effects never trigger rules.",
@@ -123,7 +140,7 @@ internal const val WORLD_SCHEMA_JSON: String = """{
       "additionalProperties": false,
       "properties": {
         "id": {"${'$'}ref": "#/${'$'}defs/identifier"},
-        "on": {"enum": ["place", "remove", "always"]},
+        "on": {"enum": ["place", "remove", "always", "place_instance", "remove_instance"], "description": "a place_instance or remove_instance rule binds `instance` (the acted-on instance) instead of `tile`, and sets no effect"},
         "scope": {"enum": ["self", "child"], "description": "child: exported for worlds that link to this one and inherit it by id"},
         "applies_to": {"type": "array", "items": {"${'$'}ref": "#/${'$'}defs/identifier"}},
         "applies_to_tag": {"${'$'}ref": "#/${'$'}defs/identifier"},
@@ -174,7 +191,7 @@ internal const val WORLD_SCHEMA_JSON: String = """{
       "required": ["verb", "parameters", "emits"],
       "additionalProperties": false,
       "properties": {
-        "verb": {"enum": ["place", "remove", "tick", "enroll", "opt_in"]},
+        "verb": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance"]},
         "label": {"type": "string"},
         "parameters": {
           "type": "array",
@@ -184,11 +201,12 @@ internal const val WORLD_SCHEMA_JSON: String = """{
             "additionalProperties": false,
             "properties": {
               "name": {"${'$'}ref": "#/${'$'}defs/identifier"},
-              "type": {"enum": ["object_type", "col", "row", "count", "agent_type", "agent_id", "attributes", "properties", "boolean"]}
+              "type": {"enum": ["object_type", "col", "row", "count", "agent_type", "agent_id", "attributes", "properties", "boolean",
+                                "x_mm", "y_mm", "rotation_deg", "instance_id"]}
             }
           }
         },
-        "emits": {"type": "array", "items": {"enum": ["place", "remove", "tick", "enroll", "opt_in"]}}
+        "emits": {"type": "array", "items": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance"]}}
       }
     },
     "agent": {
@@ -245,7 +263,10 @@ internal const val WORLD_SCHEMA_JSON: String = """{
       }
     },
     "seed_entry": {
-      "description": "Events the world ships with, replayed before any log; a seed place's id becomes the placed object's id.",
+      "description": "Events the world ships with, replayed before any log; a seed place's id becomes the placed object's id. A seed place_instance is a measured instance: the one place measured instances live.",
+      "anyOf": [{"${'$'}ref": "#/${'$'}defs/seed_event"}, {"${'$'}ref": "#/${'$'}defs/seed_instance"}]
+    },
+    "seed_event": {
       "type": "object",
       "required": ["id", "action", "parameters"],
       "additionalProperties": false,
@@ -254,6 +275,70 @@ internal const val WORLD_SCHEMA_JSON: String = """{
         "actor": {"type": "string"},
         "action": {"enum": ["place", "remove", "tick", "enroll", "opt_in"]},
         "parameters": {"type": "object"},
+        "note": {"type": "string"}
+      }
+    },
+    "seed_instance": {
+      "description": "A measured instance: a fact the seed records, so no rule is checked against it. Its id is the instance id, and never has the shape of an event id (e<n>), which a proposed instance takes. Proposed instances come only from place_instance events.",
+      "type": "object",
+      "required": ["id", "action", "parameters"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^(?!e[0-9]+${'$'})[a-z][a-z0-9_-]*${'$'}"},
+        "actor": {"type": "string"},
+        "action": {"const": "place_instance"},
+        "parameters": {"${'$'}ref": "#/${'$'}defs/measured_instance"},
+        "note": {"type": "string"}
+      }
+    },
+    "measured_instance": {
+      "description": "Positions in millimetres from the grid's south-west corner, x east and y north, at no tile's snap. height_mm defaults to the type's. source and error are required by validate.py (instance-source, instance-error), not here, so a missing one is named.",
+      "type": "object",
+      "required": ["type", "x_mm", "y_mm", "provenance"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"${'$'}ref": "#/${'$'}defs/identifier"},
+        "x_mm": {"type": "number"},
+        "y_mm": {"type": "number"},
+        "z_mm": {"type": "number"},
+        "rotation_deg": {"type": "number"},
+        "height_mm": {"type": "number", "exclusiveMinimum": 0},
+        "crown_radius_mm": {"type": "number", "exclusiveMinimum": 0},
+        "provenance": {"const": "measured"},
+        "source": {"${'$'}ref": "#/${'$'}defs/instance_source"},
+        "error": {"${'$'}ref": "#/${'$'}defs/instance_error"},
+        "note": {"type": "string"}
+      }
+    },
+    "instance_source": {
+      "description": "Where a measured instance was measured: a twin id, a research row id, a file reference, or a stated source tag.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "twin": {"type": "string", "minLength": 1},
+        "row": {"type": "string", "minLength": 1},
+        "file": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "minLength": 1}
+      },
+      "anyOf": [{"required": ["twin"]}, {"required": ["row"]}, {"required": ["file"]}, {"required": ["tag"]}]
+    },
+    "instance_error": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "position_mm": {"${'$'}ref": "#/${'$'}defs/error_figure"},
+        "height_mm": {"${'$'}ref": "#/${'$'}defs/error_figure"},
+        "crown_radius_mm": {"${'$'}ref": "#/${'$'}defs/error_figure"}
+      }
+    },
+    "error_figure": {
+      "description": "A number with its source, or null with null_reason; validate.py refuses either half missing (instance-error-reason).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {"type": ["number", "null"]},
+        "source": {"${'$'}ref": "#/${'$'}defs/source"},
+        "null_reason": {"type": "string", "minLength": 1},
         "note": {"type": "string"}
       }
     }
@@ -284,13 +369,18 @@ internal const val EVENTS_SCHEMA_JSON: String = """{
         "world": {"type": "string"},
         "branch": {"type": "string", "minLength": 1},
         "actor": {"type": "string", "minLength": 1, "description": "a person id, an agent id, or 'clock'"},
-        "action": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "branch", "merge", "revert", "endorse"]},
+        "action": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "branch", "merge", "revert", "endorse", "place_instance", "remove_instance"]},
         "parameters": {"type": "object"},
         "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z${'$'}"},
         "touches": {
           "type": "array",
-          "items": {"type": "string", "pattern": "^([0-9]+,[0-9]+|clock|agent:.+)${'$'}"},
-          "description": "tiles as 'col,row', 'clock' for a tick, 'agent:<id>' for an agent; the merge and revert conflict rules compare these"
+          "items": {"type": "string", "pattern": "^([0-9]+,[0-9]+|clock|agent:.+|instance:.+)${'$'}"},
+          "description": "tiles as 'col,row', 'clock' for a tick, 'agent:<id>' for an agent, 'instance:<id>' for an instance; the merge and revert conflict rules compare these"
+        },
+        "removed_instance": {
+          "type": "object",
+          "description": "on a remove_instance: the whole record that stood there, provenance, source and error included",
+          "required": ["id", "type", "x_mm", "y_mm", "z_mm", "rotation_deg", "height_mm", "crown_radius_mm", "provenance", "source", "error"]
         },
         "removed": {
           "type": "object",
@@ -315,6 +405,17 @@ internal const val EVENTS_SCHEMA_JSON: String = """{
       "type": "object",
       "required": ["col", "row"],
       "properties": {"col": {"type": "integer"}, "row": {"type": "integer"}}
+    },
+    "place_instance_parameters": {
+      "description": "a proposed instance at a free millimetre position from the grid's south-west corner, x east and y north; its id is the event id and its height the type's height_mm",
+      "type": "object",
+      "required": ["type", "x_mm", "y_mm"],
+      "properties": {"type": {"type": "string"}, "x_mm": {"type": "number"}, "y_mm": {"type": "number"}, "rotation_deg": {"type": "number"}}
+    },
+    "remove_instance_parameters": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {"id": {"type": "string"}}
     },
     "tick_parameters": {
       "type": "object",
@@ -470,6 +571,36 @@ internal const val VALIDATION_RULES_JSON: String = """{
       "scans": "object_types",
       "condition": {"op": "is_true", "field": "sprite_known"},
       "message": "{world} type {type}: sprite {sprite} is neither generic nor a declared extension"
+    },
+    {
+      "id": "footprint-mm-agrees",
+      "scans": "footprints",
+      "condition": {"op": "is_true", "field": "agrees"},
+      "message": "{world} type {type}: footprint {footprint} tiles, but footprint_mm spans {derived} tiles of this grid (ceil of footprint_mm / (tile_ft x 304.8))"
+    },
+    {
+      "id": "instance-id-unique",
+      "scans": "instances",
+      "condition": {"op": "is_true", "field": "is_unique"},
+      "message": "{world} instance {id}: two seed instances share this id, so one would overwrite the other"
+    },
+    {
+      "id": "instance-source",
+      "scans": "instances",
+      "condition": {"op": "is_true", "field": "has_source"},
+      "message": "{world} instance {id}: a measured instance needs a source: a twin id, a row id, a file or a stated tag"
+    },
+    {
+      "id": "instance-error",
+      "scans": "instances",
+      "condition": {"op": "empty", "field": "missing_error_fields"},
+      "message": "{world} instance {id}: a measured instance needs an error object; missing {missing_error_fields}"
+    },
+    {
+      "id": "instance-error-reason",
+      "scans": "instances",
+      "condition": {"op": "empty", "field": "unreasoned"},
+      "message": "{world} instance {id}: error {unreasoned} must be a number with a source or null with a null_reason"
     }
   ]
 }

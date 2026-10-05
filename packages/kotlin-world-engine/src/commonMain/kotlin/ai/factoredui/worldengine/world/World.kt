@@ -3,6 +3,7 @@ package ai.factoredui.worldengine.world
 import ai.factoredui.worldengine.events.AppliedEvent
 import ai.factoredui.worldengine.events.RefusalException
 import ai.factoredui.worldengine.events.applyEvent
+import ai.factoredui.worldengine.events.seatMeasuredInstance
 import ai.factoredui.worldengine.expression.ExprNode
 import ai.factoredui.worldengine.expression.ExpressionException
 import ai.factoredui.worldengine.expression.parseExpression
@@ -19,9 +20,14 @@ import ai.factoredui.worldengine.json.requiredText
 import ai.factoredui.worldengine.json.optionalText
 import ai.factoredui.worldengine.state.Instance
 import ai.factoredui.worldengine.state.State
+import ai.factoredui.worldengine.units.ExactRatio
+import ai.factoredui.worldengine.units.ceilingQuotient
+import ai.factoredui.worldengine.units.exactDecimalOf
 import ai.factoredui.worldengine.units.parseUnit
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 
@@ -36,6 +42,7 @@ class World private constructor(
     val cols: Int = pythonInt(grid.required("cols")).toInt()
     val rows: Int = pythonInt(grid.required("rows")).toInt()
     val tileFt: Double = pythonFloat(grid.required("tile_ft"))
+    val frame: JsonElement? = doc["frame"]?.takeIf { it !is JsonNull }
     val types: Map<String, ObjectType> = indexBy(doc.optionalList("object_types").objects().map { ObjectType.from(it) }) { it.id }
     val tags: Set<String> = types.values.flatMap { it.tags }.toSet()
     val equations: Map<String, EquationSpec> = indexBy(doc.optionalList("equations").objects().map { EquationSpec.from(it) }) { it.id }
@@ -126,6 +133,23 @@ class World private constructor(
 
     fun extentSqFt(): Double = cols * rows * tileArea
 
+    fun tileMm(): ExactRatio = exactDecimalOf(grid.required("tile_ft")).times(ExactRatio.MM_PER_FT)
+
+    fun extentMm(): Pair<ExactRatio, ExactRatio> = tileMm().let { it.timesWhole(cols.toLong()) to it.timesWhole(rows.toLong()) }
+
+    fun derivedFootprint(typeId: String): List<Long> {
+        val objectType = types[typeId] ?: throw ai.factoredui.worldengine.json.missingKey(typeId)
+        return objectType.footprintMm().map { ceilingQuotient(exactDecimalOf(it), tileMm()) }
+    }
+
+    fun footprintOf(typeId: String): Pair<Int, Int> {
+        val objectType = types[typeId] ?: throw ai.factoredui.worldengine.json.missingKey(typeId)
+        if (objectType.hasTileFootprint) return objectType.tileFootprint()
+        val derived = derivedFootprint(typeId)
+        if (derived.size != 2) throw MalformedDataException("footprint_mm must hold exactly two numbers")
+        return derived[0].toInt() to derived[1].toInt()
+    }
+
     fun linkedExtentSqFt(): Double? {
         val instance = linkedInstance ?: return null
         val world = parent ?: return null
@@ -148,6 +172,10 @@ class World private constructor(
         var state = State()
         stocks.values.forEach { stock -> state.stocks[stock.id] = pythonFloat(stock.initial) * parseUnit(stock.requiredUnit()).factor }
         doc.optionalList("seed").objects().forEach { entry ->
+            if (entry.requiredText("action") == "place_instance") {
+                seatMeasuredInstance(this, state, entry)
+                return@forEach
+            }
             val event = AppliedEvent(
                 id = entry.requiredText("id"),
                 actor = entry.optionalText("actor") ?: "world:$id",

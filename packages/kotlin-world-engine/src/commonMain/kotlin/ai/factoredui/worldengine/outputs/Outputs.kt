@@ -10,13 +10,15 @@ import ai.factoredui.worldengine.world.World
 data class WorldOutputs(
     val counts: Map<String, Int>,
     val areas: Map<String, Double>,
-    val equations: Map<String, Double>,
+    val equations: Map<String, Double?>,
     val stocks: Map<String, Double>,
-    val scoring: Map<String, Double>,
+    val scoring: Map<String, Double?>,
     val ticks: Long,
 )
 
 fun convertToUnit(value: Double, unit: String?): Double = value / parseUnit(unit).factor
+
+fun convertMeasuredToUnit(value: Double?, unit: String?): Double? = value?.let { convertToUnit(it, unit) }
 
 fun countUses(world: World, state: State): Map<String, Int> {
     val counts = world.types.keys.associateWithTo(LinkedHashMap()) { 0 }
@@ -33,16 +35,24 @@ fun reportOutputs(world: World, state: State): WorldOutputs {
     return WorldOutputs(
         counts = counts,
         areas = counts.mapValues { (_, count) -> count * world.tileArea },
-        equations = world.equations.values.associate { it.id to convertToUnit(evaluation.numberOf(world.ast(it.expr)), it.requiredUnit()) },
+        equations = world.equations.values.associate { it.id to convertMeasuredToUnit(evaluation.measuredNumberOf(world.ast(it.expr)), it.requiredUnit()) },
         stocks = world.stocks.values.associate { it.id to convertToUnit(state.stocks.getValue(it.id), it.requiredUnit()) },
-        scoring = world.scoring.values.associate { it.id to convertToUnit(evaluation.numberOf(world.ast(it.expr)), it.requiredUnit()) },
+        scoring = world.scoring.values.associate { it.id to convertMeasuredToUnit(evaluation.measuredNumberOf(world.ast(it.expr)), it.requiredUnit()) },
         ticks = state.ticks,
     )
 }
 
 fun renderProps(world: World, state: State): Map<String, Any?> {
+    val props = tilemapProps(world, state)
+    props["units"] = "mm"
+    props["instances"] = state.sortedInstanceRecords().map { it.drawnFields() }
+    world.frame?.let { props["frame"] = it }
+    return props
+}
+
+private fun tilemapProps(world: World, state: State): MutableMap<String, Any?> {
     val outputs = reportOutputs(world, state)
-    return linkedMapOf(
+    return linkedMapOf<String, Any?>(
         "cols" to world.cols,
         "rows" to world.rows,
         "shape" to (world.grid["shape"]?.let { ai.factoredui.worldengine.text.pythonStr(it) } ?: "square"),

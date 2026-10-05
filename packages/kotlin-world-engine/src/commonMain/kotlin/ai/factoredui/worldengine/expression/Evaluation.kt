@@ -3,18 +3,26 @@ package ai.factoredui.worldengine.expression
 import ai.factoredui.worldengine.json.MalformedDataException
 import ai.factoredui.worldengine.json.missingKey
 import ai.factoredui.worldengine.state.AgentRecord
+import ai.factoredui.worldengine.json.pythonFloat
 import ai.factoredui.worldengine.state.Instance
+import ai.factoredui.worldengine.state.InstanceRecord
 import ai.factoredui.worldengine.state.State
 import ai.factoredui.worldengine.state.Tile
 import ai.factoredui.worldengine.world.World
 import kotlin.math.abs
+import kotlin.math.hypot
 import kotlin.math.sqrt
+
+private const val MM_PER_FT = 304.8
+private val TRUE: Value = Value.Bool(true)
+private val FALSE: Value = Value.Bool(false)
 
 class Evaluation(
     val world: World,
     val state: State,
     val tileInstance: Instance? = null,
     val agent: AgentRecord? = null,
+    val actedInstance: InstanceRecord? = null,
 ) {
     private val memo: MutableMap<String, Value> = mutableMapOf()
 
@@ -23,19 +31,38 @@ class Evaluation(
         is ExprNode.StringLiteral -> Value.Text(node.value)
         is ExprNode.BooleanLiteral -> Value.Bool(node.value)
         is ExprNode.Name -> valueOfName(node.name)
-        is ExprNode.Negate -> Value.Num(-numericOf(valueOf(node.operand), "negation"))
-        is ExprNode.Not -> Value.Bool(!isTruthyValue(valueOf(node.operand)))
-        is ExprNode.And -> valueOf(node.left).let { left -> if (isTruthyValue(left)) valueOf(node.right) else left }
-        is ExprNode.Or -> valueOf(node.left).let { left -> if (isTruthyValue(left)) left else valueOf(node.right) }
-        is ExprNode.Arithmetic -> Value.Num(arithmetic(node.operator, valueOf(node.left), valueOf(node.right)))
-        is ExprNode.Comparison -> Value.Bool(compareValues(node.operator, valueOf(node.left), valueOf(node.right)))
+        is ExprNode.Negate -> valueOf(node.operand).let { operand -> if (operand == Value.Null) Value.Null else Value.Num(-numericOf(operand, "negation")) }
+        is ExprNode.Not -> valueOf(node.operand).let { operand -> if (operand == Value.Null) Value.Null else Value.Bool(!isTruthyValue(operand)) }
+        is ExprNode.And -> conjunction(node)
+        is ExprNode.Or -> disjunction(node)
+        is ExprNode.Arithmetic -> arithmetic(node.operator, valueOf(node.left), valueOf(node.right))
+        is ExprNode.Comparison -> compareValues(node.operator, valueOf(node.left), valueOf(node.right))?.let { Value.Bool(it) } ?: Value.Null
         is ExprNode.Call -> call(node.function, node.arguments)
     }
 
     fun numberOf(node: ExprNode): Double = numericOf(valueOf(node), "a world figure")
 
+    fun measuredNumberOf(node: ExprNode): Double? = valueOf(node).takeIf { it != Value.Null }?.let { numericOf(it, "a world figure") }
+
+    private fun conjunction(node: ExprNode.And): Value {
+        val left = valueOf(node.left)
+        if (left == FALSE) return FALSE
+        val right = valueOf(node.right)
+        if (right == FALSE) return FALSE
+        return if (left == Value.Null || right == Value.Null) Value.Null else TRUE
+    }
+
+    private fun disjunction(node: ExprNode.Or): Value {
+        val left = valueOf(node.left)
+        if (left == TRUE) return TRUE
+        val right = valueOf(node.right)
+        if (right == TRUE) return TRUE
+        return if (left == Value.Null || right == Value.Null) Value.Null else FALSE
+    }
+
     private fun valueOfName(name: String): Value {
         if (name == "tile") return Value.TileRef(tileInstance)
+        if (name == "instance") return Value.InstanceRef(actedInstance)
         if (name == "tile_area") return Value.Num(world.tileArea)
         if (name == "now") return Value.Num(state.ticks * world.tickHours)
         if (name == "tick_length") return Value.Num(world.tickHours)
@@ -60,9 +87,11 @@ class Evaluation(
     }
 
     private fun call(function: String, arguments: List<ExprNode>): Value = when (function) {
-        "if" -> if (isTruthyValue(valueOf(arguments[0]))) valueOf(arguments[1]) else valueOf(arguments[2])
+        "if" -> choose(arguments)
         "min" -> pickExtreme(arguments, isMinimum = true)
         "max" -> pickExtreme(arguments, isMinimum = false)
+        "count_instances" -> Value.Num(instancesOf(arguments[0]).size.toDouble())
+        "min_distance_mm" -> nearestInstanceGapFt(instancesOf(arguments[0]), instancesOf(arguments[1]))?.let { Value.Num(it) } ?: Value.Null
         "count" -> Value.Num(state.cells.values.count { matchesUse(it, quotedUse(arguments[0])) }.toDouble())
         "sum" -> Value.Num(sumProperty(quotedUse(arguments[0])))
         "neighbors" -> Value.Num(countNeighbors(arguments))
@@ -73,12 +102,31 @@ class Evaluation(
         else -> throw ExpressionException("unknown_word", "function '$function'")
     }
 
+    private fun choose(arguments: List<ExprNode>): Value {
+        val condition = valueOf(arguments[0])
+        if (condition == Value.Null) return Value.Null
+        return if (isTruthyValue(condition)) valueOf(arguments[1]) else valueOf(arguments[2])
+    }
+
     private fun pickExtreme(arguments: List<ExprNode>, isMinimum: Boolean): Value {
         val values = arguments.map { valueOf(it) }
+        if (Value.Null in values) return Value.Null
         return values.drop(1).fold(values.first()) { kept, candidate ->
             val isBetter = if (isMinimum) compareValues("<", candidate, kept) else compareValues(">", candidate, kept)
-            if (isBetter) candidate else kept
+            if (isBetter == true) candidate else kept
         }
+    }
+
+    private fun instancesOf(argument: ExprNode): List<InstanceRecord> {
+        if (argument is ExprNode.StringLiteral) return state.sortedInstanceRecords().filter { typeMatchesUse(it.type, argument.value) }
+        val referenced = valueOf(argument) as? Value.InstanceRef ?: throw MalformedDataException("min_distance_mm takes a use or 'instance'")
+        return listOf(referenced.record ?: throw MalformedDataException("'NoneType' object is not subscriptable"))
+    }
+
+    private fun typeMatchesUse(typeId: String, use: String): Boolean {
+        if (use == "any") return true
+        if (use.startsWith("#")) return use.substring(1) in (world.types[typeId]?.tags ?: throw missingKey(typeId))
+        return typeId == use
     }
 
     private fun quotedUse(argument: ExprNode): String =
@@ -163,13 +211,26 @@ class Evaluation(
             val perAgent = Evaluation(world, state, agent = neighbour)
             val weight = perAgent.numberOf(weightTree)
             total += weight
-            if (compareValues(">", perAgent.valueOf(utilityTree), Value.Num(0.0))) approving += weight
+            if (compareValues(">", perAgent.valueOf(utilityTree), Value.Num(0.0)) == true) approving += weight
         }
         return if (total > 0) approving / total else 0.0
     }
 }
 
-fun arithmetic(operator: String, left: Value, right: Value): Double {
+fun nearestInstanceGapFt(first: List<InstanceRecord>, second: List<InstanceRecord>): Double? {
+    val gaps = first.flatMap { a -> second.filter { b -> a.id != b.id }.map { b -> planeGapMm(a, b) } }
+    return gaps.minOrNull()?.let { it / MM_PER_FT }
+}
+
+private fun planeGapMm(a: InstanceRecord, b: InstanceRecord): Double =
+    hypot(pythonFloat(a.xMm) - pythonFloat(b.xMm), pythonFloat(a.yMm) - pythonFloat(b.yMm))
+
+fun arithmetic(operator: String, left: Value, right: Value): Value {
+    if (left == Value.Null || right == Value.Null) return Value.Null
+    return Value.Num(arithmeticOfNumbers(operator, left, right))
+}
+
+private fun arithmeticOfNumbers(operator: String, left: Value, right: Value): Double {
     val leftNumber = numericOf(left, operator)
     val rightNumber = numericOf(right, operator)
     return when (operator) {
@@ -185,7 +246,8 @@ private fun divide(numerator: Double, denominator: Double): Double {
     return numerator / denominator
 }
 
-fun compareValues(operator: String, left: Value, right: Value): Boolean {
+fun compareValues(operator: String, left: Value, right: Value): Boolean? {
+    if (left == Value.Null || right == Value.Null) return null
     if (operator == "==") return areEqualValues(left, right)
     if (operator == "!=") return !areEqualValues(left, right)
     val order = orderOf(left, right)

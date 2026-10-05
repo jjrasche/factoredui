@@ -47,10 +47,21 @@ data class ObjectType(
     val color: String? get() = raw.optionalText("color")
     val sprite: String? get() = raw.optionalText("sprite")
 
-    fun footprint(): Pair<Int, Int> {
-        val cells = raw["footprint"] as? JsonArray ?: return 1 to 1
-        if (cells.size != 2) throw MalformedDataException("footprint must hold exactly two numbers")
-        return pythonInt(cells[0]).toInt() to pythonInt(cells[1]).toInt()
+    val hasTileFootprint: Boolean get() = "footprint" in raw
+
+    val heightMm: JsonElement? get() = raw["height_mm"]
+
+    fun tileFootprint(): Pair<Int, Int> = twoNumbers(raw["footprint"] ?: throw missingKey("footprint"), "footprint").let { (width, height) ->
+        pythonInt(width).toInt() to pythonInt(height).toInt()
+    }
+
+    fun footprintMm(): List<JsonElement> = (raw["footprint_mm"] ?: throw missingKey("footprint_mm")) as? JsonArray
+        ?: throw MalformedDataException("'footprint_mm' is not a list")
+
+    private fun twoNumbers(element: JsonElement, field: String): List<JsonElement> {
+        val cells = element as? JsonArray ?: throw MalformedDataException("'$field' is not a list")
+        if (cells.size != 2) throw MalformedDataException("$field must hold exactly two numbers")
+        return cells
     }
 
     fun property(name: String): PropertySpec? = properties.firstOrNull { it.name == name }

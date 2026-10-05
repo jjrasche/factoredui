@@ -95,6 +95,7 @@ private class SchemaCheck(private val root: JsonObject) {
         val errors = mutableListOf<String>()
         val value = instance.doubleOrNull ?: return errors
         schema["minimum"]?.let { bound -> if (value < (bound as JsonPrimitive).doubleOrNull!!) errors += "$where: below ${pythonStr(bound)}" }
+        schema["exclusiveMinimum"]?.let { bound -> if (value <= (bound as JsonPrimitive).doubleOrNull!!) errors += "$where: not above ${pythonStr(bound)}" }
         schema["maximum"]?.let { bound -> if (value > (bound as JsonPrimitive).doubleOrNull!!) errors += "$where: above ${pythonStr(bound)}" }
         return errors
     }

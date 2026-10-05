@@ -8,12 +8,16 @@ import kotlinx.serialization.json.putJsonObject
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class ClockAndScoringTest {
     private fun tick(log: EventLog, steps: Int) = log.attempt("main", "clock", "tick", buildJsonObject { put("n", steps) }, STAMP)
 
-    private fun assertNear(expected: Double, actual: Double) = assertTrue(abs(expected - actual) <= 1e-9 * maxOf(1.0, abs(expected)), "expected $expected, found $actual")
+    private fun assertNear(expected: Double, measured: Double?) {
+        val actual = assertNotNull(measured, "expected $expected, found not-measured")
+        assertTrue(abs(expected - actual) <= 1e-9 * maxOf(1.0, abs(expected)), "expected $expected, found $actual")
+    }
 
     @Test
     fun each_tick_evaluates_every_stock_once_against_the_previous_values() {

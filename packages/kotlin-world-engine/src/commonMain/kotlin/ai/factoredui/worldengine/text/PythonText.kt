@@ -64,6 +64,26 @@ fun formatGeneral(value: Double, precision: Int): String {
     return sign + body
 }
 
+fun formatFixedTrimmed(value: Double, places: Int): String {
+    if (!value.isFinite()) return pythonFloatRepr(value)
+    val sign = if (value < 0 || (value == 0.0 && 1.0 / value < 0)) "-" else ""
+    val decimal = decomposeDecimal(value.toString())
+    val significant = decimal.pointPosition + places
+    val rounded = when {
+        decimal.digits.isEmpty() || significant < 0 -> DecimalDigits("", 0)
+        significant == 0 -> roundBelowFirstDigit(decimal, places)
+        else -> roundToSignificant(decimal, significant)
+    }
+    if (rounded.digits.isEmpty()) return "${sign}0"
+    return sign + fixedForm(rounded).trimEnd('0').trimEnd('.')
+}
+
+private fun roundBelowFirstDigit(decimal: DecimalDigits, places: Int): DecimalDigits {
+    val digits = decimal.digits
+    val roundsUp = digits[0] > '5' || (digits[0] == '5' && digits.length > 1)
+    return if (roundsUp) DecimalDigits("1", 1 - places) else DecimalDigits("", 0)
+}
+
 private fun roundToSignificant(decimal: DecimalDigits, precision: Int): DecimalDigits {
     val digits = decimal.digits
     if (digits.length <= precision) return decimal

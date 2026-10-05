@@ -22,6 +22,7 @@ data class LogEvent(
     val timestamp: String,
     val touches: List<String> = emptyList(),
     val removed: JsonObject? = null,
+    val removedInstance: JsonObject? = null,
 ) {
     fun asApplied(): AppliedEvent = AppliedEvent(id, actor, action, parameters)
 
@@ -38,6 +39,7 @@ data class LogEvent(
             "touches" to JsonArray(touches.map { JsonPrimitive(it) }),
         )
         if (removed != null) fields["removed"] = removed
+        if (removedInstance != null) fields["removed_instance"] = removedInstance
         return JsonObject(fields)
     }
 
