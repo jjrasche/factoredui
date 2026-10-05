@@ -48,7 +48,7 @@ class EngineReferenceTest {
             mapOf("paddock" to 12, "hoop_house" to 2, "commons_building" to 4, "van_pad" to 1, "path" to 6, "pond" to 2, "woodland_tree" to 4),
             outputs.counts,
         )
-        assertNear(75.5, outputs.scoring.getValue("hoop_house_labor"))
+        assertNear(2 * 75.5 / (96 * 20) * 625, outputs.scoring.getValue("hoop_house_labor"))
         assertNear(12 * 625 / 43560.0 * 4.0, outputs.equations.getValue("pasture_yield"))
         assertNear(12 * 625 / 43560.0 * 4.0, outputs.stocks.getValue("standing_forage"))
         val support = outputs.scoring.getValue("neighbor_support")

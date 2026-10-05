@@ -19,7 +19,16 @@ const val PARCEL_WORLD_JSON: String = """{
       "properties": [
         {"name": "annual_forage_yield", "unit": "ton/acre/year", "default": 4.0, "kind": "yield",
          "source": {"twin": "eq-aux-stocking-static", "binding": "mi_grass_clover_tons_per_acre", "row": "yield-mi-grass-clover-4.0t"},
-         "note": "the twin's bound Michigan grass-clover annual herbage figure"}
+         "note": "the twin's bound Michigan grass-clover annual herbage figure"},
+        {"name": "forage_dm_per_tile", "unit": "lb/tile/year", "default": 114.7842056932966, "kind": "yield",
+         "source": {"twin": "twin-constants.json#paddock.yield_kg_dm_per_tile_per_year", "row": "yield-mi-grass-clover-4.0t"},
+         "note": "52.0652398989899 kg dry matter per tile a year, shown in lb because the engine's unit table has no kg"},
+        {"name": "labor_hours_per_use", "unit": "hour/year", "default": 38.25, "kind": "labor",
+         "source": {"twin": "twin-constants.json#paddock.hours_per_year_per_use", "row": "uw-moving-cattle-15-min"},
+         "note": "one herd moved daily through the grazing season, charged once when any paddock exists"},
+        {"name": "capex_per_use", "unit": "usd", "default": 219.98, "kind": "price",
+         "source": {"twin": "twin-constants.json#paddock.capex_usd_per_use", "row": "cap-fence-energizer"},
+         "note": "energizer 129.99 and stock tank 89.99 (row cap-stock-tank-110), up front, once"}
       ]
     },
     {
@@ -30,9 +39,9 @@ const val PARCEL_WORLD_JSON: String = """{
       "footprint": [2, 1],
       "tags": ["structure"],
       "properties": [
-        {"name": "labor_hours", "unit": "hour/year", "default": 75.5, "kind": "labor",
-         "source": {"twin": "task_hours.jsonl hoop-house-ventilate 10 + hoop-house-crop-plant 3 + hoop-house-crop-harvest 40 + hoop-house-crop-prune 22.5", "row": "uky-tunnel-labor-hours"},
-         "note": "the twin states hours per house per season; one season a year is assumed"}
+        {"name": "labor_hours_per_tile", "unit": "hour/tile/year", "default": 24.576822916666668, "kind": "labor",
+         "source": {"twin": "twin-constants.json#hoop_house.hours_per_year_per_tile", "row": "uky-tunnel-labor-hours"},
+         "note": "75.5 hours a year for the row's 96 by 20 ft house, scaled by area to one 625 sq ft tile"}
       ]
     },
     {
@@ -149,8 +158,16 @@ const val PARCEL_WORLD_JSON: String = """{
     {"id": "area_woodland_tree", "label": "Woodland tree area", "expr": "count('woodland_tree') * tile_area", "unit": "sq_ft"},
     {"id": "pasture_yield_annual", "label": "Pasture yield", "expr": "pasture_yield", "unit": "ton/year",
      "source": {"twin": "eq-aux-stocking-static"}},
-    {"id": "hoop_house_labor", "label": "Hoop house labour", "expr": "sum('labor_hours')", "unit": "hour/year",
-     "source": {"twin": "task_hours.jsonl", "row": "uky-tunnel-labor-hours"}},
+    {"id": "hoop_house_labor", "label": "Hoop house labour", "expr": "count('hoop_house') * hoop_house.labor_hours_per_tile", "unit": "hour/year",
+     "source": {"twin": "twin-constants.json#hoop_house.hours_per_year_per_tile", "row": "uky-tunnel-labor-hours"}},
+    {"id": "labor_hours_total", "label": "Labour hours", "expr": "hoop_house_labor + if(count('paddock') > 0 [tile], paddock.labor_hours_per_use, 0 [hour/year])", "unit": "hour/year",
+     "source": {"twin": "twin-constants.json"},
+     "note": "only the uses with a cited labor figure: hoop-house tiles and one herd move; every other use counts zero until a row times it"},
+    {"id": "capex_floor", "label": "Sourced capital floor", "expr": "if(count('paddock') > 0 [tile], paddock.capex_per_use, 0 [usd])", "unit": "usd",
+     "source": {"twin": "twin-constants.json#paddock.capex_usd_per_use"},
+     "note": "a floor: banked up-front prices only; the hoop house, buildings, pads, paths, pond and trees have no banked price and count zero"},
+    {"id": "paddock_dm_yield", "label": "Paddock dry matter", "expr": "count('paddock') * paddock.forage_dm_per_tile", "unit": "lb/year",
+     "source": {"twin": "twin-constants.json#paddock.yield_kg_dm_per_tile_per_year", "row": "yield-mi-grass-clover-4.0t"}},
     {"id": "neighbor_support", "label": "Projected neighbour support", "expr": "projected_support('neighbor')", "unit": "1",
      "binding": false, "note": "a projection from synthetic and opted-in neighbours; never a vote"}
   ],
@@ -487,9 +504,20 @@ const val MUTATIONS_JSON: String = """{
       "edits": [{"op": "set", "path": ["scoring", {"id": "neighbor_support"}, "binding"], "value": true}]
     },
     {
+      "rule": "projection-not-binding",
+      "world": "parcel-five-acre.world.json",
+      "edits": [
+        {"op": "set", "path": ["equations"], "value": [
+          {"id": "pasture_yield", "expr": "count('paddock') * tile_area * paddock.annual_forage_yield", "unit": "ton/year", "source": {"twin": "eq-aux-stocking-static"}},
+          {"id": "support_now", "expr": "projected_support('neighbor')", "unit": "1"}
+        ]},
+        {"op": "set", "path": ["rules", {"id": "van-pad-needs-path"}, "require"], "value": "support_now >= 0.5"}
+      ]
+    },
+    {
       "rule": "figure-sourced",
       "world": "parcel-five-acre.world.json",
-      "edits": [{"op": "delete", "path": ["object_types", {"id": "hoop_house"}, "properties", {"name": "labor_hours"}, "source"]}]
+      "edits": [{"op": "delete", "path": ["object_types", {"id": "hoop_house"}, "properties", {"name": "labor_hours_per_tile"}, "source"]}]
     },
     {
       "rule": "sprite-known",
