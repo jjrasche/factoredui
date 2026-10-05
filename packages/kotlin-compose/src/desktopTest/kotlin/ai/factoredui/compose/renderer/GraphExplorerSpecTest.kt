@@ -2,6 +2,7 @@ package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.compose.testing.SpecVisualCheck
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
@@ -82,5 +83,21 @@ class GraphExplorerSpecTest {
         assertTrue(!check.isShown("node-card"), "and the node card goes away")
         assertTrue((check.node("edge-coupling").props["value"] as String).contains("coupling hold"))
         assertEquals("reads the day's rain every hour", check.node("edge-coupling-reason").props["value"])
+    }
+
+    @Test
+    fun theExplorerFollowsTheThemeValueIncludingItsCards() = runComposeUiTest {
+        val context = RenderContext(initialData = hostData + ("theme" to "dark"))
+        val check = SpecVisualCheck(this, context)
+        check.render(spec.root, viewport = 600.dp)
+        val corner = { check.png().toPixelMap()[2, 2] }
+        assertTrue(corner().red < 0.2f, "the window ground is dark: ${corner()}")
+        check.tap("rain")
+        val card = check.region("node-card")
+        val surface = check.png().toPixelMap()[card.left.value.toInt() + 3, card.top.value.toInt() + 3]
+        assertTrue(surface.red < 0.3f && surface.red > corner().red, "the card is a dark surface a step off the ground: $surface")
+        context.setBinding("theme", "light")
+        waitForIdle()
+        assertTrue(corner().red > 0.9f, "and the host can flip it light: ${corner()}")
     }
 }

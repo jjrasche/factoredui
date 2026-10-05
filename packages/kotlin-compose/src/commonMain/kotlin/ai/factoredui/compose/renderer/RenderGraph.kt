@@ -109,6 +109,7 @@ private const val MAX_NODE_WIDTH_DP = 190f
 private const val DEFAULT_BORDER_DP = 1f
 private const val SELECTED_BORDER_DP = 2.5f
 private const val DASH_DP = 4f
+private const val DASHED_OUTLINE_MIN_DP = 1.5f
 private const val MUTED_BLEND = 0.55f
 private const val PARKED_ALPHA = 0.75f
 private const val LANE_GUTTER_DP = 24f
@@ -136,6 +137,13 @@ private const val LEGEND_COMPACT_W_DP = 18f
 private const val LEGEND_COMPACT_H_DP = 10f
 private const val LEGEND_EDGE_W_DP = 30f
 private val UNSTATED_FILL = Color(0xFFE3E6EE)
+private val UNSTATED_FILL_DARK = Color(0xFF3A4150)
+private val TEXT_ON_LIGHT = Color(0xFF1A1A1A)
+private const val WHITE_TEXT_BELOW = 0.5f
+private const val LANE_TINT_ALPHA_DARK = 0.16f
+private const val LANE_LABEL_LIFT_DARK = 0.4f
+private const val RESTING_EDGE_ALPHA_DARK = 0.75f
+private const val DIMMED_EDGE_ALPHA_DARK = 0.22f
 
 private class NodeLook(
     val shape: GraphNodeShape,
@@ -274,8 +282,8 @@ internal fun RenderGraph(node: SpecNode, resolvedProps: Map<String, Any?>, conte
                     },
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
-                        drawLanes(layout, groupColors, measurer, theme.muted)
-                        drawEdges(layout, edgeStyles, statusColors, theme.muted, focus)
+                        drawLanes(layout, groupColors, measurer, theme.muted, theme.isDark)
+                        drawEdges(layout, edgeStyles, statusColors, theme.muted, focus, theme.isDark)
                     }
                     for (entry in entries) {
                         val box = layout.nodes[entry.id] ?: continue
@@ -285,7 +293,7 @@ internal fun RenderGraph(node: SpecNode, resolvedProps: Map<String, Any?>, conte
                             entry = entry,
                             box = box,
                             look = looks.getValue(entry.id),
-                            fill = nodeFill(entry, statusColors),
+                            fill = nodeFill(entry, statusColors, if (theme.isDark) UNSTATED_FILL_DARK else UNSTATED_FILL),
                             border = entry.group?.let { colorOf(groupColors[it], theme.muted) } ?: theme.muted,
                             isSelected = entry.id == selected,
                             alpha = if (parked) dim * PARKED_ALPHA else dim,
@@ -356,11 +364,11 @@ private fun measuredSpec(entry: GraphNodeEntry, look: NodeLook, measurer: TextMe
 
 private fun colorOf(hex: String?, fallback: Color): Color = parseGeomapColor(hex)?.let { Color(it) } ?: fallback
 
-private fun nodeFill(entry: GraphNodeEntry, statusColors: Map<String, String>): Color =
-    colorOf(entry.color ?: entry.status?.let { statusColors[it] }, UNSTATED_FILL)
+private fun nodeFill(entry: GraphNodeEntry, statusColors: Map<String, String>, unstated: Color): Color =
+    colorOf(entry.color ?: entry.status?.let { statusColors[it] }, unstated)
 
-private fun readableOn(fill: Color, ink: Color): Color =
-    if (fill.luminance() < 0.42f) Color.White else ink
+private fun readableOn(fill: Color): Color =
+    if (fill.luminance() < WHITE_TEXT_BELOW) Color.White else TEXT_ON_LIGHT
 
 private fun Color.luminance(): Float = 0.2126f * red + 0.7152f * green + 0.0722f * blue
 
@@ -382,7 +390,11 @@ private fun GraphNodeBox(
     val shape = shapeOf(look.shape)
     val shownFill = if (look.muted) lerp(fill, theme.ground, MUTED_BLEND) else fill
     val outlineColor = if (isSelected || look.dashedOutline) theme.ink else border
-    val outlineDp = if (isSelected) maxOf(SELECTED_BORDER_DP, look.borderDp) else look.borderDp
+    val outlineDp = when {
+        isSelected -> maxOf(SELECTED_BORDER_DP, look.borderDp)
+        look.dashedOutline -> maxOf(DASHED_OUTLINE_MIN_DP, look.borderDp)
+        else -> look.borderDp
+    }
     val outline = if (look.dashedOutline) {
         Modifier.drawBehind { drawDashedOutline(outlineColor, outlineDp, look.shape, density) }
     } else {
@@ -402,7 +414,7 @@ private fun GraphNodeBox(
     ) {
         Text(
             text = entry.label,
-            style = look.text.copy(color = if (look.muted) theme.ink else readableOn(fill, theme.ink)),
+            style = look.text.copy(color = if (look.muted) theme.ink else readableOn(fill)),
             maxLines = 1,
             softWrap = false,
             overflow = TextOverflow.Ellipsis,
@@ -473,17 +485,17 @@ private fun edgeTappedAction(action: String, route: FlowEdgeRoute) = ActionRef(
     params = mapOf("from" to SpecValue.StringValue(route.from), "to" to SpecValue.StringValue(route.to)),
 )
 
-private fun DrawScope.drawLanes(layout: FlowLayout, groupColors: Map<String, String>, measurer: TextMeasurer, labelColor: Color) {
+private fun DrawScope.drawLanes(layout: FlowLayout, groupColors: Map<String, String>, measurer: TextMeasurer, labelColor: Color, dark: Boolean) {
     for (lane in layout.lanes) {
         if (lane.group == null && layout.lanes.size == 1) continue
         val tint = colorOf(lane.group?.let { groupColors[it] }, labelColor)
         val topLeft = Offset(0f, lane.top * density)
         val size = Size(layout.width * density, lane.height * density)
-        drawRoundRect(tint.copy(alpha = LANE_TINT_ALPHA), topLeft, size, CornerRadius(LANE_CORNER_DP * density), style = Fill)
+        drawRoundRect(tint.copy(alpha = if (dark) LANE_TINT_ALPHA_DARK else LANE_TINT_ALPHA), topLeft, size, CornerRadius(LANE_CORNER_DP * density), style = Fill)
         val group = lane.group ?: continue
         val label = measurer.measure(
             text = AnnotatedString(group),
-            style = LANE_TEXT.copy(color = tint),
+            style = LANE_TEXT.copy(color = if (dark) lerp(tint, Color.White, LANE_LABEL_LIFT_DARK) else tint),
             overflow = TextOverflow.Ellipsis,
             softWrap = false,
             maxLines = 1,
@@ -502,9 +514,10 @@ private fun DrawScope.drawEdges(
     statusColors: Map<String, String>,
     fallback: Color,
     focus: GraphFocus?,
+    dark: Boolean,
 ) {
     val (lit, rest) = layout.edges.partition { focus != null && (it.from to it.to) in focus.edges }
-    val restAlpha = if (focus == null) RESTING_EDGE_ALPHA else DIMMED_EDGE_ALPHA
+    val restAlpha = if (dark) (if (focus == null) RESTING_EDGE_ALPHA_DARK else DIMMED_EDGE_ALPHA_DARK) else (if (focus == null) RESTING_EDGE_ALPHA else DIMMED_EDGE_ALPHA)
     for (route in rest) drawEdge(route, styles[route.from to route.to], statusColors, fallback, restAlpha, highlighted = false)
     for (route in lit) drawEdge(route, styles[route.from to route.to], statusColors, fallback, 1f, highlighted = true)
 }
@@ -590,7 +603,7 @@ private fun LegendSwatch(entry: GraphLegendEntry, modifier: Modifier) {
 private fun LegendChip(entry: GraphLegendEntry, modifier: Modifier) {
     val theme = LocalSpecTheme.current
     val shape = shapeOf(entry.shape ?: GraphNodeShape.BOX)
-    val fill = colorOf(entry.color, UNSTATED_FILL).let { if (entry.muted) lerp(it, theme.ground, MUTED_BLEND) else it }
+    val fill = colorOf(entry.color, if (theme.isDark) UNSTATED_FILL_DARK else UNSTATED_FILL).let { if (entry.muted) lerp(it, theme.ground, MUTED_BLEND) else it }
     val width = if (entry.compact) LEGEND_COMPACT_W_DP else LEGEND_NODE_W_DP
     val height = if (entry.compact) LEGEND_COMPACT_H_DP else LEGEND_NODE_H_DP
     val outlineDp = entry.borderWidth ?: DEFAULT_BORDER_DP

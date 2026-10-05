@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory = $true)][string]$World,
     [string]$Spec,
     [string]$Presentation,
-    [ValidateSet("light", "dark")][string]$Theme = "light",
+    [ValidateSet("light", "dark")][string]$Theme,
     [int]$Width = 1500,
     [int]$Height = 900
 )
@@ -15,10 +15,11 @@ $repoRoot = (Resolve-Path (Join-Path $here "..\..\..")).Path
 $worldFile = (Resolve-Path $World).Path
 $specFile = (Resolve-Path $Spec).Path
 $presentationFile = (Resolve-Path $Presentation).Path
+$themeArgs = if ($Theme) { " --theme $Theme" } else { "" }
 
 Push-Location $repoRoot
 try {
-    & .\gradlew.bat :kotlin-world-builder:worldBuilder "--args=--world $worldFile --spec $specFile --presentation $presentationFile --theme $Theme --width $Width --height $Height"
+    & .\gradlew.bat :kotlin-world-builder:worldBuilder "--args=--world $worldFile --spec $specFile --presentation $presentationFile --width $Width --height $Height$themeArgs"
     exit $LASTEXITCODE
 }
 finally {

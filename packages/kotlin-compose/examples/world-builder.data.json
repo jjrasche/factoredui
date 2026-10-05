@@ -1,7 +1,6 @@
 {
   "parcel": { "cols": 13, "rows": 26, "tile_area": 625 },
   "shape": "square",
-  "theme": "light",
   "animate": true,
   "brush": "woodland_tree",
   "cells": [],

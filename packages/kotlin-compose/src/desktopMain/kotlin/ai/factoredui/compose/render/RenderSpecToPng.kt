@@ -23,11 +23,12 @@ fun renderSpecToPng(
     density: Float = 2f,
     transparent: Boolean = false,
     data: Map<String, Any?> = emptyMap(),
+    theme: SpecTheme = SpecTheme.LIGHT,
 ): ByteArray {
     val spec = specDecoder.decodeFromString(Spec.serializer(), specJson)
     val scene = ImageComposeScene(width = width, height = height, density = Density(density)) {
-        val theme = if (transparent) SpecTheme.LIGHT.copy(ground = Color.Transparent) else SpecTheme.LIGHT
-        RenderSpec(spec = spec, context = RenderContext(initialData = data, theme = theme))
+        val painted = if (transparent) theme.copy(ground = Color.Transparent) else theme
+        RenderSpec(spec = spec, context = RenderContext(initialData = data, theme = painted))
     }
     try {
         return scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes ?: ByteArray(0)

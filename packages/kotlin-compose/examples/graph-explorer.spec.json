@@ -4,7 +4,7 @@
   "root": {
     "id": "explorer",
     "type": "column",
-    "props": { "background": "#FFFFFF" },
+    "props": { "theme": "{theme}", "background": "ground", "flex": 1 },
     "children": [
       {
         "id": "flow",
@@ -33,7 +33,7 @@
         "id": "node-card",
         "type": "column",
         "visible": "{sel_node}",
-        "props": { "padding": 12, "gap": 4, "background": "#F1F3F8" },
+        "props": { "padding": 12, "gap": 4, "background": "surface" },
         "children": [
           { "id": "node-title", "type": "text", "props": { "value": "{sel_node.label}", "variant": "heading" } },
           { "id": "node-ident", "type": "text", "props": { "value": "id {sel_node.id}  ·  kind {sel_node.kind}  ·  status {sel_node.status}  ·  group {sel_node.group}" } },
@@ -53,7 +53,7 @@
         "id": "edge-card",
         "type": "column",
         "visible": "{sel_edge}",
-        "props": { "padding": 12, "gap": 4, "background": "#F1F3F8" },
+        "props": { "padding": 12, "gap": 4, "background": "surface" },
         "children": [
           { "id": "edge-title", "type": "text", "props": { "value": "{sel_edge.from}  →  {sel_edge.to}", "variant": "heading" } },
           { "id": "edge-ident", "type": "text", "props": { "value": "kind {sel_edge.kind}  ·  status {sel_edge.status}  ·  equation {sel_edge.via}" } },

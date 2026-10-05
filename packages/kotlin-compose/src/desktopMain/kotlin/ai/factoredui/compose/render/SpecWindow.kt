@@ -8,6 +8,8 @@ import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.singleWindowApplication
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
+import ai.factoredui.compose.renderer.SpecTheme
+import ai.factoredui.compose.renderer.themeNamed
 import ai.factoredui.compose.schema.Spec
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -19,21 +21,25 @@ private val specDecoder = Json { ignoreUnknownKeys = true }
 private const val DEFAULT_WIDTH = 1280
 private const val DEFAULT_HEIGHT = 800
 private const val DATA_FLAG = "--data"
+private const val THEME_FLAG = "--theme"
+private val WINDOW_FLAGS = setOf(DATA_FLAG, THEME_FLAG)
 
-data class WindowArgs(val source: String, val width: Int, val height: Int, val dataPath: String?)
+data class WindowArgs(val source: String, val width: Int, val height: Int, val dataPath: String?, val theme: String? = null)
 
 fun parseWindowArgs(args: Array<String>): WindowArgs? {
     if (args.isEmpty()) return null
-    val dataIndex = args.indexOf(DATA_FLAG)
-    if (dataIndex >= 0 && dataIndex + 1 >= args.size) return null
-    val dataPath = if (dataIndex >= 0) args[dataIndex + 1] else null
-    val positional = args.filterIndexed { index, _ -> dataIndex < 0 || (index != dataIndex && index != dataIndex + 1) }
+    val flagIndexes = args.indices.filter { args[it] in WINDOW_FLAGS }
+    if (flagIndexes.any { it + 1 >= args.size }) return null
+    val flags = flagIndexes.associate { args[it] to args[it + 1] }
+    val consumed = flagIndexes.flatMap { listOf(it, it + 1) }.toSet()
+    val positional = args.filterIndexed { index, _ -> index !in consumed }
     val sizes = positional.drop(1).mapNotNull { it.toIntOrNull() }
     return WindowArgs(
         source = positional.first(),
         width = sizes.getOrNull(0) ?: DEFAULT_WIDTH,
         height = sizes.getOrNull(1) ?: DEFAULT_HEIGHT,
-        dataPath = dataPath,
+        dataPath = flags[DATA_FLAG],
+        theme = flags[THEME_FLAG],
     )
 }
 
@@ -61,13 +67,15 @@ fun main(args: Array<String>) {
             kotlin.system.exitProcess(5)
         }
     } ?: emptyMap()
+    val theme = resolveWindowTheme(parsed.theme, windowThemeFromEnvironment(), data["theme"])
+    val seeded = data + ("theme" to theme)
 
-    println("spec-window: ${spec.root.type} '${spec.root.id}' from $source with ${data.size} data keys — drag to pan, scroll to zoom")
+    println("spec-window: ${spec.root.type} '${spec.root.id}' from $source with ${data.size} data keys, $theme theme — drag to pan, scroll to zoom")
     singleWindowApplication(
         state = WindowState(size = DpSize(parsed.width.dp, parsed.height.dp), position = WindowPosition.Aligned(Alignment.Center)),
         title = "factoredui — ${spec.root.id}",
     ) {
-        RenderSpec(spec = spec, context = RenderContext(initialData = data))
+        RenderSpec(spec = spec, context = RenderContext(initialData = seeded, theme = themeNamed(theme) ?: SpecTheme.DARK))
     }
 }
 

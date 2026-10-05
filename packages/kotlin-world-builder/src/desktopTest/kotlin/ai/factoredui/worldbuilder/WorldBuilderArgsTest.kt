@@ -9,7 +9,7 @@ class WorldBuilderArgsTest {
     @Test
     fun aWorldAndASpecAreEnoughAndTheRestDefault() {
         val parsed = parseWorldBuilderArgs(arrayOf("--world", "p.world.json", "--spec", "s.json"))
-        assertEquals(WorldBuilderArgs("p.world.json", "s.json", null, "light", true, 1500, 900), parsed)
+        assertEquals(WorldBuilderArgs("p.world.json", "s.json", null, null, true, 1500, 900), parsed)
     }
 
     @Test

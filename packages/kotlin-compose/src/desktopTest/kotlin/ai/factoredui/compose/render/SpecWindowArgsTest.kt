@@ -37,4 +37,20 @@ class SpecWindowArgsTest {
     fun aDataFlagWithoutAFileIsRefused() {
         assertNull(parseWindowArgs(arrayOf("spec.json", "--data")))
     }
+
+    @Test
+    fun aThemeFlagIsReadWithTheDataFlagInAnyOrder() {
+        val parsed = parseWindowArgs(arrayOf("spec.json", "--theme", "light", "900", "--data", "graph.json", "600"))
+        assertEquals(WindowArgs("spec.json", 900, 600, "graph.json", "light"), parsed)
+    }
+
+    @Test
+    fun noThemeFlagLeavesTheThemeToTheSharedDefault() {
+        assertNull(parseWindowArgs(arrayOf("spec.json"))?.theme)
+    }
+
+    @Test
+    fun aThemeFlagWithoutAValueIsRefused() {
+        assertNull(parseWindowArgs(arrayOf("spec.json", "--theme")))
+    }
 }

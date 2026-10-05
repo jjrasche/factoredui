@@ -1,5 +1,7 @@
 package ai.factoredui.compose.render
 
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.graphics.toPixelMap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -38,5 +40,18 @@ class RenderSpecToPngTest {
         val hello = renderSpecToPng(bound, width = 300, height = 120, data = mapOf("word" to "hello"))
         val goodbye = renderSpecToPng(bound, width = 300, height = 120, data = mapOf("word" to "goodbye world"))
         assertTrue(!hello.contentEquals(goodbye), "different data must draw different pixels")
+    }
+
+    @Test
+    fun aDarkThemeRendersADarkGroundAndTheLightDefaultIsUnchanged() {
+        val empty = """{"spec_version":1,"renderer_min":1,"root":{"id":"root","type":"column","props":{"flex":1},"children":[]}}"""
+        fun cornerLuminance(png: ByteArray): Float {
+            val pixel = org.jetbrains.skia.Image.makeFromEncoded(png).toComposeImageBitmap().toPixelMap()[2, 2]
+            return 0.2126f * pixel.red + 0.7152f * pixel.green + 0.0722f * pixel.blue
+        }
+        val dark = renderSpecToPng(empty, width = 64, height = 64, density = 1f, theme = ai.factoredui.compose.renderer.SpecTheme.DARK)
+        val light = renderSpecToPng(empty, width = 64, height = 64, density = 1f)
+        assertTrue(cornerLuminance(dark) < 0.2f, "dark ground: ${cornerLuminance(dark)}")
+        assertTrue(cornerLuminance(light) > 0.9f, "light stays the default: ${cornerLuminance(light)}")
     }
 }

@@ -1,7 +1,11 @@
 package ai.factoredui.worldbuilder
 
 import ai.factoredui.compose.renderer.RenderContext
+import ai.factoredui.compose.render.resolveWindowTheme
+import ai.factoredui.compose.render.windowThemeFromEnvironment
 import ai.factoredui.compose.renderer.RenderSpec
+import ai.factoredui.compose.renderer.SpecTheme
+import ai.factoredui.compose.renderer.themeNamed
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.worldengine.session.WorldSession
 import ai.factoredui.worldengine.world.MapWorldLibrary
@@ -27,7 +31,7 @@ data class WorldBuilderArgs(
     val world: String,
     val spec: String,
     val presentation: String?,
-    val theme: String,
+    val theme: String?,
     val animate: Boolean,
     val width: Int,
     val height: Int,
@@ -41,7 +45,7 @@ fun parseWorldBuilderArgs(args: Array<String>): WorldBuilderArgs? {
         world = world,
         spec = spec,
         presentation = flags["presentation"],
-        theme = flags["theme"] ?: "light",
+        theme = flags["theme"],
         animate = flags["animate"]?.toBooleanStrictOrNull() ?: true,
         width = flags["width"]?.toIntOrNull() ?: DEFAULT_WIDTH,
         height = flags["height"]?.toIntOrNull() ?: DEFAULT_HEIGHT,
@@ -74,10 +78,12 @@ fun main(args: Array<String>) {
     }
     val host = WorldBuilderHost(openSession(parsed.world), loadPresentation(parsed.presentation))
     val spec = Json { ignoreUnknownKeys = true }.decodeFromString(Spec.serializer(), File(parsed.spec).readText())
+    val theme = resolveWindowTheme(parsed.theme, windowThemeFromEnvironment(), null)
     var publish: () -> Unit = {}
     val context = RenderContext(
         actions = host.actions { publish() },
-        initialData = host.bindings() + mapOf("theme" to parsed.theme, "animate" to parsed.animate, "brush" to host.initialBrush()),
+        initialData = host.bindings() + mapOf("theme" to theme, "animate" to parsed.animate, "brush" to host.initialBrush()),
+        theme = themeNamed(theme) ?: SpecTheme.DARK,
     )
     publish = { context.applyBindings(host.bindings()) }
     println("world-builder: ${parsed.world} on branch ${host.session.currentBranch}")
