@@ -3,10 +3,6 @@ package ai.factoredui.compose.renderer
 import ai.factoredui.compose.adapter.ActionHandler
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
-import ai.factoredui.compose.layout.fitFlowView
-import ai.factoredui.compose.layout.project
-import ai.factoredui.compose.layout.tileCenter
-import ai.factoredui.compose.layout.tilemapScreenBounds
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
@@ -61,37 +57,6 @@ class TilemapCheck {
         initialData = mapOf("uses" to uses, "cells" to cells, "brush" to brush),
     )
 
-    private class Placed(val check: SpecVisualCheck, val shape: TileShape, val view: TileView) {
-        private val region = check.region("world:map")
-        private val tileWidth = TILEMAP_TILE_WIDTH_DP
-        private val bounds = tilemapScreenBounds(shape, view, 5, 4, tileWidth)
-        val fit = fitFlowView(
-            contentWidth = bounds.maxX - bounds.minX,
-            contentHeight = bounds.maxY - bounds.minY + TILEMAP_HEADROOM * tileWidth,
-            viewWidth = region.right.value - region.left.value,
-            viewHeight = region.bottom.value - region.top.value,
-            maxScale = 2f,
-            margin = 12f,
-        )
-
-        fun screenOf(col: Int, row: Int): Pair<Float, Float> {
-            val ground = project(view, tileCenter(shape, col, row), tileWidth)
-            val contentX = ground.x - bounds.minX
-            val contentY = ground.y - bounds.minY + TILEMAP_HEADROOM * tileWidth
-            return (region.left.value + fit.translateX + contentX * fit.scale) to (region.top.value + fit.translateY + contentY * fit.scale)
-        }
-
-        fun pixelAt(col: Int, row: Int, dx: Float = 0f, dy: Float = 0f): Color {
-            val (x, y) = screenOf(col, row)
-            return check.png().toPixelMap()[(x + dx * fit.scale).toInt(), (y + dy * fit.scale).toInt()]
-        }
-
-        fun tap(col: Int, row: Int) {
-            val (x, y) = screenOf(col, row)
-            check.tapAt("world:map", x - region.left.value, y - region.top.value)
-        }
-    }
-
     private fun Color.isNear(other: Color, tolerance: Float = 0.06f) =
         abs(red - other.red) < tolerance && abs(green - other.green) < tolerance && abs(blue - other.blue) < tolerance
 
@@ -99,7 +64,7 @@ class TilemapCheck {
     fun aPlacedFlatUseColoursItsTileAndAnEmptyTileShowsTheGround() = runComposeUiTest {
         val check = SpecVisualCheck(this, contextOf(cells = listOf(mapOf("col" to 1, "row" to 1, "use" to "path"))))
         check.render(tilemap(), viewport = 500.dp)
-        val placed = Placed(check, TileShape.SQUARE, TileView.TOP)
+        val placed = PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows)
         assertTrue(placed.pixelAt(1, 1).isNear(Color(0xFFD2B48C)), "the path tile takes its colour")
         assertTrue(placed.pixelAt(0, 0).isNear(Color(0xFFCFE0A8)), "an empty tile shows the ground")
     }
@@ -108,7 +73,7 @@ class TilemapCheck {
     fun tappingATileWithABrushPlacesItAndTappingAgainRemovesIt() = runComposeUiTest {
         val check = SpecVisualCheck(this, contextOf())
         check.render(tilemap(), viewport = 500.dp)
-        val placed = Placed(check, TileShape.SQUARE, TileView.TOP)
+        val placed = PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows)
         placed.tap(2, 1)
         assertEquals(listOf(mapOf("col" to 2, "row" to 1, "use" to "path")), check.binding("cells"))
         assertEquals(mapOf("path" to 1, "pond" to 0, "tree" to 0, "shed" to 0), check.binding("counts"), "every declared use is counted, even at zero")
@@ -122,7 +87,7 @@ class TilemapCheck {
     fun aHexTapPicksTheHexUnderThePointer() = runComposeUiTest {
         val check = SpecVisualCheck(this, contextOf())
         check.render(tilemap(shape = "hex"), viewport = 500.dp)
-        val placed = Placed(check, TileShape.HEX, TileView.TOP)
+        val placed = PlacedTiles(check, TileShape.HEX, TileView.TOP, cols, rows)
         placed.tap(3, 3)
         assertEquals(listOf(mapOf("col" to 3, "row" to 3, "use" to "path")), check.binding("cells"), "an odd hex row sits half a tile right, where a square grid would pick the next column")
     }
@@ -131,7 +96,7 @@ class TilemapCheck {
     fun anIsometricTapPicksTheTileUnderThePointer() = runComposeUiTest {
         val check = SpecVisualCheck(this, contextOf())
         check.render(tilemap(view = "iso"), viewport = 500.dp)
-        val placed = Placed(check, TileShape.SQUARE, TileView.ISO)
+        val placed = PlacedTiles(check, TileShape.SQUARE, TileView.ISO, cols, rows)
         placed.tap(4, 3)
         assertEquals(listOf(mapOf("col" to 4, "row" to 3, "use" to "path")), check.binding("cells"))
     }
@@ -142,7 +107,7 @@ class TilemapCheck {
         check.render(tilemap(), viewport = 500.dp)
         check.tap("world:brush:pond")
         assertEquals("pond", check.binding("brush"))
-        Placed(check, TileShape.SQUARE, TileView.TOP).tap(0, 0)
+        PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows).tap(0, 0)
         assertEquals(listOf(mapOf("col" to 0, "row" to 0, "use" to "pond")), check.binding("cells"))
     }
 
@@ -152,7 +117,7 @@ class TilemapCheck {
         val capture: ActionHandler = { params -> fired = params }
         val check = SpecVisualCheck(this, contextOf(actions = mapOf("world.tileTapped" to capture)))
         check.render(tilemap(), viewport = 500.dp)
-        Placed(check, TileShape.SQUARE, TileView.TOP).tap(1, 2)
+        PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows).tap(1, 2)
         assertEquals(1.0, (fired["col"] as Number).toDouble())
         assertEquals(2.0, (fired["row"] as Number).toDouble())
         assertEquals("path", fired["use"])
@@ -163,7 +128,7 @@ class TilemapCheck {
         val cells = listOf(mapOf("col" to 2, "row" to 2, "use" to "tree"), mapOf("col" to 3, "row" to 1, "use" to "path"))
         val check = SpecVisualCheck(this, contextOf(cells = cells))
         check.render(tilemap(view = "iso"), viewport = 500.dp)
-        val placed = Placed(check, TileShape.SQUARE, TileView.ISO)
+        val placed = PlacedTiles(check, TileShape.SQUARE, TileView.ISO, cols, rows)
         assertTrue(placed.pixelAt(2, 2, dy = -30f).isNear(Color(0xFF1F5E2B), 0.1f), "canopy stands above the tree tile")
         assertTrue(!placed.pixelAt(3, 1, dy = -30f).isNear(Color(0xFFD2B48C), 0.05f), "a flat tile paints nothing above itself")
     }
@@ -173,15 +138,15 @@ class TilemapCheck {
         val cells = listOf(mapOf("col" to 2, "row" to 2, "use" to "shed"))
         val check = SpecVisualCheck(this, contextOf(cells = cells))
         check.render(tilemap(view = "iso"), viewport = 500.dp)
-        val placed = Placed(check, TileShape.SQUARE, TileView.ISO)
+        val placed = PlacedTiles(check, TileShape.SQUARE, TileView.ISO, cols, rows)
         val roof = placed.pixelAt(2, 2, dy = -32f)
         assertTrue(roof.isNear(Color(0xFF9E7850), 0.08f) && roof.alpha > 0.9f, "a one-tile block lifts its brown roof half a tile width above the ground: $roof")
     }
 
     @Test
     fun theShapeAndTheViewChangeWhereATileIsDrawn() = runComposeUiTest {
-        val squareAt = Placed(SpecVisualCheck(this, contextOf()).also { it.render(tilemap(), viewport = 500.dp) }, TileShape.SQUARE, TileView.TOP).screenOf(3, 1)
-        val isoAt = Placed(SpecVisualCheck(this, contextOf()).also { it.render(tilemap(view = "iso"), viewport = 500.dp) }, TileShape.SQUARE, TileView.ISO).screenOf(3, 1)
+        val squareAt = PlacedTiles(SpecVisualCheck(this, contextOf()).also { it.render(tilemap(), viewport = 500.dp) }, TileShape.SQUARE, TileView.TOP, cols, rows).screenOf(3, 1)
+        val isoAt = PlacedTiles(SpecVisualCheck(this, contextOf()).also { it.render(tilemap(view = "iso"), viewport = 500.dp) }, TileShape.SQUARE, TileView.ISO, cols, rows).screenOf(3, 1)
         assertTrue(squareAt != isoAt, "iso and top place the same tile at different spots")
     }
 }
