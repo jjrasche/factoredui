@@ -1,13 +1,17 @@
 param(
     [Parameter(Mandatory = $true)][string]$World,
-    [string]$Spec = (Join-Path $PSScriptRoot "world-builder-engine.spec.json"),
-    [string]$Presentation = (Join-Path $PSScriptRoot "parcel.presentation.json"),
+    [string]$Spec,
+    [string]$Presentation,
     [ValidateSet("light", "dark")][string]$Theme = "light",
     [int]$Width = 1500,
     [int]$Height = 900
 )
 
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")).Path
+$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (-not $Spec) { $Spec = Join-Path $here "world-builder-engine.spec.json" }
+if (-not $Presentation) { $Presentation = Join-Path $here "parcel.presentation.json" }
+
+$repoRoot = (Resolve-Path (Join-Path $here "..\..\..")).Path
 $worldFile = (Resolve-Path $World).Path
 $specFile = (Resolve-Path $Spec).Path
 $presentationFile = (Resolve-Path $Presentation).Path
