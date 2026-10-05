@@ -117,7 +117,7 @@ class TilemapInstancesCheck {
         check.render(tilemap(), viewport = 500.dp)
         val placed = PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows)
         val ground = Color(0xFFCFE0A8)
-        assertTrue(!placed.pixelAtGround(GroundPoint(2f, 2f)).isNear(ground), "the footprint centre is roof, not ground")
+        assertTrue(!placed.pixelAtGround(GroundPoint(2.6f, 1.8f)).isNear(ground), "a point over the far tile of the footprint is roof, not ground")
         assertTrue(placed.pixelAtGround(GroundPoint(4.5f, 3.5f)).isNear(ground), "a tile outside the footprint is ground")
     }
 
