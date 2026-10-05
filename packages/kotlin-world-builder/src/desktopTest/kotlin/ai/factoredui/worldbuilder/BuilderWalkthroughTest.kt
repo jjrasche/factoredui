@@ -47,8 +47,9 @@ class BuilderWalkthroughTest {
     private lateinit var host: WorldBuilderHost
     private lateinit var context: RenderContext
 
-    private fun DesktopComposeUiTest.open(theme: String) {
-        host = parcelHost(loadPresentation("examples/parcel.presentation.json"))
+    private fun DesktopComposeUiTest.open(theme: String, world: String? = null) {
+        val presentation = loadPresentation("examples/parcel.presentation.json")
+        host = if (world == null) parcelHost(presentation) else WorldBuilderHost(openSession(File(designDirectory(), world).path), presentation)
         var publish: () -> Unit = {}
         context = RenderContext(
             actions = host.actions { publish() },
@@ -122,6 +123,12 @@ class BuilderWalkthroughTest {
 
         onNodeWithTag("btn-branch").performClick()
         shot("06-back-on-main-dark")
+    }
+
+    @Test
+    fun theLidarSampleShowsItsTenTreesAtTheirMeasuredSpots() = runDesktopComposeUiTest(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX) {
+        open("dark", "worlds/parcel-lidar-sample.world.json")
+        shot("09-lidar-sample-dark")
     }
 
     @Test

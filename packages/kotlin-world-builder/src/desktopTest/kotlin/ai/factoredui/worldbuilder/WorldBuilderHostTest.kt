@@ -36,7 +36,7 @@ class WorldBuilderHostTest {
         assertEquals(everyUse.associateWith { 0 }, bindings["counts"])
         assertEquals(emptyList<Any?>(), bindings["cells"])
         assertEquals(true, bindings["controlled"])
-        assertEquals(mapOf("cols" to 13, "rows" to 26, "tile_area" to 625.0), bindings["parcel"])
+        assertEquals(mapOf("cols" to 13, "rows" to 26, "tile_area" to 625.0, "view" to "iso"), bindings["parcel"])
         assertTrue((bindings["scores_text"] as String).contains("Pasture yield"), "the world's scores reach the panel")
         assertEquals("", bindings["message"])
         assertEquals("main", bindings["branch"])

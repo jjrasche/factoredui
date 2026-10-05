@@ -36,7 +36,7 @@
             "type": "tilemap",
             "props": {
               "flex": 1,
-              "view": "iso",
+              "view": "{parcel.view}",
               "controlled": "{controlled}",
               "animate": "{animate}",
               "cols": "{parcel.cols}",

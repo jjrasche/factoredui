@@ -25,7 +25,7 @@ class WorldBuilderHost(
         val areas = areasOf(props)
         val labels = uses.associate { it["id"] as String to it["label"] as String }
         return linkedMapOf(
-            "parcel" to mapOf("cols" to props["cols"], "rows" to props["rows"], "tile_area" to props["tile_area"]),
+            "parcel" to mapOf("cols" to props["cols"], "rows" to props["rows"], "tile_area" to props["tile_area"], "view" to props["view"]),
             "uses" to uses,
             "cells" to emptyList<Any?>(),
             "footprints" to footprintsOf(),
