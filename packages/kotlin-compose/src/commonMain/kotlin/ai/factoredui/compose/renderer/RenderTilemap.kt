@@ -183,7 +183,13 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
         if (areasPath != null) context.setBinding(areasPath, areasOf(counts, tileArea).mapValues { wholeWhenIntegral(it.value) })
     }
 
+    fun report(tile: TileCoord) {
+        val onTileTapped = props.onTileTapped ?: return
+        scope.launch { context.dispatch(node.id, tileTappedAction(onTileTapped, tile, brush)) }
+    }
+
     fun place(tile: TileCoord) {
+        if (resolvedProps["controlled"] == true) return report(tile)
         val next = applyBrush(cells, cols, rows, tile.col, tile.row, brush)
         if (cellsPath != null) context.setBinding(cellsPath, next.map { cellRecord(it) }) else localCells = next
         val onTileTapped = props.onTileTapped

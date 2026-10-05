@@ -1,0 +1,82 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "world-builder",
+    "type": "row",
+    "props": { "theme": "{theme}", "background": "ground", "flex": 1 },
+    "children": [
+      {
+        "id": "stage",
+        "type": "column",
+        "props": { "flex": 1 },
+        "children": [
+          {
+            "id": "toolbar",
+            "type": "row",
+            "props": { "padding": 8, "gap": 8, "align": "center" },
+            "children": [
+              { "id": "theme-label", "type": "text", "props": { "value": "Theme", "variant": "label" } },
+              {
+                "id": "theme-select",
+                "type": "select",
+                "props": {
+                  "flex": 1,
+                  "value": "{theme}",
+                  "options": [
+                    { "label": "light", "value": "light" },
+                    { "label": "dark", "value": "dark" }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "world",
+            "type": "tilemap",
+            "props": {
+              "flex": 1,
+              "view": "iso",
+              "controlled": "{controlled}",
+              "animate": "{animate}",
+              "cols": "{parcel.cols}",
+              "rows": "{parcel.rows}",
+              "tile_area": "{parcel.tile_area}",
+              "uses": "{uses}",
+              "cells": "{cells}",
+              "selected_use": "{brush}",
+              "on_tile_tap": "world.tileTapped"
+            }
+          }
+        ]
+      },
+      {
+        "id": "panel",
+        "type": "column",
+        "props": { "padding": 14, "gap": 6, "background": "surface" },
+        "children": [
+          { "id": "panel-title", "type": "text", "props": { "value": "World builder", "variant": "heading" } },
+          { "id": "panel-grid", "type": "text", "props": { "value": "{parcel.cols} x {parcel.rows} tiles, {parcel.tile_area} sq ft each", "variant": "caption" } },
+          { "id": "branch-line", "type": "text", "props": { "value": "{branch_line}", "variant": "subheading" } },
+          {
+            "id": "branch-controls",
+            "type": "row",
+            "props": { "gap": 8 },
+            "children": [
+              { "id": "btn-proposal", "type": "button", "props": { "label": "New proposal" }, "action": { "action": "world.newProposal" } },
+              { "id": "btn-undo", "type": "button", "props": { "label": "Undo" }, "action": { "action": "world.undo" } },
+              { "id": "btn-branch", "type": "button", "props": { "label": "Next branch" }, "action": { "action": "world.cycleBranch" } }
+            ]
+          },
+          { "id": "diff-text", "type": "text", "props": { "value": "{diff_text}", "variant": "caption" } },
+          { "id": "message-text", "type": "text", "visible": "{message}", "props": { "value": "{message}" } },
+          { "id": "usage-title", "type": "text", "props": { "value": "On the parcel", "variant": "subheading" } },
+          { "id": "usage-text", "type": "text", "props": { "value": "{usage_text}" } },
+          { "id": "scores-title", "type": "text", "props": { "value": "What the twin computes", "variant": "subheading" } },
+          { "id": "scores-text", "type": "text", "props": { "value": "{scores_text}" } },
+          { "id": "panel-hint", "type": "text", "props": { "value": "click a tile to place the brush, click again to remove, drag to pan, scroll to zoom", "variant": "caption" } }
+        ]
+      }
+    ]
+  }
+}

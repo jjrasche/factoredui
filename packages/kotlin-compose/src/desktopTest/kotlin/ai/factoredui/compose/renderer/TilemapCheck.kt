@@ -38,6 +38,7 @@ class TilemapCheck {
             "counts" to SpecValue.StringValue("{counts}"),
             "areas" to SpecValue.StringValue("{areas}"),
             "on_tile_tap" to SpecValue.StringValue("world.tileTapped"),
+            "controlled" to SpecValue.StringValue("{controlled}"),
         ),
     )
 
@@ -202,5 +203,22 @@ class TilemapCheck {
         fun woolPixels(tile: Pair<Int, Int>) = placed.pixelsAround(tile.first, tile.second, -14..14, -12..10).count { luminance(it) > 0.92f && it.alpha > 0.9f }
         assertTrue(woolPixels(withSheep) >= 6, "white wool is drawn on the tile with an animal: ${woolPixels(withSheep)}")
         assertEquals(0, woolPixels(without), "no wool on a tile without one")
+    }
+
+    @Test
+    fun aControlledTilemapOnlyReportsTheTapAndLeavesTheCellsToTheHost() = runComposeUiTest {
+        var fired: Map<String, Any?> = emptyMap()
+        val capture: ActionHandler = { params -> fired = params }
+        val context = RenderContext(
+            actions = mapOf("world.tileTapped" to capture),
+            initialData = mapOf("uses" to uses, "cells" to emptyList<Any?>(), "brush" to "pond", "controlled" to true),
+        )
+        val check = SpecVisualCheck(this, context)
+        check.render(tilemap(), viewport = 500.dp)
+        PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows).tap(2, 1)
+        assertEquals(emptyList<Any?>(), check.binding("cells"), "the renderer places nothing itself")
+        assertEquals(2.0, (fired["col"] as Number).toDouble())
+        assertEquals(1.0, (fired["row"] as Number).toDouble())
+        assertEquals("pond", fired["use"], "the tap carries the selected brush for the engine to judge")
     }
 }
