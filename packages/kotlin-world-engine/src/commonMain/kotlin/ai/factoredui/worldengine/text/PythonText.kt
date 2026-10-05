@@ -52,6 +52,55 @@ private fun fixedForm(decimal: DecimalDigits): String {
     return digits.substring(0, point) + "." + digits.substring(point)
 }
 
+fun formatGeneral(value: Double, precision: Int): String {
+    if (value.isNaN()) return "nan"
+    if (value.isInfinite()) return if (value > 0) "inf" else "-inf"
+    val sign = if (value < 0 || (value == 0.0 && 1.0 / value < 0)) "-" else ""
+    val decimal = decomposeDecimal(value.toString())
+    if (decimal.digits.isEmpty()) return "${sign}0"
+    val rounded = roundToSignificant(decimal, maxOf(precision, 1))
+    val exponent = rounded.pointPosition - 1
+    val body = if (exponent < -4 || exponent >= precision) generalExponentForm(rounded, exponent) else fixedTrimmed(rounded)
+    return sign + body
+}
+
+private fun roundToSignificant(decimal: DecimalDigits, precision: Int): DecimalDigits {
+    val digits = decimal.digits
+    if (digits.length <= precision) return decimal
+    val next = digits[precision]
+    val isTie = next == '5' && digits.length == precision + 1
+    val isOddKept = (digits[precision - 1] - '0') % 2 == 1
+    val roundsUp = next > '5' || (next == '5' && !isTie) || (isTie && isOddKept)
+    val kept = digits.substring(0, precision)
+    if (!roundsUp) return DecimalDigits(kept.trimEnd('0'), decimal.pointPosition)
+    val carried = incrementDigits(kept)
+    val grew = carried.length > kept.length
+    return DecimalDigits(carried.trimEnd('0'), decimal.pointPosition + if (grew) 1 else 0)
+}
+
+private fun incrementDigits(digits: String): String {
+    val characters = digits.toCharArray()
+    var index = characters.lastIndex
+    while (index >= 0 && characters[index] == '9') {
+        characters[index] = '0'
+        index--
+    }
+    if (index < 0) return "1" + characters.concatToString()
+    characters[index] = characters[index] + 1
+    return characters.concatToString()
+}
+
+private fun generalExponentForm(decimal: DecimalDigits, exponent: Int): String {
+    val mantissa = decimal.digits.take(1) + decimal.digits.drop(1).let { if (it.isEmpty()) "" else ".$it" }
+    val exponentSign = if (exponent < 0) "-" else "+"
+    return "${mantissa}e$exponentSign${kotlin.math.abs(exponent).toString().padStart(2, '0')}"
+}
+
+private fun fixedTrimmed(decimal: DecimalDigits): String {
+    val fixed = fixedForm(decimal)
+    return fixed.removeSuffix(".0")
+}
+
 fun pythonStrRepr(text: String): String {
     val quote = if ('\'' in text && '"' !in text) '"' else '\''
     return buildString {
