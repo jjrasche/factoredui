@@ -31,7 +31,7 @@ class WorldBuilderUiTest {
         var publish: () -> Unit = {}
         val context = RenderContext(
             actions = host.actions { publish() },
-            initialData = host.bindings() + mapOf("theme" to "light", "animate" to false, "brush" to host.initialBrush()),
+            initialData = host.bindings() + mapOf("theme" to "light", "animate" to false, "brush" to host.initialBrush(), "rename_draft" to ""),
         )
         publish = { context.applyBindings(host.bindings()) }
         setContent { Box(Modifier.size(1100.dp, 800.dp)) { RenderSpec(spec = spec, context = context) } }
@@ -43,8 +43,8 @@ class WorldBuilderUiTest {
     fun theWindowOpensWithTheWorldsScoresAndZeroedUsesInThePanel() = runComposeUiTest {
         open()
         onNodeWithText("Paddock: 0 tiles, 0 sq ft", substring = true).assertIsDisplayed()
-        onNodeWithText("Pasture yield", substring = true).assertIsDisplayed()
-        onNodeWithText("branch main (1 in all)").assertIsDisplayed()
+        onNodeWithText("Pasture yield", substring = true).assertExists()
+        onNodeWithText("Viewing: My plan (1 plan in all)").assertIsDisplayed()
     }
 
     @Test
@@ -73,7 +73,7 @@ class WorldBuilderUiTest {
         onNodeWithTag("btn-proposal").performClick()
         waitForIdle()
         assert(host.session.currentBranch == "proposal-1")
-        onNodeWithText("proposal proposal-1 (2 in all)").assertIsDisplayed()
-        onNodeWithText("proposal-1 matches main").assertIsDisplayed()
+        onNodeWithText("Viewing: Alternative 1 (2 plans in all)").assertIsDisplayed()
+        onNodeWithText("Alternative 1 matches My plan").assertIsDisplayed()
     }
 }

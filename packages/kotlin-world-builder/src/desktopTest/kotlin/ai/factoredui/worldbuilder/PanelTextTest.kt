@@ -48,19 +48,70 @@ class PanelTextTest {
     }
 
     @Test
-    fun theMainBranchSaysItIsOnMain() {
-        assertEquals("on main", diffLine("main", null, emptyMap(), emptyMap()))
+    fun theBasePlanSaysItIsTheBase() {
+        assertEquals("My plan is your base plan.", diffLine("My plan", null, emptyMap(), emptyMap()))
     }
 
     @Test
     fun aBranchListsOnlyTheUsesThatDifferFromItsParent() {
         val diff = mapOf("woodland_tree" to 3, "path" to -1, "pond" to 0)
         val labels = mapOf("woodland_tree" to "Woodland tree", "path" to "Path", "pond" to "Pond")
-        assertEquals("proposal-1 vs main: +3 Woodland tree, -1 Path", diffLine("proposal-1", "main", diff, labels))
+        assertEquals("Alternative 1 vs My plan: +3 Woodland tree, -1 Path", diffLine("Alternative 1", "My plan", diff, labels))
+    }
+
+    @Test
+    fun largeNumbersGetThousandsSeparatorsAndKeepTheirSign() {
+        assertEquals("4,375", formatGrouped(4375.0))
+        assertEquals("1,234,567.89", formatGrouped(1234567.891))
+        assertEquals("-12,500", formatGrouped(-12500.0))
+        assertEquals("625", formatGrouped(625.0))
+        assertEquals("0.4", formatGrouped(0.4))
+    }
+
+    @Test
+    fun quantitiesReadInPlainUnits() {
+        assertEquals("4,375 sq ft", formatQuantity(4375.0, "sq_ft"))
+        assertEquals("49.15 hours/year", formatQuantity(49.1536, "hour/year"))
+        assertEquals("0.4 tons/year", formatQuantity(0.4, "ton/year"))
+        assertEquals("803.49 lb/year", formatQuantity(803.49, "lb/year"))
+        assertEquals("$219.98", formatQuantity(219.98, "usd"))
+        assertEquals("-$1,200", formatQuantity(-1200.0, "usd"))
+        assertEquals("0.68", formatQuantity(0.68, "1"))
+        assertEquals("not-measured", formatQuantity(null, "usd"))
+    }
+
+    @Test
+    fun aChangeShowsItsSignOrSaysThereIsNone() {
+        assertEquals("+49.15 hours/year", formatChange(49.15, "hour/year"))
+        assertEquals("-$300", formatChange(-300.0, "usd"))
+        assertEquals("no change", formatChange(0.0, "usd"))
+    }
+
+    @Test
+    fun comparingTwoPlansListsEachScoreBeforeAfterAndTheChange() {
+        val mine = listOf(ScoreView("labour", "Labour hours", 38.25, "hour/year", false), ScoreView("capex", "Capital floor", 0.0, "usd", false))
+        val alternative = listOf(ScoreView("labour", "Labour hours", 87.4, "hour/year", false), ScoreView("capex", "Capital floor", null, "usd", false))
+        assertEquals(
+            "Labour hours: 38.25 hours/year to 87.4 hours/year (+49.15 hours/year)\nCapital floor: $0 to not-measured (not-measured)",
+            compareLines(mine, alternative),
+        )
+    }
+
+    @Test
+    fun comparingListsOnlyTheFiguresThatMoved() {
+        val mine = listOf(ScoreView("a", "Area", 10.0, "sq_ft", false), ScoreView("b", "Labour", 5.0, "hour/year", false))
+        val alternative = listOf(ScoreView("a", "Area", 10.0, "sq_ft", false), ScoreView("b", "Labour", 6.0, "hour/year", false))
+        assertEquals("Labour: 5 hours/year to 6 hours/year (+1 hours/year)", compareLines(mine, alternative))
+    }
+
+    @Test
+    fun comparingTwoIdenticalPlansSaysNothingDiffers() {
+        val scores = listOf(ScoreView("a", "Area", 10.0, "sq_ft", false))
+        assertEquals("No figure differs yet.", compareLines(scores, scores))
     }
 
     @Test
     fun aBranchWithNoDifferenceSaysItMatchesItsParent() {
-        assertEquals("proposal-1 matches main", diffLine("proposal-1", "main", mapOf("pond" to 0), mapOf("pond" to "Pond")))
+        assertEquals("Alternative 1 matches My plan", diffLine("Alternative 1", "My plan", mapOf("pond" to 0), mapOf("pond" to "Pond")))
     }
 }

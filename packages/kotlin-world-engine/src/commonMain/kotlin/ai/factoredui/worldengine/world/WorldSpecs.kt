@@ -117,7 +117,15 @@ data class StockSpec(val id: String, val unit: String?, val initial: JsonElement
     }
 }
 
-data class ScoreSpec(val id: String, val label: String?, val expr: String?, val unit: String?, val isBinding: Boolean) {
+data class ScoreSpec(
+    val id: String,
+    val label: String?,
+    val expr: String?,
+    val unit: String?,
+    val isBinding: Boolean,
+    val note: String? = null,
+    val source: String? = null,
+) {
     fun requiredUnit(): String = unit ?: throw missingKey("unit")
 
     companion object {
@@ -127,8 +135,19 @@ data class ScoreSpec(val id: String, val label: String?, val expr: String?, val 
             expr = raw["expr"].asTextOrNull(),
             unit = raw.optionalText("unit"),
             isBinding = isTruthy(raw["binding"]),
+            note = raw.optionalText("note"),
+            source = describeSource(raw["source"]),
         )
     }
+}
+
+private val SOURCE_KEYS = listOf("twin", "binding", "row")
+
+private fun describeSource(source: JsonElement?): String? {
+    val fields = source as? JsonObject ?: return null
+    val cited = SOURCE_KEYS.mapNotNull { key -> fields.optionalText(key)?.let { "$key $it" } }
+    val placeholder = if (isTruthy(fields["placeholder"])) listOfNotNull("placeholder" + (fields.optionalText("reason")?.let { " ($it)" } ?: "")) else emptyList()
+    return (cited + placeholder).joinToString("; ").ifEmpty { null }
 }
 
 data class AttributeSpec(val name: String, val unit: String?, val default: JsonElement?) {

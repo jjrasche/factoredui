@@ -83,19 +83,148 @@ class WorldBuilderHostTest {
         assertEquals("proposal-1", host.session.currentBranch)
         host.tap(6, 1, "path")
         assertEquals(2, host.counts()["path"])
-        assertEquals("proposal-1 vs main: +1 Path", host.bindings()["diff_text"])
+        assertEquals("Alternative 1 vs My plan: +1 Path", host.bindings()["diff_text"])
         host.cycleBranch()
         assertEquals("main", host.session.currentBranch)
         assertEquals(1, host.counts()["path"])
-        assertEquals("on main", host.bindings()["diff_text"])
+        assertEquals("My plan is your base plan.", host.bindings()["diff_text"])
     }
 
     @Test
     fun theBranchLineNamesTheBranchItsKindAndTheCount() {
         val host = parcelHost()
-        assertEquals("branch main (1 in all)", host.bindings()["branch_line"])
+        assertEquals("Viewing: My plan (1 plan in all)", host.bindings()["branch_line"])
         host.newProposal()
-        assertEquals("proposal proposal-1 (2 in all)", host.bindings()["branch_line"])
+        assertEquals("Viewing: Alternative 1 (2 plans in all)", host.bindings()["branch_line"])
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun WorldBuilderHost.plans(): List<Map<String, Any?>> = bindings()["plans"] as List<Map<String, Any?>>
+
+    @Test
+    fun plansAreCalledMyPlanThenAlternativesInPlainWords() {
+        val host = parcelHost()
+        host.newProposal()
+        host.newProposal()
+        assertEquals(listOf("My plan", "Alternative 1", "Alternative 2"), host.plans().map { it["label"] })
+    }
+
+    @Test
+    fun theCurrentPlanIsMarkedAsBeingViewed() {
+        val host = parcelHost()
+        host.newProposal()
+        assertEquals(listOf("", "viewing"), host.plans().map { it["status"] })
+    }
+
+    @Test
+    fun aPlanCanBeRenamedAndTheNewNameShowsEverywhere() {
+        val host = parcelHost()
+        host.renameCurrent("  Orchard plan  ")
+        assertEquals("Viewing: Orchard plan (1 plan in all)", host.bindings()["branch_line"])
+        assertEquals("Orchard plan", host.plans().single()["label"])
+        host.newProposal()
+        assertEquals("Alternative 1 matches Orchard plan", host.bindings()["diff_text"])
+        assertEquals("Compared with Orchard plan", host.bindings()["compare_title"])
+    }
+
+    @Test
+    fun aBlankNameIsRefusedWithAReasonAndKeepsTheOldName() {
+        val host = parcelHost()
+        host.renameCurrent("   ")
+        assertEquals("Give the plan a name first.", host.bindings()["message"])
+        assertEquals("My plan", host.plans().single()["label"])
+    }
+
+    @Test
+    fun switchingToAPlanShowsItAndAnUnknownPlanChangesNothing() {
+        val host = parcelHost()
+        host.newProposal()
+        host.switchTo("main")
+        assertEquals("main", host.session.currentBranch)
+        host.switchTo("no-such-plan")
+        assertEquals("main", host.session.currentBranch)
+    }
+
+    @Test
+    fun anAlternativeIsComparedWithItsBaseScoreByScore() {
+        val host = parcelHost()
+        host.tap(6, 0, "path")
+        host.newProposal()
+        host.tap(2, 2, "pond")
+        val text = host.bindings()["compare_text"] as String
+        assertTrue(text.lines().any { it.startsWith("Pond area: 0 sq ft to 625 sq ft (+625 sq ft)") }, text)
+        assertTrue(text.lines().none { it.startsWith("Path area") }, "a figure that did not move is not listed: $text")
+    }
+
+    @Test
+    fun theBasePlanWithAlternativesTellsYouToPickOneToCompare() {
+        val host = parcelHost()
+        host.newProposal()
+        host.switchTo("main")
+        assertEquals("Compare plans", host.bindings()["compare_title"])
+        assertEquals("Pick an alternative to see how it differs from My plan.", host.bindings()["compare_text"])
+    }
+
+    @Test
+    fun aSinglePlanHasNothingToCompare() {
+        val host = parcelHost()
+        assertEquals("", host.bindings()["compare_title"])
+        assertEquals("", host.bindings()["compare_text"])
+    }
+
+    @Test
+    fun theSwitchAndRenameActionsDriveTheHostWithResolvedParams() {
+        val host = parcelHost()
+        host.newProposal()
+        val handlers = host.actions { }
+        kotlinx.coroutines.runBlocking {
+            handlers.getValue("world.switchPlan")(mapOf("id" to "main"))
+            handlers.getValue("world.renamePlan")(mapOf("name" to "Home farm"))
+        }
+        assertEquals("Viewing: Home farm (2 plans in all)", host.bindings()["branch_line"])
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun WorldBuilderHost.groups(): List<Map<String, Any?>> = bindings()["score_groups"] as List<Map<String, Any?>>
+
+    @Test
+    fun theWorldsScoresArriveGroupedInPlainWords() {
+        val titles = parcelHost().groups().map { it["title"] }
+        assertEquals(listOf("Cost", "Labour", "Yield", "Neighbours"), titles)
+    }
+
+    @Test
+    fun theAreaScoresThatRepeatTheUsageLinesAreNotListedAgain() {
+        @Suppress("UNCHECKED_CAST")
+        val lines = parcelHost().groups().flatMap { (it["rows"] as List<Map<String, Any?>>).map { row -> row["line"] as String } }
+        assertTrue(lines.none { it.contains(" area:") }, lines.toString())
+    }
+
+    @Test
+    fun tappingTheCapitalFloorExplainsItAndNamesTheUsesWithNoPriceYet() {
+        val host = parcelHost()
+        host.selectScore("capex_floor")
+        val bindings = host.bindings()
+        assertEquals("Sourced capital floor", bindings["score_title"])
+        val text = bindings["score_text"] as String
+        assertTrue("a floor: banked up-front prices only" in text, text)
+        assertTrue("No price yet for: Hoop house, Commons building, Van pad, Path, Pond, Woodland tree." in text, text)
+        assertTrue("twin" in text.lines().first { it.startsWith("Where the figure comes from") }, text)
+    }
+
+    @Test
+    fun tappingTheSameScoreAgainClosesItsDetail() {
+        val host = parcelHost()
+        host.selectScore("capex_floor")
+        host.selectScore("capex_floor")
+        assertEquals("", host.bindings()["score_text"])
+    }
+
+    @Test
+    fun theScoreTapActionOpensTheDetail() {
+        val host = parcelHost()
+        kotlinx.coroutines.runBlocking { host.actions { }.getValue("world.scoreTapped")(mapOf("id" to "labor_hours_total")) }
+        assertEquals("Labour hours", host.bindings()["score_title"])
     }
 
     @Test

@@ -55,6 +55,14 @@
             ]
           },
           {
+            "id": "brush-line",
+            "type": "text",
+            "props": {
+              "value": "Brush: {brush_label}. Tap a tile to place it, tap the same tile again to remove it.",
+              "variant": "subheading"
+            }
+          },
+          {
             "id": "world",
             "type": "tilemap",
             "props": {
@@ -71,7 +79,9 @@
               "instances": "{instances}",
               "selected_use": "{brush}",
               "on_tile_tap": "world.tileTapped",
-              "on_instance_tap": "world.instanceTapped"
+              "on_instance_tap": "world.instanceTapped",
+              "palette": "top",
+              "brush_label": "{brush_label}"
             }
           }
         ]
@@ -118,6 +128,45 @@
                 }
               },
               {
+                "id": "plan-list",
+                "type": "list",
+                "props": {
+                  "data": "{plans}",
+                  "itemTemplate": {
+                    "id": "plan-row",
+                    "type": "row",
+                    "props": {
+                      "gap": 8,
+                      "align": "center"
+                    },
+                    "children": [
+                      {
+                        "id": "plan-pick",
+                        "type": "button",
+                        "props": {
+                          "label": "{item.label}"
+                        },
+                        "action": {
+                          "action": "world.switchPlan",
+                          "params": {
+                            "id": "{item.id}"
+                          }
+                        }
+                      },
+                      {
+                        "id": "plan-status",
+                        "type": "text",
+                        "props": {
+                          "value": "{item.status}",
+                          "variant": "caption"
+                        }
+                      }
+                    ]
+                  },
+                  "stacked": true
+                }
+              },
+              {
                 "id": "branch-controls",
                 "type": "row",
                 "props": {
@@ -128,7 +177,7 @@
                     "id": "btn-proposal",
                     "type": "button",
                     "props": {
-                      "label": "New proposal"
+                      "label": "New alternative"
                     },
                     "action": {
                       "action": "world.newProposal"
@@ -145,13 +194,45 @@
                     }
                   },
                   {
-                    "id": "btn-branch",
+                    "id": "btn-save",
                     "type": "button",
                     "props": {
-                      "label": "Next branch"
+                      "label": "Save plan"
                     },
                     "action": {
-                      "action": "world.cycleBranch"
+                      "action": "world.savePlan"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "rename-row",
+                "type": "row",
+                "props": {
+                  "gap": 8,
+                  "align": "center"
+                },
+                "children": [
+                  {
+                    "id": "rename-input",
+                    "type": "textinput",
+                    "props": {
+                      "value": "{rename_draft}",
+                      "placeholder": "Name this plan",
+                      "flex": 1
+                    }
+                  },
+                  {
+                    "id": "btn-rename",
+                    "type": "button",
+                    "props": {
+                      "label": "Rename"
+                    },
+                    "action": {
+                      "action": "world.renamePlan",
+                      "params": {
+                        "name": "{rename_draft}"
+                      }
                     }
                   }
                 ]
@@ -162,6 +243,23 @@
                 "props": {
                   "value": "{diff_text}",
                   "variant": "caption"
+                }
+              },
+              {
+                "id": "compare-title",
+                "type": "text",
+                "visible": "{compare_title}",
+                "props": {
+                  "value": "{compare_title}",
+                  "variant": "subheading"
+                }
+              },
+              {
+                "id": "compare-text",
+                "type": "text",
+                "visible": "{compare_text}",
+                "props": {
+                  "value": "{compare_text}"
                 }
               },
               {
@@ -208,15 +306,88 @@
                 "id": "scores-title",
                 "type": "text",
                 "props": {
-                  "value": "What the twin computes",
+                  "value": "What the numbers say",
                   "variant": "subheading"
                 }
               },
               {
-                "id": "scores-text",
+                "id": "scores-hint",
                 "type": "text",
                 "props": {
-                  "value": "{scores_text}"
+                  "value": "Tap a figure to see what it means and where it comes from.",
+                  "variant": "caption"
+                }
+              },
+              {
+                "id": "score-groups",
+                "type": "list",
+                "props": {
+                  "data": "{score_groups}",
+                  "itemTemplate": {
+                    "id": "score-group",
+                    "type": "column",
+                    "props": {
+                      "gap": 4
+                    },
+                    "children": [
+                      {
+                        "id": "score-group-title",
+                        "type": "text",
+                        "props": {
+                          "value": "{item.title}",
+                          "variant": "subheading"
+                        }
+                      },
+                      {
+                        "id": "score-rows",
+                        "type": "list",
+                        "props": {
+                          "data": "{item.rows}",
+                          "itemTemplate": {
+                            "id": "score-row",
+                            "type": "card",
+                            "props": {
+                              "padding": 8
+                            },
+                            "action": {
+                              "action": "world.scoreTapped",
+                              "params": {
+                                "id": "{item.id}"
+                              }
+                            },
+                            "children": [
+                              {
+                                "id": "score-line",
+                                "type": "text",
+                                "props": {
+                                  "value": "{item.line}"
+                                }
+                              }
+                            ]
+                          },
+                          "stacked": true
+                        }
+                      }
+                    ]
+                  },
+                  "stacked": true
+                }
+              },
+              {
+                "id": "score-title",
+                "type": "text",
+                "visible": "{score_title}",
+                "props": {
+                  "value": "{score_title}",
+                  "variant": "subheading"
+                }
+              },
+              {
+                "id": "score-text",
+                "type": "text",
+                "visible": "{score_text}",
+                "props": {
+                  "value": "{score_text}"
                 }
               },
               {

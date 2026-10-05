@@ -34,7 +34,15 @@ sealed interface DispatchResult {
 
 data class PlacedObject(val id: String, val type: String, val col: Int, val row: Int, val width: Int, val height: Int)
 
-data class ScoreView(val id: String, val label: String?, val value: Double?, val unit: String, val isBinding: Boolean)
+data class ScoreView(
+    val id: String,
+    val label: String?,
+    val value: Double?,
+    val unit: String,
+    val isBinding: Boolean,
+    val note: String? = null,
+    val source: String? = null,
+)
 
 @OptIn(ExperimentalTime::class)
 fun utcTimestamp(): String = Clock.System.now().toString()
@@ -43,9 +51,9 @@ class WorldSession(
     val world: World,
     private val timestamps: () -> String = ::utcTimestamp,
     private val defaultActor: String = "host",
+    val log: EventLog = EventLog(world),
 ) {
-    val log: EventLog = EventLog(world)
-    private val parentBranches: MutableMap<String, String?> = linkedMapOf("main" to null)
+    private val parentBranches: MutableMap<String, String?> = log.branchMeta.mapValuesTo(linkedMapOf()) { (name, meta) -> parentBranchOf(name, meta.from) }
 
     var currentBranch: String = "main"
         private set
@@ -81,7 +89,7 @@ class WorldSession(
 
     fun scores(branch: String = currentBranch): List<ScoreView> {
         val values = reportOutputs(world, log.stateOf(branch)).scoring
-        return world.scoring.values.map { ScoreView(it.id, it.label, values.getValue(it.id), it.requiredUnit(), it.isBinding) }
+        return world.scoring.values.map { ScoreView(it.id, it.label, values.getValue(it.id), it.requiredUnit(), it.isBinding, it.note, it.source) }
     }
 
     fun counts(branch: String = currentBranch): Map<String, Int> = countUses(world, log.stateOf(branch))
@@ -153,9 +161,17 @@ class WorldSession(
         DispatchResult.Failed("malformed", problem.message)
     }
 
+    private fun parentBranchOf(name: String, startEvent: String?): String? = when {
+        name == "main" -> null
+        startEvent != null -> log.lookup(startEvent).branch
+        else -> "main"
+    }
+
     private fun refusedResult(refusal: Refusal): DispatchResult = DispatchResult.Refused(refusal.rule, refusal.message)
 
     companion object {
+        fun withLog(world: World, log: EventLog): WorldSession = WorldSession(world, log = log)
+
         fun fromJson(worldJson: String, path: String = "world.world.json", library: WorldLibrary = WorldLibrary { null }): WorldSession =
             WorldSession(WorldLoader.loadFromJson(worldJson, path, library))
     }

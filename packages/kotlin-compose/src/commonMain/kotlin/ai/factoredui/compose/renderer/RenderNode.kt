@@ -584,6 +584,14 @@ private fun RenderRows(rows: List<Any?>, props: ListProps, context: RenderContex
     }
 
     val itemTemplate = props.itemTemplate ?: return
+    if (props.stacked) {
+        Column {
+            visibleRows.forEach { row ->
+                RenderNode(node = itemTemplate, context = context.withAdditionalData(mapOf("row" to row, "item" to row)))
+            }
+        }
+        return
+    }
     LazyColumn {
         items(visibleRows) { row ->
             // Scope the row under "row" (the requested "{row.x}" syntax) and

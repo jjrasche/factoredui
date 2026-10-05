@@ -7,6 +7,7 @@ import ai.factoredui.compose.renderer.RenderSpec
 import ai.factoredui.compose.renderer.SpecTheme
 import ai.factoredui.compose.renderer.themeNamed
 import ai.factoredui.compose.schema.Spec
+import ai.factoredui.worldengine.log.EventLog
 import ai.factoredui.worldengine.session.WorldSession
 import ai.factoredui.worldengine.world.MapWorldLibrary
 import ai.factoredui.worldengine.world.World
@@ -33,6 +34,7 @@ data class WorldBuilderArgs(
     val presentation: String?,
     val theme: String?,
     val animate: Boolean,
+    val plan: String?,
     val width: Int,
     val height: Int,
 )
@@ -47,16 +49,27 @@ fun parseWorldBuilderArgs(args: Array<String>): WorldBuilderArgs? {
         presentation = flags["presentation"],
         theme = flags["theme"],
         animate = flags["animate"]?.toBooleanStrictOrNull() ?: true,
+        plan = flags["plan"],
         width = flags["width"]?.toIntOrNull() ?: DEFAULT_WIDTH,
         height = flags["height"]?.toIntOrNull() ?: DEFAULT_HEIGHT,
     )
 }
 
-fun openSession(worldPath: String): WorldSession {
+private fun openWorld(worldPath: String): World {
     val file = File(worldPath)
     val files = file.absoluteFile.parentFile.listFiles { candidate -> candidate.name.endsWith(WORLD_FILE_SUFFIX) }.orEmpty()
         .associate { it.name to it.readText() }
-    return WorldSession(World.open(file.name, MapWorldLibrary(files)))
+    return World.open(file.name, MapWorldLibrary(files))
+}
+
+fun openSession(worldPath: String): WorldSession = WorldSession(openWorld(worldPath))
+
+internal class OpenedPlan(val session: WorldSession, val names: Map<String, String>)
+
+internal fun openPlan(worldPath: String, planPath: String): OpenedPlan {
+    val world = openWorld(worldPath)
+    val plan = decodePlanFile(File(planPath).readText())
+    return OpenedPlan(WorldSession.withLog(world, EventLog.load(world, plan.log)), plan.names)
 }
 
 fun loadPresentation(path: String?): Map<String, UsePresentation> {
@@ -74,16 +87,17 @@ private fun usePresentationOf(entry: JsonObject) = UsePresentation(
 fun main(args: Array<String>) {
     val parsed = parseWorldBuilderArgs(args)
     if (parsed == null) {
-        System.err.println("usage: world-builder --world <x.world.json> --spec <spec.json> [--presentation p.json] [--theme light|dark] [--animate true|false] [--width N] [--height N]")
+        System.err.println("usage: world-builder --world <x.world.json> --spec <spec.json> [--presentation p.json] [--theme light|dark] [--animate true|false] [--plan saved.plan.json] [--width N] [--height N]")
         kotlin.system.exitProcess(2)
     }
-    val host = WorldBuilderHost(openSession(parsed.world), loadPresentation(parsed.presentation))
+    val opened = parsed.plan?.let { openPlan(parsed.world, it) } ?: OpenedPlan(openSession(parsed.world), emptyMap())
+    val host = WorldBuilderHost(opened.session, loadPresentation(parsed.presentation), opened.names)
     val spec = Json { ignoreUnknownKeys = true }.decodeFromString(Spec.serializer(), File(parsed.spec).readText())
     val theme = resolveWindowTheme(parsed.theme, windowThemeFromEnvironment(), null)
     var publish: () -> Unit = {}
     val context = RenderContext(
         actions = host.actions { publish() },
-        initialData = host.bindings() + mapOf("theme" to theme, "animate" to parsed.animate, "brush" to host.initialBrush()),
+        initialData = host.bindings() + mapOf("theme" to theme, "animate" to parsed.animate, "brush" to host.initialBrush(), "rename_draft" to ""),
         theme = themeNamed(theme) ?: SpecTheme.DARK,
     )
     publish = { context.applyBindings(host.bindings()) }

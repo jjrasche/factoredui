@@ -108,7 +108,7 @@ class FiveFootPerformanceTest {
         var publish: () -> Unit = {}
         val context = RenderContext(
             actions = host.actions { publish() },
-            initialData = host.bindings() + mapOf("theme" to "dark", "animate" to false, "brush" to host.initialBrush()),
+            initialData = host.bindings() + mapOf("theme" to "dark", "animate" to false, "brush" to host.initialBrush(), "rename_draft" to ""),
         )
         publish = { context.applyBindings(host.bindings()) }
         setContent { Box(Modifier.size(1100.dp, 800.dp)) { RenderSpec(spec = spec, context = context) } }

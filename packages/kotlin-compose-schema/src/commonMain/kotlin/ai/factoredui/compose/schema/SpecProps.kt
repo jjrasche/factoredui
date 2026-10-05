@@ -201,6 +201,7 @@ data class ListProps(
     val itemTemplate: SpecNode?,
     val emptyText: String = "",
     val maxItems: Int? = null,
+    val stacked: Boolean = false,
 )
 
 fun Map<String, SpecValue>.asListProps(): ListProps = ListProps(
@@ -209,6 +210,7 @@ fun Map<String, SpecValue>.asListProps(): ListProps = ListProps(
     itemTemplate = (get("itemTemplate") as? SpecValue.NodeValue)?.value,
     emptyText = string("emptyText") ?: "",
     maxItems = int("maxItems"),
+    stacked = boolean("stacked") ?: false,
 )
 
 // --- SpacerProps ---

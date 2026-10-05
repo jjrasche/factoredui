@@ -9,15 +9,15 @@ class WorldBuilderArgsTest {
     @Test
     fun aWorldAndASpecAreEnoughAndTheRestDefault() {
         val parsed = parseWorldBuilderArgs(arrayOf("--world", "p.world.json", "--spec", "s.json"))
-        assertEquals(WorldBuilderArgs("p.world.json", "s.json", null, null, true, 1500, 900), parsed)
+        assertEquals(WorldBuilderArgs("p.world.json", "s.json", null, null, true, null, 1500, 900), parsed)
     }
 
     @Test
     fun everyFlagIsRead() {
         val parsed = parseWorldBuilderArgs(
-            arrayOf("--world", "w", "--spec", "s", "--presentation", "p", "--theme", "dark", "--animate", "false", "--width", "1200", "--height", "700"),
+            arrayOf("--world", "w", "--spec", "s", "--presentation", "p", "--theme", "dark", "--animate", "false", "--plan", "saved.plan.json", "--width", "1200", "--height", "700"),
         )
-        assertEquals(WorldBuilderArgs("w", "s", "p", "dark", false, 1200, 700), parsed)
+        assertEquals(WorldBuilderArgs("w", "s", "p", "dark", false, "saved.plan.json", 1200, 700), parsed)
     }
 
     @Test

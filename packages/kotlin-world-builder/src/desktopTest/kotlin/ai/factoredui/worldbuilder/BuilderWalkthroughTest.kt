@@ -20,6 +20,7 @@ import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -53,7 +54,7 @@ class BuilderWalkthroughTest {
         var publish: () -> Unit = {}
         context = RenderContext(
             actions = host.actions { publish() },
-            initialData = host.bindings() + mapOf("theme" to theme, "animate" to false, "brush" to host.initialBrush()),
+            initialData = host.bindings() + mapOf("theme" to theme, "animate" to false, "brush" to host.initialBrush(), "rename_draft" to ""),
         )
         publish = { context.applyBindings(host.bindings()) }
         val backdrop = if (theme == "dark") Color(0xFF14181F) else Color(0xFFF4F1EA)
@@ -121,7 +122,7 @@ class BuilderWalkthroughTest {
         tiles("woodland_tree", 7 to 22)
         shot("05-proposal-with-diff-dark")
 
-        onNodeWithTag("btn-branch").performClick()
+        onAllNodesWithTag("plan-pick")[0].performClick()
         shot("06-back-on-main-dark")
     }
 

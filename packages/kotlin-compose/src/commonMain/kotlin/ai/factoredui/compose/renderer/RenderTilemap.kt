@@ -81,6 +81,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -104,7 +105,8 @@ private val GRID_LINE = Color(0x33000000)
 private val GRID_LINE_NIGHT = Color(0x40FFFFFF)
 private val OUTLINE_NIGHT = Color(0x73FFFFFF)
 private val HOVER_LINE = Color(0xFFFFFFFF)
-private val PALETTE_TEXT = TextStyle(fontSize = 12.sp, lineHeight = 16.sp)
+private val PALETTE_TEXT = TextStyle(fontSize = 13.sp, lineHeight = 17.sp)
+private const val SELECTED_CHIP_ALPHA = 0.16f
 private val FALLBACK_USE_COLOR = Color(0xFF9AA3B2)
 
 internal class TileStyle(val use: TilemapUse, val color: Color)
@@ -167,6 +169,7 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     val brushPath = node.props["selected_use"]?.bindingPath()
     val countsPath = node.props["counts"]?.bindingPath()
     val areasPath = node.props["areas"]?.bindingPath()
+    val brushLabelPath = node.props["brush_label"]?.bindingPath()
     var localCells by remember { mutableStateOf(resolveTilemapCells(resolvedProps["cells"])) }
     var localBrush by remember { mutableStateOf(uses.firstOrNull()?.id) }
     var hovered by remember { mutableStateOf<TileCoord?>(null) }
@@ -200,6 +203,10 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
         if (areasPath != null) context.setBinding(areasPath, areasOf(counts, tileArea).mapValues { wholeWhenIntegral(it.value) })
     }
 
+    LaunchedEffect(brush, uses) {
+        if (brushLabelPath != null) context.setBinding(brushLabelPath, uses.firstOrNull { it.id == brush }?.label ?: brush.orEmpty())
+    }
+
     fun report(tile: TileCoord) {
         val onTileTapped = props.onTileTapped ?: return
         scope.launch { context.dispatch(node.id, tileTappedAction(onTileTapped, tile, brush)) }
@@ -225,7 +232,20 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
         if (brushPath != null) context.setBinding(brushPath, use) else localBrush = use
     }
 
+    val palettePlace = palettePlaceOf(resolvedProps["palette"])
+    val palette: @Composable () -> Unit = {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            for (use in uses) BrushChip("${node.id}:brush:${use.id}", use.label, styles.getValue(use.id).color, use.id == brush) { select(use.id) }
+            BrushChip("${node.id}:brush:$ERASE_BRUSH", ERASE_BRUSH, Color.Transparent, brush == ERASE_BRUSH) { select(ERASE_BRUSH) }
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize().nodeTag(node.id)) {
+        if (palettePlace == PalettePlace.TOP) palette()
         BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds().nodeTag("${node.id}:map")) {
             val viewWidthPx = constraints.maxWidth.toFloat()
             val viewHeightPx = constraints.maxHeight.toFloat()
@@ -301,14 +321,7 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
                 }
             }
         }
-        FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            for (use in uses) BrushChip("${node.id}:brush:${use.id}", use.label, styles.getValue(use.id).color, use.id == brush) { select(use.id) }
-            BrushChip("${node.id}:brush:$ERASE_BRUSH", ERASE_BRUSH, Color.Transparent, brush == ERASE_BRUSH) { select(ERASE_BRUSH) }
-        }
+        if (palettePlace == PalettePlace.BOTTOM) palette()
     }
 }
 
@@ -347,17 +360,26 @@ private fun colorOf(hex: String?, fallback: Color): Color = parseGeomapColor(hex
 @Composable
 private fun BrushChip(tag: String, label: String, swatch: Color, isSelected: Boolean, onSelect: () -> Unit) {
     val theme = LocalSpecTheme.current
+    val chipShape = RoundedCornerShape(8.dp)
     Row(
-        modifier = Modifier.nodeTag(tag).clickable(onClick = onSelect),
+        modifier = Modifier.nodeTag(tag)
+            .background(if (isSelected) theme.ink.copy(alpha = SELECTED_CHIP_ALPHA) else Color.Transparent, chipShape)
+            .border(if (isSelected) 2.dp else 1.dp, if (isSelected) theme.ink else theme.muted, chipShape)
+            .clickable(onClick = onSelect)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
-            modifier = Modifier.size(22.dp, 14.dp)
+            modifier = Modifier.size(24.dp, 16.dp)
                 .background(swatch, RoundedCornerShape(3.dp))
-                .border(if (isSelected) 2.5.dp else 1.dp, if (isSelected) theme.ink else theme.muted, RoundedCornerShape(3.dp)),
+                .border(1.dp, theme.muted, RoundedCornerShape(3.dp)),
         )
-        Text(text = label, style = PALETTE_TEXT.copy(color = theme.ink), maxLines = 1)
+        Text(text = label, style = PALETTE_TEXT.copy(color = theme.ink, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal), maxLines = 1)
     }
 }
+
+internal enum class PalettePlace { TOP, BOTTOM, NONE }
+
+internal fun palettePlaceOf(raw: Any?): PalettePlace = PalettePlace.entries.firstOrNull { it.name.equals(raw as? String, ignoreCase = true) } ?: PalettePlace.BOTTOM
 
