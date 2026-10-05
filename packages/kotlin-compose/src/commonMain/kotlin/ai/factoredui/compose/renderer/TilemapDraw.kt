@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.painter.Painter
 import kotlin.math.max
 
 internal const val BLOCK_UNIT_FACTOR = 0.5f
@@ -34,6 +35,7 @@ private const val ISO_CROWN_WIDTH_PER_RADIUS = 1.4142135f
 private const val TOP_CROWN_WIDTH_PER_RADIUS = 2f
 private const val MIN_CROWN_PIXEL_FRACTION = 0.5f
 private const val INSTANCE_FOOTPRINT_RADIUS_TILES = 0.25f
+private const val DEFAULT_PICTURE_WIDTH_TILES = 0.4f
 
 internal class TilemapScene(
     val shape: TileShape,
@@ -46,6 +48,7 @@ internal class TilemapScene(
     val phase: Int,
     val density: Float,
     val sideMm: Double,
+    val images: Map<String, Painter>,
 )
 
 internal class RecordedKey {
@@ -57,7 +60,7 @@ internal class RecordedKey {
         parts = next.toList()
     }
 
-    private fun sameThing(a: Any?, b: Any?): Boolean = a === b || (a is Number && a == b)
+    private fun sameThing(a: Any?, b: Any?): Boolean = a === b || (a is Number && a == b) || (a is Map<*, *> && a == b)
 }
 
 internal fun DrawScope.drawScene(scene: TilemapScene) {
@@ -76,6 +79,13 @@ private fun DrawScope.drawFootprint(footprint: TileFootprint, scene: TilemapScen
     val ground = if (single) tileCorners(scene.shape, footprint.col, footprint.row) else footprintCorners(footprint)
     val corners = ground.map { space.toContent(it) }
     val centre = space.toContent(footprintGroundCentre(scene.shape, footprint))
+    val picture = scene.images[footprint.use]
+    if (picture != null) {
+        val top = corners.minOf { it.y }
+        val bottom = corners.maxOf { it.y }
+        drawPicture(picture, centre.x, centre.y + (bottom - top) / 4f, corners.maxOf { it.x } - corners.minOf { it.x })
+        return
+    }
     val base = if ((footprint.col + footprint.row) % 2 == 0) scene.look.ground else scene.look.groundAlt
     drawTileSurface(corners, style, base, scene.look, scene.density)
     val extent = max(footprint.width, footprint.height)
@@ -100,6 +110,11 @@ private fun DrawScope.drawInstance(drawable: InstanceDrawable, scene: TilemapSce
     val centre = space.toContent(drawable.centre)
     val radiusTiles = instanceRadiusTiles(instance, scene.sideMm)
     val variantKey = TileCoord(instance.id.hashCode() and 0x7fff, (instance.id.hashCode() ushr 15) and 0x7fff)
+    val picture = scene.images[instance.use]
+    if (picture != null) {
+        drawPicture(picture, centre.x, centre.y, crownWidth(radiusTiles, space.tileWidthPx, space.view))
+        return
+    }
     if (style.use.sprite == TileSprite.TREE) {
         val pixel = crownPixel(radiusTiles, space.tileWidthPx, space.view)
         drawPixelTree(variantKey, centre, pixel, scene.look.lifted(style.color, scene.look.treeLift), scene.look)
@@ -117,6 +132,11 @@ private fun squareAround(centre: GroundPoint, half: Float): List<GroundPoint> = 
     GroundPoint(centre.x + half, centre.y + half),
     GroundPoint(centre.x - half, centre.y + half),
 )
+
+internal fun crownWidth(radiusTiles: Float, tileWidthPx: Float, view: TileView): Float {
+    val widthPerRadius = if (view == TileView.ISO) ISO_CROWN_WIDTH_PER_RADIUS else TOP_CROWN_WIDTH_PER_RADIUS
+    return if (radiusTiles <= 0f) tileWidthPx * DEFAULT_PICTURE_WIDTH_TILES else radiusTiles * widthPerRadius * tileWidthPx
+}
 
 internal fun crownPixel(radiusTiles: Float, tileWidthPx: Float, view: TileView): Float {
     val standard = tileWidthPx / PIXELS_PER_TILE_WIDTH

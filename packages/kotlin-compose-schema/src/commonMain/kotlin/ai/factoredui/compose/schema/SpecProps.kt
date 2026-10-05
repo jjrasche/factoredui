@@ -855,6 +855,7 @@ data class TilemapUse(
     val sprite: TileSprite = TileSprite.FLAT,
     val height: Float? = null,
     val critter: String? = null,
+    val image: String? = null,
 )
 
 data class TilemapProps(val onTileTapped: String? = null, val onInstanceTapped: String? = null)
@@ -876,8 +877,16 @@ fun resolveTilemapUses(resolvedUses: Any?): List<TilemapUse> =
             sprite = tileSpriteOf(fields["sprite"]),
             height = (fields["height"] as? Number)?.toFloat(),
             critter = fields["critter"] as? String,
+            image = fields["image"] as? String,
         )
     }
+
+fun resolveTilemapImages(resolvedImages: Any?): Map<String, String> =
+    (resolvedImages as? Map<*, *>).orEmpty().entries.mapNotNull { (key, value) ->
+        val name = key as? String ?: return@mapNotNull null
+        val source = value as? String ?: return@mapNotNull null
+        name to source
+    }.toMap()
 
 fun resolveTilemapCells(resolvedCells: Any?): List<TileCell> =
     (resolvedCells as? List<*>).orEmpty().mapNotNull { entry ->

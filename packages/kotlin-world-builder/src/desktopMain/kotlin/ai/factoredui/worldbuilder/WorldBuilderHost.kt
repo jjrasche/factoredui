@@ -6,7 +6,7 @@ import ai.factoredui.worldengine.session.DispatchResult
 import ai.factoredui.worldengine.session.WorldSession
 import kotlinx.serialization.json.JsonElement
 
-data class UsePresentation(val height: Double? = null, val critter: String? = null)
+data class UsePresentation(val height: Double? = null, val critter: String? = null, val image: String? = null)
 
 private const val ERASE_BRUSH = "erase"
 private const val ROOT_BRANCH = "main"
@@ -98,7 +98,7 @@ class WorldBuilderHost(
     private fun usesOf(props: Map<String, Any?>): List<Map<String, Any?>> =
         asMaps(props["uses"]).map { use ->
             val extra = presentation[use["id"] as String]
-            use + listOfNotNull(extra?.height?.let { "height" to it }, extra?.critter?.let { "critter" to it })
+            use + listOfNotNull(extra?.height?.let { "height" to it }, extra?.critter?.let { "critter" to it }, extra?.image?.let { "image" to it })
         }
 
     private fun areasOf(props: Map<String, Any?>): Map<String, Double> =

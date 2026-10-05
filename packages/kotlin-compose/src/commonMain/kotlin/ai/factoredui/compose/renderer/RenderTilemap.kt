@@ -34,6 +34,7 @@ import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.resolveTileArea
 import ai.factoredui.compose.schema.resolveTilemapCells
 import ai.factoredui.compose.schema.resolveTilemapFootprints
+import ai.factoredui.compose.schema.resolveTilemapImages
 import ai.factoredui.compose.schema.resolveTilemapInstances
 import ai.factoredui.compose.schema.resolveTilemapShape
 import ai.factoredui.compose.schema.resolveTilemapSize
@@ -177,6 +178,9 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
         TilemapSpace(view, tileWidthPx, tilemapScreenBounds(shape, view, cols, rows, tileWidthPx))
     }
     val footprints = resolveTilemapFootprints(resolvedProps["footprints"])
+    val imageAliases = resolveTilemapImages(resolvedProps["images"])
+    val imageSources = uses.mapNotNull { use -> use.image?.let { use.id to (imageAliases[it] ?: it) } }.toMap()
+    val images = rememberLoadedTileImages(imageSources)
     val instances = resolveTilemapInstances(resolvedProps["instances"])
     val sideMm = tileSideMm(tileArea)
     val drawables = remember(shape, cells, footprints, instances, sideMm, rows) {
@@ -282,10 +286,10 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
                     recordedGround.remember(shape, space, look, density, withChecker)
                 }
                 val scenePhase = if (animated) phase else 0
-                if (!recordedScene.holds(drawables, styles, look, space, scenePhase, density, sideMm)) {
-                    val scene = TilemapScene(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm)
+                if (!recordedScene.holds(drawables, styles, look, space, scenePhase, density, sideMm, images)) {
+                    val scene = TilemapScene(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images)
                     sceneLayer.record(size = contentSize) { drawScene(scene) }
-                    recordedScene.remember(drawables, styles, look, space, scenePhase, density, sideMm)
+                    recordedScene.remember(drawables, styles, look, space, scenePhase, density, sideMm, images)
                 }
                 withTransform({
                     translate(current.translateX, current.translateY)

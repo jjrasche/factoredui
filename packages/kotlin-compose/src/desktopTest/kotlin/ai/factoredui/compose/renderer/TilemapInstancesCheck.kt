@@ -146,4 +146,50 @@ class TilemapInstancesCheck {
         assertEquals(listOf(0.0, 3.0), listOf(tileTaps.single()["col"], tileTaps.single()["row"]).map { (it as Number).toDouble() })
         assertEquals(1, instanceTaps.size)
     }
+    private fun svgDataUri(colour: String): String {
+        val svg = "<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='$colour'/></svg>"
+        return "data:image/svg+xml;base64," + java.util.Base64.getEncoder().encodeToString(svg.toByteArray())
+    }
+
+    private fun contextWithImage(image: String, footprints: List<Map<String, Any?>> = emptyList(), instances: List<Map<String, Any?>> = emptyList()) = RenderContext(
+        initialData = mapOf(
+            "uses" to uses.map { if (it["id"] == "shed" || it["id"] == "tree") it + ("image" to image) else it },
+            "cells" to emptyList<Any?>(),
+            "footprints" to footprints,
+            "instances" to instances,
+            "brush" to "tree",
+            "controlled" to true,
+        ),
+    )
+
+    private fun Color.isRed() = red > 0.9f && green < 0.1f && blue < 0.1f
+
+    @Test
+    fun aUseWithAnImageDrawsItFromSvgOnceItHasLoaded() = runComposeUiTest {
+        val check = SpecVisualCheck(this, contextWithImage(svgDataUri("#ff0000"), footprints = listOf(footprint("s1", "shed", 1, 1, 2, 2))))
+        check.render(tilemap(), viewport = 500.dp)
+        val placed = PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows)
+        waitUntil(timeoutMillis = 10_000) { placed.pixelAtGround(GroundPoint(2f, 1.8f), 0f, 0f).isRed() }
+        assertTrue(placed.pixelAtGround(GroundPoint(2f, 1.8f)).isRed(), "the footprint is the picture, not the base block")
+    }
+
+    @Test
+    fun aTreeInstanceWithAnImageIsThePictureAtItsCrownWidth() = runComposeUiTest {
+        val check = SpecVisualCheck(this, contextWithImage(svgDataUri("#ff0000"), instances = listOf(instance("t1", 2.5, 2.5, crownMm = TILE_SIDE_MM))))
+        check.render(tilemap(), viewport = 500.dp)
+        val placed = PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows)
+        waitUntil(timeoutMillis = 10_000) { placed.pixelAtGround(GroundPoint(2.5f, 2.5f), 0f, -20f).isRed() }
+        assertTrue(!placed.pixelAtGround(GroundPoint(0.5f, 0.5f)).isRed(), "far ground stays ground")
+    }
+
+    @Test
+    fun aBrokenImageLeavesTheBaseShape() = runComposeUiTest {
+        val check = SpecVisualCheck(this, contextWithImage("data:image/svg+xml;base64,AAAA", footprints = listOf(footprint("s1", "shed", 1, 1, 2, 2))))
+        check.render(tilemap(), viewport = 500.dp)
+        val placed = PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows)
+        Thread.sleep(1500)
+        waitForIdle()
+        assertTrue(!placed.pixelAtGround(GroundPoint(2.6f, 1.8f)).isNear(Color(0xFFCFE0A8)), "the block is still drawn")
+        assertTrue(!placed.pixelAtGround(GroundPoint(2f, 1.8f)).isRed(), "no picture")
+    }
 }

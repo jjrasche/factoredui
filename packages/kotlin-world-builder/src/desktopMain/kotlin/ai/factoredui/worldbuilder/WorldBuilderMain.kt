@@ -68,6 +68,7 @@ fun loadPresentation(path: String?): Map<String, UsePresentation> {
 private fun usePresentationOf(entry: JsonObject) = UsePresentation(
     height = entry["height"]?.jsonPrimitive?.doubleOrNull,
     critter = entry["critter"]?.jsonPrimitive?.content,
+    image = entry["image"]?.jsonPrimitive?.content,
 )
 
 fun main(args: Array<String>) {
