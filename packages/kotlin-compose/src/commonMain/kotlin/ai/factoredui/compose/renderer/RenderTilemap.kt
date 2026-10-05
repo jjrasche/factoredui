@@ -276,9 +276,10 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
                     },
             ) {
                 val contentSize = IntSize(ceil(space.contentWidth).toInt(), ceil(space.contentHeight).toInt())
-                if (!recordedGround.holds(shape, space, look, density)) {
-                    groundLayer.record(size = contentSize) { drawGround(shape, space, cols, rows, look, density) }
-                    recordedGround.remember(shape, space, look, density)
+                val withChecker = current.scale * space.tileWidthPx >= CHECKER_MIN_TILE_PIXELS
+                if (!recordedGround.holds(shape, space, look, density, withChecker)) {
+                    groundLayer.record(size = contentSize) { drawGround(shape, space, cols, rows, look, density, withChecker) }
+                    recordedGround.remember(shape, space, look, density, withChecker)
                 }
                 val scenePhase = if (animated) phase else 0
                 if (!recordedScene.holds(drawables, styles, look, space, scenePhase, density, sideMm)) {

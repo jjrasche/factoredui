@@ -134,14 +134,14 @@ class FiveFootPerformanceTest {
         }
         note("$label zoom step (input + recompose): ${zoomIdle.summary()}; frame after: ${zoomDraw.summary()}")
 
-        val panIdle = mutableListOf<Double>()
-        val panDraw = mutableListOf<Double>()
+        val panEvent = mutableListOf<Double>()
+        map.performTouchInput { down(center) }
         repeat(FRAME_SAMPLES) { step ->
             val sign = if (step % 2 == 0) 1f else -1f
-            panIdle.add(elapsedMillis { map.performTouchInput { swipe(center, center + Offset(sign * 80f, sign * 30f), 60) }; waitForIdle() })
-            panDraw.add(drawMillis())
+            panEvent.add(elapsedMillis { map.performTouchInput { moveBy(Offset(sign * 40f, sign * 15f)) }; waitForIdle() })
         }
-        note("$label pan drag (input + recompose): ${panIdle.summary()}; frame after: ${panDraw.summary()}")
+        map.performTouchInput { up() }
+        note("$label pan move event (input + recompose + draw): ${panEvent.summary()}")
 
         val hoverIdle = mutableListOf<Double>()
         val hoverDraw = mutableListOf<Double>()

@@ -11,10 +11,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 
 private const val GRID_LINE_PASSES = 2
 
-internal fun DrawScope.drawGround(shape: TileShape, space: TilemapSpace, cols: Int, rows: Int, look: TileLook, density: Float) {
+private const val CHECKER_CHUNK_TILES = 8
+internal const val CHECKER_MIN_TILE_PIXELS = 8f
+
+internal fun DrawScope.drawGround(shape: TileShape, space: TilemapSpace, cols: Int, rows: Int, look: TileLook, density: Float, withChecker: Boolean) {
     if (shape == TileShape.HEX) return drawHexGround(space, cols, rows, look, density)
     drawPath(parcelOutline(space, cols, rows), look.ground, style = Fill)
-    drawPath(checkerTiles(space, cols, rows), look.groundAlt, style = Fill)
+    if (withChecker) checkerChunks(space, cols, rows).forEach { drawPath(it, look.groundAlt, style = Fill) }
     val grid = gridLines(space, cols, rows)
     repeat(GRID_LINE_PASSES) { drawPath(grid, look.gridLine, style = Stroke(width = density)) }
 }
@@ -24,9 +27,14 @@ private fun parcelOutline(space: TilemapSpace, cols: Int, rows: Int): Path {
     return polygon(corners.map { space.toContent(it) })
 }
 
-private fun checkerTiles(space: TilemapSpace, cols: Int, rows: Int): Path = Path().apply {
-    for (row in 0 until rows) {
-        for (col in 0 until cols) {
+private fun checkerChunks(space: TilemapSpace, cols: Int, rows: Int): List<Path> =
+    (0 until rows step CHECKER_CHUNK_TILES).flatMap { firstRow ->
+        (0 until cols step CHECKER_CHUNK_TILES).map { firstCol -> checkerChunk(space, firstCol, firstRow, minOf(firstCol + CHECKER_CHUNK_TILES, cols), minOf(firstRow + CHECKER_CHUNK_TILES, rows)) }
+    }
+
+private fun checkerChunk(space: TilemapSpace, firstCol: Int, firstRow: Int, endCol: Int, endRow: Int): Path = Path().apply {
+    for (row in firstRow until endRow) {
+        for (col in firstCol until endCol) {
             if ((col + row) % 2 == 0) continue
             addTile(this, space, col, row)
         }
