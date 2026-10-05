@@ -54,6 +54,7 @@
               "rows": "{parcel.rows}",
               "tile_area": "{parcel.tile_area}",
               "shape": "{shape}",
+              "animate": "{animate}",
               "uses": "{uses}",
               "cells": "{cells}",
               "selected_use": "{brush}",

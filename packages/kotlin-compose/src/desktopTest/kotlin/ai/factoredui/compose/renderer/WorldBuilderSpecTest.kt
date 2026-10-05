@@ -22,7 +22,8 @@ class WorldBuilderSpecTest {
 
     private fun hostData(shape: String? = null): Map<String, Any?> {
         val data = jsonObjectToMap(json.parseToJsonElement(File("examples/world-builder.data.json").readText()) as JsonObject)
-        return if (shape == null) data else data + ("shape" to shape)
+        val still = data + ("animate" to false)
+        return if (shape == null) still else still + ("shape" to shape)
     }
 
     private fun SpecVisualCheck.centreOfMap(): Pair<Float, Float> =

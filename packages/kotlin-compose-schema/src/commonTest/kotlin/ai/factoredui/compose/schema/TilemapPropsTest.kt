@@ -39,6 +39,13 @@ class TilemapPropsTest {
     }
 
     @Test
+    fun aUseMayNameAnAnimalThatWandersItsTiles() {
+        val uses = resolveTilemapUses(listOf(mapOf("id" to "paddock", "sprite" to "fence", "critter" to "sheep"), mapOf("id" to "path")))
+        assertEquals("sheep", uses[0].critter)
+        assertEquals(null, uses[1].critter)
+    }
+
+    @Test
     fun cellsNeedAColumnARowAndAUse() {
         val cells = resolveTilemapCells(
             listOf(
