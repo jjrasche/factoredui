@@ -48,4 +48,37 @@ class WorldBuilderFootprintsTest {
         assertTrue(first["crown_radius_mm"] is Number || first["crown_radius_mm"] == null, "crown is a number or absent: $first")
         assertEquals("measured", first["provenance"])
     }
+
+    @Test
+    fun theUsageLineCountsTheTenInstancesNextToTheTiles() {
+        val usage = lidarHost().bindings()["usage_text"] as String
+        assertTrue("Lidar tree: 10 placed (10 measured), 0 tiles, 0 sq ft" in usage, usage)
+    }
+
+    @Test
+    fun tappingATreeFillsThePanelWithItsRecordAndATileTapClearsIt() {
+        val host = lidarHost()
+        assertEquals("", host.bindings()["instance_text"])
+        host.selectInstance("tree-01")
+        val bindings = host.bindings()
+        assertEquals("Lidar tree tree-01 (measured)", bindings["instance_title"])
+        assertTrue("Position error: not measured" in (bindings["instance_text"] as String), bindings["instance_text"] as String)
+        host.tap(0, 0, "erase")
+        assertEquals("", host.bindings()["instance_text"])
+    }
+
+    @Test
+    fun theInstanceTapActionSelectsTheTreeItNames() {
+        val host = lidarHost()
+        val handler = host.actions { }.getValue("world.instanceTapped")
+        kotlinx.coroutines.runBlocking { handler(mapOf("id" to "tree-02")) }
+        assertEquals("Lidar tree tree-02 (measured)", host.bindings()["instance_title"])
+    }
+
+    @Test
+    fun aTreeThatIsNotThereShowsNoRecord() {
+        val host = lidarHost()
+        host.selectInstance("no-such-tree")
+        assertEquals("", host.bindings()["instance_text"])
+    }
 }

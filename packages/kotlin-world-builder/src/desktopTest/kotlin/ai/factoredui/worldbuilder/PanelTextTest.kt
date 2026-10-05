@@ -23,6 +23,22 @@ class PanelTextTest {
     }
 
     @Test
+    fun usageShowsPlacedInstancesNextToTheTileCount() {
+        val uses = listOf(mapOf("id" to "lidar_tree", "label" to "Lidar tree"), mapOf("id" to "shed", "label" to "Shed"))
+        val tallies = mapOf("lidar_tree" to InstanceTally(measured = 10, proposed = 0), "shed" to InstanceTally(measured = 0, proposed = 2))
+        assertEquals(
+            "Lidar tree: 10 placed (10 measured), 0 tiles, 0 sq ft\nShed: 2 placed (2 proposed), 0 tiles, 0 sq ft",
+            usageLines(uses, counts = emptyMap(), areas = emptyMap(), instances = tallies),
+        )
+    }
+
+    @Test
+    fun aTypeWithNoInstancesKeepsTheTileOnlyLine() {
+        val uses = listOf(mapOf("id" to "shed", "label" to "Shed"))
+        assertEquals("Shed: 1 tiles, 625 sq ft", usageLines(uses, mapOf("shed" to 1), mapOf("shed" to 625.0), mapOf("shed" to InstanceTally(0, 0))))
+    }
+
+    @Test
     fun scoresShowLabelValueUnitAndMarkTheBindingOnes() {
         val scores = listOf(
             ScoreView("pasture_yield_annual", "Pasture yield", 0.688705, "ton/year", true),

@@ -12,11 +12,26 @@ internal fun formatNumber(value: Double): String {
     return if (rounded % 1.0 == 0.0) rounded.toLong().toString() else rounded.toString()
 }
 
-internal fun usageLines(uses: List<Map<String, Any?>>, counts: Map<String, Int>, areas: Map<String, Double>): String =
+internal data class InstanceTally(val measured: Int, val proposed: Int) {
+    val total: Int get() = measured + proposed
+}
+
+internal fun usageLines(
+    uses: List<Map<String, Any?>>,
+    counts: Map<String, Int>,
+    areas: Map<String, Double>,
+    instances: Map<String, InstanceTally> = emptyMap(),
+): String =
     uses.joinToString("\n") { use ->
         val id = use["id"] as String
-        "${use["label"]}: ${counts[id] ?: 0} tiles, ${formatNumber(areas[id] ?: 0.0)} sq ft"
+        "${use["label"]}: ${instanceClause(instances[id])}${counts[id] ?: 0} tiles, ${formatNumber(areas[id] ?: 0.0)} sq ft"
     }
+
+private fun instanceClause(tally: InstanceTally?): String {
+    if (tally == null || tally.total == 0) return ""
+    val provenance = listOfNotNull(tally.measured.takeIf { it > 0 }?.let { "$it measured" }, tally.proposed.takeIf { it > 0 }?.let { "$it proposed" })
+    return "${tally.total} placed (${provenance.joinToString(", ")}), "
+}
 
 internal fun scoreLines(scores: List<ScoreView>): String =
     scores.joinToString("\n") { score ->

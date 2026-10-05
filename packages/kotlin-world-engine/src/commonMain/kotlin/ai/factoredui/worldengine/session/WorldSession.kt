@@ -10,6 +10,7 @@ import ai.factoredui.worldengine.outputs.TapDecision
 import ai.factoredui.worldengine.outputs.countUses
 import ai.factoredui.worldengine.outputs.renderProps
 import ai.factoredui.worldengine.outputs.reportOutputs
+import ai.factoredui.worldengine.state.InstanceRecord
 import ai.factoredui.worldengine.world.World
 import ai.factoredui.worldengine.world.WorldLibrary
 import ai.factoredui.worldengine.world.WorldLoader
@@ -84,6 +85,8 @@ class WorldSession(
     }
 
     fun counts(branch: String = currentBranch): Map<String, Int> = countUses(world, log.stateOf(branch))
+
+    fun instanceRecords(branch: String = currentBranch): List<InstanceRecord> = log.stateOf(branch).sortedInstanceRecords()
 
     fun placedObjects(branch: String = currentBranch): List<PlacedObject> =
         log.stateOf(branch).instances.values

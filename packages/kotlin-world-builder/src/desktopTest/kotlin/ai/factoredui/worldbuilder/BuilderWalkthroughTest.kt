@@ -129,6 +129,9 @@ class BuilderWalkthroughTest {
     fun theLidarSampleShowsItsTenTreesAtTheirMeasuredSpots() = runDesktopComposeUiTest(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX) {
         open("dark", "worlds/parcel-lidar-sample.world.json")
         shot("09-lidar-sample-dark")
+        host.selectInstance("tree-01")
+        context.applyBindings(host.bindings())
+        shot("10-lidar-tree-record-dark")
     }
 
     @Test

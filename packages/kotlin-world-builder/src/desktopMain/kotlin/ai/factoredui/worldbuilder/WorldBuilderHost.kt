@@ -17,6 +17,7 @@ class WorldBuilderHost(
     private val presentation: Map<String, UsePresentation> = emptyMap(),
 ) {
     private var message: String = ""
+    private var selectedInstanceId: String? = null
 
     fun bindings(): Map<String, Any?> {
         val props = session.renderProps()
@@ -24,6 +25,7 @@ class WorldBuilderHost(
         val counts = session.counts()
         val areas = areasOf(props)
         val labels = uses.associate { it["id"] as String to it["label"] as String }
+        val card = instanceCard(labels)
         return linkedMapOf(
             "parcel" to mapOf("cols" to props["cols"], "rows" to props["rows"], "tile_area" to props["tile_area"], "view" to props["view"]),
             "uses" to uses,
@@ -32,7 +34,9 @@ class WorldBuilderHost(
             "instances" to instancesOf(props),
             "counts" to counts,
             "areas" to areas.mapValues { wholeWhenIntegral(it.value) },
-            "usage_text" to usageLines(uses, counts, areas),
+            "usage_text" to usageLines(uses, counts, areas, instanceTallies()),
+            "instance_title" to card.first,
+            "instance_text" to card.second,
             "scores_text" to scoreLines(session.scores()),
             "message" to message,
             "branch" to session.currentBranch,
@@ -44,7 +48,12 @@ class WorldBuilderHost(
 
     fun initialBrush(): String? = session.world.types.keys.firstOrNull()
 
+    fun selectInstance(id: String) {
+        selectedInstanceId = id
+    }
+
     fun tap(col: Int, row: Int, brush: String?) {
+        selectedInstanceId = null
         val use = brush?.takeIf { it.isNotEmpty() && it != ERASE_BRUSH }
         message = messageOf(session.tap(col, row, use))
     }
@@ -84,7 +93,21 @@ class WorldBuilderHost(
             cycleBranch()
             publish()
         }
-        return mapOf("world.tileTapped" to tapped, "world.undo" to undone, "world.newProposal" to proposed, "world.cycleBranch" to cycled)
+        val instanceTapped: ActionHandler = { params ->
+            (params["id"] as? String)?.let { selectInstance(it) }
+            publish()
+        }
+        return mapOf("world.tileTapped" to tapped, "world.instanceTapped" to instanceTapped, "world.undo" to undone, "world.newProposal" to proposed, "world.cycleBranch" to cycled)
+    }
+
+    private fun instanceTallies(): Map<String, InstanceTally> =
+        session.instanceRecords().groupBy { it.type }.mapValues { (_, records) ->
+            InstanceTally(records.count { it.provenance == "measured" }, records.count { it.provenance != "measured" })
+        }
+
+    private fun instanceCard(labels: Map<String, String>): Pair<String, String> {
+        val record = session.instanceRecords().firstOrNull { it.id == selectedInstanceId } ?: return "" to ""
+        return instanceTitle(record, labels[record.type] ?: record.type) to instanceCardLines(record).joinToString("\n")
     }
 
     private fun footprintsOf(): List<Map<String, Any?>> =
