@@ -142,7 +142,7 @@ private fun DrawScope.drawTileSurface(corners: List<Offset>, style: TileStyle, b
 }
 
 internal const val FENCE_GROUND_BLEND = 0.45f
-internal const val BRICK_COURSE_PIXELS = 3
+private const val BRICK_COURSE_PIXELS = 3
 internal const val BRICK_SHADE_STEP = 0.1f
 internal const val TREE_LIGHT_MIX = 0.35f
 internal const val TREE_DARK_MIX = 0.3f
@@ -164,7 +164,7 @@ private fun DrawScope.drawStanding(style: TileStyle, tile: TileCoord, corners: L
     }
 }
 
-private fun shade(color: Color, towardBlack: Float): Color = lerp(color, Color.Black, towardBlack)
+internal fun shade(color: Color, towardBlack: Float): Color = lerp(color, Color.Black, towardBlack)
 
 private fun DrawScope.drawPrism(corners: List<Offset>, lift: Float, color: Color, look: TileLook, pixel: Float, bricks: Boolean, density: Float) {
     val centreX = corners.map { it.x }.average().toFloat()
