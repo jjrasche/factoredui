@@ -4,7 +4,6 @@ import ai.factoredui.worldengine.expression.Value
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlin.math.round
 
 data class Tile(val col: Int, val row: Int) : Comparable<Tile> {
     override fun compareTo(other: Tile): Int = compareValuesBy(this, other, { it.col }, { it.row })
@@ -69,7 +68,7 @@ class State {
     fun snapshot(): JsonObject = JsonObject(
         mapOf(
             "cells" to JsonArray(cells.entries.sortedBy { it.key }.map { cellEntry(it.key, it.value) }),
-            "stocks" to JsonObject(stocks.entries.sortedBy { it.key }.associate { it.key to JsonPrimitive(roundToNinePlaces(it.value)) }),
+            "stocks" to JsonObject(stocks.entries.sortedBy { it.key }.associate { it.key to JsonPrimitive(it.value) }),
             "ticks" to JsonPrimitive(ticks),
             "agents" to JsonObject(agents.entries.sortedBy { it.key }.associate { it.key to agentSnapshot(it.value) }),
             "endorsements" to JsonArray(endorsements.map { JsonObject(mapOf("actor" to JsonPrimitive(it.actor), "weight_class" to JsonPrimitive(it.weightClass))) }),
@@ -88,5 +87,3 @@ class State {
         ),
     )
 }
-
-private fun roundToNinePlaces(value: Double): Double = if (value.isFinite()) round(value * 1e9) / 1e9 else value
