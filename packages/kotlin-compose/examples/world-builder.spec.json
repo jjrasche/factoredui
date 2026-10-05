@@ -1,0 +1,73 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "world-builder",
+    "type": "row",
+    "props": { "background": "#FFFFFF" },
+    "children": [
+      {
+        "id": "stage",
+        "type": "column",
+        "props": { "flex": 1 },
+        "children": [
+          {
+            "id": "toolbar",
+            "type": "row",
+            "props": { "padding": 8, "gap": 8, "align": "center" },
+            "children": [
+              { "id": "toolbar-label", "type": "text", "props": { "value": "Tile shape", "variant": "label" } },
+              {
+                "id": "shape-select",
+                "type": "select",
+                "props": {
+                  "flex": 1,
+                  "value": "{shape}",
+                  "options": [
+                    { "label": "square tiles", "value": "square" },
+                    { "label": "hex tiles", "value": "hex" }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "world",
+            "type": "tilemap",
+            "props": {
+              "flex": 1,
+              "view": "iso",
+              "cols": "{parcel.cols}",
+              "rows": "{parcel.rows}",
+              "tile_area": "{parcel.tile_area}",
+              "shape": "{shape}",
+              "uses": "{uses}",
+              "cells": "{cells}",
+              "selected_use": "{brush}",
+              "counts": "{counts}",
+              "areas": "{areas}"
+            }
+          }
+        ]
+      },
+      {
+        "id": "panel",
+        "type": "column",
+        "props": { "padding": 14, "gap": 6, "background": "#F1F3F8" },
+        "children": [
+          { "id": "panel-title", "type": "text", "props": { "value": "World builder", "variant": "heading" } },
+          { "id": "panel-grid", "type": "text", "props": { "value": "{parcel.cols} x {parcel.rows} tiles, {parcel.tile_area} sq ft each", "variant": "caption" } },
+          { "id": "panel-uses", "type": "text", "props": { "value": "On the parcel", "variant": "subheading" } },
+          { "id": "row-paddock", "type": "text", "props": { "value": "Paddock: {counts.paddock} tiles, {areas.paddock} sq ft" } },
+          { "id": "row-hoop_house", "type": "text", "props": { "value": "Hoop house: {counts.hoop_house} tiles, {areas.hoop_house} sq ft" } },
+          { "id": "row-commons_building", "type": "text", "props": { "value": "Commons building: {counts.commons_building} tiles, {areas.commons_building} sq ft" } },
+          { "id": "row-van_pad", "type": "text", "props": { "value": "Van pad: {counts.van_pad} tiles, {areas.van_pad} sq ft" } },
+          { "id": "row-path", "type": "text", "props": { "value": "Path: {counts.path} tiles, {areas.path} sq ft" } },
+          { "id": "row-pond", "type": "text", "props": { "value": "Pond: {counts.pond} tiles, {areas.pond} sq ft" } },
+          { "id": "row-woodland_tree", "type": "text", "props": { "value": "Woodland tree: {counts.woodland_tree} trees, {areas.woodland_tree} sq ft" } },
+          { "id": "panel-hint", "type": "text", "props": { "value": "click a tile to place the brush, click again to remove, drag to pan, scroll to zoom", "variant": "caption" } }
+        ]
+      }
+    ]
+  }
+}

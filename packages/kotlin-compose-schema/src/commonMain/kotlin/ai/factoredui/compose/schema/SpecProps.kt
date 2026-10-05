@@ -1,5 +1,9 @@
 package ai.factoredui.compose.schema
 
+import ai.factoredui.compose.layout.TileCell
+import ai.factoredui.compose.layout.TileShape
+import ai.factoredui.compose.layout.TileView
+
 /**
  * Typed prop accessors for each SpecNodeType.
  *
@@ -837,3 +841,64 @@ fun assignGraphColors(keys: List<String>, explicit: Map<String, String>): Map<St
     val fromPalette = needsPalette.withIndex().associate { (index, key) -> key to GRAPH_PALETTE[index % GRAPH_PALETTE.size] }
     return distinct.associateWith { explicit[it] ?: fromPalette.getValue(it) }
 }
+
+// --- TilemapProps ---
+
+enum class TileSprite { FLAT, BLOCK, TREE, ARCH, WATER, FENCE }
+
+data class TilemapUse(
+    val id: String,
+    val label: String,
+    val color: String? = null,
+    val sprite: TileSprite = TileSprite.FLAT,
+    val height: Float? = null,
+)
+
+data class TilemapProps(val onTileTapped: String? = null)
+
+fun Map<String, SpecValue>.asTilemapProps(): TilemapProps = TilemapProps(onTileTapped = string("on_tile_tap"))
+
+private fun tileSpriteOf(raw: Any?): TileSprite =
+    TileSprite.entries.firstOrNull { it.name.equals(raw as? String, ignoreCase = true) } ?: TileSprite.FLAT
+
+fun resolveTilemapUses(resolvedUses: Any?): List<TilemapUse> =
+    (resolvedUses as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val id = fields["id"] as? String ?: return@mapNotNull null
+        TilemapUse(
+            id = id,
+            label = fields["label"] as? String ?: id,
+            color = fields["color"] as? String,
+            sprite = tileSpriteOf(fields["sprite"]),
+            height = (fields["height"] as? Number)?.toFloat(),
+        )
+    }
+
+fun resolveTilemapCells(resolvedCells: Any?): List<TileCell> =
+    (resolvedCells as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val col = (fields["col"] as? Number)?.toInt() ?: return@mapNotNull null
+        val row = (fields["row"] as? Number)?.toInt() ?: return@mapNotNull null
+        val use = fields["use"] as? String ?: return@mapNotNull null
+        TileCell(col, row, use)
+    }
+
+fun resolveTilemapShape(resolvedShape: Any?): TileShape =
+    if ((resolvedShape as? String).equals("hex", ignoreCase = true)) {
+        TileShape.HEX
+    } else {
+        TileShape.SQUARE
+    }
+
+fun resolveTilemapView(resolvedView: Any?): TileView =
+    if ((resolvedView as? String).equals("top", ignoreCase = true)) {
+        TileView.TOP
+    } else {
+        TileView.ISO
+    }
+
+fun resolveTilemapSize(resolvedSize: Any?, fallback: Int): Int =
+    ((resolvedSize as? Number)?.toInt() ?: fallback).coerceAtLeast(1)
+
+fun resolveTileArea(resolvedArea: Any?): Double =
+    (resolvedArea as? Number)?.toDouble()?.takeIf { it > 0.0 } ?: 1.0

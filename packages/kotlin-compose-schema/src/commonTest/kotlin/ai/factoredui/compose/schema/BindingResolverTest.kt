@@ -46,6 +46,12 @@ class BindingResolverTest {
     }
 
     @Test
+    fun resolveTextShowsAWholeNumberWithoutATrailingPointZero() {
+        val ctx = mapOf<String, Any?>("n" to 13.0, "area" to 625.0, "ratio" to 0.5, "count" to 3)
+        assertEquals("13 x 625 sq ft, 0.5, 3", BindingResolver.resolveText("{n} x {area} sq ft, {ratio}, {count}", ctx))
+    }
+
+    @Test
     fun resolveBindingIndexesIntoListByNumericSegment() {
         val ctx = mapOf<String, Any?>(
             "items" to listOf(

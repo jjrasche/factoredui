@@ -1,0 +1,15 @@
+{
+  "parcel": { "cols": 13, "rows": 26, "tile_area": 625 },
+  "shape": "square",
+  "brush": "woodland_tree",
+  "cells": [],
+  "uses": [
+    { "id": "paddock", "label": "Paddock", "color": "#B7C94A", "sprite": "fence" },
+    { "id": "hoop_house", "label": "Hoop house", "color": "#CFE3F5", "sprite": "arch" },
+    { "id": "commons_building", "label": "Commons building", "color": "#8B5A2B", "sprite": "block", "height": 1.2 },
+    { "id": "van_pad", "label": "Van pad", "color": "#9AA0A6", "sprite": "flat" },
+    { "id": "path", "label": "Path", "color": "#D2B48C", "sprite": "flat" },
+    { "id": "pond", "label": "Pond", "color": "#3B82C4", "sprite": "water" },
+    { "id": "woodland_tree", "label": "Woodland tree", "color": "#1F5E2B", "sprite": "tree" }
+  ]
+}

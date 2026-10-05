@@ -27,4 +27,16 @@ class RenderSpecToPngTest {
         assertEquals(0x4E.toByte(), png[2])
         assertEquals(0x47.toByte(), png[3])
     }
+
+    @Test
+    fun seededDataChangesWhatABoundNodeDraws() {
+        val bound = """
+            {"spec_version":1,"renderer_min":1,"root":{"id":"root","type":"column","children":[
+              {"id":"greeting","type":"text","props":{"value":"{word}","variant":"heading"}}
+            ]}}
+        """.trimIndent()
+        val hello = renderSpecToPng(bound, width = 300, height = 120, data = mapOf("word" to "hello"))
+        val goodbye = renderSpecToPng(bound, width = 300, height = 120, data = mapOf("word" to "goodbye world"))
+        assertTrue(!hello.contentEquals(goodbye), "different data must draw different pixels")
+    }
 }
