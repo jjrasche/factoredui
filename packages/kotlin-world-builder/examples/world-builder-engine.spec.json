@@ -44,6 +44,8 @@
               "tile_area": "{parcel.tile_area}",
               "uses": "{uses}",
               "cells": "{cells}",
+              "footprints": "{footprints}",
+              "instances": "{instances}",
               "selected_use": "{brush}",
               "on_tile_tap": "world.tileTapped"
             }

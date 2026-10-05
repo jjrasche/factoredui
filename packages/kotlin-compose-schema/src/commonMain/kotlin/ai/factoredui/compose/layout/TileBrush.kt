@@ -22,5 +22,11 @@ private fun sortedByPosition(cells: List<TileCell>): List<TileCell> =
 fun countUses(cells: List<TileCell>): Map<String, Int> =
     cells.groupingBy { it.use }.eachCount()
 
+fun countUses(cells: List<TileCell>, footprints: List<TileFootprint>): Map<String, Int> {
+    val single = countUses(cells)
+    val covered = footprints.groupBy { it.use }.mapValues { (_, group) -> group.sumOf { it.width * it.height } }
+    return (single.keys + covered.keys).associateWith { (single[it] ?: 0) + (covered[it] ?: 0) }
+}
+
 fun areasOf(counts: Map<String, Int>, tileArea: Double): Map<String, Double> =
     counts.mapValues { it.value * tileArea }

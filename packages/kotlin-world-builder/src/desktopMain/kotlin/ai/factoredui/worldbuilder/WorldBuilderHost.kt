@@ -4,6 +4,7 @@ import ai.factoredui.compose.adapter.ActionHandler
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.worldengine.session.DispatchResult
 import ai.factoredui.worldengine.session.WorldSession
+import kotlinx.serialization.json.JsonElement
 
 data class UsePresentation(val height: Double? = null, val critter: String? = null)
 
@@ -26,7 +27,9 @@ class WorldBuilderHost(
         return linkedMapOf(
             "parcel" to mapOf("cols" to props["cols"], "rows" to props["rows"], "tile_area" to props["tile_area"]),
             "uses" to uses,
-            "cells" to props["cells"],
+            "cells" to emptyList<Any?>(),
+            "footprints" to footprintsOf(),
+            "instances" to instancesOf(props),
             "counts" to counts,
             "areas" to areas.mapValues { wholeWhenIntegral(it.value) },
             "usage_text" to usageLines(uses, counts, areas),
@@ -83,6 +86,14 @@ class WorldBuilderHost(
         }
         return mapOf("world.tileTapped" to tapped, "world.undo" to undone, "world.newProposal" to proposed, "world.cycleBranch" to cycled)
     }
+
+    private fun footprintsOf(): List<Map<String, Any?>> =
+        session.placedObjects().map { placed ->
+            mapOf("id" to placed.id, "use" to placed.type, "col" to placed.col, "row" to placed.row, "width" to placed.width, "height" to placed.height)
+        }
+
+    private fun instancesOf(props: Map<String, Any?>): List<Any?> =
+        (props["instances"] as? List<*>).orEmpty().map { entry -> if (entry is JsonElement) plainOf(entry) else entry }
 
     private fun usesOf(props: Map<String, Any?>): List<Map<String, Any?>> =
         asMaps(props["uses"]).map { use ->

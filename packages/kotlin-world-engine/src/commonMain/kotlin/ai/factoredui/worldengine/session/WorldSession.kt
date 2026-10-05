@@ -31,6 +31,8 @@ sealed interface DispatchResult {
     data class Failed(val kind: String, val message: String) : DispatchResult
 }
 
+data class PlacedObject(val id: String, val type: String, val col: Int, val row: Int, val width: Int, val height: Int)
+
 data class ScoreView(val id: String, val label: String?, val value: Double?, val unit: String, val isBinding: Boolean)
 
 @OptIn(ExperimentalTime::class)
@@ -82,6 +84,11 @@ class WorldSession(
     }
 
     fun counts(branch: String = currentBranch): Map<String, Int> = countUses(world, log.stateOf(branch))
+
+    fun placedObjects(branch: String = currentBranch): List<PlacedObject> =
+        log.stateOf(branch).instances.values
+            .map { PlacedObject(it.id, it.type, it.col, it.row, it.tiles.maxOf { tile -> tile.col } - it.col + 1, it.tiles.maxOf { tile -> tile.row } - it.row + 1) }
+            .sortedWith(compareBy({ it.row }, { it.col }))
 
     fun countsDiff(branch: String, base: String): Map<String, Int> {
         val mine = counts(branch)

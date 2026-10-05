@@ -1,6 +1,8 @@
 package ai.factoredui.compose.schema
 
 import ai.factoredui.compose.layout.TileCell
+import ai.factoredui.compose.layout.TileFootprint
+import ai.factoredui.compose.layout.TileInstance
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
 
@@ -855,9 +857,10 @@ data class TilemapUse(
     val critter: String? = null,
 )
 
-data class TilemapProps(val onTileTapped: String? = null)
+data class TilemapProps(val onTileTapped: String? = null, val onInstanceTapped: String? = null)
 
-fun Map<String, SpecValue>.asTilemapProps(): TilemapProps = TilemapProps(onTileTapped = string("on_tile_tap"))
+fun Map<String, SpecValue>.asTilemapProps(): TilemapProps =
+    TilemapProps(onTileTapped = string("on_tile_tap"), onInstanceTapped = string("on_instance_tap"))
 
 private fun tileSpriteOf(raw: Any?): TileSprite =
     TileSprite.entries.firstOrNull { it.name.equals(raw as? String, ignoreCase = true) } ?: TileSprite.FLAT
@@ -883,6 +886,35 @@ fun resolveTilemapCells(resolvedCells: Any?): List<TileCell> =
         val row = (fields["row"] as? Number)?.toInt() ?: return@mapNotNull null
         val use = fields["use"] as? String ?: return@mapNotNull null
         TileCell(col, row, use)
+    }
+
+fun resolveTilemapFootprints(resolvedFootprints: Any?): List<TileFootprint> =
+    (resolvedFootprints as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val col = (fields["col"] as? Number)?.toInt() ?: return@mapNotNull null
+        val row = (fields["row"] as? Number)?.toInt() ?: return@mapNotNull null
+        val use = fields["use"] as? String ?: return@mapNotNull null
+        val width = (fields["width"] as? Number)?.toInt()?.coerceAtLeast(1) ?: 1
+        val height = (fields["height"] as? Number)?.toInt()?.coerceAtLeast(1) ?: 1
+        TileFootprint(fields["id"] as? String ?: "$col,$row", use, col, row, width, height)
+    }
+
+fun resolveTilemapInstances(resolvedInstances: Any?): List<TileInstance> =
+    (resolvedInstances as? List<*>).orEmpty().mapNotNull { entry ->
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        val id = fields["id"] as? String ?: return@mapNotNull null
+        val use = fields["type"] as? String ?: return@mapNotNull null
+        val xMm = (fields["x_mm"] as? Number)?.toDouble() ?: return@mapNotNull null
+        val yMm = (fields["y_mm"] as? Number)?.toDouble() ?: return@mapNotNull null
+        TileInstance(
+            id = id,
+            use = use,
+            xMm = xMm,
+            yMm = yMm,
+            heightMm = (fields["height_mm"] as? Number)?.toDouble(),
+            crownRadiusMm = (fields["crown_radius_mm"] as? Number)?.toDouble(),
+            rotationDeg = (fields["rotation_deg"] as? Number)?.toDouble() ?: 0.0,
+        )
     }
 
 fun resolveTilemapShape(resolvedShape: Any?): TileShape =

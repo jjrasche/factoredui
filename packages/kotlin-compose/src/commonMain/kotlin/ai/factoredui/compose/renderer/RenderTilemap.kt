@@ -7,30 +7,34 @@ import ai.factoredui.compose.layout.ScreenPoint
 import ai.factoredui.compose.layout.TileBounds
 import ai.factoredui.compose.layout.TileCell
 import ai.factoredui.compose.layout.TileCoord
+import ai.factoredui.compose.layout.TileInstance
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
 import ai.factoredui.compose.layout.afterGesture
 import ai.factoredui.compose.layout.applyBrush
 import ai.factoredui.compose.layout.areasOf
+import ai.factoredui.compose.layout.cellsAsFootprints
 import ai.factoredui.compose.layout.countUses
+import ai.factoredui.compose.layout.drawOrder
 import ai.factoredui.compose.layout.fitFlowView
+import ai.factoredui.compose.layout.pickInstance
 import ai.factoredui.compose.layout.pickTile
 import ai.factoredui.compose.layout.project
-import ai.factoredui.compose.layout.tileCenter
 import ai.factoredui.compose.layout.tileCorners
-import ai.factoredui.compose.layout.tileDrawOrder
+import ai.factoredui.compose.layout.tileSideMm
 import ai.factoredui.compose.layout.tilemapScreenBounds
 import ai.factoredui.compose.layout.unproject
 import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecValue
-import ai.factoredui.compose.schema.TileSprite
 import ai.factoredui.compose.schema.TilemapUse
 import ai.factoredui.compose.schema.asTilemapProps
 import ai.factoredui.compose.schema.assignGraphColors
 import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.resolveTileArea
 import ai.factoredui.compose.schema.resolveTilemapCells
+import ai.factoredui.compose.schema.resolveTilemapFootprints
+import ai.factoredui.compose.schema.resolveTilemapInstances
 import ai.factoredui.compose.schema.resolveTilemapShape
 import ai.factoredui.compose.schema.resolveTilemapSize
 import ai.factoredui.compose.schema.resolveTilemapUses
@@ -67,18 +71,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.ceil
 import kotlin.math.exp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -90,10 +95,6 @@ private const val DEFAULT_ROWS = 10
 private const val FIT_MARGIN_PX = 12f
 private const val MAX_FIT_SCALE = 2f
 private const val WHEEL_ZOOM_RATE = 0.12f
-private const val BLOCK_UNIT_FACTOR = 0.5f
-private const val ARCH_DEFAULT_HEIGHT = 0.55f
-private const val BLOCK_DEFAULT_HEIGHT = 1f
-private const val FENCE_POST_FACTOR = 0.22f
 private val GROUND_LIGHT = Color(0xFFCFE0A8)
 private val GROUND_LIGHT_ALT = Color(0xFFC3D79B)
 private val GROUND_NIGHT = Color(0xFF2B3A2E)
@@ -102,13 +103,12 @@ private val GRID_LINE = Color(0x33000000)
 private val GRID_LINE_NIGHT = Color(0x40FFFFFF)
 private val OUTLINE_NIGHT = Color(0x73FFFFFF)
 private val HOVER_LINE = Color(0xFFFFFFFF)
-private val TRUNK = Color(0xFF6B4A2B)
 private val PALETTE_TEXT = TextStyle(fontSize = 12.sp, lineHeight = 16.sp)
 private val FALLBACK_USE_COLOR = Color(0xFF9AA3B2)
 
-private class TileStyle(val use: TilemapUse, val color: Color)
+internal class TileStyle(val use: TilemapUse, val color: Color)
 
-private class TileLook(val dark: Boolean, val ground: Color, val groundAlt: Color) {
+internal class TileLook(val dark: Boolean, val ground: Color, val groundAlt: Color) {
     val gridLine = if (dark) GRID_LINE_NIGHT else GRID_LINE
     val outline: Color? = if (dark) OUTLINE_NIGHT else null
     val leftSide = if (dark) 0.10f else 0.28f
@@ -124,7 +124,7 @@ private class TileLook(val dark: Boolean, val ground: Color, val groundAlt: Colo
     fun rail(color: Color): Color = if (dark) lerp(color, Color.White, 0.45f) else shade(color, 0.35f)
 }
 
-private class TilemapSpace(val view: TileView, val tileWidthPx: Float, val bounds: TileBounds) {
+internal class TilemapSpace(val view: TileView, val tileWidthPx: Float, val bounds: TileBounds) {
     val originX = -bounds.minX
     val originY = -bounds.minY + TILEMAP_HEADROOM * tileWidthPx
     val contentWidth = bounds.maxX - bounds.minX
@@ -150,12 +150,16 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     val uses = resolveTilemapUses(resolvedProps["uses"])
     val colours = assignGraphColors(uses.map { it.id }, uses.mapNotNull { use -> use.color?.let { use.id to it } }.toMap())
     val dark = LocalSpecTheme.current.isDark
-    val look = TileLook(
-        dark = dark,
-        ground = colorOf(resolvedProps["ground"] as? String, if (dark) GROUND_NIGHT else GROUND_LIGHT),
-        groundAlt = colorOf(resolvedProps["ground_alt"] as? String, if (dark) GROUND_NIGHT_ALT else GROUND_LIGHT_ALT),
-    )
-    val styles = remember(uses, dark) {
+    val groundHex = resolvedProps["ground"] as? String
+    val groundAltHex = resolvedProps["ground_alt"] as? String
+    val look = remember(dark, groundHex, groundAltHex) {
+        TileLook(
+            dark = dark,
+            ground = colorOf(groundHex, if (dark) GROUND_NIGHT else GROUND_LIGHT),
+            groundAlt = colorOf(groundAltHex, if (dark) GROUND_NIGHT_ALT else GROUND_LIGHT_ALT),
+        )
+    }
+    val styles = remember(uses, look) {
         uses.associate { it.id to TileStyle(it, look.lifted(colorOf(colours[it.id], FALLBACK_USE_COLOR), look.useLift)) }
     }
     val cellsPath = node.props["cells"]?.bindingPath()
@@ -172,13 +176,22 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
         val tileWidthPx = TILEMAP_TILE_WIDTH_DP * density
         TilemapSpace(view, tileWidthPx, tilemapScreenBounds(shape, view, cols, rows, tileWidthPx))
     }
-    val order = remember(shape, cols, rows) { tileDrawOrder(shape, cols, rows) }
-    val byTile = remember(cells) { cells.associateBy { TileCoord(it.col, it.row) } }
+    val footprints = resolveTilemapFootprints(resolvedProps["footprints"])
+    val instances = resolveTilemapInstances(resolvedProps["instances"])
+    val sideMm = tileSideMm(tileArea)
+    val drawables = remember(shape, cells, footprints, instances, sideMm, rows) {
+        drawOrder(shape, cellsAsFootprints(cells) + footprints, instances, sideMm, rows)
+    }
     val scope = rememberCoroutineScope()
-    val phase = rememberTilemapPhase(resolvedProps["animate"] == true)
+    val animated = resolvedProps["animate"] == true
+    val phase = rememberTilemapPhase(animated)
+    val groundLayer = rememberGraphicsLayer()
+    val sceneLayer = rememberGraphicsLayer()
+    val recordedGround = remember { RecordedKey() }
+    val recordedScene = remember { RecordedKey() }
 
-    LaunchedEffect(cells, tileArea) {
-        val counts = uses.associate { it.id to 0 } + countUses(cells)
+    LaunchedEffect(cells, footprints, tileArea) {
+        val counts = uses.associate { it.id to 0 } + countUses(cells, footprints)
         if (countsPath != null) context.setBinding(countsPath, counts)
         if (areasPath != null) context.setBinding(areasPath, areasOf(counts, tileArea).mapValues { wholeWhenIntegral(it.value) })
     }
@@ -186,6 +199,11 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     fun report(tile: TileCoord) {
         val onTileTapped = props.onTileTapped ?: return
         scope.launch { context.dispatch(node.id, tileTappedAction(onTileTapped, tile, brush)) }
+    }
+
+    fun reportInstance(instance: TileInstance) {
+        val onInstanceTapped = props.onInstanceTapped ?: return
+        scope.launch { context.dispatch(node.id, instanceTappedAction(onInstanceTapped, instance)) }
     }
 
     fun place(tile: TileCoord) {
@@ -214,15 +232,25 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
             val current = gestureView ?: fit
             val latest by rememberUpdatedState(current)
 
-            fun tileAt(screen: Offset): TileCoord? {
+            fun groundAt(screen: Offset): GroundPoint {
                 val content = Offset((screen.x - latest.translateX) / latest.scale, (screen.y - latest.translateY) / latest.scale)
-                return pickTile(shape, cols, rows, space.toGround(content))
+                return space.toGround(content)
+            }
+
+            fun tileAt(screen: Offset): TileCoord? = pickTile(shape, cols, rows, groundAt(screen))
+
+            fun instanceAt(screen: Offset): TileInstance? =
+                if (props.onInstanceTapped == null) null else pickInstance(instances, sideMm, rows, groundAt(screen))
+
+            fun tapAt(screen: Offset) {
+                val instance = instanceAt(screen)
+                if (instance != null) reportInstance(instance) else tileAt(screen)?.let { place(it) }
             }
 
             Canvas(
                 modifier = Modifier.fillMaxSize()
-                    .pointerInput(shape, view, cols, rows, cells, brush) {
-                        detectTapGestures(onTap = { offset -> tileAt(offset)?.let { place(it) } })
+                    .pointerInput(shape, view, cols, rows, cells, brush, instances) {
+                        detectTapGestures(onTap = { offset -> tapAt(offset) })
                     }
                     .pointerInput(fit) {
                         detectTransformGestures { centroid, pan, zoom, _ ->
@@ -247,11 +275,24 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
                         }
                     },
             ) {
+                val contentSize = IntSize(ceil(space.contentWidth).toInt(), ceil(space.contentHeight).toInt())
+                if (!recordedGround.holds(shape, space, look, density)) {
+                    groundLayer.record(size = contentSize) { drawGround(shape, space, cols, rows, look, density) }
+                    recordedGround.remember(shape, space, look, density)
+                }
+                val scenePhase = if (animated) phase else 0
+                if (!recordedScene.holds(drawables, styles, look, space, scenePhase, density, sideMm)) {
+                    val scene = TilemapScene(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm)
+                    sceneLayer.record(size = contentSize) { drawScene(scene) }
+                    recordedScene.remember(drawables, styles, look, space, scenePhase, density, sideMm)
+                }
                 withTransform({
                     translate(current.translateX, current.translateY)
                     scale(current.scale, current.scale, pivot = Offset.Zero)
                 }) {
-                    drawTilemap(shape, space, order, byTile, styles, look, hovered, phase, density)
+                    drawLayer(groundLayer)
+                    drawLayer(sceneLayer)
+                    hovered?.let { drawPath(polygon(tileCorners(shape, it.col, it.row).map(space::toContent)), HOVER_LINE, style = Stroke(width = 2.5f * density)) }
                 }
             }
         }
@@ -276,6 +317,16 @@ private fun rememberTilemapPhase(animate: Boolean): Int {
 }
 
 private fun cellRecord(cell: TileCell): Map<String, Any?> = mapOf("col" to cell.col, "row" to cell.row, "use" to cell.use)
+
+private fun instanceTappedAction(action: String, instance: TileInstance) = ActionRef(
+    action = action,
+    params = mapOf(
+        "id" to SpecValue.StringValue(instance.id),
+        "use" to SpecValue.StringValue(instance.use),
+        "x_mm" to SpecValue.NumberValue(instance.xMm),
+        "y_mm" to SpecValue.NumberValue(instance.yMm),
+    ),
+)
 
 private fun tileTappedAction(action: String, tile: TileCoord, use: String?) = ActionRef(
     action = action,
@@ -305,152 +356,3 @@ private fun BrushChip(tag: String, label: String, swatch: Color, isSelected: Boo
     }
 }
 
-private fun DrawScope.drawTilemap(
-    shape: TileShape,
-    space: TilemapSpace,
-    order: List<TileCoord>,
-    byTile: Map<TileCoord, TileCell>,
-    styles: Map<String, TileStyle>,
-    look: TileLook,
-    hovered: TileCoord?,
-    phase: Int,
-    density: Float,
-) {
-    for (tile in order) {
-        val corners = tileCorners(shape, tile.col, tile.row).map { space.toContent(it) }
-        val centre = space.toContent(tileCenter(shape, tile.col, tile.row))
-        val base = if ((tile.col + tile.row) % 2 == 0) look.ground else look.groundAlt
-        val style = byTile[tile]?.let { styles[it.use] }
-        drawTileSurface(corners, style, base, look, density)
-        if (style != null) drawSprite(style, tile, corners, centre, space.tileWidthPx, look, phase, density)
-        if (tile == hovered) drawPath(polygon(corners), HOVER_LINE, style = Stroke(width = 2.5f * density))
-    }
-}
-
-private fun polygon(points: List<Offset>): Path = Path().apply {
-    moveTo(points.first().x, points.first().y)
-    points.drop(1).forEach { lineTo(it.x, it.y) }
-    close()
-}
-
-private fun DrawScope.drawTileSurface(corners: List<Offset>, style: TileStyle?, base: Color, look: TileLook, density: Float) {
-    val fill = when (style?.use?.sprite) {
-        TileSprite.FLAT -> style.color
-        TileSprite.FENCE -> lerp(base, style.color, FENCE_GROUND_BLEND)
-        else -> base
-    }
-    drawPath(polygon(corners), fill, style = Fill)
-    drawPath(polygon(corners), look.gridLine, style = Stroke(width = density))
-}
-
-private const val FENCE_GROUND_BLEND = 0.45f
-private const val BRICK_COURSE_PIXELS = 3
-private const val BRICK_SHADE_STEP = 0.1f
-private const val TREE_LIGHT_MIX = 0.35f
-private const val TREE_DARK_MIX = 0.3f
-private const val TREE_OUTLINE_MIX = 0.6f
-private const val TREE_FOOT_PIXELS = 1f
-private const val CRITTER_FOOT_PIXELS = 2f
-private const val SHIMMER_ALPHA = 0.7f
-private const val PHASE_MILLIS = 180L
-
-private fun DrawScope.drawSprite(style: TileStyle, tile: TileCoord, corners: List<Offset>, centre: Offset, tileWidth: Float, look: TileLook, phase: Int, density: Float) {
-    val pixel = tileWidth / PIXELS_PER_TILE_WIDTH
-    when (style.use.sprite) {
-        TileSprite.FLAT -> Unit
-        TileSprite.BLOCK -> drawPrism(corners, (style.use.height ?: BLOCK_DEFAULT_HEIGHT) * tileWidth * BLOCK_UNIT_FACTOR, style.color, look, pixel, bricks = true, density)
-        TileSprite.ARCH -> drawArch(corners, (style.use.height ?: ARCH_DEFAULT_HEIGHT) * tileWidth * BLOCK_UNIT_FACTOR, style.color, look, pixel, density)
-        TileSprite.TREE -> drawPixelTree(tile, centre, pixel, look.lifted(style.color, look.treeLift), look)
-        TileSprite.WATER -> drawWater(corners, centre, look.lifted(style.color, look.waterLift), pixel, phase, density)
-        TileSprite.FENCE -> drawFence(corners, tileWidth * FENCE_POST_FACTOR, style.color, look, density)
-    }
-    style.use.critter?.takeIf { critterOnTile(tile.col, tile.row) }?.let { drawCritter(it, tile, centre, pixel, phase) }
-}
-
-private fun shade(color: Color, towardBlack: Float): Color = lerp(color, Color.Black, towardBlack)
-
-private fun DrawScope.drawPrism(corners: List<Offset>, lift: Float, color: Color, look: TileLook, pixel: Float, bricks: Boolean, density: Float) {
-    val centreX = corners.map { it.x }.average().toFloat()
-    val centreY = corners.map { it.y }.average().toFloat()
-    corners.indices.forEach { index ->
-        val a = corners[index]
-        val b = corners[(index + 1) % corners.size]
-        if ((a.y + b.y) / 2f > centreY + 0.5f) {
-            val darker = if ((a.x + b.x) / 2f < centreX) look.leftSide else look.rightSide
-            val face = Path().apply {
-                moveTo(a.x, a.y)
-                lineTo(b.x, b.y)
-                lineTo(b.x, b.y - lift)
-                lineTo(a.x, a.y - lift)
-                close()
-            }
-            drawPath(face, shade(color, darker), style = Fill)
-            if (bricks) drawBrickCourses(a, b, lift, shade(color, darker + look.brickStep), pixel)
-        }
-    }
-    val roof = polygon(corners.map { Offset(it.x, it.y - lift) })
-    drawPath(roof, lerp(color, Color.White, look.topLift), style = Fill)
-    look.outline?.let { drawPath(roof, it, style = Stroke(width = density)) }
-}
-
-private fun DrawScope.drawArch(corners: List<Offset>, lift: Float, color: Color, look: TileLook, pixel: Float, density: Float) {
-    drawPrism(corners, lift, color, look, pixel, bricks = false, density)
-    val top = corners.map { Offset(it.x, it.y - lift) }
-    val ridgeStart = Offset((top[0].x + top[3].x) / 2f, (top[0].y + top[3].y) / 2f)
-    val ridgeEnd = Offset((top[1].x + top[2].x) / 2f, (top[1].y + top[2].y) / 2f)
-    drawLine(Color.White.copy(alpha = 0.7f), ridgeStart, ridgeEnd, strokeWidth = 2f * density)
-}
-
-private fun DrawScope.drawBrickCourses(a: Offset, b: Offset, lift: Float, color: Color, pixel: Float) {
-    val course = BRICK_COURSE_PIXELS * pixel
-    var rowIndex = 0
-    var start = 0f
-    while (start < lift) {
-        val end = minOf(lift, start + course)
-        if (brickTone(rowIndex * BRICK_COURSE_PIXELS) == 1) {
-            val band = Path().apply {
-                moveTo(a.x, a.y - start)
-                lineTo(b.x, b.y - start)
-                lineTo(b.x, b.y - end)
-                lineTo(a.x, a.y - end)
-                close()
-            }
-            drawPath(band, color, style = Fill)
-        }
-        start = end
-        rowIndex++
-    }
-}
-
-private fun DrawScope.drawPixelTree(tile: TileCoord, centre: Offset, pixel: Float, color: Color, look: TileLook) {
-    val palette = PixelPalette(
-        light = lerp(color, Color.White, TREE_LIGHT_MIX),
-        mid = color,
-        dark = shade(color, TREE_DARK_MIX),
-        outline = look.outline ?: shade(color, TREE_OUTLINE_MIX),
-        wood = look.lifted(TRUNK, look.treeLift),
-    )
-    drawPixelSprite(treeSprite(treeVariantFor(tile.col, tile.row)), centre.x, centre.y + TREE_FOOT_PIXELS * pixel, pixel, palette::colorOf)
-}
-
-private fun DrawScope.drawCritter(name: String, tile: TileCoord, centre: Offset, pixel: Float, phase: Int) {
-    val sprite = critterSpriteOrNull(name, critterFrameFor(phase)) ?: return
-    val hash = tileHash(tile.col + 11, tile.row + 17)
-    val dx = ((hash % 7) - 3) * pixel
-    val dy = (((hash / 7) % 5) - 2) * pixel
-    drawPixelSprite(sprite, centre.x + dx, centre.y + CRITTER_FOOT_PIXELS * pixel + dy, pixel, ::critterColorOf)
-}
-
-private fun DrawScope.drawWater(corners: List<Offset>, centre: Offset, color: Color, pixel: Float, phase: Int, density: Float) {
-    val inset = corners.map { Offset(centre.x + (it.x - centre.x) * 0.78f, centre.y + (it.y - centre.y) * 0.78f) }
-    drawPath(polygon(inset), color, style = Fill)
-    drawPath(polygon(inset), shade(color, 0.25f), style = Stroke(width = 1.5f * density))
-    drawShimmer(centre, pixel, phase, Color.White.copy(alpha = SHIMMER_ALPHA))
-}
-
-private fun DrawScope.drawFence(corners: List<Offset>, postHeight: Float, color: Color, look: TileLook, density: Float) {
-    val rail = look.rail(color)
-    val raised = corners.map { Offset(it.x, it.y - postHeight) }
-    corners.zip(raised).forEach { (foot, top) -> drawLine(rail, foot, top, strokeWidth = 2.5f * density) }
-    drawPath(polygon(raised), rail, style = Stroke(width = 1.8f * density))
-}
