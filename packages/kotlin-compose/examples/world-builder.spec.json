@@ -4,7 +4,7 @@
   "root": {
     "id": "world-builder",
     "type": "row",
-    "props": { "background": "#FFFFFF" },
+    "props": { "theme": "{theme}", "background": "ground", "flex": 1 },
     "children": [
       {
         "id": "stage",
@@ -26,6 +26,19 @@
                   "options": [
                     { "label": "square tiles", "value": "square" },
                     { "label": "hex tiles", "value": "hex" }
+                  ]
+                }
+              },
+              { "id": "theme-label", "type": "text", "props": { "value": "Theme", "variant": "label" } },
+              {
+                "id": "theme-select",
+                "type": "select",
+                "props": {
+                  "flex": 1,
+                  "value": "{theme}",
+                  "options": [
+                    { "label": "light", "value": "light" },
+                    { "label": "dark", "value": "dark" }
                   ]
                 }
               }
@@ -53,7 +66,7 @@
       {
         "id": "panel",
         "type": "column",
-        "props": { "padding": 14, "gap": 6, "background": "#F1F3F8" },
+        "props": { "padding": 14, "gap": 6, "background": "surface" },
         "children": [
           { "id": "panel-title", "type": "text", "props": { "value": "World builder", "variant": "heading" } },
           { "id": "panel-grid", "type": "text", "props": { "value": "{parcel.cols} x {parcel.rows} tiles, {parcel.tile_area} sq ft each", "variant": "caption" } },

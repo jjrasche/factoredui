@@ -27,6 +27,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -89,7 +91,9 @@ import coil3.svg.SvgDecoder
  */
 @Composable
 fun RenderSpec(root: SpecNode, context: RenderContext) {
-    RenderNode(node = root, context = context)
+    CompositionLocalProvider(LocalSpecTheme provides context.theme) {
+        RenderNode(node = root, context = context)
+    }
 }
 
 /**
@@ -151,7 +155,19 @@ fun RenderNode(node: SpecNode, context: RenderContext) {
         PropReads.watchResolved(node.id, BindingResolver.resolveProps(node.props, liveData))
     }
 
-    RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context)
+    val scopedTheme = themeNamed(resolvedProps["theme"] as? String)
+    if (scopedTheme == null) {
+        RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context)
+    } else {
+        ThemeScope(scopedTheme) { RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context) }
+    }
+}
+
+@Composable
+private fun ThemeScope(theme: SpecTheme, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalSpecTheme provides theme) {
+        MaterialTheme(colorScheme = if (theme.isDark) darkColorScheme() else lightColorScheme(), content = content)
+    }
 }
 
 /**
@@ -306,8 +322,10 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
 
 // A declared ground is painted UNDER the padding, so the colour fills the container
 // rather than only the area inside its own inset.
+@Composable
 private fun Modifier.groundOf(props: LayoutProps): Modifier {
-    val ground = props.background?.parseColor() ?: return this
+    val theme = LocalSpecTheme.current
+    val ground = props.background?.let { theme.tokenColor(it) ?: it.parseColor() } ?: return this
     return this.background(ground)
 }
 

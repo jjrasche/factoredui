@@ -3,6 +3,7 @@ package ai.factoredui.compose.renderer
 import ai.factoredui.compose.render.jsonObjectToMap
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.compose.testing.SpecVisualCheck
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.unit.dp
@@ -66,5 +67,20 @@ class WorldBuilderSpecTest {
         val (x, y) = check.centreOfMap()
         check.tapAt("world:map", x, y)
         assertTrue((check.binding("cells") as List<*>).size == 1, "a hex click places one tile")
+    }
+
+    @Test
+    fun theExampleFollowsTheThemeValueAndTheHostCanFlipItLive() = runComposeUiTest {
+        val context = RenderContext(initialData = hostData() + ("theme" to "light"))
+        val check = SpecVisualCheck(this, context)
+        check.render(spec.root, viewport = 1000.dp)
+        val corner = { check.png().toPixelMap()[2, 2] }
+        assertTrue(corner().red > 0.9f, "light by default: ${corner()}")
+        context.setBinding("theme", "dark")
+        waitForIdle()
+        assertTrue(corner().red < 0.2f, "dark after the host flips the value: ${corner()}")
+        context.setBinding("theme", "light")
+        waitForIdle()
+        assertTrue(corner().red > 0.9f, "and light again: ${corner()}")
     }
 }
