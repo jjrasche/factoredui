@@ -79,7 +79,7 @@ class FiveFootPerformanceTest {
             tapMillis.add(elapsedMillis { host.tap(col, row, TREE) })
             bindingsMillis.add(elapsedMillis { host.bindings() })
         }
-        assertEquals(anchors.size, host.counts()[TREE])
+        assertEquals(anchors.size * TREE_SIDE_TILES * TREE_SIDE_TILES, host.counts()[TREE])
         note("engine 5ft fill ${anchors.size} trees (${host.session.world.cols}x${host.session.world.rows} cells)")
         note("  tap whole fill: ${tapMillis.summary()}")
         note("  tap first 20: ${tapMillis.take(20).summary()}")
