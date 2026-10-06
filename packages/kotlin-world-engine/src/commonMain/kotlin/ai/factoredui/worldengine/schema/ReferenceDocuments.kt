@@ -60,6 +60,25 @@ internal const val WORLD_SCHEMA_JSON: String = """{
         "y_axis": {"const": "north"}
       }
     },
+    "ground": {
+      "description": "Optional: the ground surface as (cols + 1) x (rows + 1) vertex heights in mm, row by row from the north edge (vertex row 0), west to east. Tile col,row has corners NW = vertex col,row, NE = col+1,row, SW = col,row+1, SE = col+1,row+1. validate.py refuses a count other than (cols + 1) x (rows + 1) (ground-size) and a height outside -500000 to 5000000 mm (ground-range). dig and raise change a tile's four corners; ground never changes tile counts or areas. A world without ground behaves as if the key were absent everywhere.",
+      "type": "object",
+      "required": ["unit", "datum", "source", "heights_mm", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {"const": "mm"},
+        "datum": {"type": "string", "minLength": 1, "description": "the vertical datum the heights are measured from, for example NAVD88, or 'local'"},
+        "source": {"type": "string", "minLength": 1, "description": "where the surface came from: a file and the converter that read it, or a stated fixture"},
+        "heights_mm": {"type": "array", "items": {"type": "number"}},
+        "error": {
+          "type": "object",
+          "required": ["vertical_mm"],
+          "additionalProperties": false,
+          "properties": {"vertical_mm": {"${'$'}ref": "#/${'$'}defs/error_figure"}}
+        },
+        "note": {"type": "string"}
+      }
+    },
     "clock": {
       "type": "object",
       "required": ["tick_unit", "tick_length"],
@@ -140,7 +159,7 @@ internal const val WORLD_SCHEMA_JSON: String = """{
       "additionalProperties": false,
       "properties": {
         "id": {"${'$'}ref": "#/${'$'}defs/identifier"},
-        "on": {"enum": ["place", "remove", "always", "place_instance", "remove_instance"], "description": "a place_instance or remove_instance rule binds `instance` (the acted-on instance) instead of `tile`, and sets no effect"},
+        "on": {"enum": ["place", "remove", "always", "place_instance", "remove_instance", "dig", "raise"], "description": "a place_instance or remove_instance rule binds `instance` (the acted-on instance) instead of `tile`, and sets no effect; a dig or raise rule binds `tile` to the acted tile, typed by the object on it if any, so applies_to targets that object and a rule with no target applies to every tile"},
         "scope": {"enum": ["self", "child"], "description": "child: exported for worlds that link to this one and inherit it by id"},
         "applies_to": {"type": "array", "items": {"${'$'}ref": "#/${'$'}defs/identifier"}},
         "applies_to_tag": {"${'$'}ref": "#/${'$'}defs/identifier"},
@@ -191,7 +210,7 @@ internal const val WORLD_SCHEMA_JSON: String = """{
       "required": ["verb", "parameters", "emits"],
       "additionalProperties": false,
       "properties": {
-        "verb": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance"]},
+        "verb": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance", "dig", "raise"]},
         "label": {"type": "string"},
         "parameters": {
           "type": "array",
@@ -202,11 +221,11 @@ internal const val WORLD_SCHEMA_JSON: String = """{
             "properties": {
               "name": {"${'$'}ref": "#/${'$'}defs/identifier"},
               "type": {"enum": ["object_type", "col", "row", "count", "agent_type", "agent_id", "attributes", "properties", "boolean",
-                                "x_mm", "y_mm", "rotation_deg", "instance_id"]}
+                                "x_mm", "y_mm", "rotation_deg", "instance_id", "depth_mm", "height_mm"]}
             }
           }
         },
-        "emits": {"type": "array", "items": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance"]}}
+        "emits": {"type": "array", "items": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance", "dig", "raise"]}}
       }
     },
     "agent": {
@@ -369,13 +388,13 @@ internal const val EVENTS_SCHEMA_JSON: String = """{
         "world": {"type": "string"},
         "branch": {"type": "string", "minLength": 1},
         "actor": {"type": "string", "minLength": 1, "description": "a person id, an agent id, or 'clock'"},
-        "action": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "branch", "merge", "revert", "endorse", "place_instance", "remove_instance"]},
+        "action": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "branch", "merge", "revert", "endorse", "place_instance", "remove_instance", "dig", "raise"]},
         "parameters": {"type": "object"},
         "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z${'$'}"},
         "touches": {
           "type": "array",
-          "items": {"type": "string", "pattern": "^([0-9]+,[0-9]+|clock|agent:.+|instance:.+)${'$'}"},
-          "description": "tiles as 'col,row', 'clock' for a tick, 'agent:<id>' for an agent, 'instance:<id>' for an instance; the merge and revert conflict rules compare these"
+          "items": {"type": "string", "pattern": "^([0-9]+,[0-9]+|clock|agent:.+|instance:.+|ground:[0-9]+,[0-9]+)${'$'}"},
+          "description": "tiles as 'col,row', 'clock' for a tick, 'agent:<id>' for an agent, 'instance:<id>' for an instance, 'ground:<vertex col>,<vertex row>' for each of the four corner vertices a dig or raise changes; the merge and revert conflict rules compare these"
         },
         "removed_instance": {
           "type": "object",
@@ -412,6 +431,18 @@ internal const val EVENTS_SCHEMA_JSON: String = """{
       "required": ["type", "x_mm", "y_mm"],
       "properties": {"type": {"type": "string"}, "x_mm": {"type": "number"}, "y_mm": {"type": "number"}, "rotation_deg": {"type": "number"}}
     },
+    "dig_parameters": {
+      "description": "lowers tile col,row's four corner vertices by depth_mm each, once; depth_mm is a number above 0 and at most 50000",
+      "type": "object",
+      "required": ["col", "row", "depth_mm"],
+      "properties": {"col": {"type": "integer"}, "row": {"type": "integer"}, "depth_mm": {"type": "number", "exclusiveMinimum": 0, "maximum": 50000}}
+    },
+    "raise_parameters": {
+      "description": "lifts tile col,row's four corner vertices by height_mm each, once; height_mm is a number above 0 and at most 50000",
+      "type": "object",
+      "required": ["col", "row", "height_mm"],
+      "properties": {"col": {"type": "integer"}, "row": {"type": "integer"}, "height_mm": {"type": "number", "exclusiveMinimum": 0, "maximum": 50000}}
+    },
     "remove_instance_parameters": {
       "type": "object",
       "required": ["id"],
@@ -446,7 +477,7 @@ internal const val EVENTS_SCHEMA_JSON: String = """{
       "properties": {"branch": {"type": "string"}, "events": {"type": "array", "items": {"type": "string"}}}
     },
     "revert_parameters": {
-      "description": "revert(event): applies the inverse of a place or remove, as an action checked against the rules. Refused when a later event touched the same tiles.",
+      "description": "revert(event): applies the inverse of a place, remove, dig or raise (a dig's inverse is a raise of the same amount on the same tile, and back), as an action checked against the rules. Refused when a later event touched the same tiles or vertices.",
       "type": "object",
       "required": ["event", "undo"],
       "properties": {"event": {"type": "string"}, "undo": {"type": "object", "required": ["action", "parameters"]}}
@@ -601,6 +632,24 @@ internal const val VALIDATION_RULES_JSON: String = """{
       "scans": "instances",
       "condition": {"op": "empty", "field": "unreasoned"},
       "message": "{world} instance {id}: error {unreasoned} must be a number with a source or null with a null_reason"
+    },
+    {
+      "id": "ground-size",
+      "scans": "grounds",
+      "condition": {"op": "is_true", "field": "size_agrees"},
+      "message": "{world} ground: {length} heights, but a {cols} x {rows} grid has (cols + 1) x (rows + 1) = {expected_length} vertices"
+    },
+    {
+      "id": "ground-range",
+      "scans": "grounds",
+      "condition": {"op": "empty", "field": "out_of_range"},
+      "message": "{world} ground: heights at vertex indices {out_of_range} lie outside -500000 to 5000000 mm"
+    },
+    {
+      "id": "ground-error-reason",
+      "scans": "grounds",
+      "condition": {"op": "is_true", "field": "error_reasoned"},
+      "message": "{world} ground: error.vertical_mm must be a number with a source or null with a null_reason"
     }
   ]
 }

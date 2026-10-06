@@ -1033,6 +1033,26 @@ const val MUTATIONS_JSON: String = """{
       "rule": "seed-replays",
       "world": "parcel-lidar-sample.world.json",
       "edits": [{"op": "set", "path": ["seed", {"id": "tree-01"}, "parameters", "y_mm"], "value": -1}]
+    },
+    {
+      "rule": "ground-size",
+      "world": "parcel-ground-demo.world.json",
+      "edits": [{"op": "delete", "path": ["ground", "heights_mm", 0]}]
+    },
+    {
+      "rule": "ground-range",
+      "world": "parcel-ground-demo.world.json",
+      "edits": [{"op": "set", "path": ["ground", "heights_mm", 0], "value": 5000001}]
+    },
+    {
+      "rule": "ground-error-reason",
+      "world": "parcel-ground-demo.world.json",
+      "edits": [{"op": "set", "path": ["ground", "error", "vertical_mm"], "value": {"value": null}}]
+    },
+    {
+      "rule": "world-schema",
+      "world": "parcel-ground-demo.world.json",
+      "edits": [{"op": "set", "path": ["ground", "heights_mm", 0], "value": "222000"}]
     }
   ]
 }
