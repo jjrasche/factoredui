@@ -5,6 +5,8 @@ import ai.factoredui.compose.scene.RendererCapability
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
+import ai.factoredui.compose.schema.TileSprite
+import ai.factoredui.compose.schema.TilemapUse
 import ai.factoredui.compose.testing.SpecVisualCheck
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -50,11 +52,33 @@ class SceneNodeCheck {
     }
 
     @Test
-    fun aSceneNodeLandsAtTheVectorLevelAndSaysSoWhenNoRendererServesIt() = runComposeUiTest {
+    fun aBareSceneNodeLandsAtTheVectorLevelAndDrawsTheVectorMap() = runComposeUiTest {
         val check = SpecVisualCheck(this, contextOf())
         check.render(sceneOf(SpecNodeType.SCENE), viewport = 400.dp)
+        check.assertPresent("world:map")
+    }
+
+    @Test
+    fun aSceneNodeAtALevelNoRendererServesSaysSoInsteadOfDrawing() = runComposeUiTest {
+        val check = SpecVisualCheck(this, contextOf(mapOf("level_feet" to 3)))
+        check.render(sceneOf(SpecNodeType.SCENE, withViewState = true), viewport = 400.dp)
         check.assertPresent("world")
         onNodeWithTag("world:map").assertDoesNotExist()
+    }
+
+    @Test
+    fun theVectorRendererPutsTheMapTopDownWithFlatUsesAndHillshadeByDefault() {
+        val props = vectorPropsOf(mapOf("view" to "iso", "terrain_mode" to null))
+        assertEquals("top", props["view"])
+        assertEquals(VECTOR_LOOK, props["look"])
+        assertEquals("hillshade", props["terrain_mode"])
+        assertEquals("heat", vectorPropsOf(mapOf("terrain_mode" to "heat"))["terrain_mode"])
+    }
+
+    @Test
+    fun aFlattenedUseKeepsItsIdentityAndColourButLosesItsSpriteAndPicture() {
+        val use = TilemapUse("barn", "Barn", "#AA5533", TileSprite.BLOCK, 2f, critter = "cow", image = "barn.png")
+        assertEquals(TilemapUse("barn", "Barn", "#AA5533", TileSprite.FLAT, 2f), flattenedUses(listOf(use)).single())
     }
 
     @Test

@@ -4,6 +4,7 @@ import ai.factoredui.compose.layout.GroundPoint
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.terrain.ContourLine
 import ai.factoredui.compose.terrain.SAMPLES_PER_TILE
+import ai.factoredui.compose.terrain.TerrainCosts
 import ai.factoredui.compose.terrain.TerrainGrid
 import ai.factoredui.compose.terrain.TerrainLegend
 import ai.factoredui.compose.terrain.TerrainMode
@@ -18,6 +19,7 @@ import ai.factoredui.compose.terrain.resolveContoursShown
 import ai.factoredui.compose.terrain.resolveTerrain
 import ai.factoredui.compose.terrain.resolveTerrainMode
 import ai.factoredui.compose.terrain.resolveTerrainUnits
+import ai.factoredui.compose.terrain.terrainCostsFor
 import ai.factoredui.compose.terrain.terrainLegendFor
 import ai.factoredui.compose.terrain.terrainRaster
 import ai.factoredui.compose.terrain.viewScaleBucket
@@ -49,7 +51,6 @@ import androidx.compose.ui.unit.sp
 
 private val HAIRLINE = Stroke(width = 0f)
 private const val INDEX_CONTOUR_DP = 2.2f
-private const val TERRAIN_GRID_MIN_TILE_PIXELS = 24f
 private const val LABEL_SP = 10f
 private const val LABEL_PAD_DP = 2f
 private const val MIN_LABELLED_POINTS = 8
@@ -73,6 +74,7 @@ internal class TerrainPass(
     val look: TileLook,
     val textMeasurer: TextMeasurer,
     val density: Float,
+    val costs: TerrainCosts,
 ) {
     val isActive: Boolean get() = image != null || contours != null
     val contourColour: Color get() = if (look.dark && mode == TerrainMode.OFF) CONTOUR_ON_NIGHT else CONTOUR_INK
@@ -99,7 +101,8 @@ internal fun rememberTerrainPass(resolvedProps: Map<String, Any?>, shape: TileSh
     val legend = remember(heightsPrint, cutFillPrint, mode, isContoursShown, intervalMm, sideMm) {
         field?.let { terrainLegendFor(mode, it, isContoursShown, intervalMm, sideMm) }
     }
-    return TerrainPass(rememberGraphicsLayer(), remember { RecordedKey() }, mode, image, contours, legend, look, rememberTextMeasurer(), LocalDensity.current.density)
+    val costs = terrainCostsFor(LocalDeviceProfile.current)
+    return TerrainPass(rememberGraphicsLayer(), remember { RecordedKey() }, mode, image, contours, legend, look, rememberTextMeasurer(), LocalDensity.current.density, costs)
 }
 
 internal fun terrainContoursOf(grid: TerrainGrid, intervalMm: Int, units: TerrainUnits, space: TilemapSpace): TerrainContours {
@@ -122,9 +125,9 @@ private fun pathOf(lines: List<ContourLine>, space: TilemapSpace): Path = Path()
 internal fun DrawScope.recordTerrainLayer(pass: TerrainPass, space: TilemapSpace, cols: Int, rows: Int, viewScale: Float, contentSize: IntSize) {
     if (!pass.isActive) return
     val bucket = viewScaleBucket(viewScale)
-    if (pass.recorded.holds(pass.image, pass.contours, pass.look, pass.mode, space, bucket)) return
+    if (pass.recorded.holds(pass.image, pass.contours, pass.look, pass.mode, space, bucket, pass.costs)) return
     pass.layer.record(size = contentSize) { drawTerrain(pass, space, cols, rows, bucketScale(bucket)) }
-    pass.recorded.remember(pass.image, pass.contours, pass.look, pass.mode, space, bucket)
+    pass.recorded.remember(pass.image, pass.contours, pass.look, pass.mode, space, bucket, pass.costs)
 }
 
 internal fun DrawScope.drawTerrainLayer(pass: TerrainPass) {
@@ -134,9 +137,9 @@ internal fun DrawScope.drawTerrainLayer(pass: TerrainPass) {
 private fun DrawScope.drawTerrain(pass: TerrainPass, space: TilemapSpace, cols: Int, rows: Int, viewScale: Float) {
     pass.image?.let { image ->
         drawTerrainImage(image, space)
-        if (space.tileWidthPx * viewScale >= TERRAIN_GRID_MIN_TILE_PIXELS) drawPath(gridLines(space, cols, rows), TERRAIN_GRID_LINE, style = HAIRLINE)
+        if (pass.costs.isGridShown(space.tileWidthPx * viewScale)) drawPath(gridLines(space, cols, rows), TERRAIN_GRID_LINE, style = HAIRLINE)
     }
-    pass.contours?.let { drawContours(it, pass, viewScale) }
+    pass.contours?.let { drawContours(it, pass, viewScale, pass.costs.areThinContoursShown(space.tileWidthPx * viewScale)) }
 }
 
 private fun DrawScope.drawTerrainImage(image: ImageBitmap, space: TilemapSpace) {
@@ -157,9 +160,9 @@ private fun DrawScope.drawTerrainImage(image: ImageBitmap, space: TilemapSpace) 
     }
 }
 
-private fun DrawScope.drawContours(contours: TerrainContours, pass: TerrainPass, viewScale: Float) {
+private fun DrawScope.drawContours(contours: TerrainContours, pass: TerrainPass, viewScale: Float, isThinShown: Boolean) {
     val colour = pass.contourColour
-    drawPath(contours.thin, colour, style = HAIRLINE)
+    if (isThinShown) drawPath(contours.thin, colour, style = HAIRLINE)
     drawPath(contours.index, colour, style = Stroke(width = INDEX_CONTOUR_DP * pass.density / viewScale, cap = StrokeCap.Round, join = StrokeJoin.Round))
     val style = TextStyle(fontSize = (LABEL_SP / viewScale).sp, color = CONTOUR_INK)
     val pad = LABEL_PAD_DP * pass.density / viewScale

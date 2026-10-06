@@ -145,7 +145,7 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     val shape = resolveTilemapShape(resolvedProps["shape"])
     val view = resolveTilemapView(resolvedProps["view"])
     val tileArea = resolveTileArea(resolvedProps["tile_area"])
-    val uses = resolveTilemapUses(resolvedProps["uses"])
+    val uses = resolveTilemapUses(resolvedProps["uses"]).let { resolved -> if (resolvedProps["look"] == VECTOR_LOOK) flattenedUses(resolved) else resolved }
     val colours = assignGraphColors(uses.map { it.id }, uses.mapNotNull { use -> use.color?.let { use.id to it } }.toMap())
     val dark = LocalSpecTheme.current.isDark
     val groundHex = resolvedProps["ground"] as? String
