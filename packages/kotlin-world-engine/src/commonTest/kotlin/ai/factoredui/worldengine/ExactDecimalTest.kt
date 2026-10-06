@@ -17,7 +17,7 @@ class ExactDecimalTest {
 
     private fun assertSameValue(expected: ExactRatio, actual: ExactRatio) = assertEquals(0, expected.compareTo(actual))
 
-    private val tileOfTenFeetAndATrace = decimal("10.0000000000000000000000000001").times(ExactRatio.MM_PER_FT)
+    private fun tileOfTenFeetAndATrace(): ExactRatio = decimal("10.0000000000000000000000000001").times(ExactRatio.MM_PER_FT)
 
     @Test
     fun values_differing_only_past_the_thirtieth_digit_order_strictly() {
@@ -43,7 +43,7 @@ class ExactDecimalTest {
     @Test
     fun times_multiplies_numerators_and_denominators_exactly() {
         assertSameValue(decimal("30.48"), decimal("0.1").times(ExactRatio.MM_PER_FT))
-        assertSameValue(decimal("3048.00000000000000000000000003048"), tileOfTenFeetAndATrace)
+        assertSameValue(decimal("3048.00000000000000000000000003048"), tileOfTenFeetAndATrace())
         assertSameValue(decimal("0.25"), decimal("-0.5").times(decimal("-0.5")))
     }
 
@@ -52,7 +52,7 @@ class ExactDecimalTest {
         assertSameValue(decimal("3048"), decimal("304.8").timesWhole(10))
         assertSameValue(decimal("246913578024691357803"), decimal("123456789012345678901.5").timesWhole(2))
         assertSameValue(decimal("-9223372036854775808"), decimal("1").timesWhole(Long.MIN_VALUE))
-        assertSameValue(decimal("-3048.00000000000000000000000003048"), tileOfTenFeetAndATrace.timesWhole(-1))
+        assertSameValue(decimal("-3048.00000000000000000000000003048"), tileOfTenFeetAndATrace().timesWhole(-1))
     }
 
     @Test
@@ -71,13 +71,13 @@ class ExactDecimalTest {
 
     @Test
     fun an_exact_multiple_of_a_thirty_digit_tile_spans_exactly_that_many_tiles() {
-        assertEquals(3, ceilingQuotient(decimal("9144.00000000000000000000000009144"), tileOfTenFeetAndATrace))
-        assertEquals(3, ceilingQuotient(decimal("9144.00000000000000000000000009143"), tileOfTenFeetAndATrace))
+        assertEquals(3, ceilingQuotient(decimal("9144.00000000000000000000000009144"), tileOfTenFeetAndATrace()))
+        assertEquals(3, ceilingQuotient(decimal("9144.00000000000000000000000009143"), tileOfTenFeetAndATrace()))
     }
 
     @Test
     fun one_unit_past_an_exact_multiple_spans_one_more_tile() {
-        assertEquals(4, ceilingQuotient(decimal("9144.00000000000000000000000009145"), tileOfTenFeetAndATrace))
+        assertEquals(4, ceilingQuotient(decimal("9144.00000000000000000000000009145"), tileOfTenFeetAndATrace()))
     }
 
     @Test
