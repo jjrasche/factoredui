@@ -12,7 +12,7 @@ import ai.factoredui.compose.terrain.bucketScale
 import ai.factoredui.compose.terrain.contourLabel
 import ai.factoredui.compose.terrain.contourPolylines
 import ai.factoredui.compose.terrain.isIndexContour
-import ai.factoredui.compose.terrain.labelAnchor
+import ai.factoredui.compose.terrain.contourLabelPlacements
 import ai.factoredui.compose.terrain.resolveContourIntervalMm
 import ai.factoredui.compose.terrain.resolveContoursShown
 import ai.factoredui.compose.terrain.resolveTerrain
@@ -47,11 +47,13 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 
-private const val THIN_CONTOUR_DP = 1f
+private val HAIRLINE = Stroke(width = 0f)
 private const val INDEX_CONTOUR_DP = 2.2f
+private const val TERRAIN_GRID_MIN_TILE_PIXELS = 24f
 private const val LABEL_SP = 10f
 private const val LABEL_PAD_DP = 2f
 private const val MIN_LABELLED_POINTS = 8
+private const val LABEL_SPACING_TILES = 1.5f
 private val CONTOUR_INK = Color(0xD93B2A1A)
 private val CONTOUR_ON_NIGHT = Color(0xCCF2E6CF)
 private val LABEL_HALO = Color(0xCCFFFFFF)
@@ -103,7 +105,8 @@ internal fun rememberTerrainPass(resolvedProps: Map<String, Any?>, shape: TileSh
 internal fun terrainContoursOf(grid: TerrainGrid, intervalMm: Int, units: TerrainUnits, space: TilemapSpace): TerrainContours {
     val lines = contourPolylines(grid, intervalMm)
     val (index, thin) = lines.partition { isIndexContour(it.levelMm, intervalMm) }
-    val labels = index.filter { it.points.size >= MIN_LABELLED_POINTS }.map { ContourLabel(contourLabel(it.levelMm, units), space.toContent(labelAnchor(it))) }
+    val labels = contourLabelPlacements(lines, intervalMm, MIN_LABELLED_POINTS, LABEL_SPACING_TILES)
+        .map { ContourLabel(contourLabel(it.line.levelMm, units), space.toContent(it.anchor)) }
     return TerrainContours(pathOf(thin, space), pathOf(index, space), labels)
 }
 
@@ -131,7 +134,7 @@ internal fun DrawScope.drawTerrainLayer(pass: TerrainPass) {
 private fun DrawScope.drawTerrain(pass: TerrainPass, space: TilemapSpace, cols: Int, rows: Int, viewScale: Float) {
     pass.image?.let { image ->
         drawTerrainImage(image, space)
-        drawPath(gridLines(space, cols, rows), TERRAIN_GRID_LINE, style = Stroke(width = pass.density / viewScale))
+        if (space.tileWidthPx * viewScale >= TERRAIN_GRID_MIN_TILE_PIXELS) drawPath(gridLines(space, cols, rows), TERRAIN_GRID_LINE, style = HAIRLINE)
     }
     pass.contours?.let { drawContours(it, pass, viewScale) }
 }
@@ -156,7 +159,7 @@ private fun DrawScope.drawTerrainImage(image: ImageBitmap, space: TilemapSpace) 
 
 private fun DrawScope.drawContours(contours: TerrainContours, pass: TerrainPass, viewScale: Float) {
     val colour = pass.contourColour
-    drawPath(contours.thin, colour, style = Stroke(width = THIN_CONTOUR_DP * pass.density / viewScale, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    drawPath(contours.thin, colour, style = HAIRLINE)
     drawPath(contours.index, colour, style = Stroke(width = INDEX_CONTOUR_DP * pass.density / viewScale, cap = StrokeCap.Round, join = StrokeJoin.Round))
     val style = TextStyle(fontSize = (LABEL_SP / viewScale).sp, color = CONTOUR_INK)
     val pad = LABEL_PAD_DP * pass.density / viewScale
