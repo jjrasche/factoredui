@@ -129,16 +129,20 @@ internal fun DrawScope.drawPixelSprites(sprites: PixelSprites, space: TilemapSpa
         val box = spriteBoxAt(draw.sprite, at.x, at.y)
         val size = IntSize(draw.sprite.width, draw.sprite.height)
         val target = IntOffset(box.left, box.top)
-        if (isSwapped(draw, sprites.swaps)) {
-            drawImage(sprites.images.swappedImage(draw.sprite, draw.ramp!!), IntOffset.Zero, size, target, size, filterQuality = FilterQuality.None)
+        val ramp = swappedRamp(draw, sprites.swaps)
+        if (ramp != null) {
+            drawImage(sprites.images.swappedImage(draw.sprite, ramp), IntOffset.Zero, size, target, size, filterQuality = FilterQuality.None)
         } else {
             drawImage(sprites.images.sheets[draw.sprite.sheet], IntOffset(draw.sprite.x, draw.sprite.y), size, target, size, filterQuality = FilterQuality.None)
         }
     }
 }
 
-private fun isSwapped(draw: PixelDraw, swaps: Map<String, PixelSwap>): Boolean =
-    draw.ramp != null && swaps[draw.sprite.swap]?.let { it.base != draw.ramp && draw.ramp in it.ramps } == true
+private fun swappedRamp(draw: PixelDraw, swaps: Map<String, PixelSwap>): String? {
+    val ramp = draw.ramp ?: return null
+    val swap = swaps[draw.sprite.swap] ?: return null
+    return ramp.takeIf { it != swap.base && it in swap.ramps }
+}
 
 internal fun pickPixelSprite(sprites: PixelSprites, scene: TilemapScene, content: Offset, pad: Float): TileInstance? {
     val picked = pickPixelInstance(sprites.draws, { ground -> scene.space.toContent(ground).let { it.x to it.y } }, content.x, content.y, pad) ?: return null
