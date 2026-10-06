@@ -1,0 +1,24 @@
+{
+  "id": "seq-footprint-mm-21-digits-covers-two-tiles",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["grid", "tile_ft"], "value": 25},
+    {"op": "set", "path": ["object_types", {"id": "house"}, "footprint"], "value": [1, 1]},
+    {"op": "set", "path": ["object_types", {"id": "shed"}, "footprint_mm"], "value": [7620.00000000000000001, 7620]}
+  ]},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "shed", "col": 6, "row": 0}},
+      {"do": "place", "parameters": {"type": "shed", "col": 7, "row": 0}}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"refused": "off-grid", "message": "shed at 7,0 leaves the grid"}],
+    "final": {"main": {
+      "counts": {"house": 0, "shed": 2, "oak": 0, "garden": 0},
+      "areas": {"house": 0, "shed": 1250, "oak": 0, "garden": 0}
+    }}
+  },
+  "notes": "At tile_ft 25 the shed's footprint_mm [7620.00000000000000001, 7620] covers ceil = 2 x 1 tiles of 7620 mm. At 6,0 it covers 6,0 and 7,0: 2 tiles x 625 sq ft = 1250 sq ft. At 7,0 it would need column 8 of an 8-column grid. The house is set to 1 x 1 so its own footprint_mm [6000, 4500] agrees at this tile size. Read as a double the shed is 1 x 1 and the second placement applies."
+}

@@ -1,0 +1,11 @@
+{
+  "id": "load-footprint-mm-of-2002000-tiles-refused",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["object_types", {"id": "shed"}, "footprint_mm"], "value": [6096000, 3048000.001]}
+  ]},
+  "input": {},
+  "expect": {"valid": false, "fired": ["footprint-too-large"]},
+  "notes": "3048000.001 mm is 0.001 mm over 1000 tiles of 3048 mm, so the shed spans 2000 x ceil(1000.000000328...) = 2000 x 1001 = 2,002,000 tiles, over the 2,000,000 cap."
+}

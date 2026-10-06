@@ -11,6 +11,7 @@ import json
 import math
 import re
 import sys
+from decimal import Decimal, InvalidOperation
 from fractions import Fraction
 from pathlib import Path
 
@@ -38,6 +39,11 @@ MAX_NODES = 256
 MAX_DEPTH = 24
 MAX_TICKS_PER_EVENT = 100_000
 MAX_INSTANCES = 5000
+MAX_NUMBER_EXPONENT = 400
+MAX_FOOTPRINT_TILES = 2_000_000
+NUMBER_EXPONENT_RULE = "number-exponent-too-large"
+FOOTPRINT_RULE = "footprint-too-large"
+EVENT_ID_RULE = "event-id-duplicate"
 MM_PER_FT = Fraction("304.8")
 ERROR_FIELDS = ("position_mm", "height_mm", "crown_radius_mm")
 RENDERED_INSTANCE_FIELDS = ("id", "type", "x_mm", "y_mm", "z_mm", "rotation_deg", "height_mm", "crown_radius_mm", "provenance")
@@ -84,6 +90,63 @@ class Refusal(Exception):
 
 class WorldError(Exception):
     """A world file that does not load cleanly."""
+
+
+class NumberExponentTooLarge(WorldError):
+    """A JSON number whose decimal exponent passes the bound, refused before any arithmetic reads it."""
+
+
+# ---------------------------------------------------------------- numbers as written
+
+
+class WrittenNumber(float):
+    """A JSON number: the double nearest it, carrying the decimal it was written as for the comparisons that must be exact."""
+
+    def __new__(cls, written: Decimal):
+        number = super().__new__(cls, float(written))
+        number.written = written
+        return number
+
+
+def parse_decimal(text: str) -> Decimal | None:
+    """The decimal a numeral writes, or None when its exponent is past what a Decimal can hold."""
+    try:
+        return Decimal(text)
+    except InvalidOperation:
+        return None
+
+
+def is_exponent_too_large(written: Decimal | None) -> bool:
+    """The exponent is the power of ten of the leading digit as written (Decimal.adjusted, BigDecimal precision - scale - 1)."""
+    return written is None or abs(written.adjusted()) > MAX_NUMBER_EXPONENT
+
+
+def describe_numeral(text: str) -> str:
+    if len(text) <= 24:
+        return text
+    return f"{text[:12]}... ({len(text)} characters)"
+
+
+def describe_exponent_refusal(text: str) -> str:
+    return f"{NUMBER_EXPONENT_RULE}: {describe_numeral(text)} has a decimal exponent beyond ±{MAX_NUMBER_EXPONENT}"
+
+
+def read_json_float(text: str) -> WrittenNumber:
+    written = parse_decimal(text)
+    if is_exponent_too_large(written):
+        raise NumberExponentTooLarge(describe_exponent_refusal(text))
+    return WrittenNumber(written)
+
+
+def read_json_int(text: str) -> int:
+    if is_exponent_too_large(parse_decimal(text)):
+        raise NumberExponentTooLarge(describe_exponent_refusal(text))
+    return int(text)
+
+
+def read_json(text: str):
+    """JSON whose every number is bounded by its exponent and keeps the decimal it was written as."""
+    return json.loads(text, parse_float=read_json_float, parse_int=read_json_int)
 
 
 # ---------------------------------------------------------------- units
@@ -256,11 +319,14 @@ class ExpressionParser:
     def parse_atom(self):
         kind, text = self.take()
         if kind == "number":
+            written = parse_decimal(text)
+            if is_exponent_too_large(written):
+                raise ExprError(NUMBER_EXPONENT_RULE, describe_exponent_refusal(text))
             unit_text = ""
             if self.at < len(self.tokens) and self.tokens[self.at][0] == "unit":
                 unit_text = self.take()[1][1:-1]
             factor, dim = parse_unit(unit_text)
-            return self.make("num", float(text) * factor, dim)
+            return self.make("num", float(written) * factor, dim)
         if kind == "string":
             return self.make("str", text[1:-1])
         if kind == "name" and text in ("true", "false"):
@@ -596,7 +662,7 @@ class World:
 
     def __init__(self, path: str | Path, chain: tuple[str, ...] = ()):
         self.path = Path(path).resolve()
-        self.doc = json.loads(self.path.read_text(encoding="utf-8"))
+        self.doc = read_json(self.path.read_text(encoding="utf-8"))
         doc = self.doc
         self.id = doc["id"]
         self.grid = doc["grid"]
@@ -637,7 +703,7 @@ class World:
         try:
             self.parent = World(parent_path, chain)
             parent_state = self.parent.seed_state()
-        except (Refusal, ExprError, KeyError, ValueError, TypeError) as problem:
+        except (Refusal, ExprError, WorldError, KeyError, ValueError, TypeError) as problem:
             self.parent = None
             self.link_problems.append(f"parent seed does not replay: {problem}")
             return
@@ -791,6 +857,9 @@ class World:
     def diagnose(self) -> list[dict]:
         findings = [{"where": "links", "kind": "link", "message": problem} for problem in self.link_problems]
         findings += [{"where": "ground", "kind": "ground", "message": problem} for problem in ground_problems(self)]
+        findings += [{"where": f"object_types.{type_id}", "kind": FOOTPRINT_RULE,
+                      "message": f"type {type_id} covers more than {MAX_FOOTPRINT_TILES} tiles"}
+                     for type_id in self.types if is_footprint_too_large(self, type_id)]
         cycle = self.find_cycle()
         if cycle:
             findings.append({"where": "names", "kind": "cycle", "message": " -> ".join(cycle)})
@@ -869,6 +938,8 @@ def tile_slope_pct(nw: float, ne: float, sw: float, se: float, side_mm: float) -
 
 def exact(value) -> Fraction:
     """A JSON number as the decimal it is written as, so tile edges and grid edges compare without binary rounding."""
+    if isinstance(value, WrittenNumber):
+        return Fraction(value.written)
     return Fraction(str(value))
 
 
@@ -885,6 +956,19 @@ def footprint_of(world: "World", type_id: str) -> list[int]:
     if "footprint" in object_type:
         return object_type["footprint"]
     return derived_footprint(world, type_id)
+
+
+def declared_footprints(world: "World", type_id: str) -> list[list[int]]:
+    """Every tile size a type states: its footprint, and the one its footprint_mm spans."""
+    object_type = world.types[type_id]
+    sizes = [object_type["footprint"]] if "footprint" in object_type else []
+    if "footprint_mm" in object_type:
+        sizes.append(derived_footprint(world, type_id))
+    return sizes
+
+
+def is_footprint_too_large(world: "World", type_id: str) -> bool:
+    return any(width * height > MAX_FOOTPRINT_TILES for width, height in declared_footprints(world, type_id))
 
 
 def format_mm(value) -> str:
@@ -979,7 +1063,7 @@ def schema_errors(instance, schema: dict, root: dict | None = None, where: str =
 
 
 def load_world(path: str | Path) -> World:
-    document = json.loads(Path(path).read_text(encoding="utf-8"))
+    document = read_json(Path(path).read_text(encoding="utf-8"))
     problems = schema_errors(document, load_schema("world.schema.json"))
     if problems:
         raise WorldError(f"{Path(path).name} does not match world.schema.json: {problems[:3]}")
@@ -1047,6 +1131,12 @@ def footprint_tiles(world: World, type_id: str, col: int, row: int) -> list[tupl
 
 def is_on_grid(world: World, tile: tuple[int, int]) -> bool:
     return 0 <= tile[0] < world.cols and 0 <= tile[1] < world.rows
+
+
+def is_footprint_on_grid(world: World, type_id: str, col: int, row: int) -> bool:
+    """Every tile of the footprint is on the grid, decided from its two corners so a huge footprint is never enumerated."""
+    width, height = footprint_of(world, type_id)
+    return is_on_grid(world, (col, row)) and is_on_grid(world, (col + width - 1, row + height - 1))
 
 
 # ---------------------------------------------------------------- evaluation
@@ -1284,9 +1374,16 @@ def type_matches_use(world: World, type_id: str, use: str) -> bool:
     return type_id == use
 
 
+def planar_distance_mm(first: dict, second: dict) -> float:
+    """Coordinates become doubles before they are subtracted, then the root of the summed squares, so every port gets one double."""
+    east = float(first["x_mm"]) - float(second["x_mm"])
+    north = float(first["y_mm"]) - float(second["y_mm"])
+    return math.sqrt(east * east + north * north)
+
+
 def nearest_instance_gap_ft(first: list[dict], second: list[dict]) -> float | None:
     """Least centre-to-centre distance in the plane over pairs of two different instances; None when no pair exists."""
-    gaps = (math.hypot(a["x_mm"] - b["x_mm"], a["y_mm"] - b["y_mm"]) for a in first for b in second if a["id"] != b["id"])
+    gaps = (planar_distance_mm(a, b) for a in first for b in second if a["id"] != b["id"])
     nearest = min(gaps, default=None)
     return None if nearest is None else nearest / 304.8
 
@@ -1367,9 +1464,9 @@ def apply_place(world: World, state: State, event: dict, lookup) -> State:
     type_id = parameters["type"]
     if type_id not in world.types:
         raise Refusal("unknown-type", f"no object type '{type_id}'")
-    tiles = footprint_tiles(world, type_id, int(parameters["col"]), int(parameters["row"]))
-    if not all(is_on_grid(world, tile) for tile in tiles):
+    if not is_footprint_on_grid(world, type_id, int(parameters["col"]), int(parameters["row"])):
         raise Refusal("off-grid", f"{type_id} at {parameters['col']},{parameters['row']} leaves the grid")
+    tiles = footprint_tiles(world, type_id, int(parameters["col"]), int(parameters["row"]))
     occupied = [tile for tile in tiles if tile in state.cells]
     if occupied:
         raise Refusal("occupied", f"tile {occupied[0][0]},{occupied[0][1]} already holds {state.instance_at(*occupied[0])['type']}; remove it first")
@@ -1648,6 +1745,9 @@ class Log:
         problems = schema_errors(document, load_schema("events.schema.json"))
         if problems:
             raise WorldError(f"event log does not match events.schema.json: {problems[:3]}")
+        repeated = first_repeated_event_id(document["events"])
+        if repeated is not None:
+            raise WorldError(f"{EVENT_ID_RULE}: event id {repeated} appears twice in the log")
         log = cls(world)
         for event in document["events"]:
             log.replay(event)
@@ -1659,14 +1759,14 @@ class Log:
     def replay(self, event: dict) -> None:
         if event["world"] != self.world.id:
             raise WorldError(f"event {event['id']} belongs to world {event['world']}")
+        if event["id"] in self.by_id:
+            raise WorldError(f"{EVENT_ID_RULE}: event id {event['id']} appears twice")
         if event["action"] == "branch":
             start = event["parameters"]["from"]
             if event["parent"] != start or (start is not None and start not in self.by_id):
                 raise WorldError(f"branch event {event['id']} does not start where it says")
             self.open_branch(event)
             return
-        if event["id"] in self.by_id:
-            raise WorldError(f"event id {event['id']} appears twice")
         if self.heads.get(event["branch"], "missing") != event["parent"]:
             raise WorldError(f"event {event['id']} does not extend the head of branch {event['branch']}")
         governance = self.recheck_governance(event)
@@ -1705,9 +1805,13 @@ class Log:
                 primitive.append(event)
         return primitive
 
+    def next_event_id(self) -> str:
+        """One past the highest e<n> held, which is e<count + 1> for a log the engine wrote and never a reused id after a load."""
+        return f"e{max((int(event['id'][1:]) for event in self.events), default=0) + 1}"
+
     def draft(self, branch: str, actor: str, action: str, parameters: dict, timestamp: str) -> dict:
         return {
-            "id": f"e{len(self.events) + 1}",
+            "id": self.next_event_id(),
             "parent": self.heads[branch],
             "world": self.world.id,
             "branch": branch,
@@ -1785,7 +1889,7 @@ class Log:
         start = self.heads[source] if source in self.heads else source
         if start is not None and start not in self.by_id:
             return Refusal("unknown-branch", f"no branch or event '{source}'")
-        event = {"id": f"e{len(self.events) + 1}", "parent": start, "world": self.world.id, "branch": name,
+        event = {"id": self.next_event_id(), "parent": start, "world": self.world.id, "branch": name,
                  "actor": actor, "action": "branch", "parameters": {"name": name, "from": start, "proposal": proposal},
                  "timestamp": timestamp}
         self.open_branch(event)
@@ -1872,6 +1976,15 @@ class Log:
             if isinstance(plan, Refusal) or plan != parameters["undo"]:
                 return f"revert of {parameters['event']} is not the revert the rules allow ({plan})"
         return None
+
+
+def first_repeated_event_id(events: list[dict]) -> str | None:
+    seen: set[str] = set()
+    for event in events:
+        if event["id"] in seen:
+            return event["id"]
+        seen.add(event["id"])
+    return None
 
 
 def inverse_ground_change(verb: str, parameters: dict) -> dict:
@@ -2011,7 +2124,7 @@ def main(argv: list[str] | None = None) -> int:
     options = parser.parse_args(argv)
 
     world = load_world(options.world)
-    log = Log.load(world, json.loads(Path(options.log).read_text(encoding="utf-8"))) if options.log else Log(world)
+    log = Log.load(world, read_json(Path(options.log).read_text(encoding="utf-8"))) if options.log else Log(world)
     print(f"world {world.id}: {world.cols} x {world.rows} tiles of {world.tile_ft:g} ft")
     if options.demo:
         steps = json.loads(demo_path(world).read_text(encoding="utf-8"))["steps"]

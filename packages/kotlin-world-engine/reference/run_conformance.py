@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from decimal import Decimal
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -499,8 +500,24 @@ def compare_case(case: dict, observed: dict, table: dict) -> list[str]:
 # ---------------------------------------------------------------- the case set
 
 
+def convert_decimals_to_floats(node):
+    if isinstance(node, Decimal):
+        return float(node)
+    if isinstance(node, list):
+        return [convert_decimals_to_floats(item) for item in node]
+    if isinstance(node, dict):
+        return {key: convert_decimals_to_floats(value) for key, value in node.items()}
+    return node
+
+
+def read_case(path: Path) -> dict:
+    """A case's world edits keep their numbers as the Decimals written, so a world receives them exactly; the rest is float."""
+    document = json.loads(path.read_text(encoding="utf-8"), parse_float=Decimal)
+    return {key: value if key == "world" else convert_decimals_to_floats(value) for key, value in document.items()} | {"_file": path.name}
+
+
 def read_cases() -> list[dict]:
-    return [json.loads(path.read_text(encoding="utf-8")) | {"_file": path.name} for path in sorted(CASES.glob("*.json"))]
+    return [read_case(path) for path in sorted(CASES.glob("*.json"))]
 
 
 def find_case_shape_problems(case: dict) -> list[str]:
@@ -671,7 +688,7 @@ def run_mutant(mutant: dict) -> tuple[str, str]:
         try:
             finished = subprocess.run(command, capture_output=True, text=True, timeout=MUTANT_TIMEOUT_SECONDS)
         except subprocess.TimeoutExpired:
-            return "killed", f"no answer within {MUTANT_TIMEOUT_SECONDS} s"
+            return "timeout", f"no answer within {MUTANT_TIMEOUT_SECONDS} s, so no case is known to fail against it"
     counted = FAIL_COUNT.search(finished.stdout)
     if not counted:
         return "ERROR", f"the runner printed no fail count: {(finished.stdout + finished.stderr)[-400:]}"
@@ -688,11 +705,13 @@ def run_mutants() -> int:
     if run_cases(None) != 0:
         print("the reference itself fails the suite, so no mutant result means anything")
         return 1
-    killed = 0
+    verdicts = []
     for mutant in mutants:
         verdict, detail = run_mutant(mutant)
-        killed += verdict == "killed"
+        verdicts.append(verdict)
         print(f"{verdict} {mutant['id']} ({mutant['breaks']}): {detail}")
+    killed = verdicts.count("killed")
+    print(f"{verdicts.count('timeout')} timed out")
     print(f"{killed} of {len(mutants)} mutants killed")
     return 0 if killed == len(mutants) else 1
 

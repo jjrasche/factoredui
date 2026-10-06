@@ -1246,6 +1246,31 @@ const val MUTATIONS_JSON: String = """{
       "rule": "world-schema",
       "world": "parcel-ground-demo.world.json",
       "edits": [{"op": "set", "path": ["ground", "heights_mm", 0], "value": "222000"}]
+    },
+    {
+      "rule": "number-exponent-too-large",
+      "world": "parcel-lidar-sample.world.json",
+      "edits": [{"op": "set", "path": ["seed", {"id": "tree-01"}, "parameters", "height_mm"], "value": 1e999999999}]
+    },
+    {
+      "rule": "number-exponent-too-large",
+      "world": "dungeon-tiny.world.json",
+      "edits": [{"op": "set", "path": ["clock", "tick_length"], "value": 1e-401}]
+    },
+    {
+      "rule": "footprint-too-large",
+      "world": "parcel-lidar-sample.world.json",
+      "edits": [{"op": "set", "path": ["object_types", {"id": "shed"}, "footprint_mm"], "value": [1e400, 3000]}]
+    },
+    {
+      "rule": "footprint-too-large",
+      "world": "dungeon-tiny.world.json",
+      "edits": [{"op": "set", "path": ["object_types", {"id": "monster"}, "footprint_mm"], "value": [1e12, 1e12]}]
+    },
+    {
+      "rule": "expression-bound",
+      "world": "parcel-five-acre.world.json",
+      "edits": [{"op": "set_repeated", "path": ["rules", {"id": "van-pad-needs-path"}, "require"], "unit": "10", "times": 201, "tail": " [tile] > neighbors(tile, 1 [tile], 'path')"}]
     }
   ]
 }

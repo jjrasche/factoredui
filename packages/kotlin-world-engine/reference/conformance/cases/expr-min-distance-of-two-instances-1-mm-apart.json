@@ -1,0 +1,15 @@
+{
+  "id": "expr-min-distance-of-two-instances-1-mm-apart",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "text": "min_distance_mm('oak', 'oak')",
+    "setup": [
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 9500, "y_mm": 8000, "rotation_deg": 0}},
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 9501, "y_mm": 8000, "rotation_deg": 0}}
+    ]
+  },
+  "expect": {"value": 1, "unit": "mm"},
+  "notes": "Two proposed oaks at 9500,8000 and 9501,8000 mm: float64(9501) - float64(9500) = 1 and sqrt(1^2 + 0^2) = 1 mm. Each is sqrt(6000^2 + 6000^2) = 8485 mm from the shed, so the clearance rule lets both in; the measured oak is 8000 mm or more away."
+}

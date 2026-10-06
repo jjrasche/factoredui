@@ -1,0 +1,7 @@
+{
+  "id": "footprint-cap-dropped",
+  "breaks": "never finds a footprint too large, so a footprint_mm of 1e400 loads, or is reported only as a disagreement that prints its tile count",
+  "edits": [
+    {"find": "    return any(width * height > MAX_FOOTPRINT_TILES for width, height in declared_footprints(world, type_id))", "replace": "    return False"}
+  ]
+}

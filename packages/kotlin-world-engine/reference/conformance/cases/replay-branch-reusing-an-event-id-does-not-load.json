@@ -1,0 +1,17 @@
+{
+  "id": "replay-branch-reusing-an-event-id-does-not-load",
+  "kind": "replay",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "garden", "col": 0, "row": 0}},
+      {"do": "branch", "name": "side", "from": "main"}
+    ],
+    "tamper": [
+      {"op": "set", "path": ["events", 1, "id"], "value": "e1"}
+    ]
+  },
+  "expect": {"loads": false, "reason_contains": "event-id-duplicate"},
+  "notes": "e1 places a garden and e2 opens branch side at e1. The tampered log renames the branch event e1, so it would become its own parent and the next walk of the chain (a merge) would never end. The loader refuses it."
+}

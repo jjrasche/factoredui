@@ -1,0 +1,11 @@
+{
+  "id": "load-number-exponent-999999999-refused",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["seed", {"id": "m-oak-1"}, "parameters", "height_mm"], "value": 1e999999999}
+  ]},
+  "input": {},
+  "expect": {"valid": false, "fired": ["number-exponent-too-large"]},
+  "notes": "1e999999999 is refused before any arithmetic: as an exact decimal it would be a billion-digit integer, and as a double it is infinity."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "expr-number-literal-exponent-minus-401-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {"text": [["0.", 1], ["0", 400], ["1", 1]]},
+  "expect": {"error": "number-exponent-too-large"},
+  "notes": "0. then 400 zeros then 1 is 1e-401, decimal exponent -401, one past the bound."
+}

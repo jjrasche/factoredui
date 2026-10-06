@@ -1,0 +1,11 @@
+{
+  "id": "load-number-exponent-401-refused",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["seed", {"id": "m-oak-1"}, "parameters", "error", "position_mm", "value"], "value": 1e401}
+  ]},
+  "input": {},
+  "expect": {"valid": false, "fired": ["number-exponent-too-large"]},
+  "notes": "1e401 has decimal exponent 401, one past the bound of 400."
+}

@@ -1,0 +1,23 @@
+{
+  "id": "seq-tile-ft-21-digits-is-read-exactly",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["grid", "tile_ft"], "value": 9.99999999999999999999},
+    {"op": "set", "path": ["object_types", {"id": "shed"}, "footprint_mm"], "value": [3048, 3048]}
+  ]},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "shed", "col": 7, "row": 0}},
+      {"do": "place", "parameters": {"type": "shed", "col": 6, "row": 0}}
+    ]
+  },
+  "expect": {
+    "steps": [{"refused": "off-grid", "message": "shed at 7,0 leaves the grid"}, {"applied": "e1"}],
+    "final": {"main": {
+      "counts": {"house": 0, "shed": 4, "oak": 0, "garden": 0},
+      "areas": {"house": 0, "shed": 400, "oak": 0, "garden": 0}
+    }}
+  },
+  "notes": "tile_ft 9.99999999999999999999 makes a tile 9.99999999999999999999 x 304.8 = 3047.999999999999999996952 mm, so footprint_mm 3048 spans ceil(3048 / 3047.999999999999999996952) = 2 tiles per axis. The shed is 2 x 2: at 7,0 it needs column 8, at 6,0 it covers 4 tiles. Areas use tile_ft as a double (10.0), so 4 x 100 = 400 sq ft. Read as a double, tile_ft is 10.0 and the shed would be 1 x 1. The house's [6000, 4500] spans 2 x 2 either way."
+}

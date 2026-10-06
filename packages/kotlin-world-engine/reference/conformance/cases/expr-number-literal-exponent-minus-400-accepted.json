@@ -1,0 +1,9 @@
+{
+  "id": "expr-number-literal-exponent-minus-400-accepted",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {"text": [["0.", 1], ["0", 399], ["1", 1]]},
+  "expect": {"value": 0, "unit": "1"},
+  "notes": "0. then 399 zeros then 1 is 1e-400, decimal exponent -400, inside the bound. As a double it underflows to 0."
+}

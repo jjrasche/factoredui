@@ -1,0 +1,13 @@
+{
+  "id": "load-footprint-mm-21-digits-disagrees",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["grid", "tile_ft"], "value": 25},
+    {"op": "set", "path": ["object_types", {"id": "house"}, "footprint"], "value": [1, 1]},
+    {"op": "set", "path": ["object_types", {"id": "house"}, "footprint_mm"], "value": [7620.00000000000000001, 7620]}
+  ]},
+  "input": {},
+  "expect": {"valid": false, "fired": ["footprint-mm-agrees"]},
+  "notes": "At tile_ft 25 a tile is 25 x 304.8 = 7620 mm. footprint_mm 7620.00000000000000001 (21 significant digits) is 1e-17 mm over one tile, so ceil(7620.00000000000000001 / 7620) = 2 and the house spans 2 x 1 tiles, not the declared 1 x 1. Read as a binary double the width is 7620.0 exactly and the footprint would wrongly agree."
+}

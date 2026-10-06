@@ -1,0 +1,7 @@
+{
+  "id": "number-exponent-bound-inclusive",
+  "breaks": "refuses a number whose decimal exponent is exactly 400, so 1e400 and 1e-400 no longer read",
+  "edits": [
+    {"find": "    return written is None or abs(written.adjusted()) > MAX_NUMBER_EXPONENT", "replace": "    return written is None or abs(written.adjusted()) >= MAX_NUMBER_EXPONENT"}
+  ]
+}

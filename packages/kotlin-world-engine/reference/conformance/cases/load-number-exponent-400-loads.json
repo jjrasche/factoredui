@@ -1,0 +1,11 @@
+{
+  "id": "load-number-exponent-400-loads",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["seed", {"id": "m-oak-1"}, "parameters", "error", "position_mm", "value"], "value": 1e400}
+  ]},
+  "input": {},
+  "expect": {"valid": true, "fired": []},
+  "notes": "1e400 has decimal exponent 400, the largest magnitude the engine reads. It sits in an error figure no rule reads."
+}

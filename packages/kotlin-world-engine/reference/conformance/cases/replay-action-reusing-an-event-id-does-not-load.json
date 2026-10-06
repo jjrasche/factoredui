@@ -1,0 +1,17 @@
+{
+  "id": "replay-action-reusing-an-event-id-does-not-load",
+  "kind": "replay",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "garden", "col": 0, "row": 0}},
+      {"do": "place", "parameters": {"type": "garden", "col": 1, "row": 0}}
+    ],
+    "tamper": [
+      {"op": "set", "path": ["events", 1, "id"], "value": "e1"}
+    ]
+  },
+  "expect": {"loads": false, "reason_contains": "event-id-duplicate"},
+  "notes": "e1 and e2 place two gardens; the tampered log renames e2 to e1, whose parent is e1."
+}

@@ -1,0 +1,15 @@
+{
+  "id": "expr-min-distance-of-coincident-instances-is-zero",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "text": "min_distance_mm('oak', 'oak')",
+    "setup": [
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 9500, "y_mm": 8000, "rotation_deg": 0}},
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 9500, "y_mm": 8000, "rotation_deg": 0}}
+    ]
+  },
+  "expect": {"value": 0, "unit": "mm"},
+  "notes": "Two different proposed oaks at the same point 9500,8000 mm form a pair at distance 0. Only an instance paired with itself is excluded, and that is decided by id, not by distance."
+}

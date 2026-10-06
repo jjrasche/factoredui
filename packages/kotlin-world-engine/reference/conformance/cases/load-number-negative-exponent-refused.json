@@ -1,0 +1,11 @@
+{
+  "id": "load-number-negative-exponent-refused",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["seed", {"id": "m-oak-1"}, "parameters", "error", "position_mm", "value"], "value": 1e-999999999}
+  ]},
+  "input": {},
+  "expect": {"valid": false, "fired": ["number-exponent-too-large"]},
+  "notes": "The bound is on the exponent's magnitude: 1e-999999999 has decimal exponent -999999999."
+}

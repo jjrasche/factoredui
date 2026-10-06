@@ -1,0 +1,11 @@
+{
+  "id": "load-footprint-mm-of-2000000-tiles-loads",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["object_types", {"id": "shed"}, "footprint_mm"], "value": [6096000, 3048000]}
+  ]},
+  "input": {},
+  "expect": {"valid": true, "fired": []},
+  "notes": "On 3048 mm tiles, footprint_mm [6096000, 3048000] spans exactly 2000 x 1000 = 2,000,000 tiles, the cap. It loads; placing one would leave the 8 x 6 grid. A tile footprint cannot reach the cap: world.schema.json allows at most 64 per axis."
+}

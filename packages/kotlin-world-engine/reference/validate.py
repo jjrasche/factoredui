@@ -9,6 +9,7 @@ import json
 import shutil
 import sys
 import tempfile
+from decimal import Decimal
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -26,7 +27,23 @@ def read_rules() -> list[dict]:
 
 
 def read_mutations() -> list[dict]:
-    return json.loads((HERE / "mutations.json").read_text(encoding="utf-8"))["mutations"]
+    return read_decimal_json((HERE / "mutations.json").read_text(encoding="utf-8"))["mutations"]
+
+
+def read_decimal_json(text: str):
+    """JSON with every fractional or exponent number kept as the Decimal written, unchecked, so a broken copy can hold any number."""
+    return json.loads(text, parse_float=Decimal)
+
+
+def write_decimal_json(node) -> str:
+    """JSON text in which every Decimal is written exactly as it was read."""
+    if isinstance(node, Decimal):
+        return str(node)
+    if isinstance(node, dict):
+        return "{" + ", ".join(f"{json.dumps(key)}: {write_decimal_json(value)}" for key, value in node.items()) + "}"
+    if isinstance(node, list):
+        return "[" + ", ".join(write_decimal_json(item) for item in node) + "]"
+    return json.dumps(node, ensure_ascii=False)
 
 
 def classify_site_problem(problem: dict | None) -> dict:
@@ -34,7 +51,7 @@ def classify_site_problem(problem: dict | None) -> dict:
     if problem is None:
         return record
     bucket = {"syntax": "syntax_errors", "unknown_word": "unknown_words", "unit_mismatch": "unit_errors",
-              "bound": "bound_errors"}.get(problem["kind"], "syntax_errors")
+              "bound": "bound_errors", engine.NUMBER_EXPONENT_RULE: "bound_errors"}.get(problem["kind"], "syntax_errors")
     record[bucket].append(problem["message"])
     record["over_bound"] = bool(record["bound_errors"])
     return record
@@ -141,14 +158,17 @@ def derive_figure_facts(name: str, world: engine.World) -> list[dict]:
 
 def derive_type_facts(name: str, world: engine.World) -> list[dict]:
     known = set(engine.GENERIC_SPRITES) | {e["id"] for e in world.doc["sprites"].get("extensions", [])}
-    return [{"world": name, "type": t["id"], "sprite": t["sprite"], "sprite_known": t["sprite"] in known}
+    return [{"world": name, "type": t["id"], "sprite": t["sprite"], "sprite_known": t["sprite"] in known,
+             "footprint_too_large": engine.is_footprint_too_large(world, t["id"])}
             for t in world.types.values()]
 
 
 def derive_footprint_facts(name: str, world: engine.World) -> list[dict]:
+    """footprint-too-large reports a type over the tile cap, so its derived count is never compared here or printed."""
     return [{"world": name, "type": t["id"], "footprint": t["footprint"], "derived": engine.derived_footprint(world, t["id"]),
              "agrees": t["footprint"] == engine.derived_footprint(world, t["id"])}
-            for t in world.types.values() if "footprint" in t and "footprint_mm" in t]
+            for t in world.types.values()
+            if "footprint" in t and "footprint_mm" in t and not engine.is_footprint_too_large(world, t["id"])]
 
 
 def is_figure_reasoned(figure: dict) -> bool:
@@ -203,10 +223,13 @@ def derive_facts(worlds_dir: Path) -> dict[str, list[dict]]:
     facts: dict[str, list[dict]] = {scan: [] for scan in SCANS}
     schema = engine.load_schema("world.schema.json")
     for path in sorted(worlds_dir.glob("*.world.json")):
-        record = {"world": path.name, "parse_ok": True, "parse_error": "", "schema_errors": []}
+        record = {"world": path.name, "parse_ok": True, "parse_error": "", "oversized_number": "", "schema_errors": []}
         facts["worlds"].append(record)
         try:
-            document = json.loads(path.read_text(encoding="utf-8"))
+            document = engine.read_json(path.read_text(encoding="utf-8"))
+        except engine.NumberExponentTooLarge as problem:
+            record["oversized_number"] = str(problem)
+            continue
         except (json.JSONDecodeError, UnicodeDecodeError) as problem:
             record["parse_ok"] = False
             record["parse_error"] = str(problem)
@@ -309,7 +332,7 @@ def apply_mutation(worlds_dir: Path, mutation: dict) -> None:
         if edit["op"] == "write_text":
             target.write_text(edit["value"], encoding="utf-8")
             continue
-        document = json.loads(target.read_text(encoding="utf-8"))
+        document = read_decimal_json(target.read_text(encoding="utf-8"))
         parent, last = resolve_parent(document, edit["path"])
         if isinstance(last, dict):
             index = parent.index(select_step(parent, last))
@@ -324,7 +347,7 @@ def apply_mutation(worlds_dir: Path, mutation: dict) -> None:
             del parent[last]
         else:
             raise ValueError(f"mutations.json uses unknown op {edit['op']}")
-        target.write_text(json.dumps(document, indent=2), encoding="utf-8")
+        target.write_text(write_decimal_json(document), encoding="utf-8")
 
 
 def run_mutation(mutation: dict, worlds_dir: Path = HERE / "worlds") -> dict:
@@ -347,14 +370,49 @@ def print_report(report: dict) -> int:
     return 1 if report["invalid"] else 0
 
 
-def print_self_test() -> int:
+def tripped_rules(report: dict) -> set[str]:
+    return {f["rule"] for f in report["fired"]} | {b["rule"] for b in report["blind"]}
+
+
+def is_tripped_on(report: dict, rule: str, world: str | None) -> bool:
+    """A world-less mutation (an emptied directory) trips its rule as BLIND; any other trips it on the world it broke."""
+    if world is None:
+        return rule in {b["rule"] for b in report["blind"]}
+    return any(f["rule"] == rule and f["world"] == world for f in report["fired"]) and world in report["invalid"]
+
+
+def is_mutation_caught(mutation: dict, mutated: dict, starting: dict) -> bool:
+    """Caught: the rule trips on the broken copy and did not already trip on the worlds it was copied from."""
+    if mutation["rule"] in tripped_rules(starting):
+        return False
+    return is_tripped_on(mutated, mutation["rule"], mutation["world"])
+
+
+def print_starting_problems(starting: dict) -> None:
+    for blind in starting["blind"]:
+        print(f"STARTING WORLDS BLIND {blind['rule']}: {blind['message']}")
+    for failure in starting["fired"]:
+        print(f"STARTING WORLD INVALID {failure['rule']}: {failure['message']}")
+    print("refusing to self-test: a broken copy proves a rule only when the worlds it was copied from are valid")
+
+
+def print_self_test(worlds_dir: Path = HERE / "worlds", mutations: list[dict] | None = None) -> int:
+    mutations = read_mutations() if mutations is None else mutations
+    if not mutations:
+        print("BLIND: mutations.json holds no broken copies, so no rule's power to fire was measured")
+        print("0 of 0 broken copies caught")
+        return EXIT_BLIND
+    starting = run_validation(worlds_dir)
+    if starting["fired"] or starting["blind"]:
+        print_starting_problems(starting)
+        print(f"0 of {len(mutations)} broken copies caught")
+        return 1
     missed = 0
-    for mutation in read_mutations():
-        report = run_mutation(mutation)
-        caught = mutation["rule"] in {f["rule"] for f in report["fired"]} | {b["rule"] for b in report["blind"]}
+    for mutation in mutations:
+        caught = is_mutation_caught(mutation, run_mutation(mutation, worlds_dir), starting)
         missed += 0 if caught else 1
         print(f"{'caught' if caught else 'MISSED'} {mutation['rule']}")
-    print(f"{len(read_mutations()) - missed} of {len(read_mutations())} broken copies caught")
+    print(f"{len(mutations) - missed} of {len(mutations)} broken copies caught")
     return 1 if missed else 0
 
 
@@ -364,7 +422,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--self-test", action="store_true", help="apply every mutation and report which rule caught it")
     options = parser.parse_args(argv)
     if options.self_test:
-        return print_self_test()
+        return print_self_test(Path(options.worlds))
     return print_report(run_validation(Path(options.worlds)))
 
 

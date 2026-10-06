@@ -510,6 +510,12 @@ internal const val VALIDATION_RULES_JSON: String = """{
       "message": "{world}: is not JSON: {parse_error}"
     },
     {
+      "id": "number-exponent-too-large",
+      "scans": "worlds",
+      "condition": {"op": "empty", "field": "oversized_number"},
+      "message": "{world}: holds a number the engine will not read, because exact arithmetic on it would not be bounded: {oversized_number}"
+    },
+    {
       "id": "world-schema",
       "scans": "worlds",
       "condition": {"op": "empty", "field": "schema_errors"},
@@ -602,6 +608,12 @@ internal const val VALIDATION_RULES_JSON: String = """{
       "scans": "object_types",
       "condition": {"op": "is_true", "field": "sprite_known"},
       "message": "{world} type {type}: sprite {sprite} is neither generic nor a declared extension"
+    },
+    {
+      "id": "footprint-too-large",
+      "scans": "object_types",
+      "condition": {"op": "is_false", "field": "footprint_too_large"},
+      "message": "{world} type {type}: its footprint covers more than 2000000 tiles, so placing it could not be checked in bounded time"
     },
     {
       "id": "footprint-mm-agrees",

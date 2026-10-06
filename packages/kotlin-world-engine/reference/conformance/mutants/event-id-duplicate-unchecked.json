@@ -1,0 +1,8 @@
+{
+  "id": "event-id-duplicate-unchecked",
+  "breaks": "lets a saved log reuse an event id, in the loader and in replay, so a renamed event overwrites the first and can become its own parent",
+  "edits": [
+    {"find": "        if repeated is not None:", "replace": "        if False:"},
+    {"find": "        if event[\"id\"] in self.by_id:", "replace": "        if False:"}
+  ]
+}

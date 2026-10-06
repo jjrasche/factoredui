@@ -1,0 +1,11 @@
+{
+  "id": "load-footprint-mm-too-large-refused",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["object_types", {"id": "shed"}, "footprint_mm"], "value": [1e400, 3100]}
+  ]},
+  "input": {},
+  "expect": {"valid": false, "fired": ["footprint-too-large"]},
+  "notes": "footprint_mm 1e400 is a readable number (exponent 400) but spans ceil(1e400 / 3048) tiles, far over the 2,000,000 cap."
+}

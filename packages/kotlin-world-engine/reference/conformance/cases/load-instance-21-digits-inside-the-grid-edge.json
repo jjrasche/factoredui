@@ -1,0 +1,11 @@
+{
+  "id": "load-instance-21-digits-inside-the-grid-edge",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["seed", {"id": "m-oak-1"}, "parameters", "x_mm"], "value": 24383.99999999999999999}
+  ]},
+  "input": {},
+  "expect": {"valid": true, "fired": []},
+  "notes": "The grid is 8 x 3048 = 24384 mm wide and an instance is on it when 0 <= x_mm < 24384. 24383.99999999999999999 is 1e-17 mm inside. Read as a double it is 24384.0, off the grid, and the seed would not replay."
+}

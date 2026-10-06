@@ -1,0 +1,11 @@
+{
+  "id": "load-footprint-mm-too-large-beside-a-footprint-fires-once",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["object_types", {"id": "house"}, "footprint_mm"], "value": [1e400, 4500]}
+  ]},
+  "input": {},
+  "expect": {"valid": false, "fired": ["footprint-too-large"]},
+  "notes": "The house declares footprint [2, 2] and footprint_mm [1e400, 4500]. The too-large footprint is reported by footprint-too-large alone; footprint-mm-agrees does not also fire and print a 397-digit tile count."
+}

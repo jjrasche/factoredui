@@ -1,0 +1,7 @@
+{
+  "id": "number-exponent-unchecked",
+  "breaks": "reads any number a Decimal can hold, so 1e401 and 1e999999999 load as infinity and a 402-digit literal evaluates",
+  "edits": [
+    {"find": "    return written is None or abs(written.adjusted()) > MAX_NUMBER_EXPONENT", "replace": "    return written is None"}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "expr-number-literal-402-digits-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {"text": [["1", 1], ["0", 401]]},
+  "expect": {"error": "number-exponent-too-large"},
+  "notes": "1 followed by 401 zeros is 10^401, decimal exponent 401. Read as a double it would be infinity."
+}

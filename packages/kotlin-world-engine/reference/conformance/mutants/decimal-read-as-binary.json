@@ -1,0 +1,7 @@
+{
+  "id": "decimal-read-as-binary",
+  "breaks": "compares footprints, tile sizes and the grid edge on the double a JSON number became instead of the decimal written, so 7620.00000000000000001 mm is one 7620 mm tile",
+  "edits": [
+    {"find": "        return Fraction(value.written)", "replace": "        return Fraction(str(float(value)))"}
+  ]
+}

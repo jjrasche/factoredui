@@ -1,0 +1,7 @@
+{
+  "id": "footprint-cap-inclusive",
+  "breaks": "refuses a footprint of exactly 2,000,000 tiles",
+  "edits": [
+    {"find": "    return any(width * height > MAX_FOOTPRINT_TILES for width, height in declared_footprints(world, type_id))", "replace": "    return any(width * height >= MAX_FOOTPRINT_TILES for width, height in declared_footprints(world, type_id))"}
+  ]
+}
