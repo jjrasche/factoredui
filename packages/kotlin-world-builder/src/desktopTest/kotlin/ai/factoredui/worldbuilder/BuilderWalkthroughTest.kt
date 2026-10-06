@@ -8,6 +8,7 @@ import ai.factoredui.compose.layout.tileCenter
 import ai.factoredui.compose.layout.tilemapScreenBounds
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
+import ai.factoredui.compose.scene.LANDING_LEVEL_FEET
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.worldengine.session.DispatchResult
 import ai.factoredui.worldengine.session.WorldAction
@@ -41,6 +42,7 @@ private const val HEADROOM = 0.95f
 private const val FIT_MARGIN = 12f
 private const val MAX_FIT_SCALE = 2f
 private const val TERRAIN_REVIEW = "terrain-2026-10-06"
+private const val SCENE_REVIEW = "scene-2026-10-06"
 private val SHOT_DIRECTORY =File(System.getProperty("WALKTHROUGH_DIR") ?: System.getenv("WALKTHROUGH_DIR") ?: "build/walkthrough")
 
 @OptIn(ExperimentalTestApi::class)
@@ -160,6 +162,17 @@ class BuilderWalkthroughTest {
         }
         context.applyBindings(host.bindings())
         terrainShot("04-cutfill-after-basin-dig", "cutfill", isContoursShown = false)
+    }
+
+    @Test
+    fun theGroundDemoAtTheLandingLevelIsTheVectorMapWithHillshade() = runDesktopComposeUiTest(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX) {
+        open("dark", "worlds/parcel-ground-demo.world.json")
+        context.setBinding("view_state", mapOf("level_feet" to LANDING_LEVEL_FEET))
+        waitForIdle()
+        onNodeWithTag("world:terrain-legend").assertExists()
+        val directory = File(SHOT_DIRECTORY, SCENE_REVIEW)
+        directory.mkdirs()
+        ImageIO.write(onRoot().captureToImage().toAwtImage(), "PNG", File(directory, "01-vector-landing-hillshade.png"))
     }
 
     @Test
