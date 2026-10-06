@@ -22,7 +22,14 @@ import ai.factoredui.compose.layout.tileCorners
 import ai.factoredui.compose.layout.tileSideMm
 import ai.factoredui.compose.layout.tilemapScreenBounds
 import ai.factoredui.compose.layout.unproject
+import ai.factoredui.compose.pixel.PIXEL_LOOK
+import ai.factoredui.compose.pixel.pixelArtScaleFor
+import ai.factoredui.compose.pixel.pixelCostsFor
+import ai.factoredui.compose.pixel.pixelFitView
+import ai.factoredui.compose.pixel.snapPixelView
+import ai.factoredui.compose.pixel.waterFrameFor
 import ai.factoredui.compose.scene.adaptRenderProps
+import ai.factoredui.compose.scene.resolveViewState
 import ai.factoredui.compose.scene.tileFootprintsOf
 import ai.factoredui.compose.scene.tileInstancesOf
 import ai.factoredui.compose.schema.ActionRef
@@ -94,6 +101,7 @@ private const val FIT_MARGIN_PX = 12f
 private const val MAX_FIT_SCALE = 2f
 private const val WHEEL_ZOOM_RATE = 0.12f
 private const val INSTANCE_HIT_PAD_PIXELS = 3f
+private const val PIXEL_HOVER_WIDTH = 1f
 private val GROUND_LIGHT = Color(0xFFCFE0A8)
 private val GROUND_LIGHT_ALT = Color(0xFFC3D79B)
 private val GROUND_NIGHT = Color(0xFF2B3A2E)
@@ -124,11 +132,11 @@ internal class TileLook(val dark: Boolean, val ground: Color, val groundAlt: Col
     fun rail(color: Color): Color = if (dark) lerp(color, Color.White, 0.45f) else shade(color, 0.35f)
 }
 
-internal class TilemapSpace(val view: TileView, val tileWidthPx: Float, val bounds: TileBounds) {
+internal class TilemapSpace(val view: TileView, val tileWidthPx: Float, val bounds: TileBounds, headroomPx: Float = TILEMAP_HEADROOM * tileWidthPx) {
     val originX = -bounds.minX
-    val originY = -bounds.minY + TILEMAP_HEADROOM * tileWidthPx
+    val originY = -bounds.minY + headroomPx
     val contentWidth = bounds.maxX - bounds.minX
-    val contentHeight = bounds.maxY - bounds.minY + TILEMAP_HEADROOM * tileWidthPx
+    val contentHeight = bounds.maxY - bounds.minY + headroomPx
 
     fun toContent(ground: GroundPoint): Offset {
         val screen = project(view, ground, tileWidthPx)
@@ -174,9 +182,17 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     val cols = sceneView.cols
     val rows = sceneView.rows
     val density = LocalDensity.current.density
-    val space = remember(shape, view, cols, rows, density) {
-        val tileWidthPx = TILEMAP_TILE_WIDTH_DP * density
-        TilemapSpace(view, tileWidthPx, tilemapScreenBounds(shape, view, cols, rows, tileWidthPx))
+    val isPixel = resolvedProps["look"] == PIXEL_LOOK && shape == TileShape.SQUARE
+    val pixelScale = remember(sceneView.tileFeet, density) { pixelArtScaleFor(sceneView.tileFeet, density) }
+    val pixelImages = if (isPixel) remember(pixelScale.artTileWidth) { pixelImagesFor(pixelScale.artTileWidth) } else null
+    val pixelCosts = pixelCostsFor(LocalDeviceProfile.current)
+    val space = remember(shape, view, cols, rows, density, pixelImages, pixelScale) {
+        if (pixelImages != null) {
+            pixelSpaceOf(cols, rows, pixelScale, pixelImages)
+        } else {
+            val tileWidthPx = TILEMAP_TILE_WIDTH_DP * density
+            TilemapSpace(view, tileWidthPx, tilemapScreenBounds(shape, view, cols, rows, tileWidthPx))
+        }
     }
     val sceneFootprints = remember(sceneView) { tileFootprintsOf(sceneView) }
     val imageAliases = resolveTilemapImages(resolvedProps["images"])
@@ -199,6 +215,13 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
         TilemapScene(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images)
     }
     val terrain = rememberTerrainPass(resolvedProps, shape, space, cols, rows, sideMm, look)
+    val waterFrame = waterFrameFor(phase, animated, pixelCosts)
+    val usesById = remember(uses) { uses.associateBy { it.id } }
+    val pixelGround = pixelImages?.let { images ->
+        remember(space, sceneFootprints, usesById, waterFrame, pixelCosts, images) { pixelGroundSceneOf(space, cols, rows, sceneFootprints, usesById, images, waterFrame, pixelCosts) }
+    }
+    val centreMm = resolveViewState(resolvedProps["view_state"]).centreMm
+    val pixelFocus = remember(space, centreMm, sideMm, cols, rows) { pixelFocusOf(space, centreMm, sideMm, cols, rows) }
 
     LaunchedEffect(sceneFootprints, tileArea) {
         val counts = uses.associate { it.id to 0 } + countUses(emptyList(), sceneFootprints)
@@ -252,11 +275,15 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
         BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds().nodeTag("${node.id}:map")) {
             val viewWidthPx = constraints.maxWidth.toFloat()
             val viewHeightPx = constraints.maxHeight.toFloat()
-            val fit = remember(space, viewWidthPx, viewHeightPx) {
-                fitFlowView(space.contentWidth, space.contentHeight, viewWidthPx, viewHeightPx, maxScale = MAX_FIT_SCALE, margin = FIT_MARGIN_PX)
+            val fit = remember(space, viewWidthPx, viewHeightPx, isPixel, pixelFocus, pixelScale) {
+                if (isPixel) {
+                    pixelFitView(pixelFocus.x, pixelFocus.y, viewWidthPx, viewHeightPx, pixelScale.zoom)
+                } else {
+                    fitFlowView(space.contentWidth, space.contentHeight, viewWidthPx, viewHeightPx, maxScale = MAX_FIT_SCALE, margin = FIT_MARGIN_PX)
+                }
             }
             var gestureView by remember(space, viewWidthPx, viewHeightPx) { mutableStateOf<FlowView?>(null) }
-            val current = gestureView ?: fit
+            val current = (gestureView ?: fit).let { if (isPixel) snapPixelView(it, viewWidthPx, viewHeightPx, pixelScale.maxZoom) else it }
             val latest by rememberUpdatedState(current)
 
             fun contentAt(screen: Offset): Offset = Offset((screen.x - latest.translateX) / latest.scale, (screen.y - latest.translateY) / latest.scale)
@@ -303,13 +330,18 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
             ) {
                 val contentSize = IntSize(ceil(space.contentWidth).toInt(), ceil(space.contentHeight).toInt())
                 val withChecker = current.scale * space.tileWidthPx >= CHECKER_MIN_TILE_PIXELS
-                if (!recordedGround.holds(shape, space, look, density, withChecker)) {
+                if (pixelGround != null) {
+                    if (!recordedGround.holds(pixelGround, pixelCosts)) {
+                        groundLayer.record(size = contentSize) { drawPixelGround(pixelGround) }
+                        recordedGround.remember(pixelGround, pixelCosts)
+                    }
+                } else if (!recordedGround.holds(shape, space, look, density, withChecker)) {
                     groundLayer.record(size = contentSize) { drawGround(shape, space, cols, rows, look, density, withChecker) }
                     recordedGround.remember(shape, space, look, density, withChecker)
                 }
-                if (!recordedScene.holds(scene)) {
-                    sceneLayer.record(size = contentSize) { drawScene(scene) }
-                    recordedScene.remember(scene)
+                if (!recordedScene.holds(scene, pixelGround)) {
+                    sceneLayer.record(size = contentSize) { if (pixelGround == null) drawScene(scene) }
+                    recordedScene.remember(scene, pixelGround)
                 }
                 recordTerrainLayer(terrain, space, cols, rows, current.scale, contentSize)
                 withTransform({
@@ -319,7 +351,8 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
                     drawLayer(groundLayer)
                     drawTerrainLayer(terrain)
                     drawLayer(sceneLayer)
-                    hovered?.let { drawPath(polygon(tileCorners(shape, it.col, it.row).map(space::toContent)), HOVER_LINE, style = Stroke(width = 2.5f * density)) }
+                    val hoverWidth = if (isPixel) PIXEL_HOVER_WIDTH else 2.5f * density
+                    hovered?.let { drawPath(polygon(tileCorners(shape, it.col, it.row).map(space::toContent)), HOVER_LINE, style = Stroke(width = hoverWidth)) }
                 }
             }
             TerrainLegendCard(terrain, "${node.id}:terrain-legend", Modifier.align(Alignment.BottomStart))
