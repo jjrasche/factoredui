@@ -1,6 +1,7 @@
 package ai.factoredui.worldengine.validate
 
 import ai.factoredui.worldengine.json.MalformedDataException
+import ai.factoredui.worldengine.json.exactJsonText
 import ai.factoredui.worldengine.json.pythonEquals
 import ai.factoredui.worldengine.json.pythonInt
 import ai.factoredui.worldengine.json.requiredText
@@ -10,8 +11,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-
-private val INDENTED_JSON = Json { prettyPrint = true }
 
 fun applyMutation(files: Map<String, String>, mutation: JsonObject): Map<String, String> {
     val edited = LinkedHashMap(files)
@@ -31,7 +30,7 @@ private fun applyFileEdit(files: MutableMap<String, String>, worldElement: JsonE
         return
     }
     val document = Json.parseToJsonElement(files[target] ?: throw MalformedDataException("no world file $target"))
-    files[target] = INDENTED_JSON.encodeToString(JsonElement.serializer(), applyDocumentEdit(document, edit))
+    files[target] = exactJsonText(applyDocumentEdit(document, edit))
 }
 
 fun applyDocumentEdit(document: JsonElement, edit: JsonObject): JsonElement {

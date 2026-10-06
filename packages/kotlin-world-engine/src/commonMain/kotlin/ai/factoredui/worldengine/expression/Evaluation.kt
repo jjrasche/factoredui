@@ -12,7 +12,6 @@ import ai.factoredui.worldengine.state.State
 import ai.factoredui.worldengine.state.Tile
 import ai.factoredui.worldengine.world.World
 import kotlin.math.abs
-import kotlin.math.hypot
 import kotlin.math.sqrt
 
 private const val MM_PER_FT = 304.8
@@ -241,7 +240,9 @@ fun nearestInstanceGapFt(first: List<InstanceRecord>, second: List<InstanceRecor
 }
 
 private fun planeGapMm(a: InstanceRecord, b: InstanceRecord): Double =
-    hypot(pythonFloat(a.xMm) - pythonFloat(b.xMm), pythonFloat(a.yMm) - pythonFloat(b.yMm))
+    planarDistanceMm(pythonFloat(a.xMm) - pythonFloat(b.xMm), pythonFloat(a.yMm) - pythonFloat(b.yMm))
+
+internal fun planarDistanceMm(east: Double, north: Double): Double = sqrt(east * east + north * north)
 
 fun arithmetic(operator: String, left: Value, right: Value): Value {
     if (left == Value.Null || right == Value.Null) return Value.Null

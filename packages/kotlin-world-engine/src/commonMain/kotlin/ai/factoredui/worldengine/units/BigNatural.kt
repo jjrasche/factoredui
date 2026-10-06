@@ -20,6 +20,18 @@ class BigNatural private constructor(private val limbs: IntArray) : Comparable<B
 
     override fun hashCode(): Int = limbs.contentHashCode()
 
+    operator fun plus(other: BigNatural): BigNatural {
+        val sum = LongArray(maxOf(limbs.size, other.limbs.size) + 1)
+        var carry = 0L
+        for (index in 0 until sum.size - 1) {
+            val cell = limbs.getOrElse(index) { 0 }.toLong() + other.limbs.getOrElse(index) { 0 } + carry
+            sum[index] = cell % LIMB_BASE
+            carry = cell / LIMB_BASE
+        }
+        sum[sum.size - 1] = carry
+        return normalized(sum)
+    }
+
     operator fun times(other: BigNatural): BigNatural {
         val product = LongArray(limbs.size + other.limbs.size)
         for (row in limbs.indices) {

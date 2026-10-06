@@ -66,6 +66,11 @@ fun footprintTiles(world: World, typeId: String, col: Int, row: Int): List<Tile>
 
 fun isOnGrid(world: World, tile: Tile): Boolean = tile.col in 0 until world.cols && tile.row in 0 until world.rows
 
+fun isFootprintOnGrid(world: World, typeId: String, col: Int, row: Int): Boolean {
+    val (width, height) = world.footprintOf(typeId)
+    return isOnGrid(world, Tile(col, row)) && isOnGrid(world, Tile(col + width - 1, row + height - 1))
+}
+
 sealed interface RuleSubject {
     val type: String?
 
@@ -131,10 +136,10 @@ private fun applyPlace(world: World, state: State, event: AppliedEvent): State {
     val typeId = typeElement.asTextOrNull()?.takeIf { it in world.types } ?: refuse("unknown-type", "no object type '${pythonStr(typeElement)}'")
     val col = pythonInt(parameters.required("col")).toInt()
     val row = pythonInt(parameters.required("row")).toInt()
-    val tiles = footprintTiles(world, typeId, col, row)
-    if (!tiles.all { isOnGrid(world, it) }) {
+    if (!isFootprintOnGrid(world, typeId, col, row)) {
         refuse("off-grid", "$typeId at ${pythonStr(parameters.getValue("col"))},${pythonStr(parameters.getValue("row"))} leaves the grid")
     }
+    val tiles = footprintTiles(world, typeId, col, row)
     val occupied = tiles.firstOrNull { it in state.cells }
     if (occupied != null) {
         val holder = state.instanceAt(occupied.col, occupied.row)?.type

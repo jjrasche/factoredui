@@ -35,6 +35,15 @@ class BigNaturalTest {
     }
 
     @Test
+    fun adding_carries_across_limbs_and_lengths() {
+        assertEquals("1000000000", (natural("999999999") + natural("1")).toString())
+        assertEquals("1" + "0".repeat(30), (natural("9".repeat(30)) + natural("1")).toString())
+        assertEquals("12345678901234567891", (natural("12345678901234567890") + natural("1")).toString())
+        assertEquals("1000000000000000005", (natural("999999999999999999") + natural("6")).toString())
+        assertEquals("0", (BigNatural.ZERO + BigNatural.ZERO).toString())
+    }
+
+    @Test
     fun multiplying_carries_across_every_limb() {
         assertEquals("999999998000000001", (natural("999999999") * natural("999999999")).toString())
         assertEquals("9".repeat(40), (natural("9".repeat(20)) * natural("1" + "0".repeat(19) + "1")).toString())

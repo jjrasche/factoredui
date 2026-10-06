@@ -47,6 +47,8 @@ class ValidatorTest {
         assertEquals(ruleIds, RULES_WITH_A_TEST)
     }
 
+    @Test fun broken_copy_number_exponent_too_large() = assertEveryBrokenCopyTrips("number-exponent-too-large")
+    @Test fun broken_copy_footprint_too_large() = assertEveryBrokenCopyTrips("footprint-too-large")
     @Test fun broken_copy_blind_worlds() = assertEveryBrokenCopyTrips("blind-worlds")
     @Test fun broken_copy_world_parses() = assertEveryBrokenCopyTrips("world-parses")
     @Test fun broken_copy_world_schema() = assertEveryBrokenCopyTrips("world-schema")
@@ -133,6 +135,7 @@ class ValidatorTest {
             "name-cycle", "seed-replays", "rule-message", "unknown-target", "action-emits", "link-resolves", "link-fits",
             "projection-not-binding", "figure-sourced", "sprite-known", "footprint-mm-agrees", "instance-id-unique", "instance-source",
             "instance-error", "instance-error-reason", "ground-size", "ground-range", "ground-error-reason",
+            "number-exponent-too-large", "footprint-too-large",
         )
     }
 }

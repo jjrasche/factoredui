@@ -23,6 +23,7 @@ import ai.factoredui.worldengine.json.optionalText
 import ai.factoredui.worldengine.state.Instance
 import ai.factoredui.worldengine.state.State
 import ai.factoredui.worldengine.units.ExactRatio
+import ai.factoredui.worldengine.units.MAX_FOOTPRINT_TILES
 import ai.factoredui.worldengine.units.ceilingQuotient
 import ai.factoredui.worldengine.units.exactDecimalOf
 import ai.factoredui.worldengine.units.parseUnit
@@ -98,7 +99,7 @@ class World private constructor(
     }
 
     private fun openParent(parentPath: String, parentText: String, chain: List<String>): State? = try {
-        val opened = World(parentPath, Json.parseToJsonElement(parentText).jsonObject, library, chain)
+        val opened = World(parentPath, parseBoundedJson(parentText).jsonObject, library, chain)
         parent = opened
         opened.seedState()
     } catch (problem: Exception) {
@@ -144,6 +145,15 @@ class World private constructor(
         val objectType = types[typeId] ?: throw ai.factoredui.worldengine.json.missingKey(typeId)
         return objectType.footprintMm().map { ceilingQuotient(exactDecimalOf(it), tileMm()) }
     }
+
+    fun declaredFootprints(typeId: String): List<Pair<Long, Long>> {
+        val objectType = types[typeId] ?: throw ai.factoredui.worldengine.json.missingKey(typeId)
+        val declared = if (objectType.hasTileFootprint) objectType.tileFootprint().let { listOf(it.first.toLong() to it.second.toLong()) } else emptyList()
+        val derived = if ("footprint_mm" in objectType.raw) derivedFootprint(typeId).let { listOf(it[0] to it[1]) } else emptyList()
+        return declared + derived
+    }
+
+    fun isFootprintTooLarge(typeId: String): Boolean = declaredFootprints(typeId).any { (width, height) -> width * height > MAX_FOOTPRINT_TILES }
 
     fun footprintOf(typeId: String): Pair<Int, Int> {
         val objectType = types[typeId] ?: throw ai.factoredui.worldengine.json.missingKey(typeId)
@@ -194,7 +204,7 @@ class World private constructor(
     companion object {
         fun open(path: String, library: WorldLibrary): World {
             val text = library.readText(path) ?: throw WorldLoadException("world file $path does not exist")
-            return World(normalizeWorldPath(path), Json.parseToJsonElement(text).jsonObject, library, emptyList())
+            return World(normalizeWorldPath(path), parseBoundedJson(text).jsonObject, library, emptyList())
         }
 
         fun fromDocument(path: String, document: JsonObject, library: WorldLibrary): World =

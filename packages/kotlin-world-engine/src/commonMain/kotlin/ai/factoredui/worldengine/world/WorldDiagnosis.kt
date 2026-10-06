@@ -12,6 +12,7 @@ import ai.factoredui.worldengine.expression.numberOfUnit
 import ai.factoredui.worldengine.expression.projectedAgentTypes
 import ai.factoredui.worldengine.expression.referencedNames
 import ai.factoredui.worldengine.ground.findGroundProblems
+import ai.factoredui.worldengine.units.MAX_FOOTPRINT_TILES
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -31,6 +32,8 @@ data class ExpressionSite(
 )
 
 data class SiteProblem(val kind: String, val message: String)
+
+const val FOOTPRINT_RULE = "footprint-too-large"
 
 data class Finding(val where: String, val kind: String, val message: String)
 
@@ -149,6 +152,8 @@ private class CycleSearch(private val graph: Map<String, Set<String>>) {
 fun diagnose(world: World): List<Finding> {
     val findings = world.linkProblems.map { Finding("links", "link", it) }.toMutableList()
     findings += findGroundProblems(world.ground, world.cols, world.rows).map { Finding("ground", "ground", it) }
+    findings += world.types.keys.filter { world.isFootprintTooLarge(it) }
+        .map { Finding("object_types.$it", FOOTPRINT_RULE, "type $it covers more than $MAX_FOOTPRINT_TILES tiles") }
     val cycle = findCycle(world)
     if (cycle.isNotEmpty()) findings += Finding("names", "cycle", cycle.joinToString(" -> "))
     expressionSites(world).forEach { site -> checkSite(site)?.let { findings += Finding(site.where, it.kind, it.message) } }

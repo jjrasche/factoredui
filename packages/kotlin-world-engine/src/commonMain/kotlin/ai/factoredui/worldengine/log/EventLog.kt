@@ -25,6 +25,7 @@ import ai.factoredui.worldengine.state.Tile
 import ai.factoredui.worldengine.text.pythonListRepr
 import ai.factoredui.worldengine.text.pythonRepr
 import ai.factoredui.worldengine.text.pythonStr
+import ai.factoredui.worldengine.units.BigNatural
 import ai.factoredui.worldengine.units.parseUnit
 import ai.factoredui.worldengine.world.World
 import ai.factoredui.worldengine.world.WorldLoadException
@@ -88,8 +89,12 @@ class EventLog(val world: World) {
     private fun mergedIds(event: LogEvent): List<String> =
         (event.parameters.required("events") as? JsonArray ?: throw MalformedDataException("'events' is not a list")).map { pythonStr(it) }
 
+    private fun numberOfEventId(id: String): BigNatural = BigNatural.parse(id.removePrefix("e"))
+
+    private fun nextEventId(): String = "e${(eventList.maxOfOrNull { numberOfEventId(it.id) } ?: BigNatural.ZERO) + BigNatural.ONE}"
+
     private fun draft(branch: String, actor: String, action: String, parameters: JsonObject, timestamp: String): LogEvent =
-        LogEvent("e${eventList.size + 1}", headMap[branch], world.id, branch, actor, action, parameters, timestamp)
+        LogEvent(nextEventId(), headMap[branch], world.id, branch, actor, action, parameters, timestamp)
 
     private fun commit(event: LogEvent): LogResult {
         val prior = states[event.parent] ?: throw missingKey(event.parent ?: "None")
@@ -178,7 +183,7 @@ class EventLog(val world: World) {
         val start = if (source != null && source in headMap) headMap[source] else source
         if (start != null && start !in byId) return LogResult.Refused(Refusal("unknown-branch", "no branch or event '$source'"))
         val parameters = JsonObject(linkedMapOf("name" to JsonPrimitive(name), "from" to (start?.let { JsonPrimitive(it) } ?: JsonNull), "proposal" to JsonPrimitive(proposal)))
-        val event = LogEvent("e${eventList.size + 1}", start, world.id, name, actor, "branch", parameters, timestamp)
+        val event = LogEvent(nextEventId(), start, world.id, name, actor, "branch", parameters, timestamp)
         return LogResult.Committed(openBranch(event))
     }
 
@@ -294,11 +299,11 @@ class EventLog(val world: World) {
     private fun replay(raw: JsonObject) {
         val event = LogEvent.fromJson(raw)
         if (event.world != world.id) throw WorldLoadException("event ${event.id} belongs to world ${event.world}")
+        if (event.id in byId) throw WorldLoadException("$EVENT_ID_RULE: event id ${event.id} appears twice")
         if (event.action == "branch") {
             replayBranch(event)
             return
         }
-        if (event.id in byId) throw WorldLoadException("event id ${event.id} appears twice")
         if (!headMap.containsKey(event.branch) || headMap[event.branch] != event.parent) {
             throw WorldLoadException("event ${event.id} does not extend the head of branch ${event.branch}")
         }
@@ -319,11 +324,20 @@ class EventLog(val world: World) {
         fun load(world: World, document: JsonElement): EventLog {
             val problems = schemaErrors(document, Json.parseToJsonElement(EVENTS_SCHEMA_JSON))
             if (problems.isNotEmpty()) throw WorldLoadException("event log does not match events.schema.json: ${pythonListRepr(problems.take(3))}")
+            val events = (document as JsonObject).requiredObjectList("events")
+            firstRepeatedEventId(events)?.let { throw WorldLoadException("$EVENT_ID_RULE: event id $it appears twice in the log") }
             val log = EventLog(world)
-            (document as JsonObject).requiredObjectList("events").forEach { log.replay(it) }
+            events.forEach { log.replay(it) }
             return log
         }
     }
+}
+
+const val EVENT_ID_RULE = "event-id-duplicate"
+
+private fun firstRepeatedEventId(events: List<JsonObject>): String? {
+    val seen = mutableSetOf<String>()
+    return events.map { it.requiredText("id") }.firstOrNull { !seen.add(it) }
 }
 
 private fun JsonObject.requiredObjectList(key: String): List<JsonObject> =

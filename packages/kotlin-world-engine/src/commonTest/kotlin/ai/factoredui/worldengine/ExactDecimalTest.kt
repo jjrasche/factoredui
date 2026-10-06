@@ -88,9 +88,11 @@ class ExactDecimalTest {
     }
 
     @Test
-    fun a_quotient_is_capped_at_two_million_tiles() {
-        assertEquals(2_000_000, ceilingQuotient(decimal("1e30"), decimal("3048")))
+    fun a_quotient_is_exact_up_to_the_cap_and_saturates_one_past_it() {
         assertEquals(2_000_000, ceilingQuotient(decimal("6096000000"), decimal("3048")))
+        assertEquals(2_000_001, ceilingQuotient(decimal("6096000001"), decimal("3048")))
+        assertEquals(2_000_001, ceilingQuotient(decimal("6099048000"), decimal("3048")))
+        assertEquals(2_000_001, ceilingQuotient(decimal("1e30"), decimal("3048")))
     }
 
     @Test

@@ -17,7 +17,9 @@ import ai.factoredui.worldengine.json.requiredText
 import ai.factoredui.worldengine.schema.VALIDATION_RULES_JSON
 import ai.factoredui.worldengine.schema.schemaErrors
 import ai.factoredui.worldengine.text.pythonStr
+import ai.factoredui.worldengine.units.NUMBER_EXPONENT_RULE
 import ai.factoredui.worldengine.units.parseUnit
+import ai.factoredui.worldengine.world.findOversizedNumber
 import ai.factoredui.worldengine.world.MapWorldLibrary
 import ai.factoredui.worldengine.world.World
 import ai.factoredui.worldengine.world.WorldLoader
@@ -62,11 +64,16 @@ object WorldValidator {
         val document = try {
             Json.parseToJsonElement(text)
         } catch (problem: IllegalArgumentException) {
-            facts.getValue("worlds") += fact("world" to name, "parse_ok" to false, "parse_error" to (problem.message ?: "not JSON"), "schema_errors" to emptyList<String>())
+            facts.getValue("worlds") += worldFact(name, isParsed = false, parseError = problem.message ?: "not JSON")
+            return
+        }
+        val oversized = findOversizedNumber(document)
+        if (oversized != null) {
+            facts.getValue("worlds") += worldFact(name, isParsed = true, oversizedNumber = oversized)
             return
         }
         val schemaProblems = schemaErrors(document, WorldLoader.worldSchema)
-        facts.getValue("worlds") += fact("world" to name, "parse_ok" to true, "parse_error" to "", "schema_errors" to schemaProblems)
+        facts.getValue("worlds") += worldFact(name, isParsed = true, schemaProblems = schemaProblems)
         if (schemaProblems.isNotEmpty()) return
         val world = World.fromDocument(name, document.jsonObject, library)
         facts.getValue("expressions") += expressionFacts(name, world)
@@ -83,13 +90,21 @@ object WorldValidator {
         facts.getValue("grounds") += groundFacts(name, world)
     }
 
+    private fun worldFact(
+        name: String,
+        isParsed: Boolean,
+        parseError: String = "",
+        oversizedNumber: String = "",
+        schemaProblems: List<String> = emptyList(),
+    ): JsonObject = fact("world" to name, "parse_ok" to isParsed, "parse_error" to parseError, "oversized_number" to oversizedNumber, "schema_errors" to schemaProblems)
+
     private fun classifySiteProblem(kind: String?, message: String?): List<Pair<String, Any?>> {
         val bucket = when (kind) {
             null -> null
             "syntax" -> "syntax_errors"
             "unknown_word" -> "unknown_words"
             "unit_mismatch" -> "unit_errors"
-            "bound" -> "bound_errors"
+            "bound", NUMBER_EXPONENT_RULE -> "bound_errors"
             else -> "syntax_errors"
         }
         val buckets = listOf("syntax_errors", "unknown_words", "unit_errors", "bound_errors").map { it to if (it == bucket) listOf(message) else emptyList() }
@@ -196,11 +211,13 @@ object WorldValidator {
     private fun typeFacts(name: String, world: World): List<JsonObject> {
         val extensions = (world.doc.requiredObject("sprites")["extensions"] as? JsonArray ?: JsonArray(emptyList())).objects().map { it.requiredText("id") }
         val known = GENERIC_SPRITES.toSet() + extensions
-        return world.types.values.map { fact("world" to name, "type" to it.id, "sprite" to it.sprite, "sprite_known" to (it.sprite in known)) }
+        return world.types.values.map {
+            fact("world" to name, "type" to it.id, "sprite" to it.sprite, "sprite_known" to (it.sprite in known), "footprint_too_large" to world.isFootprintTooLarge(it.id))
+        }
     }
 
     private fun footprintFacts(name: String, world: World): List<JsonObject> =
-        world.types.values.filter { it.hasTileFootprint && "footprint_mm" in it.raw }.map { type ->
+        world.types.values.filter { it.hasTileFootprint && "footprint_mm" in it.raw && !world.isFootprintTooLarge(it.id) }.map { type ->
             val derived = JsonArray(world.derivedFootprint(type.id).map { JsonPrimitive(it) })
             val declared = type.raw.getValue("footprint")
             fact("world" to name, "type" to type.id, "footprint" to declared, "derived" to derived, "agrees" to pythonEquals(declared, derived))

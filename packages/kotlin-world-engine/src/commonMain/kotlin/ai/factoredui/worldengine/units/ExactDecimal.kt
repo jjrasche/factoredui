@@ -12,7 +12,8 @@ import kotlin.math.pow
 
 private const val LEADING_LIMBS = 3
 private const val LARGEST_EXACT_DOUBLE_WHOLE = 9_007_199_254_740_992.0
-private const val MOST_TILES_SPANNED = 2_000_000L
+const val MAX_FOOTPRINT_TILES = 2_000_000L
+private const val MOST_TILES_SPANNED = MAX_FOOTPRINT_TILES + 1
 
 class ExactRatio private constructor(
     private val isNegative: Boolean,

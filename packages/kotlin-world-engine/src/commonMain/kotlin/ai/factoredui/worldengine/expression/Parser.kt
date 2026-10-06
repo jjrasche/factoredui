@@ -3,6 +3,9 @@ package ai.factoredui.worldengine.expression
 import ai.factoredui.worldengine.text.pythonStrRepr
 import ai.factoredui.worldengine.text.pythonStrip
 import ai.factoredui.worldengine.text.pythonTupleRepr
+import ai.factoredui.worldengine.units.NUMBER_EXPONENT_RULE
+import ai.factoredui.worldengine.units.describeExponentRefusal
+import ai.factoredui.worldengine.units.isExponentTooLarge
 import ai.factoredui.worldengine.units.parseUnit
 
 const val MAX_NODES = 256
@@ -129,6 +132,7 @@ private class ExpressionParser(private val tokens: List<Token>) {
     }
 
     private fun parseNumber(text: String): ExprNode {
+        if (isExponentTooLarge(text)) throw ExpressionException(NUMBER_EXPONENT_RULE, describeExponentRefusal(text))
         val unitText = if (tokens.getOrNull(at)?.kind == TokenKind.UNIT) take().text.let { it.substring(1, it.length - 1) } else ""
         val unit = parseUnit(unitText)
         return make(ExprNode.NumberLiteral(asciiDigits(text).toDouble() * unit.factor, unit.dimension))
