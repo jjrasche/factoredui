@@ -18,6 +18,8 @@ import ai.factoredui.compose.layout.drawOrder
 import ai.factoredui.compose.layout.fitFlowView
 import ai.factoredui.compose.layout.pickTile
 import ai.factoredui.compose.layout.project
+import ai.factoredui.compose.layout.rotateGround
+import ai.factoredui.compose.layout.unrotateGround
 import ai.factoredui.compose.layout.tileCorners
 import ai.factoredui.compose.layout.tileSideMm
 import ai.factoredui.compose.layout.tilemapScreenBounds
@@ -135,18 +137,24 @@ internal class TileLook(val dark: Boolean, val ground: Color, val groundAlt: Col
     fun rail(color: Color): Color = if (dark) lerp(color, Color.White, 0.45f) else shade(color, 0.35f)
 }
 
-internal class TilemapSpace(val view: TileView, val tileWidthPx: Float, val bounds: TileBounds, headroomPx: Float = TILEMAP_HEADROOM * tileWidthPx) {
+internal class ViewTurn(val quarterTurns: Int, val cols: Int, val rows: Int)
+
+internal class TilemapSpace(val view: TileView, val tileWidthPx: Float, val bounds: TileBounds, headroomPx: Float = TILEMAP_HEADROOM * tileWidthPx, val turn: ViewTurn? = null) {
     val originX = -bounds.minX
     val originY = -bounds.minY + headroomPx
     val contentWidth = bounds.maxX - bounds.minX
     val contentHeight = bounds.maxY - bounds.minY + headroomPx
 
     fun toContent(ground: GroundPoint): Offset {
-        val screen = project(view, ground, tileWidthPx)
+        val turned = turn?.let { rotateGround(ground, it.quarterTurns, it.cols, it.rows) } ?: ground
+        val screen = project(view, turned, tileWidthPx)
         return Offset(screen.x + originX, screen.y + originY)
     }
 
-    fun toGround(content: Offset): GroundPoint = unproject(view, ScreenPoint(content.x - originX, content.y - originY), tileWidthPx)
+    fun toGround(content: Offset): GroundPoint {
+        val turned = unproject(view, ScreenPoint(content.x - originX, content.y - originY), tileWidthPx)
+        return turn?.let { unrotateGround(turned, it.quarterTurns, it.cols, it.rows) } ?: turned
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -189,9 +197,10 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     val pixelScale = remember(sceneView.tileFeet, density) { pixelArtScaleFor(sceneView.tileFeet, density) }
     val pixelImages = if (isPixel) remember(pixelScale.artTileWidth) { pixelImagesFor(pixelScale.artTileWidth) } else null
     val pixelCosts = pixelCostsFor(LocalDeviceProfile.current)
-    val space = remember(shape, view, cols, rows, density, pixelImages, pixelScale) {
+    val quarterTurns = resolveViewState(resolvedProps["view_state"]).quarterTurns
+    val space = remember(shape, view, cols, rows, density, pixelImages, pixelScale, quarterTurns) {
         if (pixelImages != null) {
-            pixelSpaceOf(cols, rows, pixelScale, pixelImages)
+            pixelSpaceOf(cols, rows, pixelScale, pixelImages, quarterTurns)
         } else {
             val tileWidthPx = TILEMAP_TILE_WIDTH_DP * density
             TilemapSpace(view, tileWidthPx, tilemapScreenBounds(shape, view, cols, rows, tileWidthPx))
@@ -215,7 +224,6 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     val recordedScene = remember { RecordedKey() }
     val scenePhase = if (animated) phase else 0
     val usesById = remember(uses) { uses.associateBy { it.id } }
-    val quarterTurns = resolveViewState(resolvedProps["view_state"]).quarterTurns
     val pixelSprites = pixelImages?.let { images ->
         remember(sceneFootprints, instances, usesById, images, sceneView.tileFeet, cols, rows, quarterTurns, pixelCosts) {
             val swaps = EMBEDDED_PIXEL_ATLAS.manifest.swaps

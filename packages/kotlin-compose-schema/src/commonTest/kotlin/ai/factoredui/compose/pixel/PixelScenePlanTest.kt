@@ -106,6 +106,20 @@ class PixelScenePlanTest {
     }
 
     @Test
+    fun aQuarterTurnFacesTheHoopHouseAndItsFenceAlongTheTurnedAxis() {
+        assertEquals("hoop_house/48x24/SW", plan(listOf(TileFootprint("h", "hoop_house", 4, 6, 10, 5)), turns = 1).single().sprite.name)
+        val fences = plan(listOf(TileFootprint("p", "paddock", 0, 0, 5, 5)), costs = roomy.copy(decorationLimit = 0), turns = 1)
+        assertEquals(setOf("fence/SW", "fence/NW"), fences.map { it.sprite.name }.toSet())
+    }
+
+    @Test
+    fun aHalfTurnReversesWhichTreeIsNearer() {
+        val trees = listOf(tree("a", "lidar_tree", 5f, 5f, 2000.0), tree("b", "lidar_tree", 9f, 9f, 2000.0))
+        assertEquals(listOf("a", "b"), plan(instances = trees).map { it.instanceId })
+        assertEquals(listOf("b", "a"), plan(instances = trees, turns = 2).map { it.instanceId })
+    }
+
+    @Test
     fun aVanPadParksAVan() {
         assertEquals("van/SE", plan(listOf(TileFootprint("v", "van_pad", 2, 2, 5, 5))).single().sprite.name)
     }

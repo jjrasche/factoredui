@@ -14,6 +14,7 @@ import ai.factoredui.compose.layout.TileCoord
 import ai.factoredui.compose.layout.TileFootprint
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
+import ai.factoredui.compose.layout.rotatedGridSize
 import ai.factoredui.compose.layout.tileCorners
 import ai.factoredui.compose.layout.tilemapScreenBounds
 import ai.factoredui.compose.pixel.ArgbSheet
@@ -74,12 +75,13 @@ private fun meanColour(sheet: ArgbSheet): Color {
     return Color(red / 255f, green / 255f, blue / 255f)
 }
 
-internal fun pixelSpaceOf(cols: Int, rows: Int, scale: PixelArtScale, images: PixelImages): TilemapSpace {
+internal fun pixelSpaceOf(cols: Int, rows: Int, scale: PixelArtScale, images: PixelImages, quarterTurns: Int): TilemapSpace {
     val standing = images.scale.sprites.filter { it.kind != PixelSpriteKind.PATTERN }
     val pad = ceil(standing.maxOf { it.width } / 2f)
-    val bounds = tilemapScreenBounds(TileShape.SQUARE, TileView.ISO, cols, rows, scale.worldTileArtPx)
+    val (turnedCols, turnedRows) = rotatedGridSize(quarterTurns, cols, rows)
+    val bounds = tilemapScreenBounds(TileShape.SQUARE, TileView.ISO, turnedCols, turnedRows, scale.worldTileArtPx)
     val padded = TileBounds(floor(bounds.minX) - pad, floor(bounds.minY), ceil(bounds.maxX) + pad, ceil(bounds.maxY) + pad)
-    return TilemapSpace(TileView.ISO, scale.worldTileArtPx, padded, standing.maxOf { it.height }.toFloat())
+    return TilemapSpace(TileView.ISO, scale.worldTileArtPx, padded, standing.maxOf { it.height }.toFloat(), ViewTurn(quarterTurns, cols, rows))
 }
 
 internal fun pixelFocusOf(space: TilemapSpace, centreMm: Pair<Long, Long>?, sideMm: Double, cols: Int, rows: Int): Offset {
