@@ -60,6 +60,10 @@ kotlin {
     }
 }
 
+tasks.named<Test>("jvmTest") {
+    inputs.dir(rootProject.file("art/pixel-style/atlas")).withPropertyName("pixelAtlas")
+}
+
 extensions.configure<LibraryExtension>("android") {
     namespace = "ai.factoredui.compose.schema"
     compileSdk = libs.versions.androidCompileSdk.get().toInt()
