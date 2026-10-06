@@ -1,0 +1,10 @@
+{
+  "id": "ground-cut-fill-reversed",
+  "breaks": "reports cut_fill as base minus current, so a dig reads as fill",
+  "edits": [
+    {
+      "find": "[now - seed for now, seed in zip(state.ground, base)]",
+      "replace": "[seed - now for now, seed in zip(state.ground, base)]"
+    }
+  ]
+}

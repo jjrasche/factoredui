@@ -1,0 +1,16 @@
+{
+  "id": "expr-ground-mm-outside-a-rule-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "ground_mm()",
+    "site": "equation"
+  },
+  "expect": {
+    "error": "unknown_word"
+  },
+  "notes": "ground_mm reads the tile a rule is bound to; an equation has no tile."
+}

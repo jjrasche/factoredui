@@ -1,0 +1,10 @@
+{
+  "id": "ground-min-over-tile-means",
+  "breaks": "takes min_ground_mm over tile means instead of vertices, so a low vertex is averaged away",
+  "edits": [
+    {
+      "find": "            return min(heights) / 304.8",
+      "replace": "            return min(tile_mean_mm(self.world, heights, c, r) for c in range(self.world.cols) for r in range(self.world.rows)) / 304.8"
+    }
+  ]
+}

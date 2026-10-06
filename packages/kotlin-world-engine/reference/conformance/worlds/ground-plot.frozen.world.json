@@ -1,0 +1,62 @@
+{
+  "id": "ground-plot",
+  "version": 1,
+  "title": "Ground test plot",
+  "description": "A conformance world for the ground heightfield: a 4 x 3 grid of 10 ft tiles (3048 mm) over a 5 x 4 grid of vertex heights that falls 100 mm per vertex row from north to south, with one low vertex at 2,2 (900 mm) for a basin. A commons building needs ground no steeper than 5 percent, a dig may not take a tile's mean below 500 mm, and a raise may not lift it above 2000 mm.",
+  "sprites": {"extensions": []},
+  "grid": {"cols": 4, "rows": 3, "tile_ft": 10, "shape": "square", "view": "top", "north": "row_0"},
+  "ground": {
+    "unit": "mm",
+    "datum": "local",
+    "source": "conformance fixture: a hand-written surface, row 0 the north edge",
+    "heights_mm": [
+      1300, 1300, 1300, 1300, 1300,
+      1200, 1200, 1200, 1200, 1200,
+      1100, 1100,  900, 1100, 1100,
+      1000, 1000, 1000, 1000, 1000
+    ],
+    "error": {"vertical_mm": {"value": null, "null_reason": "fixture: no survey was made"}}
+  },
+  "clock": {"tick_unit": "day", "tick_length": 1},
+  "object_types": [
+    {"id": "commons", "label": "Commons building", "sprite": "block", "color": "#8E6E53", "footprint": [1, 1], "height_mm": 4000, "tags": ["structure"]},
+    {"id": "barn", "label": "Barn", "sprite": "block", "color": "#A0522D", "footprint": [2, 1], "height_mm": 6000, "tags": ["structure"]},
+    {"id": "garden", "label": "Garden bed", "sprite": "flat", "color": "#9CCC65", "footprint": [1, 1]}
+  ],
+  "rules": [
+    {
+      "id": "commons-on-gentle-ground",
+      "on": "always",
+      "applies_to": ["commons"],
+      "require": "slope_pct() <= 5",
+      "message": "a commons building needs ground no steeper than 5 percent"
+    },
+    {
+      "id": "dig-floor",
+      "on": "dig",
+      "require": "ground_mm() >= 500 [mm]",
+      "message": "a dig may not take a tile's mean ground below 500 mm"
+    },
+    {
+      "id": "raise-ceiling",
+      "on": "raise",
+      "require": "ground_mm() <= 2000 [mm]",
+      "message": "a raise may not lift a tile's mean ground above 2000 mm"
+    }
+  ],
+  "equations": [
+    {"id": "lowest_ground", "expr": "min_ground_mm()", "unit": "mm"},
+    {"id": "highest_ground", "expr": "max_ground_mm()", "unit": "mm"}
+  ],
+  "stocks": [],
+  "actions": [
+    {"verb": "place", "label": "Place", "parameters": [{"name": "type", "type": "object_type"}, {"name": "col", "type": "col"}, {"name": "row", "type": "row"}], "emits": ["place"]},
+    {"verb": "remove", "label": "Remove", "parameters": [{"name": "col", "type": "col"}, {"name": "row", "type": "row"}], "emits": ["remove"]},
+    {"verb": "dig", "label": "Dig", "parameters": [{"name": "col", "type": "col"}, {"name": "row", "type": "row"}, {"name": "depth_mm", "type": "depth_mm"}], "emits": ["dig"]},
+    {"verb": "raise", "label": "Raise", "parameters": [{"name": "col", "type": "col"}, {"name": "row", "type": "row"}, {"name": "height_mm", "type": "height_mm"}], "emits": ["raise"]}
+  ],
+  "agents": [],
+  "scoring": [],
+  "links": [],
+  "seed": []
+}

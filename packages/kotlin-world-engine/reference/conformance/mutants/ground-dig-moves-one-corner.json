@@ -1,0 +1,10 @@
+{
+  "id": "ground-dig-moves-one-corner",
+  "breaks": "lowers only the north-west corner of the dug tile",
+  "edits": [
+    {
+      "find": "    for index in corners:\n        candidate.ground[index] = candidate.ground[index] + change",
+      "replace": "    for index in corners[:1]:\n        candidate.ground[index] = candidate.ground[index] + change"
+    }
+  ]
+}

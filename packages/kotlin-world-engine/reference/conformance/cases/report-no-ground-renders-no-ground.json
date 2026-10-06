@@ -1,0 +1,19 @@
+{
+  "id": "report-no-ground-renders-no-ground",
+  "kind": "report",
+  "source": "hand",
+  "world": {
+    "file": "instances-plot.frozen.world.json"
+  },
+  "input": {},
+  "expect": {
+    "render": {
+      "units": "mm"
+    },
+    "render_absent": [
+      "ground",
+      "ground_base"
+    ]
+  },
+  "notes": "A world without ground renders exactly as before: no ground and no ground_base key."
+}

@@ -1,0 +1,33 @@
+{
+  "id": "expr-ground-mm-over-a-footprint-is-the-mean-of-its-tiles",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "ground_mm()",
+    "site": "rule",
+    "setup": [
+      {
+        "do": "place",
+        "parameters": {
+          "type": "barn",
+          "col": 0,
+          "row": 1
+        }
+      }
+    ],
+    "bindings": {
+      "tile": [
+        0,
+        1
+      ]
+    }
+  },
+  "expect": {
+    "value": 1125,
+    "unit": "mm"
+  },
+  "notes": "The barn covers tiles 0,1 and 1,1. Tile 0,1: (1200 + 1200 + 1100 + 1100) / 4 = 1150; tile 1,1: 1100; their mean is 1125 mm. The mean of the six distinct vertices would be 6700 / 6 = 1116.67, which is not the rule."
+}

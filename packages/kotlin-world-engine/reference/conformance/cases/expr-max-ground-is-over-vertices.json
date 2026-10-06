@@ -1,0 +1,17 @@
+{
+  "id": "expr-max-ground-is-over-vertices",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "max_ground_mm()",
+    "site": "equation"
+  },
+  "expect": {
+    "value": 1300,
+    "unit": "mm"
+  },
+  "notes": "The north vertex row stands at 1300 mm; the greatest tile mean is 1250."
+}

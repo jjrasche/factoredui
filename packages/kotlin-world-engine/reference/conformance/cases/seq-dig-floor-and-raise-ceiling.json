@@ -1,0 +1,71 @@
+{
+  "id": "seq-dig-floor-and-raise-ceiling",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 1,
+          "row": 1,
+          "depth_mm": 700
+        }
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 1,
+          "row": 1,
+          "depth_mm": 600
+        }
+      },
+      {
+        "do": "raise",
+        "parameters": {
+          "col": 3,
+          "row": 0,
+          "height_mm": 800
+        }
+      },
+      {
+        "do": "raise",
+        "parameters": {
+          "col": 3,
+          "row": 0,
+          "height_mm": 750
+        }
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "refused": "dig-floor",
+        "message": "a dig may not take a tile's mean ground below 500 mm"
+      },
+      {
+        "applied": "e1"
+      },
+      {
+        "refused": "raise-ceiling",
+        "message": "a raise may not lift a tile's mean ground above 2000 mm"
+      },
+      {
+        "applied": "e2"
+      }
+    ],
+    "final": {
+      "main": {
+        "equations": {
+          "lowest_ground": 300,
+          "highest_ground": 2050
+        }
+      }
+    }
+  },
+  "notes": "A dig or raise rule binds the acted tile and reads the state the action would produce. Tile 1,1's mean is 1100: 1100 - 700 = 400 < 500 refused, 1100 - 600 = 500 applies. Tile 3,0's mean is 1250 and it shares no corner with tile 1,1: 1250 + 800 = 2050 > 2000 refused, 1250 + 750 = 2000 applies. Least vertex 2,2: 900 - 600 = 300; greatest 3,0 and 4,0: 1300 + 750 = 2050."
+}

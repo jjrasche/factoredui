@@ -1,0 +1,17 @@
+{
+  "id": "expr-ground-relief-in-feet",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "max_ground_mm() - min_ground_mm()",
+    "site": "equation"
+  },
+  "expect": {
+    "value": 1.3123359580052494,
+    "unit": "ft"
+  },
+  "notes": "1300 - 900 = 400 mm, a length: 400 / 304.8 = 1.31234 ft."
+}

@@ -1,0 +1,16 @@
+{
+  "id": "expr-slope-is-dimensionless",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "slope_pct() <= 5 [mm]",
+    "site": "rule"
+  },
+  "expect": {
+    "error": "unit_mismatch"
+  },
+  "notes": "slope_pct is a dimensionless percentage, so it does not compare with a length."
+}

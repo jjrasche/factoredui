@@ -1,0 +1,10 @@
+{
+  "id": "ground-touches-the-tile",
+  "breaks": "records a dig or raise as touching its tile instead of its four corner vertices, so tiles sharing only a corner merge",
+  "edits": [
+    {
+      "find": "            return tile_corner_names(int(parameters[\"col\"]), int(parameters[\"row\"]))",
+      "replace": "            return [f\"{parameters['col']},{parameters['row']}\"]"
+    }
+  ]
+}

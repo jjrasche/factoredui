@@ -21,13 +21,13 @@
         "world": {"type": "string"},
         "branch": {"type": "string", "minLength": 1},
         "actor": {"type": "string", "minLength": 1, "description": "a person id, an agent id, or 'clock'"},
-        "action": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "branch", "merge", "revert", "endorse", "place_instance", "remove_instance"]},
+        "action": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "branch", "merge", "revert", "endorse", "place_instance", "remove_instance", "dig", "raise"]},
         "parameters": {"type": "object"},
         "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"},
         "touches": {
           "type": "array",
-          "items": {"type": "string", "pattern": "^([0-9]+,[0-9]+|clock|agent:.+|instance:.+)$"},
-          "description": "tiles as 'col,row', 'clock' for a tick, 'agent:<id>' for an agent, 'instance:<id>' for an instance; the merge and revert conflict rules compare these"
+          "items": {"type": "string", "pattern": "^([0-9]+,[0-9]+|clock|agent:.+|instance:.+|ground:[0-9]+,[0-9]+)$"},
+          "description": "tiles as 'col,row', 'clock' for a tick, 'agent:<id>' for an agent, 'instance:<id>' for an instance, 'ground:<vertex col>,<vertex row>' for each of the four corner vertices a dig or raise changes; the merge and revert conflict rules compare these"
         },
         "removed_instance": {
           "type": "object",
@@ -64,6 +64,18 @@
       "required": ["type", "x_mm", "y_mm"],
       "properties": {"type": {"type": "string"}, "x_mm": {"type": "number"}, "y_mm": {"type": "number"}, "rotation_deg": {"type": "number"}}
     },
+    "dig_parameters": {
+      "description": "lowers tile col,row's four corner vertices by depth_mm each, once; depth_mm is a number above 0 and at most 50000",
+      "type": "object",
+      "required": ["col", "row", "depth_mm"],
+      "properties": {"col": {"type": "integer"}, "row": {"type": "integer"}, "depth_mm": {"type": "number", "exclusiveMinimum": 0, "maximum": 50000}}
+    },
+    "raise_parameters": {
+      "description": "lifts tile col,row's four corner vertices by height_mm each, once; height_mm is a number above 0 and at most 50000",
+      "type": "object",
+      "required": ["col", "row", "height_mm"],
+      "properties": {"col": {"type": "integer"}, "row": {"type": "integer"}, "height_mm": {"type": "number", "exclusiveMinimum": 0, "maximum": 50000}}
+    },
     "remove_instance_parameters": {
       "type": "object",
       "required": ["id"],
@@ -98,7 +110,7 @@
       "properties": {"branch": {"type": "string"}, "events": {"type": "array", "items": {"type": "string"}}}
     },
     "revert_parameters": {
-      "description": "revert(event): applies the inverse of a place or remove, as an action checked against the rules. Refused when a later event touched the same tiles.",
+      "description": "revert(event): applies the inverse of a place, remove, dig or raise (a dig's inverse is a raise of the same amount on the same tile, and back), as an action checked against the rules. Refused when a later event touched the same tiles or vertices.",
       "type": "object",
       "required": ["event", "undo"],
       "properties": {"event": {"type": "string"}, "undo": {"type": "object", "required": ["action", "parameters"]}}

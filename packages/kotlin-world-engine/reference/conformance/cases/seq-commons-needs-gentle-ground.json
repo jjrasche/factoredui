@@ -1,0 +1,61 @@
+{
+  "id": "seq-commons-needs-gentle-ground",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "place",
+        "parameters": {
+          "type": "commons",
+          "col": 1,
+          "row": 1
+        }
+      },
+      {
+        "do": "place",
+        "parameters": {
+          "type": "commons",
+          "col": 2,
+          "row": 1
+        }
+      },
+      {
+        "do": "place",
+        "parameters": {
+          "type": "commons",
+          "col": 0,
+          "row": 0
+        }
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "refused": "commons-on-gentle-ground",
+        "message": "a commons building needs ground no steeper than 5 percent"
+      },
+      {
+        "refused": "commons-on-gentle-ground",
+        "message": "a commons building needs ground no steeper than 5 percent"
+      },
+      {
+        "applied": "e1"
+      }
+    ],
+    "final": {
+      "main": {
+        "counts": {
+          "commons": 1,
+          "barn": 0,
+          "garden": 0
+        }
+      }
+    }
+  },
+  "notes": "Tile 1,1 slopes 11.8292 percent and tile 2,1 9.8425 percent, both over 5; tile 0,0 slopes 3.2808 percent."
+}

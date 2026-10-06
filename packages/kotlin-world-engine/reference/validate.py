@@ -17,7 +17,7 @@ sys.path.insert(0, str(HERE))
 import engine_ref as engine  # noqa: E402
 
 SCANS = ("worlds", "expressions", "names", "seeds","rules", "actions", "links", "projections", "figures", "object_types",
-         "footprints", "instances")
+         "footprints", "instances", "grounds")
 EXIT_BLIND = 3
 
 
@@ -175,6 +175,22 @@ def derive_instance_facts(name: str, world: engine.World) -> list[dict]:
     return records
 
 
+def derive_ground_facts(name: str, world: engine.World) -> list[dict]:
+    if world.ground is None:
+        return []
+    heights = world.ground["heights_mm"]
+    return [{
+        "world": name,
+        "cols": world.cols,
+        "rows": world.rows,
+        "length": len(heights),
+        "expected_length": engine.expected_ground_length(world),
+        "size_agrees": len(heights) == engine.expected_ground_length(world),
+        "out_of_range": engine.ground_out_of_range(heights),
+        "error_reasoned": is_figure_reasoned(world.ground["error"]["vertical_mm"]),
+    }]
+
+
 def find_seed_error(world: engine.World) -> str:
     try:
         world.seed_state()
@@ -210,6 +226,7 @@ def derive_facts(worlds_dir: Path) -> dict[str, list[dict]]:
         facts["object_types"] += derive_type_facts(path.name, world)
         facts["footprints"] += derive_footprint_facts(path.name, world)
         facts["instances"] += derive_instance_facts(path.name, world)
+        facts["grounds"] += derive_ground_facts(path.name, world)
     return facts
 
 

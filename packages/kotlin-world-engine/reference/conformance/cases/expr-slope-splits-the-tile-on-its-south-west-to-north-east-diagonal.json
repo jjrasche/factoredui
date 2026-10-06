@@ -1,0 +1,33 @@
+{
+  "id": "expr-slope-splits-the-tile-on-its-south-west-to-north-east-diagonal",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "slope_pct()",
+    "site": "rule",
+    "setup": [
+      {
+        "do": "place",
+        "parameters": {
+          "type": "garden",
+          "col": 1,
+          "row": 1
+        }
+      }
+    ],
+    "bindings": {
+      "tile": [
+        1,
+        1
+      ]
+    }
+  },
+  "expect": {
+    "value": 11.829236468057708,
+    "unit": "1"
+  },
+  "notes": "Tile 1,1: NW 1200, NE 1200, SW 1100, SE 900, side s = 3048 mm. Triangle SW-SE-NE: dh/dx = (SE - SW) / s = -200 / s, dh/dy = (NE - SE) / s = 300 / s, slope 100 x sqrt(200^2 + 300^2) / 3048 = 11.8292. Triangle SW-NW-NE: dh/dx = (NE - NW) / s = 0, dh/dy = (NW - SW) / s = 100 / s, 3.2808. The steeper is 11.8292. Split on the other diagonal (NW-SE) the triangles give 9.8425 and 7.3362, so a port on the wrong diagonal reads 9.8425."
+}

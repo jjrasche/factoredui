@@ -1,0 +1,16 @@
+{
+  "id": "expr-slope-in-an-instance-rule-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "slope_pct() <= 5",
+    "site": "instance_rule"
+  },
+  "expect": {
+    "error": "unknown_word"
+  },
+  "notes": "A place_instance or remove_instance rule binds an instance, a point, not a tile, so slope_pct has nothing to read there."
+}

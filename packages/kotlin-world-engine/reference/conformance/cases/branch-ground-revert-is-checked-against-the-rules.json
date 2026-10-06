@@ -1,0 +1,59 @@
+{
+  "id": "branch-ground-revert-is-checked-against-the-rules",
+  "kind": "branching",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "raise",
+        "parameters": {
+          "col": 2,
+          "row": 2,
+          "height_mm": 200
+        }
+      },
+      {
+        "do": "place",
+        "parameters": {
+          "type": "commons",
+          "col": 1,
+          "row": 1
+        }
+      },
+      {
+        "do": "revert",
+        "event": "e1"
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "applied": "e1"
+      },
+      {
+        "applied": "e2"
+      },
+      {
+        "refused": "commons-on-gentle-ground",
+        "message": "a commons building needs ground no steeper than 5 percent"
+      }
+    ],
+    "final": {
+      "main": {
+        "counts": {
+          "commons": 1,
+          "barn": 0,
+          "garden": 0
+        },
+        "equations": {
+          "lowest_ground": 1000
+        }
+      }
+    }
+  },
+  "notes": "Raising tile 2,2 by 200 lifts vertex 2,2 to 1100, so tile 1,1 becomes NW 1200, NE 1200, SW 1100, SE 1100, 3.2808 percent, and a commons goes there. Reverting the raise is a dig of 200 on tile 2,2, which touches no tile the commons placement touched, but it would return tile 1,1 to 11.8292 percent, so the always rule refuses it. The least vertex stays 1000 (vertex row 3 and 2,2 at 1100)."
+}

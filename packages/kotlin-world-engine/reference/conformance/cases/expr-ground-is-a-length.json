@@ -1,0 +1,16 @@
+{
+  "id": "expr-ground-is-a-length",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "min_ground_mm() >= 5",
+    "site": "equation"
+  },
+  "expect": {
+    "error": "unit_mismatch"
+  },
+  "notes": "Ground heights are lengths in mm; comparing one with a bare number is refused like any length."
+}

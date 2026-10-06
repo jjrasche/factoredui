@@ -1,0 +1,28 @@
+{
+  "id": "load-ground-height-not-a-number",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json",
+    "edits": [
+      {
+        "op": "set",
+        "path": [
+          "ground",
+          "heights_mm",
+          0
+        ],
+        "value": "1300"
+      }
+    ]
+  },
+  "input": {},
+  "expect": {
+    "valid": false,
+    "first": "world-schema",
+    "fired": [
+      "world-schema"
+    ]
+  },
+  "notes": "A height is a JSON number; the string '1300' fails the schema."
+}

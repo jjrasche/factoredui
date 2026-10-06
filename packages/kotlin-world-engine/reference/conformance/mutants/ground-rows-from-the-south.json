@@ -1,0 +1,10 @@
+{
+  "id": "ground-rows-from-the-south",
+  "breaks": "reads vertex row 0 as the south edge, so tile 0,0 stands on the south rows",
+  "edits": [
+    {
+      "find": "    return [row * vertex_cols + col, row * vertex_cols + col + 1, (row + 1) * vertex_cols + col, (row + 1) * vertex_cols + col + 1]",
+      "replace": "    north = world.rows - row\n    return [north * vertex_cols + col, north * vertex_cols + col + 1, (north - 1) * vertex_cols + col, (north - 1) * vertex_cols + col + 1]"
+    }
+  ]
+}

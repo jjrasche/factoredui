@@ -1,0 +1,47 @@
+{
+  "id": "branch-ground-revert-conflict",
+  "kind": "branching",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 2,
+          "row": 0,
+          "depth_mm": 100
+        }
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 3,
+          "row": 0,
+          "depth_mm": 100
+        }
+      },
+      {
+        "do": "revert",
+        "event": "e1"
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "applied": "e1"
+      },
+      {
+        "applied": "e2"
+      },
+      {
+        "refused": "revert-conflict",
+        "message": "ground:3,0, ground:3,1 changed after e1"
+      }
+    ]
+  },
+  "notes": "Tiles 2,0 and 3,0 share vertices 3,0 and 3,1; e2 changed them after e1, so e1 cannot be undone."
+}

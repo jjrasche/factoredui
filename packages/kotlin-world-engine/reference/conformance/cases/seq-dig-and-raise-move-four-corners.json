@@ -1,0 +1,68 @@
+{
+  "id": "seq-dig-and-raise-move-four-corners",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 1,
+          "row": 0,
+          "depth_mm": 50
+        }
+      },
+      {
+        "do": "raise",
+        "parameters": {
+          "col": 2,
+          "row": 2,
+          "height_mm": 30
+        }
+      },
+      {
+        "do": "place",
+        "parameters": {
+          "type": "garden",
+          "col": 3,
+          "row": 2
+        }
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "applied": "e1"
+      },
+      {
+        "applied": "e2"
+      },
+      {
+        "applied": "e3"
+      }
+    ],
+    "final": {
+      "main": {
+        "counts": {
+          "commons": 0,
+          "barn": 0,
+          "garden": 1
+        },
+        "areas": {
+          "commons": 0,
+          "barn": 0,
+          "garden": 100
+        },
+        "equations": {
+          "lowest_ground": 930,
+          "highest_ground": 1300
+        }
+      }
+    }
+  },
+  "notes": "dig 1,0 by 50 lowers vertices 1,0 and 2,0 to 1250 and 1,1 and 2,1 to 1150 (tile mean 1200, above the 500 floor). raise 2,2 by 30 lifts vertex 2,2 to 930, 3,2 to 1130, 2,3 and 3,3 to 1030 (tile mean 1030, under the 2000 ceiling). The least vertex is now 2,2 at 930; the greatest stays 1300. Ground never changes tile counts or areas: one garden, 100 sq ft."
+}

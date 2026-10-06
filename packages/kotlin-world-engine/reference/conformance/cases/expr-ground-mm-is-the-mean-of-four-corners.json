@@ -1,0 +1,33 @@
+{
+  "id": "expr-ground-mm-is-the-mean-of-four-corners",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "ground_mm()",
+    "site": "rule",
+    "setup": [
+      {
+        "do": "place",
+        "parameters": {
+          "type": "garden",
+          "col": 1,
+          "row": 1
+        }
+      }
+    ],
+    "bindings": {
+      "tile": [
+        1,
+        1
+      ]
+    }
+  },
+  "expect": {
+    "value": 1100,
+    "unit": "mm"
+  },
+  "notes": "Tile 1,1's corners are vertex 1,1 (NW) 1200, 2,1 (NE) 1200, 1,2 (SW) 1100 and 2,2 (SE) 900; the mean is 4400 / 4 = 1100 mm."
+}

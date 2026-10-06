@@ -1,0 +1,10 @@
+{
+  "id": "ground-version-never-counts",
+  "breaks": "leaves the ground version at 0 through every dig, raise and revert",
+  "edits": [
+    {
+      "find": "    candidate.ground_version += 1",
+      "replace": "    candidate.ground_version += 0"
+    }
+  ]
+}

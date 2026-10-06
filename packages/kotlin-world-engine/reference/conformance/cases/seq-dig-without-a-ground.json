@@ -1,0 +1,63 @@
+{
+  "id": "seq-dig-without-a-ground",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json",
+    "edits": [
+      {
+        "op": "delete",
+        "path": [
+          "ground"
+        ]
+      },
+      {
+        "op": "set",
+        "path": [
+          "rules"
+        ],
+        "value": []
+      },
+      {
+        "op": "set",
+        "path": [
+          "equations"
+        ],
+        "value": []
+      }
+    ]
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "depth_mm": 10
+        }
+      },
+      {
+        "do": "raise",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "height_mm": 10
+        }
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "refused": "no-ground",
+        "message": "world ground-plot has no ground to dig or raise"
+      },
+      {
+        "refused": "no-ground",
+        "message": "world ground-plot has no ground to dig or raise"
+      }
+    ]
+  },
+  "notes": "The world still declares dig and raise but carries no ground, so there is nothing to change."
+}

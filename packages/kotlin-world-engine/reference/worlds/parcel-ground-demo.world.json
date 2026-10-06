@@ -1,0 +1,191 @@
+{
+  "id": "parcel-ground-demo",
+  "version": 1,
+  "title": "Parcel ground demo",
+  "description": "8 x 8 tiles of 10 ft on the Wise Rd parcel, 595 m east and 49 m north of plot-twin's frame origin, with the lidar ground under them: the surface falls toward the north and holds a closed low basin inside the edge. Built by import_ground_from_dem.py --demo from plot-twin's 1 m ground raster. A commons building needs ground no steeper than 5 percent; dig and raise reshape the surface.",
+  "sprites": {
+    "extensions": []
+  },
+  "grid": {
+    "cols": 8,
+    "rows": 8,
+    "tile_ft": 10,
+    "shape": "square",
+    "view": "iso",
+    "north": "row_0"
+  },
+  "frame": {
+    "epsg": 26916,
+    "origin_east_m": 690753.5,
+    "origin_north_m": 4819349.1,
+    "x_axis": "east",
+    "y_axis": "north"
+  },
+  "ground": {
+    "unit": "mm",
+    "datum": "NAVD88 (GEOID12B)",
+    "source": "plot-twin capture/data/coe/probe/terrain_arrays.npz, array ground_1m: class-2 lidar returns of USGS_LPC_MI_31County_2016_A16 averaged per 1 m cell and gap-filled by a 2-cell gaussian (capture/scripts/probe_parcel_hydrology.py), rows stored south first; sampled bilinearly at tile corners by import_ground_from_dem.py",
+    "heights_mm": [
+      223891, 223934, 223957, 223976, 223879, 223971, 224003, 223954, 223928,
+      223906, 223918, 223735, 223979, 223966, 223973, 224045, 224006, 223949,
+      223872, 223883, 223971, 223982, 224169, 224092, 223964, 223962, 224066,
+      224256, 223890, 224037, 223961, 224059, 223979, 224028, 224001, 224128,
+      224037, 223907, 223906, 223980, 224034, 224032, 224024, 224056, 224191,
+      223981, 224101, 223976, 224004, 224168, 224044, 224027, 224189, 224160,
+      224117, 224099, 224062, 224052, 224279, 224206, 224097, 224106, 224213,
+      224043, 223999, 224023, 224064, 224214, 224217, 224216, 224143, 224315,
+      224154, 224247, 224215, 224111, 224248, 224257, 224161, 224151, 224226
+    ],
+    "error": {
+      "vertical_mm": {
+        "value": null,
+        "null_reason": "the survey states 60 mm RMSE (raw NVA, 18 checkpoints in flat open terrain; Isabella_LAS.xml vertaccv) for the lidar surface; the error of a vertex interpolated from the gap-filled 1 m mean raster has not been measured"
+      }
+    }
+  },
+  "clock": {
+    "tick_unit": "day",
+    "tick_length": 1
+  },
+  "object_types": [
+    {
+      "id": "commons_building",
+      "label": "Commons building",
+      "sprite": "block",
+      "color": "#8E6E53",
+      "footprint": [
+        1,
+        1
+      ],
+      "height_mm": 4000,
+      "tags": [
+        "structure"
+      ]
+    },
+    {
+      "id": "garden",
+      "label": "Garden bed",
+      "sprite": "flat",
+      "color": "#9CCC65",
+      "footprint": [
+        1,
+        1
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "id": "commons-on-gentle-ground",
+      "on": "always",
+      "applies_to": [
+        "commons_building"
+      ],
+      "require": "slope_pct() <= 5",
+      "message": "a commons building needs ground no steeper than 5 percent"
+    }
+  ],
+  "equations": [
+    {
+      "id": "lowest_ground",
+      "expr": "min_ground_mm()",
+      "unit": "mm"
+    },
+    {
+      "id": "highest_ground",
+      "expr": "max_ground_mm()",
+      "unit": "mm"
+    },
+    {
+      "id": "relief",
+      "expr": "max_ground_mm() - min_ground_mm()",
+      "unit": "mm"
+    }
+  ],
+  "stocks": [],
+  "actions": [
+    {
+      "verb": "place",
+      "label": "Place",
+      "parameters": [
+        {
+          "name": "type",
+          "type": "object_type"
+        },
+        {
+          "name": "col",
+          "type": "col"
+        },
+        {
+          "name": "row",
+          "type": "row"
+        }
+      ],
+      "emits": [
+        "place"
+      ]
+    },
+    {
+      "verb": "remove",
+      "label": "Remove",
+      "parameters": [
+        {
+          "name": "col",
+          "type": "col"
+        },
+        {
+          "name": "row",
+          "type": "row"
+        }
+      ],
+      "emits": [
+        "remove"
+      ]
+    },
+    {
+      "verb": "dig",
+      "label": "Dig",
+      "parameters": [
+        {
+          "name": "col",
+          "type": "col"
+        },
+        {
+          "name": "row",
+          "type": "row"
+        },
+        {
+          "name": "depth_mm",
+          "type": "depth_mm"
+        }
+      ],
+      "emits": [
+        "dig"
+      ]
+    },
+    {
+      "verb": "raise",
+      "label": "Raise",
+      "parameters": [
+        {
+          "name": "col",
+          "type": "col"
+        },
+        {
+          "name": "row",
+          "type": "row"
+        },
+        {
+          "name": "height_mm",
+          "type": "height_mm"
+        }
+      ],
+      "emits": [
+        "raise"
+      ]
+    }
+  ],
+  "agents": [],
+  "scoring": [],
+  "links": [],
+  "seed": []
+}

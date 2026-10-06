@@ -17,7 +17,7 @@ def test_the_shipped_worlds_are_all_valid_and_nothing_fires():
     report = validate.run_validation(HERE / "worlds")
     assert report["fired"] == [] and report["blind"] == []
     assert sorted(report["valid"]) == ["dungeon-tiny.world.json", "locality-stub.world.json", "parcel-five-acre.world.json",
-                                       "parcel-lidar-sample.world.json"]
+                                       "parcel-ground-demo.world.json", "parcel-lidar-sample.world.json"]
 
 
 def test_every_rule_in_rules_json_has_a_broken_copy():

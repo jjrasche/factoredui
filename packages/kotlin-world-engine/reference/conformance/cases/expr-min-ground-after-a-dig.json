@@ -1,0 +1,27 @@
+{
+  "id": "expr-min-ground-after-a-dig",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "min_ground_mm()",
+    "site": "equation",
+    "setup": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 1,
+          "row": 1,
+          "depth_mm": 600
+        }
+      }
+    ]
+  },
+  "expect": {
+    "value": 300,
+    "unit": "mm"
+  },
+  "notes": "After digging tile 1,1 by 600 mm its south-east corner, vertex 2,2, stands at 900 - 600 = 300 mm, the new least vertex."
+}

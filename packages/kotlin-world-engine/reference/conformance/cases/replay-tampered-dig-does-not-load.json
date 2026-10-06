@@ -1,0 +1,37 @@
+{
+  "id": "replay-tampered-dig-does-not-load",
+  "kind": "replay",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 1,
+          "row": 1,
+          "depth_mm": 600
+        }
+      }
+    ],
+    "tamper": [
+      {
+        "op": "set",
+        "path": [
+          "events",
+          0,
+          "parameters",
+          "depth_mm"
+        ],
+        "value": 700
+      }
+    ]
+  },
+  "expect": {
+    "loads": false,
+    "reason_contains": "dig-floor"
+  },
+  "notes": "The saved dig is deepened from 600 to 700 mm, which takes tile 1,1's mean to 400, under the dig-floor; replay re-checks the rule and refuses the log."
+}

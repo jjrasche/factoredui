@@ -1,0 +1,37 @@
+{
+  "id": "load-ground-heights-outside-the-range",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json",
+    "edits": [
+      {
+        "op": "set",
+        "path": [
+          "ground",
+          "heights_mm",
+          0
+        ],
+        "value": 5000001
+      },
+      {
+        "op": "set",
+        "path": [
+          "ground",
+          "heights_mm",
+          19
+        ],
+        "value": -500001
+      }
+    ]
+  },
+  "input": {},
+  "expect": {
+    "valid": false,
+    "first": "ground-range",
+    "fired": [
+      "ground-range"
+    ]
+  },
+  "notes": "A height must lie in -500000 to 5000000 mm inclusive; 5000001 and -500001 lie outside."
+}

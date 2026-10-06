@@ -1,0 +1,14 @@
+{
+  "id": "live-ground-demo-relief",
+  "kind": "report",
+  "source": "generated",
+  "world": {"file": "parcel-ground-demo.world.json"},
+  "input": {"steps": [{"do": "dig", "parameters": {"col": 1, "row": 1, "depth_mm": 100}}]},
+  "expect": {
+    "steps": [{"applied": "e1"}],
+    "render": {"ground": {"unit": "mm", "datum": "NAVD88 (GEOID12B)", "vertex_cols": 9, "vertex_rows": 9, "version": 1},
+               "frame": {"epsg": 26916, "origin_east_m": 690753.5, "origin_north_m": 4819349.1, "x_axis": "east", "y_axis": "north"}},
+    "outputs": {"ground": {"version": 1, "min_mm": 223635, "max_mm": 224315}, "equations": {"relief": 680}}
+  },
+  "notes": "Recorded from the reference against the live demo world built from plot-twin's 1 m lidar ground. Its least vertex is 2,1 at 223735 mm, a corner of tile 1,1; digging that tile by 100 mm takes it to 223635 and the relief from 580 to 680 mm. If the converter or the raster changes, this case moves with the world, which is what a live case is for."
+}

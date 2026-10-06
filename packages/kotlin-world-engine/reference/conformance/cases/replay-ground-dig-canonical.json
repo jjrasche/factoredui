@@ -1,0 +1,83 @@
+{
+  "id": "replay-ground-dig-canonical",
+  "kind": "replay",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 1,
+          "row": 0,
+          "depth_mm": 50.5
+        }
+      }
+    ]
+  },
+  "expect": {
+    "loads": true,
+    "log": {
+      "world": "ground-plot",
+      "events": [
+        {
+          "id": "e1",
+          "parent": null,
+          "world": "ground-plot",
+          "branch": "main",
+          "actor": "jim",
+          "action": "dig",
+          "parameters": {
+            "col": 1,
+            "row": 0,
+            "depth_mm": 50.5
+          },
+          "timestamp": "2026-10-05T00:00:00Z",
+          "touches": [
+            "ground:1,0",
+            "ground:2,0",
+            "ground:1,1",
+            "ground:2,1"
+          ]
+        }
+      ]
+    },
+    "state": {
+      "main": {
+        "cells": [],
+        "stocks": {},
+        "ticks": 0,
+        "agents": {},
+        "endorsements": [],
+        "ground": {
+          "heights_mm": [
+            1300,
+            1249.5,
+            1249.5,
+            1300,
+            1300,
+            1200,
+            1149.5,
+            1149.5,
+            1200,
+            1200,
+            1100,
+            1100,
+            900,
+            1100,
+            1100,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000
+          ],
+          "version": 1
+        }
+      }
+    }
+  },
+  "notes": "A dig touches ground:<col>,<row> for its four corners in row order (NW, NE, SW, SE). The canonical state gains ground {heights_mm, version} when the world has a ground; 1300 - 50.5 = 1249.5 and 1200 - 50.5 = 1149.5."
+}

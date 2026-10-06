@@ -1,0 +1,16 @@
+{
+  "id": "expr-ground-functions-take-no-arguments",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "ground_mm(tile)",
+    "site": "rule"
+  },
+  "expect": {
+    "error": "syntax"
+  },
+  "notes": "The four ground built-ins take no argument; ground_mm reads the bound tile itself."
+}

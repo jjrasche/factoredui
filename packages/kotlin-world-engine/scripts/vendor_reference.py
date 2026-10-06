@@ -9,6 +9,7 @@ from pathlib import Path
 MODULE = Path(__file__).resolve().parent.parent
 TARGET = MODULE / "reference"
 SOURCE_ROOT = "design/world-engine"
+PIN_FILE_NAMES = ("PINNED_COMMIT", "CASE_COUNT", "MANIFEST.sha256", ".gitattributes")
 
 
 def archive_of(repository, commit):
@@ -34,8 +35,9 @@ def digest(path):
 
 
 def write_pin(commit):
-    files = sorted(path for path in TARGET.rglob("*") if path.is_file() and path.name not in ("PINNED_COMMIT", "CASE_COUNT", "MANIFEST.sha256"))
+    files = sorted(path for path in TARGET.rglob("*") if path.is_file() and path.name not in PIN_FILE_NAMES)
     cases = [path for path in (TARGET / "conformance" / "cases").glob("*.json")]
+    (TARGET / ".gitattributes").write_text("* -text\n", newline="\n")
     (TARGET / "PINNED_COMMIT").write_text(commit + "\n", newline="\n")
     (TARGET / "CASE_COUNT").write_text(f"{len(cases)}\n", newline="\n")
     lines = [f"{digest(path)}  {path.relative_to(TARGET).as_posix()}" for path in files]

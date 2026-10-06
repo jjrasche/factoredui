@@ -1,0 +1,30 @@
+{
+  "id": "load-ground-error-null-without-reason",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json",
+    "edits": [
+      {
+        "op": "set",
+        "path": [
+          "ground",
+          "error",
+          "vertical_mm"
+        ],
+        "value": {
+          "value": null
+        }
+      }
+    ]
+  },
+  "input": {},
+  "expect": {
+    "valid": false,
+    "first": "ground-error-reason",
+    "fired": [
+      "ground-error-reason"
+    ]
+  },
+  "notes": "A null vertical error needs a null_reason."
+}

@@ -1,0 +1,88 @@
+{
+  "id": "seq-ground-range",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json",
+    "edits": [
+      {
+        "op": "set",
+        "path": [
+          "ground",
+          "heights_mm"
+        ],
+        "value": [
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000,
+          -490000
+        ]
+      },
+      {
+        "op": "delete",
+        "path": [
+          "rules",
+          {
+            "id": "dig-floor"
+          }
+        ]
+      }
+    ]
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "depth_mm": 20000
+        }
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "depth_mm": 10000
+        }
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "refused": "ground-range",
+        "message": "dig at 0,0 would take ground to -510000 mm, outside -500000 to 5000000 mm"
+      },
+      {
+        "applied": "e1"
+      }
+    ],
+    "final": {
+      "main": {
+        "equations": {
+          "lowest_ground": -500000,
+          "highest_ground": -490000
+        }
+      }
+    }
+  },
+  "notes": "Every vertex stands at -490000 mm. A dig of 20000 would take the tile's corners to -510000, below the -500000 floor the validator holds every world to, so it is refused; 10000 reaches exactly -500000 and applies."
+}

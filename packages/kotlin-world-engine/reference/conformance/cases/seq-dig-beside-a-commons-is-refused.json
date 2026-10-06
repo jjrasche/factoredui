@@ -1,0 +1,59 @@
+{
+  "id": "seq-dig-beside-a-commons-is-refused",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "place",
+        "parameters": {
+          "type": "commons",
+          "col": 0,
+          "row": 0
+        }
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 1,
+          "row": 0,
+          "depth_mm": 200
+        }
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 2,
+          "row": 0,
+          "depth_mm": 100
+        }
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "applied": "e1"
+      },
+      {
+        "refused": "commons-on-gentle-ground",
+        "message": "a commons building needs ground no steeper than 5 percent"
+      },
+      {
+        "applied": "e2"
+      }
+    ],
+    "final": {
+      "main": {
+        "equations": {
+          "lowest_ground": 900,
+          "highest_ground": 1300
+        }
+      }
+    }
+  },
+  "notes": "The rule is on always, so a dig is checked against every commons. Digging tile 1,0 by 200 lowers vertices 1,0 and 1,1, the commons tile's NE and SE corners, to 1100 and 1000: tile 0,0 becomes NW 1300, NE 1100, SW 1200, SE 1000, triangle SW-SE-NE gradient (-200, 100) / 3048, 7.3362 percent, refused. Tile 2,0 shares no corner with tile 0,0, so digging it applies; vertices 2,0, 3,0 go to 1200 and 2,1, 3,1 to 1100, leaving the extremes at 900 and 1300."
+}

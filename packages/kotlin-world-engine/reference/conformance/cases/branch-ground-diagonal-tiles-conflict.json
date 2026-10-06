@@ -1,0 +1,68 @@
+{
+  "id": "branch-ground-diagonal-tiles-conflict",
+  "kind": "branching",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "branch",
+        "name": "idea",
+        "from": "main"
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "depth_mm": 100
+        },
+        "on": "idea"
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 1,
+          "row": 1,
+          "depth_mm": 100
+        }
+      },
+      {
+        "do": "merge",
+        "branch": "idea"
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "applied": "e1"
+      },
+      {
+        "applied": "e2"
+      },
+      {
+        "applied": "e3"
+      },
+      {
+        "refused": "merge-conflict",
+        "message": "both branches changed ground:1,1 since they split"
+      }
+    ],
+    "final": {
+      "main": {
+        "equations": {
+          "lowest_ground": 800
+        }
+      },
+      "idea": {
+        "equations": {
+          "lowest_ground": 900
+        }
+      }
+    }
+  },
+  "notes": "A dig touches its tile's four corner vertices. Tiles 0,0 and 1,1 share no tile but share vertex 1,1, so the merge is refused on ground:1,1. On main vertex 2,2 went to 900 - 100 = 800."
+}

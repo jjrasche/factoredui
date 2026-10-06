@@ -1,0 +1,10 @@
+{
+  "id": "ground-range-unchecked",
+  "breaks": "lets a dig or raise take a vertex outside -500000 to 5000000 mm",
+  "edits": [
+    {
+      "find": "    check_ground_range(verb, col, row, [candidate.ground[index] for index in corners])\n",
+      "replace": ""
+    }
+  ]
+}

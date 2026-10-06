@@ -1,0 +1,14 @@
+{
+  "id": "load-shipped-ground-plot",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {},
+  "expect": {
+    "valid": true,
+    "fired": []
+  },
+  "notes": "4 x 3 tiles need (4 + 1) x (3 + 1) = 20 vertex heights; the fixture has 20, all within -500000 to 5000000 mm, and its vertical error is null with a reason."
+}

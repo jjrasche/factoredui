@@ -1,0 +1,29 @@
+{
+  "id": "seq-dig-in-a-world-without-the-verb",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {
+    "file": "parcel-five-acre.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "depth_mm": 10
+        }
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "refused": "unknown-action",
+        "message": "no action 'dig'"
+      }
+    ]
+  },
+  "notes": "A world that does not declare dig refuses it as a verb it does not know, in the same words as a verb no handler knows (seq-unknown-verbs-and-branches), before anything else is looked at."
+}

@@ -1,0 +1,10 @@
+{
+  "id": "ground-amount-takes-a-boolean",
+  "breaks": "accepts true as an amount of 1 mm because a boolean is an int in Python",
+  "edits": [
+    {
+      "find": "    return isinstance(value, (int, float)) and not isinstance(value, bool)",
+      "replace": "    return isinstance(value, (int, float))"
+    }
+  ]
+}

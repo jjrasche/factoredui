@@ -1,0 +1,27 @@
+{
+  "id": "load-ground-unit-is-millimetres",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json",
+    "edits": [
+      {
+        "op": "set",
+        "path": [
+          "ground",
+          "unit"
+        ],
+        "value": "ft"
+      }
+    ]
+  },
+  "input": {},
+  "expect": {
+    "valid": false,
+    "first": "world-schema",
+    "fired": [
+      "world-schema"
+    ]
+  },
+  "notes": "The ground's unit is the constant 'mm'."
+}

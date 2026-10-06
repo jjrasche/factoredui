@@ -58,6 +58,25 @@
         "y_axis": {"const": "north"}
       }
     },
+    "ground": {
+      "description": "Optional: the ground surface as (cols + 1) x (rows + 1) vertex heights in mm, row by row from the north edge (vertex row 0), west to east. Tile col,row has corners NW = vertex col,row, NE = col+1,row, SW = col,row+1, SE = col+1,row+1. validate.py refuses a count other than (cols + 1) x (rows + 1) (ground-size) and a height outside -500000 to 5000000 mm (ground-range). dig and raise change a tile's four corners; ground never changes tile counts or areas. A world without ground behaves as if the key were absent everywhere.",
+      "type": "object",
+      "required": ["unit", "datum", "source", "heights_mm", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {"const": "mm"},
+        "datum": {"type": "string", "minLength": 1, "description": "the vertical datum the heights are measured from, for example NAVD88, or 'local'"},
+        "source": {"type": "string", "minLength": 1, "description": "where the surface came from: a file and the converter that read it, or a stated fixture"},
+        "heights_mm": {"type": "array", "items": {"type": "number"}},
+        "error": {
+          "type": "object",
+          "required": ["vertical_mm"],
+          "additionalProperties": false,
+          "properties": {"vertical_mm": {"$ref": "#/$defs/error_figure"}}
+        },
+        "note": {"type": "string"}
+      }
+    },
     "clock": {
       "type": "object",
       "required": ["tick_unit", "tick_length"],
@@ -138,7 +157,7 @@
       "additionalProperties": false,
       "properties": {
         "id": {"$ref": "#/$defs/identifier"},
-        "on": {"enum": ["place", "remove", "always", "place_instance", "remove_instance"], "description": "a place_instance or remove_instance rule binds `instance` (the acted-on instance) instead of `tile`, and sets no effect"},
+        "on": {"enum": ["place", "remove", "always", "place_instance", "remove_instance", "dig", "raise"], "description": "a place_instance or remove_instance rule binds `instance` (the acted-on instance) instead of `tile`, and sets no effect; a dig or raise rule binds `tile` to the acted tile, typed by the object on it if any, so applies_to targets that object and a rule with no target applies to every tile"},
         "scope": {"enum": ["self", "child"], "description": "child: exported for worlds that link to this one and inherit it by id"},
         "applies_to": {"type": "array", "items": {"$ref": "#/$defs/identifier"}},
         "applies_to_tag": {"$ref": "#/$defs/identifier"},
@@ -189,7 +208,7 @@
       "required": ["verb", "parameters", "emits"],
       "additionalProperties": false,
       "properties": {
-        "verb": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance"]},
+        "verb": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance", "dig", "raise"]},
         "label": {"type": "string"},
         "parameters": {
           "type": "array",
@@ -200,11 +219,11 @@
             "properties": {
               "name": {"$ref": "#/$defs/identifier"},
               "type": {"enum": ["object_type", "col", "row", "count", "agent_type", "agent_id", "attributes", "properties", "boolean",
-                                "x_mm", "y_mm", "rotation_deg", "instance_id"]}
+                                "x_mm", "y_mm", "rotation_deg", "instance_id", "depth_mm", "height_mm"]}
             }
           }
         },
-        "emits": {"type": "array", "items": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance"]}}
+        "emits": {"type": "array", "items": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance", "dig", "raise"]}}
       }
     },
     "agent": {

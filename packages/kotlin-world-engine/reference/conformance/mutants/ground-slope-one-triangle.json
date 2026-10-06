@@ -1,0 +1,10 @@
+{
+  "id": "ground-slope-one-triangle",
+  "breaks": "reads only the south-east triangle of each tile, missing a steeper north-west one",
+  "edits": [
+    {
+      "find": "    return 100 * max(south_east_triangle, north_west_triangle) / side_mm",
+      "replace": "    return 100 * south_east_triangle / side_mm"
+    }
+  ]
+}

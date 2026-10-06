@@ -1,0 +1,17 @@
+{
+  "id": "expr-min-ground-is-over-vertices",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "min_ground_mm()",
+    "site": "equation"
+  },
+  "expect": {
+    "value": 900,
+    "unit": "mm"
+  },
+  "notes": "The least vertex is 2,2 at 900 mm. The least tile mean is 1000 (tiles 1,2 and 2,2), which is not what min_ground_mm reads."
+}

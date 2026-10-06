@@ -1,0 +1,10 @@
+{
+  "id": "ground-amount-cap-exclusive",
+  "breaks": "refuses an amount of exactly 50000 mm, which the bound allows",
+  "edits": [
+    {
+      "find": "    if not 0 < amount <= MAX_GROUND_CHANGE_MM:",
+      "replace": "    if not 0 < amount < MAX_GROUND_CHANGE_MM:"
+    }
+  ]
+}

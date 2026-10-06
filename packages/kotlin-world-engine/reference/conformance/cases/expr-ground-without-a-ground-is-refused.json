@@ -1,0 +1,16 @@
+{
+  "id": "expr-ground-without-a-ground-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "instances-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "min_ground_mm()",
+    "site": "equation"
+  },
+  "expect": {
+    "error": "unknown_word"
+  },
+  "notes": "instances-plot declares no ground, so its expressions may not read one."
+}

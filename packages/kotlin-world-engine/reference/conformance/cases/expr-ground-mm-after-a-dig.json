@@ -1,0 +1,41 @@
+{
+  "id": "expr-ground-mm-after-a-dig",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "ground_mm()",
+    "site": "rule",
+    "setup": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 1,
+          "row": 1,
+          "depth_mm": 600
+        }
+      },
+      {
+        "do": "place",
+        "parameters": {
+          "type": "garden",
+          "col": 1,
+          "row": 1
+        }
+      }
+    ],
+    "bindings": {
+      "tile": [
+        1,
+        1
+      ]
+    }
+  },
+  "expect": {
+    "value": 500,
+    "unit": "mm"
+  },
+  "notes": "Digging tile 1,1 by 600 mm lowers each of its four corners once: 1200, 1200, 1100, 900 become 600, 600, 500, 300, mean 500 mm (exactly the dig-floor, so the dig applies)."
+}

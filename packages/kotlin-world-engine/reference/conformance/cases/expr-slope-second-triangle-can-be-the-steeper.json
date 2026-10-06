@@ -1,0 +1,33 @@
+{
+  "id": "expr-slope-second-triangle-can-be-the-steeper",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "slope_pct()",
+    "site": "rule",
+    "setup": [
+      {
+        "do": "place",
+        "parameters": {
+          "type": "garden",
+          "col": 2,
+          "row": 1
+        }
+      }
+    ],
+    "bindings": {
+      "tile": [
+        2,
+        1
+      ]
+    }
+  },
+  "expect": {
+    "value": 9.84251968503937,
+    "unit": "1"
+  },
+  "notes": "Tile 2,1: NW 1200, NE 1200, SW 900, SE 1100. Triangle SW-SE-NE: (200, 100) / 3048, 100 x sqrt(50000) / 3048 = 7.3362. Triangle SW-NW-NE: (0, 300) / 3048, 9.8425. The steeper is the second, 9.8425. On the NW-SE diagonal this tile would read 11.8292."
+}

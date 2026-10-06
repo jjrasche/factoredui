@@ -138,6 +138,24 @@
       "scans": "instances",
       "condition": {"op": "empty", "field": "unreasoned"},
       "message": "{world} instance {id}: error {unreasoned} must be a number with a source or null with a null_reason"
+    },
+    {
+      "id": "ground-size",
+      "scans": "grounds",
+      "condition": {"op": "is_true", "field": "size_agrees"},
+      "message": "{world} ground: {length} heights, but a {cols} x {rows} grid has (cols + 1) x (rows + 1) = {expected_length} vertices"
+    },
+    {
+      "id": "ground-range",
+      "scans": "grounds",
+      "condition": {"op": "empty", "field": "out_of_range"},
+      "message": "{world} ground: heights at vertex indices {out_of_range} lie outside -500000 to 5000000 mm"
+    },
+    {
+      "id": "ground-error-reason",
+      "scans": "grounds",
+      "condition": {"op": "is_true", "field": "error_reasoned"},
+      "message": "{world} ground: error.vertical_mm must be a number with a source or null with a null_reason"
     }
   ]
 }

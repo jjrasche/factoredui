@@ -1,0 +1,33 @@
+{
+  "id": "expr-slope-on-a-plane-tile",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "slope_pct()",
+    "site": "rule",
+    "setup": [
+      {
+        "do": "place",
+        "parameters": {
+          "type": "garden",
+          "col": 0,
+          "row": 0
+        }
+      }
+    ],
+    "bindings": {
+      "tile": [
+        0,
+        0
+      ]
+    }
+  },
+  "expect": {
+    "value": 3.2808398950131235,
+    "unit": "1"
+  },
+  "notes": "Tile 0,0 is a plane falling 100 mm southward across a 3048 mm tile: both triangles have gradient (0, 100 / 3048), so 100 x 100 / 3048 = 3.2808 percent."
+}

@@ -1,0 +1,10 @@
+{
+  "id": "ground-slope-other-diagonal",
+  "breaks": "splits each tile on its NW-SE diagonal instead of SW-NE, so tile 1,1 reads 9.8425 percent instead of 11.8292",
+  "edits": [
+    {
+      "find": "    south_east_triangle = math.hypot(se - sw, ne - se)\n    north_west_triangle = math.hypot(ne - nw, nw - sw)\n",
+      "replace": "    south_east_triangle = math.hypot(ne - nw, ne - se)\n    north_west_triangle = math.hypot(se - sw, nw - sw)\n"
+    }
+  ]
+}

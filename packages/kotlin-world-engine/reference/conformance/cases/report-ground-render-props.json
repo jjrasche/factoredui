@@ -1,0 +1,119 @@
+{
+  "id": "report-ground-render-props",
+  "kind": "report",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 1,
+          "row": 0,
+          "depth_mm": 200
+        }
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "applied": "e1"
+      }
+    ],
+    "render": {
+      "ground": {
+        "unit": "mm",
+        "datum": "local",
+        "source": "conformance fixture: a hand-written surface, row 0 the north edge",
+        "vertex_cols": 5,
+        "vertex_rows": 4,
+        "heights_mm": [
+          1300,
+          1100,
+          1100,
+          1300,
+          1300,
+          1200,
+          1000,
+          1000,
+          1200,
+          1200,
+          1100,
+          1100,
+          900,
+          1100,
+          1100,
+          1000,
+          1000,
+          1000,
+          1000,
+          1000
+        ],
+        "version": 1
+      },
+      "ground_base": {
+        "heights_mm": [
+          1300,
+          1300,
+          1300,
+          1300,
+          1300,
+          1200,
+          1200,
+          1200,
+          1200,
+          1200,
+          1100,
+          1100,
+          900,
+          1100,
+          1100,
+          1000,
+          1000,
+          1000,
+          1000,
+          1000
+        ],
+        "cut_fill_mm": [
+          0,
+          -200,
+          -200,
+          0,
+          0,
+          0,
+          -200,
+          -200,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "counts": {
+        "commons": 0,
+        "barn": 0,
+        "garden": 0
+      },
+      "cells": []
+    },
+    "outputs": {
+      "ground": {
+        "version": 1,
+        "min_mm": 900,
+        "max_mm": 1300
+      }
+    }
+  },
+  "notes": "render_props gains ground (unit, datum, source, vertex_cols = cols + 1, vertex_rows = rows + 1, the current vertex heights row by row from the north edge, and version, which counts every height change) and ground_base (the seed surface and, per vertex, cut_fill_mm = current - base, negative where dug). The dig of tile 1,0 changes vertices 1,0, 2,0, 1,1 and 2,1 once each. The report carries ground version, min_mm and max_mm."
+}

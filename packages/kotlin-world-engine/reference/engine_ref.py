@@ -21,11 +21,18 @@ VOTE_CLASSES = ("on_site", "nearby", "supporting")
 DIRECTIONS = {"north": (0, -1), "south": (0, 1), "east": (1, 0), "west": (-1, 0)}
 SOURCED_KINDS = ("price", "labor", "yield", "regulation", "demographic")
 INSTANCE_VERBS = ("place_instance", "remove_instance")
-WORLD_VERBS = ("place", "remove", "tick", "enroll", "opt_in") + INSTANCE_VERBS
+GROUND_VERBS = ("dig", "raise")
+WORLD_VERBS = ("place", "remove", "tick", "enroll", "opt_in") + INSTANCE_VERBS + GROUND_VERBS
 GOVERNANCE_VERBS = ("branch", "merge", "revert", "endorse")
-MERGEABLE_VERBS = ("place", "remove", "tick", "enroll", "opt_in", "revert") + INSTANCE_VERBS
+MERGEABLE_VERBS = ("place", "remove", "tick", "enroll", "opt_in", "revert") + INSTANCE_VERBS + GROUND_VERBS
+GROUND_FUNCTIONS = ("ground_mm", "min_ground_mm", "max_ground_mm", "slope_pct")
+TILE_GROUND_FUNCTIONS = ("ground_mm", "slope_pct")
 FUNCTIONS = ("count", "sum", "neighbors", "side", "edge", "distance", "if", "min", "max", "projected_support",
-             "count_instances", "min_distance_mm")
+             "count_instances", "min_distance_mm") + GROUND_FUNCTIONS
+GROUND_AMOUNT_FIELDS = {"dig": "depth_mm", "raise": "height_mm"}
+MAX_GROUND_CHANGE_MM = 50000
+GROUND_FLOOR_MM = -500000
+GROUND_CEILING_MM = 5000000
 BUILTIN_NAMES = ("tile", "tile_area", "now", "tick_length", "instance")
 MAX_NODES = 256
 MAX_DEPTH = 24
@@ -121,7 +128,7 @@ def combine_dims(left: tuple[int, ...], right: tuple[int, ...], sign: int) -> tu
 # sum     := term (("+" | "-") term)*
 # term    := unary (("*" | "/") unary)*
 # unary   := "-" unary | atom
-# atom    := NUMBER ("[" UNIT "]")? | STRING | "true" | "false" | NAME | NAME "(" expr ("," expr)* ")" | "(" expr ")"
+# atom    := NUMBER ("[" UNIT "]")? | STRING | "true" | "false" | NAME | NAME "(" (expr ("," expr)*)? ")" | "(" expr ")"
 
 TOKEN = re.compile(
     r"""\s*(?:
@@ -274,7 +281,9 @@ class ExpressionParser:
         if function not in FUNCTIONS:
             raise ExprError("unknown_word", f"function '{function}' is not in the closed vocabulary {FUNCTIONS}")
         self.expect("(")
-        arguments = [self.parse_or()]
+        arguments = []
+        if self.peek() != ")":
+            arguments.append(self.parse_or())
         while self.peek() == ",":
             self.take()
             arguments.append(self.parse_or())
@@ -565,7 +574,18 @@ def check_call(function: str, arguments, scope: Scope) -> tuple:
         for argument in arguments:
             require_instance_set(argument, scope, function)
         return num_type(FT_DIM)
+    if function in GROUND_FUNCTIONS:
+        return check_ground_call(function, arguments, scope)
     raise ExprError("unknown_word", f"function '{function}' is not in the closed vocabulary")
+
+
+def check_ground_call(function: str, arguments, scope: Scope) -> tuple:
+    require_arity(function, arguments, (0,))
+    if scope.world.ground is None:
+        raise ExprError("unknown_word", f"{function}(): world {scope.world.id} declares no ground")
+    if function in TILE_GROUND_FUNCTIONS and scope.site != "rule":
+        raise ExprError("unknown_word", f"{function}() reads the tile a rule is bound to; it exists only inside a rule")
+    return num_type(DIMENSIONLESS) if function == "slope_pct" else num_type(FT_DIM)
 
 
 # ---------------------------------------------------------------- world
@@ -583,6 +603,7 @@ class World:
         self.cols, self.rows = int(self.grid["cols"]), int(self.grid["rows"])
         self.tile_ft = float(self.grid["tile_ft"])
         self.frame = doc.get("frame")
+        self.ground = doc.get("ground")
         self.types = {t["id"]: t for t in doc.get("object_types", [])}
         self.tags = {tag for t in self.types.values() for tag in t.get("tags", [])}
         self.equations = {e["id"]: e for e in doc.get("equations", [])}
@@ -660,6 +681,8 @@ class World:
     def seed_state(self) -> "State":
         if self.seed_cache is None:
             state = State()
+            if self.ground is not None:
+                state.ground = list(self.ground["heights_mm"])
             for stock in self.stocks.values():
                 factor = parse_unit(stock["unit"])[0]
                 state.stocks[stock["id"]] = float(stock["initial"]) * factor
@@ -767,6 +790,7 @@ class World:
 
     def diagnose(self) -> list[dict]:
         findings = [{"where": "links", "kind": "link", "message": problem} for problem in self.link_problems]
+        findings += [{"where": "ground", "kind": "ground", "message": problem} for problem in ground_problems(self)]
         cycle = self.find_cycle()
         if cycle:
             findings.append({"where": "names", "kind": "cycle", "message": " -> ".join(cycle)})
@@ -792,6 +816,55 @@ def check_site(site: dict) -> dict | None:
     except ExprError as problem:
         return {"kind": problem.kind, "message": problem.message}
     return None
+
+
+def expected_ground_length(world: "World") -> int:
+    return (world.cols + 1) * (world.rows + 1)
+
+
+def is_number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def ground_out_of_range(heights: list) -> list[int]:
+    return [index for index, height in enumerate(heights)
+            if is_number(height) and not GROUND_FLOOR_MM <= height <= GROUND_CEILING_MM]
+
+
+def ground_problems(world: "World") -> list[str]:
+    """What keeps a ground from being read: a vertex count other than (cols + 1) x (rows + 1), or a height out of range."""
+    if world.ground is None:
+        return []
+    heights = world.ground["heights_mm"]
+    problems = []
+    if len(heights) != expected_ground_length(world):
+        problems.append(f"{len(heights)} heights, but a {world.cols} x {world.rows} grid has (cols + 1) x (rows + 1) = "
+                        f"{expected_ground_length(world)} vertices")
+    outside = ground_out_of_range(heights)
+    if outside:
+        problems.append(f"heights at vertex indices {outside} lie outside {GROUND_FLOOR_MM} to {GROUND_CEILING_MM} mm")
+    return problems
+
+
+def tile_corner_indices(world: "World", col: int, row: int) -> list[int]:
+    """A tile's four vertices in row order, NW, NE, SW, SE; vertex row 0 is the north edge."""
+    vertex_cols = world.cols + 1
+    return [row * vertex_cols + col, row * vertex_cols + col + 1, (row + 1) * vertex_cols + col, (row + 1) * vertex_cols + col + 1]
+
+
+def tile_corner_names(col: int, row: int) -> list[str]:
+    return [f"ground:{vc},{vr}" for vr in (row, row + 1) for vc in (col, col + 1)]
+
+
+def tile_mean_mm(world: "World", heights: list, col: int, row: int) -> float:
+    return sum(heights[index] for index in tile_corner_indices(world, col, row)) / 4
+
+
+def tile_slope_pct(nw: float, ne: float, sw: float, se: float, side_mm: float) -> float:
+    """The tile split on its SW-NE diagonal: the steeper of the two triangle planes' gradient magnitudes, as a percentage."""
+    south_east_triangle = math.hypot(se - sw, ne - se)
+    north_west_triangle = math.hypot(ne - nw, nw - sw)
+    return 100 * max(south_east_triangle, north_west_triangle) / side_mm
 
 
 def exact(value) -> Fraction:
@@ -931,6 +1004,8 @@ class State:
         self.agents: dict[str, dict] = {}
         self.endorsements: list[dict] = []
         self.instance_layer: dict[str, dict] = {}
+        self.ground: list | None = None
+        self.ground_version = 0
 
     def copy(self) -> "State":
         return copy.deepcopy(self)
@@ -960,6 +1035,8 @@ class State:
         }
         if self.instance_layer:
             canonical["instances"] = dict(sorted(self.instance_layer.items()))
+        if self.ground is not None:
+            canonical["ground"] = {"heights_mm": list(self.ground), "version": self.ground_version}
         return canonical
 
 
@@ -1135,7 +1212,23 @@ class Evaluation:
             return self.nearest_distance(self.tiles_of(arguments[0]), self.tiles_of(arguments[1]))
         if function == "projected_support":
             return self.projected_support(arguments[0][1])
+        if function in GROUND_FUNCTIONS:
+            return self.ground_value(function)
         raise ExprError("unknown_word", f"function '{function}'")
+
+    def ground_value(self, function: str) -> float | None:
+        heights = self.state.ground
+        if function == "min_ground_mm":
+            return min(heights) / 304.8
+        if function == "max_ground_mm":
+            return max(heights) / 304.8
+        if self.tile_instance is None:
+            return None
+        tiles = [tuple(tile) for tile in self.tile_instance["tiles"]]
+        if function == "ground_mm":
+            return sum(tile_mean_mm(self.world, heights, c, r) for c, r in tiles) / len(tiles) / 304.8
+        side_mm = float(self.world.tile_mm())
+        return max(tile_slope_pct(*(heights[i] for i in tile_corner_indices(self.world, c, r)), side_mm) for c, r in tiles)
 
     def count_neighbors(self, arguments) -> float:
         footprint = {tuple(t) for t in self.tile_instance["tiles"]}
@@ -1217,7 +1310,9 @@ def compare_values(operator: str, left, right) -> bool | None:
 # ---------------------------------------------------------------- applying events
 
 
-def rule_targets(world: World, rule: dict, type_id: str) -> bool:
+def rule_targets(world: World, rule: dict, type_id: str | None) -> bool:
+    if type_id is None:
+        return "applies_to" not in rule and "applies_to_tag" not in rule
     if "applies_to" in rule:
         return type_id in rule["applies_to"]
     if "applies_to_tag" in rule:
@@ -1378,6 +1473,52 @@ def apply_remove_instance(world: World, state: State, event: dict, lookup) -> St
     return candidate
 
 
+def ground_amount(verb: str, parameters: dict):
+    field = GROUND_AMOUNT_FIELDS[verb]
+    amount = parameters.get(field)
+    if not is_number(amount):
+        raise Refusal("ground-amount", f"{verb} needs {field} as a number of millimetres")
+    if not 0 < amount <= MAX_GROUND_CHANGE_MM:
+        raise Refusal("ground-amount", f"{verb} needs {field} above 0 and at most {MAX_GROUND_CHANGE_MM} mm, found {format_mm(amount)}")
+    return amount
+
+
+def check_ground_range(verb: str, col: int, row: int, corners: list) -> None:
+    for height in corners:
+        if not GROUND_FLOOR_MM <= height <= GROUND_CEILING_MM:
+            raise Refusal("ground-range", f"{verb} at {col},{row} would take ground to {format_mm(height)} mm, "
+                                          f"outside {GROUND_FLOOR_MM} to {GROUND_CEILING_MM} mm")
+
+
+def ground_subject(state: State, col: int, row: int) -> dict:
+    """What a dig or raise rule binds as `tile`: the acted tile, typed by the object on it, if any."""
+    occupant = state.instance_at(col, row)
+    return {"id": None, "type": occupant["type"] if occupant else None, "col": col, "row": row, "tiles": [[col, row]]}
+
+
+def apply_ground_change(world: World, state: State, event: dict, lookup) -> State:
+    """dig lowers and raise lifts a tile's four corner vertices by the amount, each once; then the rules are checked."""
+    verb = event["action"]
+    if verb not in world.actions:
+        raise Refusal("unknown-action", f"no action '{verb}'")
+    if world.ground is None:
+        raise Refusal("no-ground", f"world {world.id} has no ground to dig or raise")
+    parameters = event["parameters"]
+    col, row = int(parameters["col"]), int(parameters["row"])
+    if not is_on_grid(world, (col, row)):
+        raise Refusal("off-grid", f"tile {col},{row} is not on the {world.cols} x {world.rows} grid")
+    amount = ground_amount(verb, parameters)
+    change = -amount if verb == "dig" else amount
+    candidate = state.copy()
+    corners = tile_corner_indices(world, col, row)
+    for index in corners:
+        candidate.ground[index] = candidate.ground[index] + change
+    check_ground_range(verb, col, row, [candidate.ground[index] for index in corners])
+    candidate.ground_version += 1
+    check_rules(world, candidate, verb, ground_subject(candidate, col, row))
+    return candidate
+
+
 def apply_tick(world: World, state: State, event: dict, lookup) -> State:
     require_world_verb(world, "tick")
     steps = int(event["parameters"].get("n", 1))
@@ -1469,6 +1610,8 @@ HANDLERS = {
     "remove": apply_remove,
     "place_instance": apply_place_instance,
     "remove_instance": apply_remove_instance,
+    "dig": apply_ground_change,
+    "raise": apply_ground_change,
     "tick": apply_tick,
     "enroll": apply_enroll,
     "opt_in": apply_opt_in,
@@ -1615,6 +1758,8 @@ class Log:
             return [f"instance:{event['id']}"]
         if action == "remove_instance":
             return [f"instance:{parameters['id']}"]
+        if action in GROUND_VERBS:
+            return tile_corner_names(int(parameters["col"]), int(parameters["row"]))
         if action == "tick":
             return ["clock"]
         if action in ("enroll", "opt_in"):
@@ -1691,7 +1836,7 @@ class Log:
         if event_id not in ids:
             return Refusal("revert-unknown", f"{event_id} is not applied on {branch}")
         target = self.by_id[event_id]
-        if target["action"] not in ("place", "remove"):
+        if target["action"] not in ("place", "remove") + GROUND_VERBS:
             return Refusal("revert-unsupported", f"only place and remove revert; branch from before {event_id} instead")
         if any(e["action"] == "revert" and e["parameters"]["event"] == event_id for e in applied):
             return Refusal("already-reverted", f"{event_id} is already reverted")
@@ -1701,6 +1846,8 @@ class Log:
             return Refusal("revert-conflict", f"{', '.join(clash)} changed after {event_id}")
         if target["action"] == "place":
             return {"action": "remove", "parameters": {"col": target["parameters"]["col"], "row": target["parameters"]["row"]}}
+        if target["action"] in GROUND_VERBS:
+            return inverse_ground_change(target["action"], target["parameters"])
         return {"action": "place", "parameters": dict(target["removed"])}
 
     def revert(self, event_id: str, branch: str, actor: str, timestamp: str):
@@ -1727,6 +1874,12 @@ class Log:
         return None
 
 
+def inverse_ground_change(verb: str, parameters: dict) -> dict:
+    inverse = "raise" if verb == "dig" else "dig"
+    return {"action": inverse, "parameters": {"col": parameters["col"], "row": parameters["row"],
+                                              GROUND_AMOUNT_FIELDS[inverse]: parameters[GROUND_AMOUNT_FIELDS[verb]]}}
+
+
 # ---------------------------------------------------------------- outputs and the renderer contract
 
 
@@ -1741,7 +1894,7 @@ def report_outputs(world: World, state: State) -> dict:
     counts = {type_id: 0 for type_id in world.types}
     for instance_id in state.cells.values():
         counts[state.instances[instance_id]["type"]] += 1
-    return {
+    outputs = {
         "counts": counts,
         "areas": {type_id: count * world.tile_ft ** 2 for type_id, count in counts.items()},
         "equations": {k: convert_to_unit(evaluation.value_of(world.ast(v["expr"])), v["unit"]) for k, v in world.equations.items()},
@@ -1749,6 +1902,9 @@ def report_outputs(world: World, state: State) -> dict:
         "scoring": {k: convert_to_unit(evaluation.value_of(world.ast(v["expr"])), v["unit"]) for k, v in world.scoring.items()},
         "ticks": state.ticks,
     }
+    if state.ground is not None:
+        outputs["ground"] = {"version": state.ground_version, "min_mm": min(state.ground), "max_mm": max(state.ground)}
+    return outputs
 
 
 def render_props(world: World, state: State) -> dict:
@@ -1758,7 +1914,19 @@ def render_props(world: World, state: State) -> dict:
                           for _, record in sorted(state.instance_layer.items())]
     if world.frame is not None:
         props["frame"] = dict(world.frame)
+    if state.ground is not None:
+        props.update(ground_props(world, state))
     return props
+
+
+def ground_props(world: World, state: State) -> dict:
+    base = world.ground["heights_mm"]
+    return {
+        "ground": {"unit": "mm", "datum": world.ground["datum"], "source": world.ground["source"],
+                   "vertex_cols": world.cols + 1, "vertex_rows": world.rows + 1,
+                   "heights_mm": list(state.ground), "version": state.ground_version},
+        "ground_base": {"heights_mm": list(base), "cut_fill_mm": [now - seed for now, seed in zip(state.ground, base)]},
+    }
 
 
 def tilemap_props(world: World, state: State) -> dict:
@@ -1825,6 +1993,9 @@ def format_outputs(world: World, outputs: dict) -> list[str]:
             shown = "not-measured" if value is None else f"{value:.6g}"
             lines.append(f"{section} {key} {shown} {declared[key]['unit']}")
     lines.append(f"ticks {outputs['ticks']}")
+    if "ground" in outputs:
+        ground = outputs["ground"]
+        lines.append(f"ground version {ground['version']} min {format_mm(ground['min_mm'])} mm max {format_mm(ground['max_mm'])} mm")
     return lines
 
 

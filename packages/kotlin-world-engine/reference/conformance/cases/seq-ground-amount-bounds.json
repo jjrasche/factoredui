@@ -1,0 +1,142 @@
+{
+  "id": "seq-ground-amount-bounds",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json",
+    "edits": [
+      {
+        "op": "delete",
+        "path": [
+          "rules",
+          {
+            "id": "dig-floor"
+          }
+        ]
+      }
+    ]
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "depth_mm": 0
+        }
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "depth_mm": -5
+        }
+      },
+      {
+        "do": "raise",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "height_mm": 50001
+        }
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "depth_mm": "10"
+        }
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "depth_mm": true
+        }
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 0,
+          "row": 0
+        }
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 0,
+          "row": 0,
+          "depth_mm": 50000
+        }
+      },
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 4,
+          "row": 0,
+          "depth_mm": 10
+        }
+      },
+      {
+        "do": "raise",
+        "parameters": {
+          "col": 0,
+          "row": 3,
+          "height_mm": 10
+        }
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "refused": "ground-amount",
+        "message": "dig needs depth_mm above 0 and at most 50000 mm, found 0"
+      },
+      {
+        "refused": "ground-amount",
+        "message": "dig needs depth_mm above 0 and at most 50000 mm, found -5"
+      },
+      {
+        "refused": "ground-amount",
+        "message": "raise needs height_mm above 0 and at most 50000 mm, found 50001"
+      },
+      {
+        "refused": "ground-amount",
+        "message": "dig needs depth_mm as a number of millimetres"
+      },
+      {
+        "refused": "ground-amount",
+        "message": "dig needs depth_mm as a number of millimetres"
+      },
+      {
+        "refused": "ground-amount",
+        "message": "dig needs depth_mm as a number of millimetres"
+      },
+      {
+        "applied": "e1"
+      },
+      {
+        "refused": "off-grid",
+        "message": "tile 4,0 is not on the 4 x 3 grid"
+      },
+      {
+        "refused": "off-grid",
+        "message": "tile 0,3 is not on the 4 x 3 grid"
+      }
+    ],
+    "final": {
+      "main": {
+        "equations": {
+          "lowest_ground": -48800,
+          "highest_ground": 1300
+        }
+      }
+    }
+  },
+  "notes": "With the dig-floor rule deleted, only the amount bounds speak. An amount must be a number (not a string, not a boolean, not absent), above 0 and at most 50000 mm. Digging tile 0,0 by exactly 50000 applies: vertices 0,1 and 1,1 go to 1200 - 50000 = -48800, the least. Tile columns run 0..3 and rows 0..2."
+}

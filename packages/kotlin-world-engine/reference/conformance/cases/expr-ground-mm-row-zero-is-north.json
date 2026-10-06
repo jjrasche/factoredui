@@ -1,0 +1,33 @@
+{
+  "id": "expr-ground-mm-row-zero-is-north",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "text": "ground_mm()",
+    "site": "rule",
+    "setup": [
+      {
+        "do": "place",
+        "parameters": {
+          "type": "garden",
+          "col": 0,
+          "row": 0
+        }
+      }
+    ],
+    "bindings": {
+      "tile": [
+        0,
+        0
+      ]
+    }
+  },
+  "expect": {
+    "value": 1250,
+    "unit": "mm"
+  },
+  "notes": "Tile 0,0 sits on vertex rows 0 and 1: (1300 + 1300 + 1200 + 1200) / 4 = 1250 mm. A port that read vertex row 0 as the south edge would see rows 3 and 2 here, (1000 + 1000 + 1100 + 1100) / 4 = 1050."
+}

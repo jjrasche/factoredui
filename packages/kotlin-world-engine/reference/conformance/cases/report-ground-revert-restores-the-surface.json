@@ -1,0 +1,115 @@
+{
+  "id": "report-ground-revert-restores-the-surface",
+  "kind": "report",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json"
+  },
+  "input": {
+    "steps": [
+      {
+        "do": "dig",
+        "parameters": {
+          "col": 2,
+          "row": 0,
+          "depth_mm": 100
+        }
+      },
+      {
+        "do": "revert",
+        "event": "e1"
+      }
+    ]
+  },
+  "expect": {
+    "steps": [
+      {
+        "applied": "e1"
+      },
+      {
+        "applied": "e2"
+      }
+    ],
+    "render": {
+      "ground": {
+        "heights_mm": [
+          1300,
+          1300,
+          1300,
+          1300,
+          1300,
+          1200,
+          1200,
+          1200,
+          1200,
+          1200,
+          1100,
+          1100,
+          900,
+          1100,
+          1100,
+          1000,
+          1000,
+          1000,
+          1000,
+          1000
+        ],
+        "version": 2
+      },
+      "ground_base": {
+        "heights_mm": [
+          1300,
+          1300,
+          1300,
+          1300,
+          1300,
+          1200,
+          1200,
+          1200,
+          1200,
+          1200,
+          1100,
+          1100,
+          900,
+          1100,
+          1100,
+          1000,
+          1000,
+          1000,
+          1000,
+          1000
+        ],
+        "cut_fill_mm": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "outputs": {
+      "ground": {
+        "version": 2,
+        "min_mm": 900,
+        "max_mm": 1300
+      }
+    }
+  },
+  "notes": "The revert of a dig is a raise by the same amount on the same tile, so the surface returns to the seed; version still counts both changes, 2."
+}

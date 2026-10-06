@@ -1,0 +1,30 @@
+{
+  "id": "load-ground-error-number-without-source",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json",
+    "edits": [
+      {
+        "op": "set",
+        "path": [
+          "ground",
+          "error",
+          "vertical_mm"
+        ],
+        "value": {
+          "value": 60
+        }
+      }
+    ]
+  },
+  "input": {},
+  "expect": {
+    "valid": false,
+    "first": "ground-error-reason",
+    "fired": [
+      "ground-error-reason"
+    ]
+  },
+  "notes": "A vertical error that is a number needs its source."
+}

@@ -1,0 +1,47 @@
+{
+  "id": "load-ground-heights-wrong-length",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {
+    "file": "ground-plot.frozen.world.json",
+    "edits": [
+      {
+        "op": "set",
+        "path": [
+          "ground",
+          "heights_mm"
+        ],
+        "value": [
+          1300,
+          1300,
+          1300,
+          1300,
+          1300,
+          1200,
+          1200,
+          1200,
+          1200,
+          1200,
+          1100,
+          1100,
+          900,
+          1100,
+          1100,
+          1000,
+          1000,
+          1000,
+          1000
+        ]
+      }
+    ]
+  },
+  "input": {},
+  "expect": {
+    "valid": false,
+    "first": "ground-size",
+    "fired": [
+      "ground-size"
+    ]
+  },
+  "notes": "19 heights for a 4 x 3 grid, which needs 5 x 4 = 20 vertices."
+}
