@@ -28,7 +28,7 @@ import ai.factoredui.compose.pixel.EMBEDDED_PIXEL_ATLAS
 import ai.factoredui.compose.pixel.PIXEL_LOOK
 import ai.factoredui.compose.pixel.PixelPlanInput
 import ai.factoredui.compose.pixel.planPixelSprites
-import ai.factoredui.compose.pixel.pixelArtScaleFor
+import ai.factoredui.compose.pixel.fitPixelZoom
 import ai.factoredui.compose.pixel.pixelCostsFor
 import ai.factoredui.compose.pixel.pixelFitView
 import ai.factoredui.compose.pixel.snapPixelView
@@ -194,13 +194,13 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     val rows = sceneView.rows
     val density = LocalDensity.current.density
     val isPixel = resolvedProps["look"] == PIXEL_LOOK && shape == TileShape.SQUARE
-    val pixelScale = remember(sceneView.tileFeet, density) { pixelArtScaleFor(sceneView.tileFeet, density) }
-    val pixelImages = if (isPixel) remember(pixelScale.artTileWidth) { pixelImagesFor(pixelScale.artTileWidth) } else null
+    val pixel = if (isPixel) remember(sceneView.tileFeet, density) { pixelSetupFor(sceneView.tileFeet, density) } else null
+    val pixelImages = pixel?.images
     val pixelCosts = pixelCostsFor(LocalDeviceProfile.current)
     val quarterTurns = resolveViewState(resolvedProps["view_state"]).quarterTurns
-    val space = remember(shape, view, cols, rows, density, pixelImages, pixelScale, quarterTurns) {
-        if (pixelImages != null) {
-            pixelSpaceOf(cols, rows, pixelScale, pixelImages, quarterTurns)
+    val space = remember(shape, view, cols, rows, density, pixel, quarterTurns) {
+        if (pixel != null) {
+            pixelSpaceOf(cols, rows, pixel.scale, pixel.images, quarterTurns)
         } else {
             val tileWidthPx = TILEMAP_TILE_WIDTH_DP * density
             TilemapSpace(view, tileWidthPx, tilemapScreenBounds(shape, view, cols, rows, tileWidthPx))
@@ -293,15 +293,16 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
         BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds().nodeTag("${node.id}:map")) {
             val viewWidthPx = constraints.maxWidth.toFloat()
             val viewHeightPx = constraints.maxHeight.toFloat()
-            val fit = remember(space, viewWidthPx, viewHeightPx, isPixel, pixelFocus, pixelScale) {
-                if (isPixel) {
-                    pixelFitView(pixelFocus.x, pixelFocus.y, viewWidthPx, viewHeightPx, pixelScale.zoom)
+            val fit = remember(space, viewWidthPx, viewHeightPx, pixel, pixelFocus, quarterTurns) {
+                if (pixel != null) {
+                    val parcel = pixelParcelSize(cols, rows, pixel.scale, quarterTurns)
+                    pixelFitView(pixelFocus.x, pixelFocus.y, viewWidthPx, viewHeightPx, fitPixelZoom(parcel.width, parcel.height, viewWidthPx, viewHeightPx, FIT_MARGIN_PX, pixel.scale.maxZoom))
                 } else {
                     fitFlowView(space.contentWidth, space.contentHeight, viewWidthPx, viewHeightPx, maxScale = MAX_FIT_SCALE, margin = FIT_MARGIN_PX)
                 }
             }
             var gestureView by remember(space, viewWidthPx, viewHeightPx) { mutableStateOf<FlowView?>(null) }
-            val current = (gestureView ?: fit).let { if (isPixel) snapPixelView(it, viewWidthPx, viewHeightPx, pixelScale.maxZoom) else it }
+            val current = (gestureView ?: fit).let { gestured -> pixel?.let { snapPixelView(gestured, viewWidthPx, viewHeightPx, it.scale.maxZoom) } ?: gestured }
             val latest by rememberUpdatedState(current)
 
             fun contentAt(screen: Offset): Offset = Offset((screen.x - latest.translateX) / latest.scale, (screen.y - latest.translateY) / latest.scale)

@@ -20,12 +20,12 @@ class PixelLookCheck {
 
     private val parcelTiles = 8
 
-    private fun tilemap(look: String?) = SpecNode(
+    private fun tilemap(look: String?, tiles: Int = parcelTiles) = SpecNode(
         id = "world",
         type = SpecNodeType.TILEMAP,
         props = buildMap {
-            put("cols", SpecValue.NumberValue(parcelTiles.toDouble()))
-            put("rows", SpecValue.NumberValue(parcelTiles.toDouble()))
+            put("cols", SpecValue.NumberValue(tiles.toDouble()))
+            put("rows", SpecValue.NumberValue(tiles.toDouble()))
             put("tile_area", SpecValue.NumberValue(25.0))
             put("uses", SpecValue.StringValue("{uses}"))
             put("cells", SpecValue.StringValue("{cells}"))
@@ -46,9 +46,9 @@ class PixelLookCheck {
     )
 
     private fun patternColours(name: String): Set<Int> {
-        val scale = EMBEDDED_PIXEL_ATLAS.manifest.scales.getValue(32)
+        val scale = EMBEDDED_PIXEL_ATLAS.manifest.scales.getValue("32-5ft")
         val sprite = scale.byName.getValue(name)
-        return EMBEDDED_PIXEL_ATLAS.sheets(32)[sprite.sheet].crop(sprite.x, sprite.y, sprite.width, sprite.height).argb.toSet()
+        return EMBEDDED_PIXEL_ATLAS.sheets("32-5ft")[sprite.sheet].crop(sprite.x, sprite.y, sprite.width, sprite.height).argb.toSet()
     }
 
     private fun PixelMap.centreBlock(half: Int): List<Int> =
@@ -69,14 +69,14 @@ class PixelLookCheck {
         val check = SpecVisualCheck(this, contextOf())
         check.render(tilemap("pixel"), viewport = 400.dp)
         val grass = patternColours("ground-grass/0")
-        val stray = mapPixels(check).centreBlock(60).filterNot { it in grass }
+        val stray = mapPixels(check).centreBlock(20).filterNot { it in grass }
         assertEquals(emptyList(), stray.distinct().map { it.toUInt().toString(16) }, "every pixel at the parcel centre is a grass art colour")
     }
 
     @Test
-    fun theArtIsMagnifiedByAWholeNumberSoEachArtPixelIsAThreeByThreeBlock() = runComposeUiTest {
+    fun aSmallParcelOpensAtTheLargestWholeZoomThatFitsSoEachArtPixelIsAThreeByThreeBlock() = runComposeUiTest {
         val check = SpecVisualCheck(this, contextOf())
-        check.render(tilemap("pixel"), viewport = 400.dp)
+        check.render(tilemap("pixel", tiles = 3), viewport = 400.dp)
         val pixels = mapPixels(check)
         val row = (0 until pixels.width).map { pixels[it, pixels.height / 2].toArgb() }.subList(pixels.width / 2 - 90, pixels.width / 2 + 90)
         val runs = mutableListOf<Int>()
@@ -90,21 +90,21 @@ class PixelLookCheck {
     @Test
     fun aPathFootprintIsPathArtAndAPondIsWaterArt() = runComposeUiTest {
         val footprints = listOf(
-            mapOf("id" to "p", "use" to "path", "col" to 2, "row" to 2, "width" to 2, "height" to 2),
-            mapOf("id" to "w", "use" to "pond", "col" to 5, "row" to 5, "width" to 2, "height" to 2),
+            mapOf("id" to "p", "use" to "path", "col" to 0, "row" to 0, "width" to 4, "height" to 4),
+            mapOf("id" to "w", "use" to "pond", "col" to 4, "row" to 4, "width" to 4, "height" to 4),
         )
-        val pathCheck = SpecVisualCheck(this, contextOf(footprints, centreMm = listOf(3 * 1524.0, (parcelTiles - 3) * 1524.0)))
+        val pathCheck = SpecVisualCheck(this, contextOf(footprints, centreMm = listOf(2 * 1524.0, (parcelTiles - 2) * 1524.0)))
         pathCheck.render(tilemap("pixel"), viewport = 400.dp)
         val path = patternColours("ground-path/0")
-        assertTrue(mapPixels(pathCheck).centreBlock(20).all { it in path }, "the centre of the path footprint is path art")
+        assertTrue(mapPixels(pathCheck).centreBlock(10).all { it in path }, "the centre of the path footprint is path art")
     }
 
     @Test
     fun theFocusOfTheViewStateIsAtTheCentreOfTheMap() = runComposeUiTest {
-        val footprints = listOf(mapOf("id" to "w", "use" to "pond", "col" to 5, "row" to 5, "width" to 2, "height" to 2))
+        val footprints = listOf(mapOf("id" to "w", "use" to "pond", "col" to 4, "row" to 4, "width" to 4, "height" to 4))
         val check = SpecVisualCheck(this, contextOf(footprints, centreMm = listOf(6 * 1524.0, (parcelTiles - 6) * 1524.0)))
         check.render(tilemap("pixel"), viewport = 400.dp)
         val water = patternColours("ground-water/0")
-        assertTrue(mapPixels(check).centreBlock(20).all { it in water }, "the pond the view centres on is water art")
+        assertTrue(mapPixels(check).centreBlock(10).all { it in water }, "the pond the view centres on is water art")
     }
 }

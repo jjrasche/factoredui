@@ -27,6 +27,8 @@ data class PixelSprite(
     val anchorX: Int,
     val anchorY: Int,
     val artTileWidth: Int,
+    val artTileFeet: Double,
+    val variant: String,
     val footprintFt: Pair<Double, Double>,
     val heightFt: Double,
     val swap: String,
@@ -42,11 +44,11 @@ data class PixelScale(val artTileWidth: Int, val artTileFeet: Double, val sheets
 
 data class PixelSwap(val base: String, val ramps: Map<String, List<Int>>)
 
-data class PixelManifest(val version: Int, val scales: Map<Int, PixelScale>, val swaps: Map<String, PixelSwap>)
+data class PixelManifest(val version: Int, val scales: Map<String, PixelScale>, val swaps: Map<String, PixelSwap>)
 
 fun parsePixelManifest(json: String): PixelManifest {
     val root = Json.parseToJsonElement(json).jsonObject
-    val scales = root.getValue("scales").jsonObject.entries.associate { (key, value) -> key.toInt() to scaleOf(value.jsonObject) }
+    val scales = root.getValue("scales").jsonObject.entries.associate { (key, value) -> key to scaleOf(value.jsonObject) }
     val swaps = root.getValue("swaps").jsonObject.entries.associate { (key, value) -> key to swapOf(value.jsonObject) }
     return PixelManifest(root.int("version"), scales, swaps)
 }
@@ -79,6 +81,8 @@ private fun spriteOf(fields: JsonObject): PixelSprite {
         anchorX = fields.int("anchor_x"),
         anchorY = fields.int("anchor_y"),
         artTileWidth = fields.int("art_tile_width"),
+        artTileFeet = fields.double("art_tile_feet"),
+        variant = fields.string("variant"),
         footprintFt = footprint[0].jsonPrimitive.double to footprint[1].jsonPrimitive.double,
         heightFt = fields.double("height_ft"),
         swap = fields.string("swap"),

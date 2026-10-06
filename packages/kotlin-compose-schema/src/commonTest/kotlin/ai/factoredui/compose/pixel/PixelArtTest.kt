@@ -4,6 +4,7 @@ import ai.factoredui.compose.layout.TileCoord
 import ai.factoredui.compose.layout.TileFootprint
 import ai.factoredui.compose.schema.TileSprite
 import ai.factoredui.compose.schema.TilemapUse
+import ai.factoredui.compose.schema.resolveTilemapUses
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -28,6 +29,34 @@ class PixelArtTest {
         assertEquals(PixelStanding.SHED, pixelArtFor(use("shed", TileSprite.BLOCK)).standing)
         assertEquals(PixelGround.SAND, pixelArtFor(use("sand_strip", TileSprite.FLAT)).ground)
         assertEquals(PixelGround.DIRT, pixelArtFor(use("gravel_yard", TileSprite.FLAT)).ground)
+    }
+
+    @Test
+    fun theUsesPathCarriesTheArtFieldThroughAndLeavesItNullWhenAbsent() {
+        val uses = resolveTilemapUses(listOf(mapOf("id" to "glasshouse", "sprite" to "block", "art" to "hoop_house"), mapOf("id" to "path", "sprite" to "flat")))
+        assertEquals(listOf("hoop_house", null), uses.map { it.art })
+    }
+
+    @Test
+    fun aNamedArtWinsOverTheGuessFromTheSpriteKindAndId() {
+        assertEquals(PixelStanding.HOOP_HOUSE, pixelArtFor(use("glasshouse", TileSprite.BLOCK).copy(art = "hoop_house")).standing)
+        assertEquals(PixelArtChoice(PixelGround.SAND, PixelStanding.NONE), pixelArtFor(use("path", TileSprite.FLAT).copy(art = "ground-sand")))
+        assertEquals(PixelArtChoice(null, PixelStanding.WOODLAND, treeClass = TreeClass.CONIFER), pixelArtFor(use("orchard", TileSprite.TREE).copy(art = "tree-conifer")))
+        assertEquals(PixelArtChoice(null, PixelStanding.FENCE, hasCritters = true), pixelArtFor(use("pen", TileSprite.FLAT, critter = "sheep").copy(art = "fence")))
+    }
+
+    @Test
+    fun anArtNameTheAtlasDoesNotKnowFallsBackToTheGuess() {
+        assertEquals(PixelArtChoice(PixelGround.DIRT, PixelStanding.VAN), pixelArtFor(use("van_pad", TileSprite.FLAT).copy(art = "spaceship")))
+    }
+
+    @Test
+    fun everyNamedStandingArtIsAClassInTheAtlas() {
+        val classes = EMBEDDED_PIXEL_ATLAS.manifest.scales.getValue("32-5ft").sprites.map { it.cls }.toSet()
+        for (name in listOf("fence", "hoop_house", "commons", "shed", "van", "cow", "person", "tractor", "tree-broadleaf", "tree-conifer", "tree-unknown", "ground-path", "ground-water")) {
+            assertTrue(name in classes, name)
+            assertTrue(namedArtFor(name, null) != null, name)
+        }
     }
 
     @Test

@@ -66,8 +66,8 @@ class PixelSpriteCheck {
     )
 
     private fun spriteColours(name: String): Set<Int> {
-        val sprite = EMBEDDED_PIXEL_ATLAS.manifest.scales.getValue(32).byName.getValue(name)
-        return EMBEDDED_PIXEL_ATLAS.sheets(32)[sprite.sheet].crop(sprite.x, sprite.y, sprite.width, sprite.height).argb.filter { (it ushr 24) == 0xFF }.toSet()
+        val sprite = EMBEDDED_PIXEL_ATLAS.manifest.scales.getValue("32-5ft").byName.getValue(name)
+        return EMBEDDED_PIXEL_ATLAS.sheets("32-5ft")[sprite.sheet].crop(sprite.x, sprite.y, sprite.width, sprite.height).argb.filter { (it ushr 24) == 0xFF }.toSet()
     }
 
     private fun centreColours(check: SpecVisualCheck, half: Int, liftPx: Int = 0): List<Int> {
@@ -113,10 +113,10 @@ class PixelSpriteCheck {
         )
         val check = SpecVisualCheck(this, contextOf(instances = listOf(instance("tree-01", "lidar_tree", 8.0, 8.0, crownMm = 3000.0)), centre = centredOn(8.0, 8.0), actions = actions))
         check.render(tilemap, viewport = 500.dp)
-        tapFromCentre(check, upPx = 120f)
+        tapFromCentre(check, upPx = 40f)
         assertEquals(listOf("tree-01"), instanceTaps.map { it["id"] })
         assertTrue(tileTaps.isEmpty())
-        tapFromCentre(check, upPx = -170f)
+        tapFromCentre(check, upPx = -60f)
         assertEquals(1, tileTaps.size, "well below the sprite is ground")
         assertEquals(1, instanceTaps.size)
     }

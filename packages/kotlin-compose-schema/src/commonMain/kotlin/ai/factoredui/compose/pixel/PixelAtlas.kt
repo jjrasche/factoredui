@@ -12,10 +12,10 @@ class ArgbSheet(val width: Int, val height: Int, val argb: IntArray) {
     }
 }
 
-class PixelAtlas(val manifest: PixelManifest, encoded: Map<Int, List<EncodedSheet>>) {
+class PixelAtlas(val manifest: PixelManifest, encoded: Map<String, List<EncodedSheet>>) {
     private val decoded = encoded.mapValues { (_, sheets) -> lazy { sheets.map(::decodeSheet) } }
 
-    fun sheets(artTileWidth: Int): List<ArgbSheet> = decoded.getValue(artTileWidth).value
+    fun sheets(variant: String): List<ArgbSheet> = decoded.getValue(variant).value
 }
 
 private const val LITERAL_LIMIT = 128
@@ -52,7 +52,7 @@ fun swapPalette(sheet: ArgbSheet, from: List<Int>, to: List<Int>): ArgbSheet {
 }
 
 fun swappedSprite(atlas: PixelAtlas, sprite: PixelSprite, rampName: String): ArgbSheet {
-    val pixels = atlas.sheets(sprite.artTileWidth)[sprite.sheet].crop(sprite.x, sprite.y, sprite.width, sprite.height)
+    val pixels = atlas.sheets(sprite.variant)[sprite.sheet].crop(sprite.x, sprite.y, sprite.width, sprite.height)
     val swap = atlas.manifest.swaps[sprite.swap] ?: return pixels
     val target = swap.ramps[rampName] ?: return pixels
     return swapPalette(pixels, swap.ramps.getValue(swap.base), target)
@@ -61,6 +61,6 @@ fun swappedSprite(atlas: PixelAtlas, sprite: PixelSprite, rampName: String): Arg
 val EMBEDDED_PIXEL_ATLAS: PixelAtlas by lazy {
     PixelAtlas(
         manifest = parsePixelManifest(decodeEmbeddedManifest(PIXEL_MANIFEST_BASE64)),
-        encoded = mapOf(32 to PIXEL_SHEETS_32, 64 to PIXEL_SHEETS_64),
+        encoded = PIXEL_SHEETS,
     )
 }

@@ -10,21 +10,22 @@ class PixelAtlasTest {
 
     private val tinyManifest = """
         {"version":1,
-         "scales":{"32":{"art_tile_width":32,"art_tile_feet":5.0,"sheets":[{"width":40,"height":20}],
+         "scales":{"32-5ft":{"art_tile_width":32,"art_tile_feet":5.0,"sheets":[{"width":40,"height":20}],
            "sprites":[{"name":"shed/10x8/SE","kind":"model","class":"shed","size":"10x8","facing":"SE","frame":0,"sheet":0,
-             "x":3,"y":4,"width":20,"height":12,"anchor_x":9,"anchor_y":10,"art_tile_width":32,"footprint_ft":[10.0,8.0],"height_ft":9.0,"swap":""}]}},
+             "x":3,"y":4,"width":20,"height":12,"anchor_x":9,"anchor_y":10,"art_tile_width":32,"art_tile_feet":5.0,"variant":"32-5ft","footprint_ft":[10.0,8.0],"height_ft":9.0,"swap":""}]}},
          "swaps":{"tractor":{"base":"Red","ramps":{"Red":["#FF6E1D1A","#FF9B2A25"],"Blue":["#FF1B3F7A","#FF2859A8"]}}}}
     """.trimIndent()
 
     @Test
     fun theReaderKeepsEverySpriteFieldIncludingTheGroundContactAnchor() {
         val manifest = parsePixelManifest(tinyManifest)
-        val shed = manifest.scales.getValue(32).byName.getValue("shed/10x8/SE")
+        val shed = manifest.scales.getValue("32-5ft").byName.getValue("shed/10x8/SE")
         assertEquals(PixelSpriteKind.MODEL, shed.kind)
         assertEquals(listOf(3, 4, 20, 12), listOf(shed.x, shed.y, shed.width, shed.height))
         assertEquals(9 to 10, shed.anchorX to shed.anchorY)
+        assertEquals("32-5ft" to 5.0, shed.variant to shed.artTileFeet)
         assertEquals(10.0 to 8.0, shed.footprintFt)
-        assertEquals(listOf(SheetSize(40, 20)), manifest.scales.getValue(32).sheets)
+        assertEquals(listOf(SheetSize(40, 20)), manifest.scales.getValue("32-5ft").sheets)
     }
 
     @Test
@@ -61,12 +62,13 @@ class PixelAtlasTest {
     }
 
     @Test
-    fun theEmbeddedAtlasCarriesBothArtScalesWithMatchingSheetsAndTheSameSprites() {
+    fun theEmbeddedAtlasCarriesEveryVariantWithMatchingSheetsAndTheSameSprites() {
         val manifest = EMBEDDED_PIXEL_ATLAS.manifest
-        assertEquals(setOf(32, 64), manifest.scales.keys)
-        assertEquals(manifest.scales.getValue(32).byName.keys, manifest.scales.getValue(64).byName.keys)
-        for ((width, scale) in manifest.scales) {
-            val sheets = EMBEDDED_PIXEL_ATLAS.sheets(width)
+        assertEquals(setOf("32-5ft", "64-5ft", "32-25ft"), manifest.scales.keys)
+        for (scale in manifest.scales.values) assertEquals(manifest.scales.getValue("32-5ft").byName.keys, scale.byName.keys)
+        for ((variant, scale) in manifest.scales) {
+            assertTrue(scale.sprites.all { it.variant == variant })
+            val sheets = EMBEDDED_PIXEL_ATLAS.sheets(variant)
             assertEquals(scale.sheets, sheets.map { SheetSize(it.width, it.height) })
             for (sprite in scale.sprites) {
                 val bounds = scale.sheets[sprite.sheet]
@@ -77,9 +79,9 @@ class PixelAtlasTest {
 
     @Test
     fun aGroundPatternDecodesFullyOpaqueAndATractorSwapsToBlue() {
-        val scale = EMBEDDED_PIXEL_ATLAS.manifest.scales.getValue(32)
+        val scale = EMBEDDED_PIXEL_ATLAS.manifest.scales.getValue("32-5ft")
         val grass = scale.byName.getValue("ground-grass/0")
-        val pixels = EMBEDDED_PIXEL_ATLAS.sheets(32)[grass.sheet].crop(grass.x, grass.y, grass.width, grass.height)
+        val pixels = EMBEDDED_PIXEL_ATLAS.sheets("32-5ft")[grass.sheet].crop(grass.x, grass.y, grass.width, grass.height)
         assertTrue(pixels.argb.all { (it ushr 24) == 0xFF })
         val tractor = scale.byName.getValue("tractor/idle/SE")
         val red = swappedSprite(EMBEDDED_PIXEL_ATLAS, tractor, "Red")

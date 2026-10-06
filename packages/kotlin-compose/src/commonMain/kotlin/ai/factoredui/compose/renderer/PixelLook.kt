@@ -20,6 +20,10 @@ import ai.factoredui.compose.layout.tilemapScreenBounds
 import ai.factoredui.compose.pixel.ArgbSheet
 import ai.factoredui.compose.pixel.EMBEDDED_PIXEL_ATLAS
 import ai.factoredui.compose.pixel.PixelArtScale
+import ai.factoredui.compose.pixel.pixelArtScaleFor
+import ai.factoredui.compose.pixel.pixelVariantFor
+import ai.factoredui.compose.pixel.pixelVariantsOf
+import androidx.compose.ui.geometry.Size
 import ai.factoredui.compose.pixel.PixelCosts
 import ai.factoredui.compose.pixel.PixelGround
 import ai.factoredui.compose.pixel.PixelScale
@@ -54,13 +58,20 @@ internal class PixelImages(val scale: PixelScale, val sheets: List<ImageBitmap>,
         swapped.getOrPut(sprite.name to rampName) { bitmapOf(swappedSprite(EMBEDDED_PIXEL_ATLAS, sprite, rampName)) }
 }
 
-private val builtPixelImages = HashMap<Int, PixelImages>()
+private val builtPixelImages = HashMap<String, PixelImages>()
 
-internal fun pixelImagesFor(artTileWidth: Int): PixelImages = builtPixelImages.getOrPut(artTileWidth) { buildPixelImages(artTileWidth) }
+internal class PixelSetup(val scale: PixelArtScale, val images: PixelImages)
 
-private fun buildPixelImages(artTileWidth: Int): PixelImages {
-    val scale = EMBEDDED_PIXEL_ATLAS.manifest.scales.getValue(artTileWidth)
-    val sheets = EMBEDDED_PIXEL_ATLAS.sheets(artTileWidth)
+internal fun pixelSetupFor(tileFeet: Double, density: Float): PixelSetup {
+    val variant = pixelVariantFor(pixelVariantsOf(EMBEDDED_PIXEL_ATLAS.manifest), tileFeet)
+    return PixelSetup(pixelArtScaleFor(variant, tileFeet, density), pixelImagesFor(variant.id))
+}
+
+internal fun pixelImagesFor(variant: String): PixelImages = builtPixelImages.getOrPut(variant) { buildPixelImages(variant) }
+
+private fun buildPixelImages(variant: String): PixelImages {
+    val scale = EMBEDDED_PIXEL_ATLAS.manifest.scales.getValue(variant)
+    val sheets = EMBEDDED_PIXEL_ATLAS.sheets(variant)
     val patternPixels = scale.sprites.filter { it.kind == PixelSpriteKind.PATTERN }.associate { it.name to sheets[it.sheet].crop(it.x, it.y, it.width, it.height) }
     return PixelImages(scale, sheets.map(::bitmapOf), patternPixels.mapValues { bitmapOf(it.value) }, patternPixels.mapValues { meanColour(it.value) })
 }
@@ -73,6 +84,12 @@ private fun meanColour(sheet: ArgbSheet): Color {
     val green = sheet.argb.sumOf { (it shr 8) and 0xFF } / count
     val blue = sheet.argb.sumOf { it and 0xFF } / count
     return Color(red / 255f, green / 255f, blue / 255f)
+}
+
+internal fun pixelParcelSize(cols: Int, rows: Int, scale: PixelArtScale, quarterTurns: Int): Size {
+    val (turnedCols, turnedRows) = rotatedGridSize(quarterTurns, cols, rows)
+    val bounds = tilemapScreenBounds(TileShape.SQUARE, TileView.ISO, turnedCols, turnedRows, scale.worldTileArtPx)
+    return Size(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY)
 }
 
 internal fun pixelSpaceOf(cols: Int, rows: Int, scale: PixelArtScale, images: PixelImages, quarterTurns: Int): TilemapSpace {

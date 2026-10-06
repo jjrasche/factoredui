@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 
 class PixelScenePlanTest {
 
-    private val scale = EMBEDDED_PIXEL_ATLAS.manifest.scales.getValue(32)
+    private val scale = EMBEDDED_PIXEL_ATLAS.manifest.scales.getValue("32-5ft")
     private val swaps = EMBEDDED_PIXEL_ATLAS.manifest.swaps
     private val roomy = PixelCosts(isGroundTextured = true, isWaterAnimated = false, decorationLimit = 1000)
 
@@ -117,6 +117,26 @@ class PixelScenePlanTest {
         val trees = listOf(tree("a", "lidar_tree", 5f, 5f, 2000.0), tree("b", "lidar_tree", 9f, 9f, 2000.0))
         assertEquals(listOf("a", "b"), plan(instances = trees).map { it.instanceId })
         assertEquals(listOf("b", "a"), plan(instances = trees, turns = 2).map { it.instanceId })
+    }
+
+    @Test
+    fun aWoodlandNamedForOneTreeClassPlantsOnlyThatClass() {
+        val conifers = uses + ("stand" to TilemapUse("stand", "Stand", sprite = TileSprite.TREE, art = "tree-conifer"))
+        val draws = planPixelSprites(PixelPlanInput(listOf(TileFootprint("w", "stand", 0, 0, 10, 10)), emptyList(), conifers, scale, swaps, 5.0, 40, 40, 0, roomy))
+        assertEquals(setOf("tree-conifer"), draws.map { it.sprite.cls }.toSet())
+        assertEquals(16, draws.size)
+    }
+
+    @Test
+    fun anInstanceTakesItsNamedArtBeforeAnyGuessFromItsType() {
+        val named = uses + mapOf(
+            "lidar_tree" to TilemapUse("lidar_tree", "Lidar tree", sprite = TileSprite.TREE, art = "tree-broadleaf"),
+            "stock" to TilemapUse("stock", "Stock", sprite = TileSprite.BLOCK, art = "cow"),
+        )
+        val instances = listOf(tree("t", "lidar_tree", 5f, 5f, 2400.0), TileInstance("c", "stock", 3000.0, 3000.0, null, null, 0.0))
+        val byId = planPixelSprites(PixelPlanInput(emptyList(), instances, named, scale, swaps, 5.0, 40, 40, 0, roomy)).associateBy { it.instanceId }
+        assertEquals("tree-broadleaf/M", byId.getValue("t").sprite.name)
+        assertEquals("cow/walking/SE", byId.getValue("c").sprite.name)
     }
 
     @Test

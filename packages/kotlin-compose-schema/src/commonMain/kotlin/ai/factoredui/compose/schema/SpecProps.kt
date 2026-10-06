@@ -858,6 +858,7 @@ data class TilemapUse(
     val height: Float? = null,
     val critter: String? = null,
     val image: String? = null,
+    val art: String? = null,
 )
 
 data class TilemapProps(val onTileTapped: String? = null, val onInstanceTapped: String? = null)
@@ -880,6 +881,7 @@ fun resolveTilemapUses(resolvedUses: Any?): List<TilemapUse> =
             height = (fields["height"] as? Number)?.toFloat(),
             critter = fields["critter"] as? String,
             image = fields["image"] as? String,
+            art = fields["art"] as? String,
         )
     }
 

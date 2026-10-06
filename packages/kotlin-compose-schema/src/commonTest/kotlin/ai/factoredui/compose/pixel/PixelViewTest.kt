@@ -11,30 +11,59 @@ import kotlin.test.assertTrue
 
 class PixelViewTest {
 
+    private val variants = listOf(PixelVariant("32-5ft", 32, 5.0), PixelVariant("64-5ft", 64, 5.0), PixelVariant("32-25ft", 32, 25.0))
+
+    private fun variantFor(tileFeet: Double) = pixelVariantFor(variants, tileFeet).id
+
     @Test
-    fun aFiveFootWorldUsesThirtyTwoPixelArtTilesAtThreeTimes() {
-        assertEquals(PixelArtScale(artTileWidth = 32, zoom = 3, maxZoom = 6, worldTileArtPx = 32f), pixelArtScaleFor(5.0, 1f))
+    fun theEmbeddedAtlasOffersTheFiveAndTwentyFiveFootRungs() {
+        assertEquals(variants.toSet(), pixelVariantsOf(EMBEDDED_PIXEL_ATLAS.manifest).toSet())
     }
 
     @Test
-    fun aCoarserWorldKeepsTheArtAtFiveFeetPerArtTileSoSpritesStayTrueToFeet() {
-        val scale = pixelArtScaleFor(25.0, 1f)
-        assertEquals(32, scale.artTileWidth)
-        assertEquals(160f, scale.worldTileArtPx)
+    fun eachWorldTakesTheRungNearestItsTileFeetByRatio() {
+        assertEquals("32-5ft", variantFor(5.0))
+        assertEquals("32-5ft", variantFor(9.0))
+        assertEquals("32-25ft", variantFor(15.0))
+        assertEquals("32-25ft", variantFor(25.0))
+        assertEquals("32-25ft", variantFor(125.0))
     }
 
     @Test
-    fun aWorldFinerThanFiveFeetSwitchesToSixtyFourPixelArtAtTwoTimes() {
-        val scale = pixelArtScaleFor(1.0, 1f)
-        assertEquals(64, scale.artTileWidth)
-        assertEquals(2, scale.zoom)
-        assertEquals(12.8f, scale.worldTileArtPx)
+    fun aWorldFinerThanItsRungTakesTheWidestArtAtThatRung() {
+        assertEquals("64-5ft", variantFor(1.0))
+        assertEquals("32-25ft", variantFor(20.0))
     }
 
     @Test
-    fun theZoomIsAWholeNumberOfScreenPixelsPerArtPixelAtAnyDensity() {
-        assertEquals(8, pixelArtScaleFor(5.0, 2.625f).zoom)
-        assertEquals(1, pixelArtScaleFor(1.0, 0.25f).zoom)
+    fun aWorldTileIsOneArtTileOnItsOwnRungAndScalesByFeetOffIt() {
+        assertEquals(32f, pixelArtScaleFor(variants[0], 5.0, 1f).worldTileArtPx)
+        assertEquals(32f, pixelArtScaleFor(variants[2], 25.0, 1f).worldTileArtPx)
+        assertEquals(160f, pixelArtScaleFor(variants[2], 125.0, 1f).worldTileArtPx)
+        assertEquals(12.8f, pixelArtScaleFor(variants[1], 1.0, 1f).worldTileArtPx)
+    }
+
+    @Test
+    fun theMaximumZoomIsTwiceTheArtBaseZoomTimesTheDensity() {
+        assertEquals(6, pixelArtScaleFor(variants[0], 5.0, 1f).maxZoom)
+        assertEquals(4, pixelArtScaleFor(variants[1], 1.0, 1f).maxZoom)
+        assertEquals(16, pixelArtScaleFor(variants[0], 5.0, 2.625f).maxZoom)
+    }
+
+    @Test
+    fun theOpeningZoomIsTheLargestWholeZoomThatFitsTheWholeParcel() {
+        assertEquals(3, fitPixelZoom(300f, 150f, 1000f, 700f, 12f, 6))
+        assertEquals(4, fitPixelZoom(200f, 100f, 1000f, 424f, 12f, 6))
+    }
+
+    @Test
+    fun aParcelLargerThanTheViewOpensAtOneTimesNeverLess() {
+        assertEquals(1, fitPixelZoom(3120f, 1560f, 1100f, 770f, 12f, 6))
+    }
+
+    @Test
+    fun aTinyParcelStopsAtTheMaximumZoom() {
+        assertEquals(6, fitPixelZoom(32f, 16f, 1000f, 700f, 12f, 6))
     }
 
     @Test

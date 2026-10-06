@@ -75,8 +75,9 @@ private fun footprintPlacements(footprint: TileFootprint, input: PixelPlanInput,
         PixelStanding.HOOP_HOUSE -> listOfNotNull(buildingPlacement(footprint, "hoop_house", input))
         PixelStanding.COMMONS -> listOfNotNull(buildingPlacement(footprint, "commons", input))
         PixelStanding.SHED -> listOfNotNull(buildingPlacement(footprint, "shed", input))
-        PixelStanding.WOODLAND -> woodlandPlacements(footprint, input, budget)
-        PixelStanding.VAN -> listOf(Placement(spriteName("van", "", viewFacing(extentFacing(footprint), input)), footprintCentre(footprint)))
+        PixelStanding.WOODLAND -> woodlandPlacements(footprint, choice.treeClass, input, budget)
+        PixelStanding.VAN, PixelStanding.COW, PixelStanding.PERSON, PixelStanding.TRACTOR ->
+            listOfNotNull(singlePlacement(choice.standing, viewFacing(extentFacing(footprint), input), footprintCentre(footprint), footprint.id, input.uses[footprint.use], input))
     }
 }
 
@@ -126,7 +127,7 @@ private fun cowPlacements(footprint: TileFootprint, input: PixelPlanInput, budge
     }
 }
 
-private fun woodlandPlacements(footprint: TileFootprint, input: PixelPlanInput, budget: DecorationBudget): List<Placement> {
+private fun woodlandPlacements(footprint: TileFootprint, named: TreeClass?, input: PixelPlanInput, budget: DecorationBudget): List<Placement> {
     val across = max(1, (footprint.width * input.tileFeet / WOODLAND_SPACING_FT).roundToInt())
     val down = max(1, (footprint.height * input.tileFeet / WOODLAND_SPACING_FT).roundToInt())
     val cellFt = minOf(footprint.width * input.tileFeet / across, footprint.height * input.tileFeet / down)
@@ -138,7 +139,7 @@ private fun woodlandPlacements(footprint: TileFootprint, input: PixelPlanInput, 
         val jitterY = (hashFraction(footprint.id, salt * 2 + 8) - 0.5f) * 2 * WOODLAND_JITTER.toFloat()
         val x = footprint.col + (col + 0.5f + jitterX) * footprint.width / across
         val y = footprint.row + (row + 0.5f + jitterY) * footprint.height / down
-        val treeClass = if (stableHash(footprint.id, salt + 211) % 100 < BROADLEAF_SHARE_PERCENT) TreeClass.BROADLEAF else TreeClass.CONIFER
+        val treeClass = named ?: if (stableHash(footprint.id, salt + 211) % 100 < BROADLEAF_SHARE_PERCENT) TreeClass.BROADLEAF else TreeClass.CONIFER
         Placement(spriteName(treeClass.cls, size, ""), GroundPoint(x, y))
     }
 }
@@ -147,12 +148,39 @@ private fun instancePlacement(instance: TileInstance, input: PixelPlanInput): Pl
     val ground = instanceGround(instance, input.sideMm, input.rows)
     val facing = viewFacing(facingForRotation(instance.rotationDeg), input)
     val use = input.uses[instance.use]
+    val named = use?.art?.let { namedArtFor(it, use.critter) }
+    return if (named != null) namedInstancePlacement(named, instance, facing, ground, input) else guessedInstancePlacement(instance, facing, ground, input)
+}
+
+private fun namedInstancePlacement(choice: PixelArtChoice, instance: TileInstance, facing: String, ground: GroundPoint, input: PixelPlanInput): Placement? = when (choice.standing) {
+    PixelStanding.WOODLAND -> treePlacement(instance, choice.treeClass ?: TreeClass.UNKNOWN, ground, input)
+    PixelStanding.HOOP_HOUSE -> smallestBuilding("hoop_house", facing, ground, instance, input)
+    PixelStanding.COMMONS -> smallestBuilding("commons", facing, ground, instance, input)
+    PixelStanding.SHED -> smallestBuilding("shed", facing, ground, instance, input)
+    PixelStanding.FENCE -> Placement(spriteName("fence", "", facing), ground, instanceId = instance.id)
+    PixelStanding.NONE -> null
+    else -> instanceCreature(choice.standing, facing, ground, instance, input)
+}
+
+private fun instanceCreature(standing: PixelStanding, facing: String, ground: GroundPoint, instance: TileInstance, input: PixelPlanInput): Placement? =
+    singlePlacement(standing, facing, ground, instance.id, input.uses[instance.use], input)?.let { Placement(it.spriteName, it.ground, it.ramp, instance.id) }
+
+private fun singlePlacement(standing: PixelStanding, facing: String, ground: GroundPoint, seed: String, use: TilemapUse?, input: PixelPlanInput): Placement? = when (standing) {
+    PixelStanding.VAN -> Placement(spriteName("van", "", facing), ground)
+    PixelStanding.COW -> Placement(spriteName("cow", "walking", facing), ground)
+    PixelStanding.PERSON -> Placement(spriteName("person", "", facing), ground, (stableHash(seed, 5) % SHIRT_COUNT).toString())
+    PixelStanding.TRACTOR -> Placement(spriteName("tractor", "idle", facing), ground, tractorRamp(use, input))
+    else -> null
+}
+
+private fun guessedInstancePlacement(instance: TileInstance, facing: String, ground: GroundPoint, input: PixelPlanInput): Placement? {
+    val use = input.uses[instance.use]
     val type = instance.use
     return when {
-        type.contains("cow") -> Placement(spriteName("cow", "walking", facing), ground, instanceId = instance.id)
-        type.contains("person") -> Placement(spriteName("person", "", facing), ground, (stableHash(instance.id, 5) % SHIRT_COUNT).toString(), instance.id)
-        type.contains("tractor") -> Placement(spriteName("tractor", "idle", facing), ground, tractorRamp(use, input), instance.id)
-        use?.sprite == TileSprite.TREE || instance.crownRadiusMm != null -> treePlacement(instance, ground, input)
+        type.contains("cow") -> instanceCreature(PixelStanding.COW, facing, ground, instance, input)
+        type.contains("person") -> instanceCreature(PixelStanding.PERSON, facing, ground, instance, input)
+        type.contains("tractor") -> instanceCreature(PixelStanding.TRACTOR, facing, ground, instance, input)
+        use?.sprite == TileSprite.TREE || instance.crownRadiusMm != null -> treePlacement(instance, treeClassFor(type), ground, input)
         use?.sprite == TileSprite.BLOCK -> smallestBuilding("shed", facing, ground, instance, input)
         use?.sprite == TileSprite.ARCH -> smallestBuilding("hoop_house", facing, ground, instance, input)
         else -> null
@@ -161,9 +189,9 @@ private fun instancePlacement(instance: TileInstance, input: PixelPlanInput): Pl
 
 private fun tractorRamp(use: TilemapUse?, input: PixelPlanInput): String? = input.swaps["tractor"]?.let { nearestRamp(use?.color, it) }
 
-private fun treePlacement(instance: TileInstance, ground: GroundPoint, input: PixelPlanInput): Placement {
+private fun treePlacement(instance: TileInstance, treeClass: TreeClass, ground: GroundPoint, input: PixelPlanInput): Placement {
     val crownFt = instance.crownRadiusMm?.let { it / MM_PER_FOOT }
-    return Placement(spriteName(treeClassFor(instance.use).cls, treeSizeFor(input.scale, crownFt), ""), ground, instanceId = instance.id)
+    return Placement(spriteName(treeClass.cls, treeSizeFor(input.scale, crownFt), ""), ground, instanceId = instance.id)
 }
 
 private fun smallestBuilding(cls: String, facing: String, ground: GroundPoint, instance: TileInstance, input: PixelPlanInput): Placement? {

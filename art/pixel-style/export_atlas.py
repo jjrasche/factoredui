@@ -21,8 +21,8 @@ REPO = HERE.parents[1]
 ATLAS_DIR = HERE / "atlas"
 KOTLIN_OUT = REPO / "packages/kotlin-compose-schema/src/commonMain/kotlin/ai/factoredui/compose/pixel/PixelAtlasData.kt"
 
-ART_WIDTHS = (32, 64)
 ART_TILE_FEET = 5.0
+VARIANTS = ((32, 5.0), (64, 5.0), (32, 25.0))
 SHEET_SIDE = 2048
 GUTTER = 1
 PATTERN_CELLS = 4
@@ -96,8 +96,12 @@ def ground_sprites(width):
     return sprites
 
 
-def model_sprite(cls, model, width, facing, size="", frame=0, extras=None, swap=""):
-    canvas, origin = render_model(model, facing, width, extras=extras)
+def variant_id(width, feet):
+    return f"{width}-{feet:g}ft"
+
+
+def model_sprite(cls, model, width, feet, facing, size="", frame=0, extras=None, swap=""):
+    canvas, origin = render_model(model, facing, width, feet, extras=extras)
     f0, l0, f1, l1 = model.footprint
     return Sprite("model", cls, canvas.image, (round(origin[0]), round(origin[1])), size, facing, frame, (f1 - f0, l1 - l0), model.height, swap)
 
@@ -106,39 +110,39 @@ def size_label(forward, lateral):
     return f"{forward:g}x{lateral:g}"
 
 
-def building_sprites(width):
+def building_sprites(width, feet):
     sprites = []
     for cls, make, sizes in (("hoop_house", hoop_house, HOOP_SIZES), ("commons", commons, COMMONS_SIZES), ("shed", shed, SHED_SIZES)):
         for forward, lateral in sizes:
-            sprites += [model_sprite(cls, make(forward, lateral), width, facing, size_label(forward, lateral)) for facing in FACINGS]
-    sprites += [model_sprite("fence", fence_segment(ART_TILE_FEET), width, facing) for facing in FACINGS]
-    sprites += [model_sprite("van", van(), width, facing) for facing in FACINGS]
+            sprites += [model_sprite(cls, make(forward, lateral), width, feet, facing, size_label(forward, lateral)) for facing in FACINGS]
+    sprites += [model_sprite("fence", fence_segment(ART_TILE_FEET), width, feet, facing) for facing in FACINGS]
+    sprites += [model_sprite("van", van(), width, feet, facing) for facing in FACINGS]
     return sprites
 
 
-def living_sprites(width):
+def living_sprites(width, feet):
     sprites = []
     for state in TRACTOR_STATES:
-        sprites += [model_sprite("tractor", tractor(BASE_TRACTOR, state), width, facing, state, extras=tractor_effects(state), swap="tractor") for facing in FACINGS]
+        sprites += [model_sprite("tractor", tractor(BASE_TRACTOR, state), width, feet, facing, state, extras=tractor_effects(state), swap="tractor") for facing in FACINGS]
     for frame in range(4):
-        sprites += [model_sprite("person", person(frame, 0), width, facing, frame=frame, swap="shirt") for facing in FACINGS]
+        sprites += [model_sprite("person", person(frame, 0), width, feet, facing, frame=frame, swap="shirt") for facing in FACINGS]
     for frame, grazing in COW_POSES:
         size = "grazing" if grazing else "walking"
-        sprites += [model_sprite("cow", cow(frame, grazing=grazing), width, facing, size, frame) for facing in FACINGS]
+        sprites += [model_sprite("cow", cow(frame, grazing=grazing), width, feet, facing, size, frame) for facing in FACINGS]
     return sprites
 
 
-def tree_sprites(width):
+def tree_sprites(width, feet):
     sprites = []
     for cls, make in CLASSES.items():
         for size, radius in RADII.items():
-            canvas, foot = make(width, radius)
+            canvas, foot = make(width, radius, feet)
             sprites.append(Sprite("tree", f"tree-{cls.lower()}", canvas.image, (round(foot[0]), round(foot[1])), size, footprint_ft=(radius * 2, radius * 2), height_ft=radius))
     return sprites
 
 
-def sprites_at(width):
-    return ground_sprites(width) + building_sprites(width) + living_sprites(width) + tree_sprites(width)
+def sprites_at(width, feet):
+    return ground_sprites(width) + building_sprites(width, feet) + living_sprites(width, feet) + tree_sprites(width, feet)
 
 
 def pack(sprites):
@@ -167,7 +171,7 @@ def compose_sheet(members):
     return sheet
 
 
-def manifest_entry(sprite, art_width):
+def manifest_entry(sprite, art_width, feet):
     return {
         "name": sprite.name,
         "kind": sprite.kind,
@@ -183,6 +187,8 @@ def manifest_entry(sprite, art_width):
         "anchor_x": sprite.anchor[0],
         "anchor_y": sprite.anchor[1],
         "art_tile_width": art_width,
+        "art_tile_feet": feet,
+        "variant": variant_id(art_width, feet),
         "footprint_ft": [sprite.footprint_ft[0], sprite.footprint_ft[1]],
         "height_ft": sprite.height_ft,
         "swap": sprite.swap,
@@ -203,14 +209,15 @@ def swap_table():
 def build_atlas():
     scales = {}
     sheets = {}
-    for width in ART_WIDTHS:
-        sprites = sprites_at(width)
-        sheets[width] = pack(sprites)
-        scales[str(width)] = {
+    for width, feet in VARIANTS:
+        variant = variant_id(width, feet)
+        sprites = sprites_at(width, feet)
+        sheets[variant] = pack(sprites)
+        scales[variant] = {
             "art_tile_width": width,
-            "art_tile_feet": ART_TILE_FEET,
-            "sheets": [{"width": sheet.width, "height": sheet.height} for sheet in sheets[width]],
-            "sprites": [manifest_entry(sprite, width) for sprite in sorted(sprites, key=lambda item: item.name)],
+            "art_tile_feet": feet,
+            "sheets": [{"width": sheet.width, "height": sheet.height} for sheet in sheets[variant]],
+            "sprites": [manifest_entry(sprite, width, feet) for sprite in sorted(sprites, key=lambda item: item.name)],
         }
     return {"version": 1, "scales": scales, "swaps": swap_table()}, sheets
 
@@ -286,17 +293,18 @@ def kotlin_sheet(sheet):
 def kotlin_source(manifest, sheets):
     manifest_text = base64.b64encode(json.dumps(manifest, separators=(",", ":")).encode("utf-8")).decode("ascii")
     lines = ["package ai.factoredui.compose.pixel", "", f"internal val PIXEL_MANIFEST_BASE64: List<String> = {kotlin_strings(manifest_text)}", ""]
-    for width, members in sheets.items():
-        body = ",\n".join(kotlin_sheet(sheet) for sheet in members)
-        lines += [f"internal val PIXEL_SHEETS_{width}: List<EncodedSheet> = listOf(\n{body},\n)", ""]
+    entries = "".join(f'    "{variant}" to listOf(\n' + ",\n".join(kotlin_sheet(sheet) for sheet in members) + ",\n    ),\n" for variant, members in sheets.items())
+    lines += [f"internal val PIXEL_SHEETS: Map<String, List<EncodedSheet>> = mapOf(\n{entries})", ""]
     return "\n".join(lines)
 
 
 def write_atlas(manifest, sheets, atlas_dir=ATLAS_DIR, kotlin_out=KOTLIN_OUT):
     atlas_dir.mkdir(parents=True, exist_ok=True)
-    for width, members in sheets.items():
+    for stale in atlas_dir.glob("pixel-atlas-*.png"):
+        stale.unlink()
+    for variant, members in sheets.items():
         for index, sheet in enumerate(members):
-            sheet.save(atlas_dir / f"pixel-atlas-{width}-{index}.png")
+            sheet.save(atlas_dir / f"pixel-atlas-{variant}-{index}.png")
     (atlas_dir / "pixel-atlas.json").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
     kotlin_out.parent.mkdir(parents=True, exist_ok=True)
     kotlin_out.write_text(kotlin_source(manifest, sheets), encoding="utf-8")
@@ -305,6 +313,6 @@ def write_atlas(manifest, sheets, atlas_dir=ATLAS_DIR, kotlin_out=KOTLIN_OUT):
 if __name__ == "__main__":
     built_manifest, built_sheets = build_atlas()
     write_atlas(built_manifest, built_sheets)
-    for scale, members in built_sheets.items():
-        print(scale, [sheet.size for sheet in members], len(built_manifest["scales"][str(scale)]["sprites"]), "sprites")
+    for variant, members in built_sheets.items():
+        print(variant, [sheet.size for sheet in members], len(built_manifest["scales"][variant]["sprites"]), "sprites")
     print(KOTLIN_OUT, KOTLIN_OUT.stat().st_size, "bytes", file=sys.stderr)

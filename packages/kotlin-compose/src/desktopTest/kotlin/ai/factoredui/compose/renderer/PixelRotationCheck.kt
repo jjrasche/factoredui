@@ -73,6 +73,6 @@ class PixelRotationCheck {
 
     @Test
     fun aTapOnTheDrawnTreeReportsTheTreeInEveryQuarterTurn() {
-        for (turns in 0..3) assertEquals(listOf("tree-01"), tapsAtTheFocus(turns, 1.5, 10.5, 120f, hasTree = true).instances, "quarter turns $turns")
+        for (turns in 0..3) assertEquals(listOf("tree-01"), tapsAtTheFocus(turns, 1.5, 10.5, 40f, hasTree = true).instances, "quarter turns $turns")
     }
 }

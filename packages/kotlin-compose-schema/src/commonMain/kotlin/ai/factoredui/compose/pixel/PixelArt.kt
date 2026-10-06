@@ -9,14 +9,34 @@ const val WATER_FRAMES = 4
 
 enum class PixelGround(val pattern: String) { GRASS("ground-grass"), PATH("ground-path"), SAND("ground-sand"), DIRT("ground-dirt"), WATER("ground-water") }
 
-enum class PixelStanding { NONE, FENCE, HOOP_HOUSE, COMMONS, SHED, WOODLAND, VAN }
+enum class PixelStanding { NONE, FENCE, HOOP_HOUSE, COMMONS, SHED, WOODLAND, VAN, COW, PERSON, TRACTOR }
 
-data class PixelArtChoice(val ground: PixelGround?, val standing: PixelStanding, val hasCritters: Boolean = false)
+data class PixelArtChoice(val ground: PixelGround?, val standing: PixelStanding, val hasCritters: Boolean = false, val treeClass: TreeClass? = null)
 
 private val SAND_WORDS = listOf("sand", "beach")
 private val DIRT_WORDS = listOf("dirt", "gravel", "pad", "yard", "bed")
 
-fun pixelArtFor(use: TilemapUse): PixelArtChoice = when (use.sprite) {
+private val STANDING_ART = mapOf(
+    "fence" to PixelStanding.FENCE,
+    "hoop_house" to PixelStanding.HOOP_HOUSE,
+    "commons" to PixelStanding.COMMONS,
+    "shed" to PixelStanding.SHED,
+    "van" to PixelStanding.VAN,
+    "cow" to PixelStanding.COW,
+    "person" to PixelStanding.PERSON,
+    "tractor" to PixelStanding.TRACTOR,
+)
+
+fun pixelArtFor(use: TilemapUse): PixelArtChoice = use.art?.let { namedArtFor(it, use.critter) } ?: guessedArtFor(use)
+
+fun namedArtFor(art: String, critter: String?): PixelArtChoice? {
+    PixelGround.entries.firstOrNull { it.pattern == art }?.let { return PixelArtChoice(it, PixelStanding.NONE) }
+    TreeClass.entries.firstOrNull { it.cls == art }?.let { return PixelArtChoice(null, PixelStanding.WOODLAND, treeClass = it) }
+    val standing = STANDING_ART[art] ?: return null
+    return PixelArtChoice(null, standing, hasCritters = standing == PixelStanding.FENCE && critter != null)
+}
+
+private fun guessedArtFor(use: TilemapUse): PixelArtChoice = when (use.sprite) {
     TileSprite.FLAT -> flatArtFor(use.id)
     TileSprite.WATER -> PixelArtChoice(PixelGround.WATER, PixelStanding.NONE)
     TileSprite.FENCE -> PixelArtChoice(null, PixelStanding.FENCE, hasCritters = use.critter != null)

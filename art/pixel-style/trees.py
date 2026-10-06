@@ -1,7 +1,7 @@
 import math
 
 from canvas import Canvas, hashed
-from iso import SHADOW, Iso
+from iso import SHADOW, TILE_FEET, Iso
 from palette import BROADLEAF, CONIFER, TRUNK, UNKNOWN
 
 RADII = {"S": 4.0, "M": 8.0, "L": 12.0, "XL": 16.0}
@@ -40,8 +40,8 @@ def lobe(canvas, centre, radius, palette, seed):
             canvas.put(cx + dx * radius, cy + dy * radius, palette[4] if dx + dy < -0.3 else palette[1])
 
 
-def broadleaf(width, radius):
-    iso = Iso(width)
+def broadleaf(width, radius, tile_feet=TILE_FEET):
+    iso = Iso(width, tile_feet)
     crown = radius * iso.sphere
     canvas, foot = new_canvas(iso, radius, radius * 3.1)
     drop_shadow(canvas, foot, crown, crown * 0.6)
@@ -52,8 +52,8 @@ def broadleaf(width, radius):
     return canvas, foot
 
 
-def conifer(width, radius):
-    iso = Iso(width)
+def conifer(width, radius, tile_feet=TILE_FEET):
+    iso = Iso(width, tile_feet)
     crown = radius * iso.sphere
     canvas, foot = new_canvas(iso, radius, radius * 4.4)
     drop_shadow(canvas, foot, crown * 0.9, crown * 0.9)
@@ -73,8 +73,8 @@ def conifer(width, radius):
     return canvas, foot
 
 
-def unknown(width, radius):
-    iso = Iso(width)
+def unknown(width, radius, tile_feet=TILE_FEET):
+    iso = Iso(width, tile_feet)
     crown = radius * iso.sphere
     canvas, foot = new_canvas(iso, radius, radius * 3.0)
     drop_shadow(canvas, foot, crown, crown * 0.6)
