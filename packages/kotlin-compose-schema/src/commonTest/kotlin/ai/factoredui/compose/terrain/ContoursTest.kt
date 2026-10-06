@@ -94,6 +94,26 @@ class ContoursTest {
     }
 
     @Test
+    fun anOpenLineIsLabelledAtItsMiddleNotWhereItMeetsTheEdge() {
+        val line = contourPolylines(planeRisingEast(), 100).first()
+        assertEquals(GroundPoint(0.5f, 2f), labelAnchor(line))
+    }
+
+    @Test
+    fun onlyIndexLinesAreLabelledAndALabelTooCloseToAnEarlierOneIsDropped() {
+        val steep = fieldOf(4, 4) { col, _ -> 100 * col }
+        val placements = contourLabelPlacements(contourPolylines(steep, 20), 20, minPoints = 2, minSpacingTiles = 1.5f)
+        assertEquals(listOf(100L, 300L), placements.map { it.line.levelMm })
+        assertEquals(listOf(GroundPoint(1f, 2f), GroundPoint(3f, 2f)), placements.map { it.anchor })
+    }
+
+    @Test
+    fun aLineWithTooFewPointsGoesUnlabelled() {
+        val steep = fieldOf(4, 4) { col, _ -> 100 * col }
+        assertEquals(emptyList(), contourLabelPlacements(contourPolylines(steep, 20), 20, minPoints = 6, minSpacingTiles = 0f))
+    }
+
+    @Test
     fun tracingIsDeterministic() {
         val first = contourPolylines(bowl(), 50).map { it.points }
         val second = contourPolylines(bowl(), 50).map { it.points }

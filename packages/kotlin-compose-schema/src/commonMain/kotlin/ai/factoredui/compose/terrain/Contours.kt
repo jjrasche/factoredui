@@ -15,7 +15,26 @@ fun contourLevels(minMm: Int, maxMm: Int, intervalMm: Int): List<Long> {
 
 fun isIndexContour(levelMm: Long, intervalMm: Int): Boolean = (levelMm / intervalMm) % INDEX_CONTOUR_EVERY == 0L
 
-fun labelAnchor(line: ContourLine): GroundPoint = line.points.minWith(compareBy<GroundPoint>({ it.y }, { it.x }))
+fun labelAnchor(line: ContourLine): GroundPoint =
+    if (line.isClosed) line.points.minWith(compareBy<GroundPoint>({ it.y }, { it.x })) else line.points[line.points.size / 2]
+
+class ContourLabelPlacement(val line: ContourLine, val anchor: GroundPoint)
+
+fun contourLabelPlacements(lines: List<ContourLine>, intervalMm: Int, minPoints: Int, minSpacingTiles: Float): List<ContourLabelPlacement> {
+    val placed = mutableListOf<ContourLabelPlacement>()
+    for (line in lines) {
+        if (!isIndexContour(line.levelMm, intervalMm) || line.points.size < minPoints) continue
+        val anchor = labelAnchor(line)
+        if (placed.none { isWithin(it.anchor, anchor, minSpacingTiles) }) placed += ContourLabelPlacement(line, anchor)
+    }
+    return placed
+}
+
+private fun isWithin(first: GroundPoint, second: GroundPoint, distance: Float): Boolean {
+    val dx = first.x - second.x
+    val dy = first.y - second.y
+    return dx * dx + dy * dy < distance * distance
+}
 
 fun contourPolylines(grid: TerrainGrid, intervalMm: Int): List<ContourLine> =
     contourLevels(grid.minMm, grid.maxMm, intervalMm).flatMap { level -> ContourTracer(grid, level).polylines() }
