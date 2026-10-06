@@ -12,7 +12,7 @@ from trees import CLASSES, RADII
 
 HERE = Path(__file__).resolve().parent
 COLOUR_LITERAL = re.compile(r"#[0-9A-Fa-f]{6}\b|\(\s*\d{1,3},\s*\d{1,3},\s*\d{1,3},\s*\d{1,3}\s*\)")
-LITERAL_FREE = ("buildings.py", "chrome.py", "creatures.py", "machines.py", "scene.py", "sheet.py", "terrain.py", "trees.py", "iso.py", "model.py", "render.py")
+LITERAL_FREE = ("buildings.py", "chrome.py", "creatures.py", "machines.py", "scene.py", "sheet.py", "terrain.py", "trees.py", "iso.py", "model.py", "render.py", "export_atlas.py")
 ALLOWED = {}
 
 
