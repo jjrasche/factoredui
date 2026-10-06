@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Yard overlay</title>
+<style>
+  :root { --bg: #14171a; --panel: #1f2428; --ink: #eef1f3; --muted: #9aa5ad; --accent: #4fb3ff; --ok: #6fd08c; --warn: #ffb454; }
+  @media (prefers-color-scheme: light) { :root { --bg: #f2f4f6; --panel: #ffffff; --ink: #14171a; --muted: #5b666e; --accent: #0a6fc2; --ok: #1f8a43; --warn: #b36b00; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.35 system-ui, sans-serif; padding: 0 max(12px, env(safe-area-inset-right)) 24px max(12px, env(safe-area-inset-left)); }
+  header { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 6px; font-size: 13px; color: var(--muted); }
+  header .ok { color: var(--ok); }
+  header .warn { color: var(--warn); }
+  #stage { display: flex; justify-content: center; background: #000; border-radius: 8px; overflow: hidden; touch-action: manipulation; }
+  canvas { display: block; }
+  #message { min-height: 2.6em; margin: 8px 0; color: var(--accent); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  button, .button { background: var(--panel); color: var(--ink); border: 1px solid var(--muted); border-radius: 8px; padding: 10px 14px; font: inherit; min-height: 44px; }
+  button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  button[hidden], .button[hidden] { display: none; }
+  fieldset { border: 1px solid var(--muted); border-radius: 8px; margin: 8px 0; padding: 6px 12px 10px; }
+  fieldset label { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+  details { margin: 8px 0; background: var(--panel); border-radius: 8px; padding: 8px 12px; }
+  details label { display: grid; grid-template-columns: 7.5em 1fr 4.5em; align-items: center; gap: 8px; min-height: 40px; }
+  details output { text-align: right; color: var(--muted); }
+  input[type="range"] { width: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <span id="status-gps">GPS: off</span>
+  <span id="status-compass">Compass: off</span>
+  <span id="status-cache">Offline: checking</span>
+  <span id="status-twin"></span>
+</header>
+<div id="stage"><canvas id="view" width="640" height="480"></canvas></div>
+<video id="camera" playsinline muted hidden></video>
+<p id="message" role="status"></p>
+<div class="row">
+  <label class="button">Take photo<input id="take-photo" type="file" accept="image/*" capture="environment" hidden></label>
+  <label class="button">Pick photo<input id="pick-photo" type="file" accept="image/*" hidden></label>
+  <button id="live-camera" type="button" aria-pressed="false">Live camera</button>
+</div>
+<div class="row">
+  <button id="align" type="button">Align (2 taps)</button>
+  <button id="align-done" type="button" hidden>Done</button>
+  <button id="align-reset" type="button">Reset alignment</button>
+  <button id="live-sensors" type="button" aria-pressed="false">Live GPS + compass</button>
+</div>
+<fieldset id="layers"><legend>Layers</legend></fieldset>
+<details id="viewpoint">
+  <summary>Viewpoint</summary>
+  <label>Stand east <input id="view-x" type="range" step="0.5"><output id="view-x-out"></output></label>
+  <label>Stand north <input id="view-y" type="range" step="0.5"><output id="view-y-out"></output></label>
+  <label>Heading <input id="view-yaw" type="range" min="0" max="359" step="1"><output id="view-yaw-out"></output></label>
+  <label>Pitch <input id="view-pitch" type="range" min="-60" max="60" step="1"><output id="view-pitch-out"></output></label>
+  <label>Eye height <input id="view-height" type="range" min="0.3" max="3" step="0.1"><output id="view-height-out"></output></label>
+  <label>Field of view <input id="view-fov" type="range" min="30" max="120" step="1"><output id="view-fov-out"></output></label>
+</details>
+<div class="row">
+  <button id="save" type="button">Save capture</button>
+  <button id="upload" type="button">Upload</button>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
