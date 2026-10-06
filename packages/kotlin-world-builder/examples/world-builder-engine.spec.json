@@ -188,7 +188,8 @@
               "terrain_mode": "{terrain_mode}",
               "contours": "{contours}",
               "contour_interval_mm": "{contour_interval_mm}",
-              "view_state": "{view_state}"
+              "view_state": "{view_state}",
+              "look": "{look}"
             }
           }
         ]

@@ -27,6 +27,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runDesktopComposeUiTest
 import java.io.File
@@ -43,6 +44,23 @@ private const val FIT_MARGIN = 12f
 private const val MAX_FIT_SCALE = 2f
 private const val TERRAIN_REVIEW = "terrain-2026-10-06"
 private const val SCENE_REVIEW = "scene-2026-10-06"
+private const val ART_REVIEW = "art-2026-10-06"
+private const val ZOOM_OUT_WHEEL_STEPS = 12
+private const val FIVE_FOOT_ROWS = 130
+private const val FIVE_FOOT_TILE_MM = 1524.0
+private const val LIDAR_ROWS = 32
+private const val LIDAR_TILE_MM = 7620.0
+private val FARM_FOCUS = 32.0 to 59.0
+private val LIDAR_FOCUS = 0.7 to 4.4
+private val FARM_PLAN = listOf(
+    Triple("woodland_tree", 21, 51), Triple("woodland_tree", 26, 47), Triple("woodland_tree", 37, 52),
+    Triple("hoop_house", 26, 52),
+    Triple("commons_building", 16, 56),
+    Triple("path", 31, 58), Triple("path", 31, 63),
+    Triple("paddock", 36, 58), Triple("paddock", 36, 63),
+    Triple("van_pad", 26, 62),
+    Triple("pond", 41, 57),
+)
 private val SHOT_DIRECTORY =File(System.getProperty("WALKTHROUGH_DIR") ?: System.getenv("WALKTHROUGH_DIR") ?: "build/walkthrough")
 
 @OptIn(ExperimentalTestApi::class)
@@ -54,13 +72,18 @@ class BuilderWalkthroughTest {
     private lateinit var host: WorldBuilderHost
     private lateinit var context: RenderContext
 
-    private fun DesktopComposeUiTest.open(theme: String, world: String? = null) {
+    private fun DesktopComposeUiTest.open(theme: String, world: String? = null, worldFile: File? = null, extra: Map<String, Any?> = emptyMap(), plan: (WorldBuilderHost) -> Unit = {}) {
         val presentation = loadPresentation("examples/parcel.presentation.json")
-        host = if (world == null) parcelHost(presentation) else WorldBuilderHost(openSession(File(designDirectory(), world).path), presentation)
+        host = when {
+            worldFile != null -> WorldBuilderHost(openSession(worldFile.path), presentation)
+            world != null -> WorldBuilderHost(openSession(File(designDirectory(), world).path), presentation)
+            else -> parcelHost(presentation)
+        }
+        plan(host)
         var publish: () -> Unit = {}
         context = RenderContext(
             actions = host.actions { publish() },
-            initialData = host.bindings() + mapOf("theme" to theme, "animate" to false, "brush" to host.initialBrush(), "rename_draft" to ""),
+            initialData = host.bindings() + mapOf("theme" to theme, "animate" to false, "brush" to host.initialBrush(), "rename_draft" to "") + extra,
         )
         publish = { context.applyBindings(host.bindings()) }
         val backdrop = if (theme == "dark") Color(0xFF14181F) else Color(0xFFF4F1EA)
@@ -173,6 +196,45 @@ class BuilderWalkthroughTest {
         val directory = File(SHOT_DIRECTORY, SCENE_REVIEW)
         directory.mkdirs()
         ImageIO.write(onRoot().captureToImage().toAwtImage(), "PNG", File(directory, "01-vector-landing-hillshade.png"))
+    }
+
+    private fun DesktopComposeUiTest.artShot(name: String) {
+        waitForIdle()
+        val directory = File(SHOT_DIRECTORY, ART_REVIEW)
+        directory.mkdirs()
+        ImageIO.write(onRoot().captureToImage().toAwtImage(), "PNG", File(directory, "$name.png"))
+    }
+
+    private fun DesktopComposeUiTest.zoomOutToOneTimes() {
+        onNodeWithTag("world:map").performMouseInput { moveTo(center); repeat(ZOOM_OUT_WHEEL_STEPS) { scroll(1f) } }
+        waitForIdle()
+    }
+
+    private fun centredOn(groundX: Double, groundY: Double, rows: Int, tileMm: Double) =
+        mapOf("centre_mm" to listOf(groundX * tileMm, (rows - groundY) * tileMm))
+
+    private fun placeFarmPlan(host: WorldBuilderHost) {
+        FARM_PLAN.forEach { (use, col, row) -> host.tap(col, row, use) }
+        val placed = host.counts()
+        FARM_PLAN.map { it.first }.distinct().forEach { use -> check((placed[use] ?: 0) > 0) { "$use was refused: $placed" } }
+    }
+
+    @Test
+    fun theFiveAcrePlanInThePixelLook() = runDesktopComposeUiTest(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX) {
+        val view = centredOn(FARM_FOCUS.first, FARM_FOCUS.second, FIVE_FOOT_ROWS, FIVE_FOOT_TILE_MM)
+        open("dark", worldFile = File("examples/parcel-five-acre-5ft.world.json"), extra = mapOf("look" to "pixel", "view_state" to view), plan = ::placeFarmPlan)
+        artShot("01-five-acre-plan-pixel")
+        zoomOutToOneTimes()
+        artShot("03-five-acre-plan-pixel-1x")
+    }
+
+    @Test
+    fun theLidarTreesInThePixelLook() = runDesktopComposeUiTest(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX) {
+        val view = centredOn(LIDAR_FOCUS.first, LIDAR_FOCUS.second, LIDAR_ROWS, LIDAR_TILE_MM)
+        open("dark", "worlds/parcel-lidar-sample.world.json", extra = mapOf("look" to "pixel", "view_state" to view))
+        artShot("02-lidar-trees-pixel")
+        zoomOutToOneTimes()
+        artShot("04-lidar-trees-pixel-1x")
     }
 
     @Test
