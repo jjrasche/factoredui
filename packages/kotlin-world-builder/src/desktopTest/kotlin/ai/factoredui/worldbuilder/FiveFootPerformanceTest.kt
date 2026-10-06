@@ -19,6 +19,10 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.unit.dp
 import java.io.File
+import kotlin.math.exp
+import kotlin.math.hypot
+import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.serialization.json.Json
@@ -102,15 +106,15 @@ class FiveFootPerformanceTest {
         saveReport("perf-25ft-engine")
     }
 
-    private fun ComposeUiTest.open(worldPath: String, fillTrees: Boolean): WorldBuilderHost {
+    private fun ComposeUiTest.open(worldPath: String, fillTrees: Boolean, terrain: Map<String, Any?> = emptyMap()): WorldBuilderHost {
         val host = WorldBuilderHost(openSession(worldPath), loadPresentation("examples/parcel.presentation.json"))
         if (fillTrees) fillWithTrees(host)
         var publish: () -> Unit = {}
         val context = RenderContext(
             actions = host.actions { publish() },
-            initialData = host.bindings() + mapOf("theme" to "dark", "animate" to false, "brush" to host.initialBrush(), "rename_draft" to ""),
+            initialData = host.bindings() + mapOf("theme" to "dark", "animate" to false, "brush" to host.initialBrush(), "rename_draft" to "") + terrain,
         )
-        publish = { context.applyBindings(host.bindings()) }
+        publish = { context.applyBindings(host.bindings() + terrain.filterKeys { it == "terrain" }) }
         setContent { Box(Modifier.size(1100.dp, 800.dp)) { RenderSpec(spec = spec, context = context) } }
         waitForIdle()
         return host
@@ -118,8 +122,8 @@ class FiveFootPerformanceTest {
 
     private fun ComposeUiTest.drawMillis(): Double = elapsedMillis { onNodeWithTag("world:map").captureToImage() }
 
-    private fun ComposeUiTest.measureWindow(label: String, worldPath: String, fillTrees: Boolean) {
-        val host = open(worldPath, fillTrees)
+    private fun ComposeUiTest.measureWindow(label: String, worldPath: String, fillTrees: Boolean, terrain: Map<String, Any?> = emptyMap()) {
+        val host = open(worldPath, fillTrees, terrain)
         val map = onNodeWithTag("world:map")
         val still = (1..FRAME_SAMPLES).map { drawMillis() }
         note("$label still frame: ${still.summary()}")
@@ -175,6 +179,46 @@ class FiveFootPerformanceTest {
     fun theFiveFootWindowFullOfTrees() = runComposeUiTest {
         measureWindow("window 5ft full", fiveFootWorld(), fillTrees = true)
         saveReport("perf-5ft-window-full")
+    }
+
+    private fun bowlAndRidge(cols: Int, rows: Int): List<Int> = (0 until (cols + 1) * (rows + 1)).map { index ->
+        val col = index % (cols + 1)
+        val row = index / (cols + 1)
+        val bowl = 1500.0 * maxOf(0.0, 1.0 - hypot(col - cols / 2.0, row - rows * 0.3) / 25.0)
+        val ridge = 2000.0 * exp(-((row - rows * 0.73) / 8.0).pow(2))
+        (100_000 + 8.0 * row - bowl + ridge).roundToInt()
+    }
+
+    private fun syntheticTerrain(mode: String, isContoursShown: Boolean): Map<String, Any?> {
+        val session = openSession(fiveFootWorld())
+        val cols = session.world.cols
+        val rows = session.world.rows
+        val terrain = mapOf("cols" to cols, "rows" to rows, "version" to 1L, "heights_mm" to bowlAndRidge(cols, rows), "cut_fill_mm" to List((cols + 1) * (rows + 1)) { 0 })
+        return mapOf("terrain" to terrain, "terrain_mode" to mode, "contours" to isContoursShown, "contour_interval_mm" to "50")
+    }
+
+    @Test
+    fun theFiveFootWindowOverABowlAndRidgeWithTerrainOff() = runComposeUiTest {
+        measureWindow("window 5ft bowl-and-ridge terrain off", fiveFootWorld(), fillTrees = false, terrain = syntheticTerrain("off", isContoursShown = false))
+        saveReport("perf-5ft-window-terrain-off")
+    }
+
+    @Test
+    fun theFiveFootWindowOverABowlAndRidgeInHillshadeWithContours() = runComposeUiTest {
+        measureWindow("window 5ft bowl-and-ridge hillshade + 50 mm contours", fiveFootWorld(), fillTrees = false, terrain = syntheticTerrain("hillshade", isContoursShown = true))
+        saveReport("perf-5ft-window-terrain-on")
+    }
+
+    @Test
+    fun theFiveFootWindowOverABowlAndRidgeInHillshadeOnly() = runComposeUiTest {
+        measureWindow("window 5ft bowl-and-ridge hillshade only", fiveFootWorld(), fillTrees = false, terrain = syntheticTerrain("hillshade", isContoursShown = false))
+        saveReport("perf-5ft-window-terrain-hillshade")
+    }
+
+    @Test
+    fun theFiveFootWindowOverABowlAndRidgeWithContoursOnly() = runComposeUiTest {
+        measureWindow("window 5ft bowl-and-ridge 50 mm contours only", fiveFootWorld(), fillTrees = false, terrain = syntheticTerrain("off", isContoursShown = true))
+        saveReport("perf-5ft-window-terrain-contours")
     }
 
     @Test

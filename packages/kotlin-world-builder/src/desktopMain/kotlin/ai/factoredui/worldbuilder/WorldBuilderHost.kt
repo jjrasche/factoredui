@@ -5,6 +5,7 @@ import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.worldengine.session.DispatchResult
 import ai.factoredui.worldengine.session.WorldSession
 import kotlinx.serialization.json.JsonElement
+import kotlin.math.roundToInt
 
 data class UsePresentation(val height: Double? = null, val critter: String? = null, val image: String? = null)
 
@@ -56,6 +57,17 @@ class WorldBuilderHost(
             "compare_title" to comparison.first,
             "compare_text" to comparison.second,
             "controlled" to true,
+        ).apply { terrain()?.let { put("terrain", it) } }
+    }
+
+    fun terrain(): Map<String, Any?>? {
+        val ground = session.ground() ?: return null
+        return mapOf(
+            "cols" to ground.vertexCols - 1,
+            "rows" to ground.vertexRows - 1,
+            "version" to ground.version,
+            "heights_mm" to ground.heightsMm.map { it.roundToInt() },
+            "cut_fill_mm" to ground.cutFillMm.map { it.roundToInt() },
         )
     }
 

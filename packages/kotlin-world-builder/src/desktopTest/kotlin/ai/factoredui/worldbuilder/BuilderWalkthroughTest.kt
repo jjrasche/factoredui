@@ -9,6 +9,8 @@ import ai.factoredui.compose.layout.tilemapScreenBounds
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
 import ai.factoredui.compose.schema.Spec
+import ai.factoredui.worldengine.session.DispatchResult
+import ai.factoredui.worldengine.session.WorldAction
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +31,7 @@ import androidx.compose.ui.test.runDesktopComposeUiTest
 import java.io.File
 import javax.imageio.ImageIO
 import kotlin.test.Test
+import kotlin.test.assertIs
 import kotlinx.serialization.json.Json
 
 private const val WINDOW_WIDTH_PX = 1500
@@ -37,7 +40,8 @@ private const val TILE_WIDTH = 64f
 private const val HEADROOM = 0.95f
 private const val FIT_MARGIN = 12f
 private const val MAX_FIT_SCALE = 2f
-private val SHOT_DIRECTORY = File(System.getProperty("WALKTHROUGH_DIR") ?: System.getenv("WALKTHROUGH_DIR") ?: "build/walkthrough")
+private const val TERRAIN_REVIEW = "terrain-2026-10-06"
+private val SHOT_DIRECTORY =File(System.getProperty("WALKTHROUGH_DIR") ?: System.getenv("WALKTHROUGH_DIR") ?: "build/walkthrough")
 
 @OptIn(ExperimentalTestApi::class)
 class BuilderWalkthroughTest {
@@ -135,8 +139,31 @@ class BuilderWalkthroughTest {
         shot("10-lidar-tree-record-dark")
     }
 
+    private fun DesktopComposeUiTest.terrainShot(name: String, mode: String, isContoursShown: Boolean) {
+        context.setBinding("terrain_mode", mode)
+        context.setBinding("contours", isContoursShown)
+        context.setBinding("contour_interval_mm", "50")
+        waitForIdle()
+        val directory = File(SHOT_DIRECTORY, TERRAIN_REVIEW)
+        directory.mkdirs()
+        ImageIO.write(onRoot().captureToImage().toAwtImage(), "PNG", File(directory, "$name.png"))
+    }
+
     @Test
-    fun theSameFirstStepsInLightForComparison() = runDesktopComposeUiTest(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX) {
+    fun theGroundDemoInEachTerrainModeAndAfterDiggingTheBasin() = runDesktopComposeUiTest(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX) {
+        open("dark", "worlds/parcel-ground-demo.world.json")
+        terrainShot("01-hillshade", "hillshade", isContoursShown = false)
+        terrainShot("02-heat", "heat", isContoursShown = false)
+        terrainShot("03-contours-over-hillshade", "hillshade", isContoursShown = true)
+        listOf(1 to 0, 2 to 0, 1 to 1, 2 to 1).forEach { (col, row) ->
+            assertIs<DispatchResult.Accepted>(host.session.dispatch(WorldAction.Dig(col, row, 150)))
+        }
+        context.applyBindings(host.bindings())
+        terrainShot("04-cutfill-after-basin-dig", "cutfill", isContoursShown = false)
+    }
+
+    @Test
+    fun theSameFirstStepsInLightForComparison()= runDesktopComposeUiTest(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX) {
         open("light")
         shot("07-empty-light")
         tiles("paddock", 5 to 9, 6 to 9)

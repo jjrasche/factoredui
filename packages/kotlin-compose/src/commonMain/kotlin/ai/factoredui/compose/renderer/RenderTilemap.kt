@@ -198,6 +198,7 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     val scene = remember(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images) {
         TilemapScene(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images)
     }
+    val terrain = rememberTerrainPass(resolvedProps, shape, space, cols, rows, sideMm, look)
 
     LaunchedEffect(sceneFootprints, tileArea) {
         val counts = uses.associate { it.id to 0 } + countUses(emptyList(), sceneFootprints)
@@ -310,15 +311,18 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
                     sceneLayer.record(size = contentSize) { drawScene(scene) }
                     recordedScene.remember(scene)
                 }
+                recordTerrainLayer(terrain, space, cols, rows, current.scale, contentSize)
                 withTransform({
                     translate(current.translateX, current.translateY)
                     scale(current.scale, current.scale, pivot = Offset.Zero)
                 }) {
                     drawLayer(groundLayer)
+                    drawTerrainLayer(terrain)
                     drawLayer(sceneLayer)
                     hovered?.let { drawPath(polygon(tileCorners(shape, it.col, it.row).map(space::toContent)), HOVER_LINE, style = Stroke(width = 2.5f * density)) }
                 }
             }
+            TerrainLegendCard(terrain, "${node.id}:terrain-legend", Modifier.align(Alignment.BottomStart))
         }
         if (palettePlace == PalettePlace.BOTTOM) palette()
     }
