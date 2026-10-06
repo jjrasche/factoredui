@@ -1,5 +1,6 @@
 package ai.factoredui.worldbuilder
 
+import ai.factoredui.compose.scene.ViewState
 import ai.factoredui.worldengine.session.DispatchResult
 import ai.factoredui.worldengine.session.WorldAction
 import java.io.File
@@ -41,6 +42,26 @@ class WorldBuilderTerrainTest {
         assertEquals(corners.map { -120 }, corners.map { cutFill[it] })
         assertEquals(4, cutFill.count { it != 0 })
         assertTrue((terrain["version"] as Long) > before, "the ground version moves when a height changes")
+    }
+
+    @Test
+    fun aVectorLevelSetsTheViewAndTheTerrainModeTheVectorMapWillShow() {
+        val bindings = groundDemoHost().levelBindings(ViewState(null, quarterTurns = 1), 625, null)
+        assertEquals(mapOf("level_feet" to 625, "quarter_turns" to 1), bindings["view_state"])
+        assertEquals("hillshade", bindings["terrain_mode"])
+    }
+
+    @Test
+    fun aPixelLevelSetsOnlyTheView() {
+        val bindings = groundDemoHost().levelBindings(ViewState(null), 5, null)
+        assertEquals(setOf("view_state"), bindings.keys)
+    }
+
+    @Test
+    fun aVectorLevelLeavesAnExplicitTerrainChoiceAlone() {
+        listOf("heat", "off").forEach { chosen ->
+            assertFalse("terrain_mode" in groundDemoHost().levelBindings(ViewState(null), 625, chosen), chosen)
+        }
     }
 
     @Test

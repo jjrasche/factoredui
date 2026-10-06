@@ -2,6 +2,10 @@ package ai.factoredui.worldbuilder
 
 import ai.factoredui.compose.adapter.ActionHandler
 import ai.factoredui.compose.renderer.RenderContext
+import ai.factoredui.compose.scene.VECTOR_DEFAULT_TERRAIN_MODE
+import ai.factoredui.compose.scene.ViewState
+import ai.factoredui.compose.scene.isVectorLevel
+import ai.factoredui.compose.scene.viewStateRecord
 import ai.factoredui.worldengine.session.DispatchResult
 import ai.factoredui.worldengine.session.WorldSession
 import kotlinx.serialization.json.JsonElement
@@ -69,6 +73,11 @@ class WorldBuilderHost(
             "heights_mm" to ground.heightsMm.map { it.roundToInt() },
             "cut_fill_mm" to ground.cutFillMm.map { it.roundToInt() },
         )
+    }
+
+    fun levelBindings(current: ViewState, levelFeet: Int, terrainMode: Any?): Map<String, Any?> = buildMap {
+        put("view_state", viewStateRecord(current.copy(levelFeet = levelFeet)))
+        if (terrainMode == null && isVectorLevel(levelFeet)) put("terrain_mode", VECTOR_DEFAULT_TERRAIN_MODE)
     }
 
     fun initialBrush(): String? = session.world.types.keys.firstOrNull()

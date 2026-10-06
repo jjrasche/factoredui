@@ -9,6 +9,7 @@ import ai.factoredui.compose.layout.tilemapScreenBounds
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
 import ai.factoredui.compose.scene.LANDING_LEVEL_FEET
+import ai.factoredui.compose.scene.ViewState
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.worldengine.session.DispatchResult
 import ai.factoredui.worldengine.session.WorldAction
@@ -25,6 +26,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performMouseInput
@@ -190,9 +192,12 @@ class BuilderWalkthroughTest {
     @Test
     fun theGroundDemoAtTheLandingLevelIsTheVectorMapWithHillshade() = runDesktopComposeUiTest(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX) {
         open("dark", "worlds/parcel-ground-demo.world.json")
-        context.setBinding("view_state", mapOf("level_feet" to LANDING_LEVEL_FEET))
+        onNodeWithText("off").assertExists()
+        context.applyBindings(host.levelBindings(ViewState(null), LANDING_LEVEL_FEET, null))
         waitForIdle()
         onNodeWithTag("world:terrain-legend").assertExists()
+        onNodeWithText("hillshade").assertExists()
+        onNodeWithText("off").assertDoesNotExist()
         val directory = File(SHOT_DIRECTORY, SCENE_REVIEW)
         directory.mkdirs()
         ImageIO.write(onRoot().captureToImage().toAwtImage(), "PNG", File(directory, "01-vector-landing-hillshade.png"))

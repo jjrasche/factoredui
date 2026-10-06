@@ -39,6 +39,12 @@ class SceneRenderingTest {
     }
 
     @Test
+    fun onlyTheLevelsTheVectorMapAloneServesAreVectorLevels() {
+        assertEquals(listOf(1, 5, 25, 125, 625).map { it == 625 }, listOf(1, 5, 25, 125, 625).map(::isVectorLevel))
+        assertFalse(isVectorLevel(3))
+    }
+
+    @Test
     fun theLadderStepsOneRungAtATimeAndStopsAtItsEnds() {
         assertEquals(listOf(625, 125, 25, 5, 1, 1), generateSequence(625) { zoomInLevel(it) }.take(6).toList())
         assertEquals(listOf(1, 5, 25, 125, 625, 625), generateSequence(1) { zoomOutLevel(it) }.take(6).toList())

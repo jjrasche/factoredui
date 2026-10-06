@@ -17,6 +17,19 @@ data class RendererCapability(
     fun supports(profile: DeviceProfile, levelFeet: Int): Boolean = profile in profiles && levelFeet in levelsFeet
 }
 
+const val VECTOR_DEFAULT_TERRAIN_MODE = "hillshade"
+
+private val MAP_LAYERS = setOf(SceneLayerKind.GROUND, SceneLayerKind.FOOTPRINTS, SceneLayerKind.INSTANCES, SceneLayerKind.GRID)
+
+val PIXEL_MAP_CAPABILITY = RendererCapability("pixel-map", MAP_LAYERS, setOf(1, 5, 25, 125))
+
+val VECTOR_MAP_CAPABILITY = RendererCapability("vector-map", MAP_LAYERS, setOf(25, 125, 625))
+
+val STANDARD_RENDERER_CAPABILITIES = listOf(PIXEL_MAP_CAPABILITY, VECTOR_MAP_CAPABILITY)
+
+fun isVectorLevel(levelFeet: Int): Boolean =
+    selectRenderer(STANDARD_RENDERER_CAPABILITIES, DeviceProfile.DESKTOP, levelFeet, null)?.id == VECTOR_MAP_CAPABILITY.id
+
 fun selectRenderer(capabilities: List<RendererCapability>, profile: DeviceProfile, levelFeet: Int, preferredId: String?): RendererCapability? {
     val supporting = capabilities.filter { it.supports(profile, levelFeet) }
     return supporting.firstOrNull { it.id == preferredId } ?: supporting.firstOrNull()
