@@ -11,7 +11,7 @@ from canvas import Canvas, hashed
 from creatures import cow, person
 from machines import tractor, tractor_effects, van
 from model import FACINGS
-from palette import DIRT, GRASS, PATH, SAND, SHIRT_RAMPS, TRACTOR_BODIES, TRANSPARENT, WATER
+from palette import SHIRT_RAMPS, TRACTOR_BODIES, TRANSPARENT
 from render import render_model
 from terrain import dirt_tile, grass_tile, path_tile, sand_tile, water_tile
 from trees import CLASSES, RADII
@@ -58,9 +58,9 @@ class Sprite:
         return "/".join(part for part in parts if part)
 
 
-def wrapped_pattern(width, cells, tile_of, base):
+def wrapped_pattern(width, cells, tile_of):
     period_w, period_h = cells * width, cells * width // 2
-    canvas = Canvas(period_w * 3, period_h * 3, base)
+    canvas = Canvas(period_w * 3, period_h * 3)
     for r in range(-cells * 2, cells * 4):
         for c in range(-cells * 2, cells * 4):
             x = (c - r) * width / 2 - width / 2 + period_w
@@ -74,24 +74,24 @@ def lattice_key(c, r, cells):
     return (c - r) % (cells * 2), (c + r) % (cells * 2)
 
 
-def textured_pattern(width, make, variants, seed, base):
+def textured_pattern(width, make, variants, seed):
     tiles = [make(width, variant) for variant in range(variants)]
 
     def tile_of(c, r):
         u, v = lattice_key(c, r, PATTERN_CELLS)
         return tiles[hashed(u, v, seed) % variants]
 
-    return wrapped_pattern(width, PATTERN_CELLS, tile_of, base)
+    return wrapped_pattern(width, PATTERN_CELLS, tile_of)
 
 
 def water_pattern(width, frame):
     tiles = [water_tile(width, step) for step in range(WATER_FRAMES)]
-    return wrapped_pattern(width, WATER_CELLS, lambda c, r: tiles[(frame + c + r) % WATER_FRAMES], WATER[2])
+    return wrapped_pattern(width, WATER_CELLS, lambda c, r: tiles[(frame + c + r) % WATER_FRAMES])
 
 
 def ground_sprites(width):
-    textures = (("grass", grass_tile, 4, GRASS), ("path", path_tile, 3, PATH), ("sand", lambda w, v: sand_tile(w, v), 2, SAND), ("dirt", dirt_tile, 3, DIRT))
-    sprites = [Sprite("pattern", f"ground-{name}", textured_pattern(width, make, variants, index + 1, ramp[2]), (0, 0)) for index, (name, make, variants, ramp) in enumerate(textures)]
+    textures = (("grass", grass_tile, 4), ("path", path_tile, 3), ("sand", sand_tile, 2), ("dirt", dirt_tile, 3))
+    sprites = [Sprite("pattern", f"ground-{name}", textured_pattern(width, make, variants, index + 1), (0, 0)) for index, (name, make, variants) in enumerate(textures)]
     sprites += [Sprite("pattern", "ground-water", water_pattern(width, frame), (0, 0), frame=frame) for frame in range(WATER_FRAMES)]
     return sprites
 
@@ -221,8 +221,7 @@ def indexed(sheet):
     indices = bytearray()
     raw = sheet.tobytes()
     for offset in range(0, len(raw), 4):
-        pixel = tuple(raw[offset:offset + 4])
-        colour = pixel if pixel[3] else TRANSPARENT
+        colour = tuple(raw[offset:offset + 4])
         if colour not in lookup:
             lookup[colour] = len(palette)
             palette.append(colour)

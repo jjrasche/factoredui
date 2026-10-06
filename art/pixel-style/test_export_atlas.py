@@ -53,6 +53,7 @@ class AtlasLayoutTest(unittest.TestCase):
                 if entry["kind"] == "pattern":
                     continue
                 pixels = sprite_pixels(sheets, scale, entry)
+                self.assertTrue(0 <= entry["anchor_x"] < entry["width"] and 0 < entry["anchor_y"] <= entry["height"], f"{scale} {entry['name']} anchor outside")
                 column = [pixels.getpixel((entry["anchor_x"], max(0, entry["anchor_y"] - lift)))[3] for lift in range(3)]
                 self.assertGreater(max(column), 0, f"{scale} {entry['name']}")
 
@@ -95,8 +96,7 @@ class EncodingTest(unittest.TestCase):
         decoded = unpack_bits(pack_bits(indices))
         raw = sheet.tobytes()
         for position in range(0, len(decoded), 997):
-            pixel = tuple(raw[position * 4:position * 4 + 4])
-            self.assertEqual(pixel if pixel[3] else (0, 0, 0, 0), palette[decoded[position]])
+            self.assertEqual(tuple(raw[position * 4:position * 4 + 4]), palette[decoded[position]])
 
 
 class FreshnessTest(unittest.TestCase):
