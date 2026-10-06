@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "events.schema.json",
+  "title": "event log",
+  "description": "An append-only log of events forming a tree by `parent`. A branch's state is the fold of the chain from the world's seed to the branch head; nothing else is state. `touches` and `removed` are written by the engine when it commits an event, never by the caller.",
+  "type": "object",
+  "required": ["world", "events"],
+  "additionalProperties": false,
+  "properties": {
+    "world": {"type": "string"},
+    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}}
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "required": ["id", "parent", "world", "branch", "actor", "action", "parameters", "timestamp", "touches"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^e[0-9]+$"},
+        "parent": {"type": ["string", "null"], "description": "the event this one follows on its branch; null only at the root"},
+        "world": {"type": "string"},
+        "branch": {"type": "string", "minLength": 1},
+        "actor": {"type": "string", "minLength": 1, "description": "a person id, an agent id, or 'clock'"},
+        "action": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "branch", "merge", "revert", "endorse", "place_instance", "remove_instance"]},
+        "parameters": {"type": "object"},
+        "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"},
+        "touches": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^([0-9]+,[0-9]+|clock|agent:.+|instance:.+)$"},
+          "description": "tiles as 'col,row', 'clock' for a tick, 'agent:<id>' for an agent, 'instance:<id>' for an instance; the merge and revert conflict rules compare these"
+        },
+        "removed_instance": {
+          "type": "object",
+          "description": "on a remove_instance: the whole record that stood there, provenance, source and error included",
+          "required": ["id", "type", "x_mm", "y_mm", "z_mm", "rotation_deg", "height_mm", "crown_radius_mm", "provenance", "source", "error"]
+        },
+        "removed": {
+          "type": "object",
+          "description": "on a remove: what stood there, so a revert can put it back",
+          "required": ["type", "col", "row", "properties"],
+          "additionalProperties": false,
+          "properties": {
+            "type": {"type": "string"},
+            "col": {"type": "integer"},
+            "row": {"type": "integer"},
+            "properties": {"type": "object"}
+          }
+        }
+      }
+    },
+    "place_parameters": {
+      "type": "object",
+      "required": ["type", "col", "row"],
+      "properties": {"type": {"type": "string"}, "col": {"type": "integer"}, "row": {"type": "integer"}, "properties": {"type": "object"}}
+    },
+    "remove_parameters": {
+      "type": "object",
+      "required": ["col", "row"],
+      "properties": {"col": {"type": "integer"}, "row": {"type": "integer"}}
+    },
+    "place_instance_parameters": {
+      "description": "a proposed instance at a free millimetre position from the grid's south-west corner, x east and y north; its id is the event id and its height the type's height_mm",
+      "type": "object",
+      "required": ["type", "x_mm", "y_mm"],
+      "properties": {"type": {"type": "string"}, "x_mm": {"type": "number"}, "y_mm": {"type": "number"}, "rotation_deg": {"type": "number"}}
+    },
+    "remove_instance_parameters": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {"id": {"type": "string"}}
+    },
+    "tick_parameters": {
+      "type": "object",
+      "required": ["n"],
+      "properties": {"n": {"type": "integer", "minimum": 1, "maximum": 100000}}
+    },
+    "enroll_parameters": {
+      "type": "object",
+      "required": ["agent_type", "agent_id"],
+      "properties": {"agent_type": {"type": "string"}, "agent_id": {"type": "string"}, "synthetic": {"type": "boolean"}, "attributes": {"type": "object"}}
+    },
+    "opt_in_parameters": {
+      "description": "a synthetic agent is replaced by the real person it stood for: synthetic becomes false and stated attributes overwrite drawn ones",
+      "type": "object",
+      "required": ["agent_id"],
+      "properties": {"agent_id": {"type": "string"}, "attributes": {"type": "object"}}
+    },
+    "branch_parameters": {
+      "description": "branch(name, from): a new head at `from`. A proposal is a branch with proposal true.",
+      "type": "object",
+      "required": ["name", "from", "proposal"],
+      "properties": {"name": {"type": "string"}, "from": {"type": ["string", "null"]}, "proposal": {"type": "boolean"}}
+    },
+    "merge_parameters": {
+      "description": "merge(branch): the source events not yet applied on the target, in source order. Refused when any of them touches a tile the target changed since the two diverged, or when replaying them breaks a rule. A proposal merges only after an endorsement.",
+      "type": "object",
+      "required": ["branch", "events"],
+      "properties": {"branch": {"type": "string"}, "events": {"type": "array", "items": {"type": "string"}}}
+    },
+    "revert_parameters": {
+      "description": "revert(event): applies the inverse of a place or remove, as an action checked against the rules. Refused when a later event touched the same tiles.",
+      "type": "object",
+      "required": ["event", "undo"],
+      "properties": {"event": {"type": "string"}, "undo": {"type": "object", "required": ["action", "parameters"]}}
+    },
+    "endorse_parameters": {
+      "description": "an endorsement of the proposal branch it is appended to. weight_class is a vote class from the matchmaking vocabulary; class weights are null there, so the engine tallies by class and never sums. A synthetic agent cannot endorse.",
+      "type": "object",
+      "required": ["weight_class"],
+      "properties": {"weight_class": {"enum": ["on_site", "nearby", "supporting"]}}
+    }
+  }
+}

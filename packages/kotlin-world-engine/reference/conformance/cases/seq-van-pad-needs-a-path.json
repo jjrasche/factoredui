@@ -1,0 +1,30 @@
+{
+  "id": "seq-van-pad-needs-a-path",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "van_pad", "col": 10, "row": 10}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 3}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"refused": "van-pad-needs-path", "message": "a van pad needs a path on one of its four sides"},
+      {"applied": "e1"},
+      {"applied": "e2"}
+    ],
+    "final": {
+      "main": {
+        "counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 1, "path": 1, "pond": 0, "woodland_tree": 0},
+        "scoring": {"area_paddock": 0, "area_hoop_house": 0, "area_commons_building": 0, "area_van_pad": 625, "area_path": 625, "area_pond": 0, "area_woodland_tree": 0, "pasture_yield_annual": 0, "hoop_house_labor": 0, "neighbor_support": 0},
+        "equations": {"pasture_yield": 0},
+        "stocks": {"standing_forage": 0},
+        "ticks": 0
+      }
+    }
+  },
+  "notes": "A lone van pad at 10,10 has no path beside it: refused, and a refusal takes no event id. Path 6,3 then pad 7,3 (path directly west) are e1 and e2. Areas are 1 tile x 625 sq_ft. Support: no paddocks, so the wants_food utilities are 0; neighbor-2's is 0 - 1 x 1 pad = -1; nobody is > 0, so support is 0."
+}

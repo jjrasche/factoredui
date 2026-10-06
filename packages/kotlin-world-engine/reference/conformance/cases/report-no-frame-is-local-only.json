@@ -1,0 +1,18 @@
+{
+  "id": "report-no-frame-is-local-only",
+  "kind": "report",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "delete", "path": ["frame"]}]},
+  "input": {},
+  "expect": {
+    "render": {
+      "units": "mm",
+      "instances": [
+        {"id": "m-oak-1", "type": "oak", "x_mm": 1500, "y_mm": 2000, "z_mm": 0, "rotation_deg": 0, "height_mm": 16500, "crown_radius_mm": 4000, "provenance": "measured"},
+        {"id": "m-shed-1", "type": "shed", "x_mm": 3500, "y_mm": 2000, "z_mm": 0, "rotation_deg": 90, "height_mm": 2700, "crown_radius_mm": null, "provenance": "measured"}
+      ]
+    },
+    "render_absent": ["frame"]
+  },
+  "notes": "Without a frame the instances are in local millimetres from the grid's south-west corner, and render_props carries no frame key."
+}

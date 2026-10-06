@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-world-schema",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "dungeon-tiny.frozen.world.json", "edits": [{"op": "set", "path": ["grid", "cols"], "value": "twelve"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "world-schema", "fired": ["world-schema"]},
+  "notes": "mutations.json's broken copy for world-schema; the reference's verdict, recorded."
+}

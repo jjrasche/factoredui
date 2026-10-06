@@ -60,6 +60,16 @@ private val CASE_FIELDS = listOf("id", "kind", "source", "world", "input", "expe
 private val KINDS = listOf("expression", "world_load", "action_sequence", "replay", "branching", "clock", "agents", "report")
 private val STATED_SECTIONS = listOf("render", "outputs", "expressions")
 private val SOURCES = listOf("hand", "generated")
+private val EXPECT_KEYS = mapOf(
+    "agents" to setOf("steps", "final"),
+    "branching" to setOf("steps", "final"),
+    "clock" to setOf("steps", "final"),
+    "expression" to setOf("value", "unit", "error"),
+    "action_sequence" to setOf("final", "steps"),
+    "world_load" to setOf("valid", "first", "fired", "blind"),
+    "replay" to setOf("loads", "state", "reason_contains", "log", "steps"),
+    "report" to setOf("outputs", "expressions", "render", "render_absent", "steps"),
+)
 private val OUTPUT_SECTIONS = listOf("counts", "areas", "equations", "stocks", "scoring")
 private val UNIT_PART = Regex("([*/]?)\\s*([a-z_]+)(?:\\^(\\d+))?")
 
@@ -70,7 +80,7 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
 
     fun readCases(): List<Pair<String, JsonObject>> {
         val directory = locations.conformanceCasesDir
-        if (!Files.isDirectory(directory)) return emptyList()
+        check(Files.isDirectory(directory)) { "the conformance cases directory does not exist: $directory" }
         return directory.listDirectoryEntries("*.json").sortedBy { it.name }.map { it.name to Json.parseToJsonElement(Files.readString(it)).jsonObject }
     }
 
@@ -101,12 +111,20 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
         return compareCase(case, observeCase(case))
     }
 
+    private fun findExpectProblems(kind: String?, expect: JsonElement?): List<String> {
+        val stated = (expect as? JsonObject)?.keys.orEmpty()
+        val allowed = EXPECT_KEYS[kind] ?: return emptyList()
+        val unknown = (stated - allowed).sorted().map { "expect key $it is not one the $kind comparison reads" }
+        return if (stated.isEmpty()) listOf("expect states nothing, so the case checks nothing") else unknown
+    }
+
     private fun findCaseShapeProblems(fileName: String, case: JsonObject): List<String> {
         val problems = CASE_FIELDS.filter { it !in case }.map { "missing field $it" }.toMutableList()
         val kind = case["kind"]?.let { pythonStr(it) }
         if (kind !in KINDS) problems += "kind $kind is not one of $KINDS"
         if (case["source"]?.let { pythonStr(it) } !in SOURCES) problems += "source ${case["source"]} is not one of $SOURCES"
         if (case["id"]?.let { pythonStr(it) } != fileName.removeSuffix(".json")) problems += "id ${case["id"]} does not name its file $fileName"
+        problems += findExpectProblems(kind, case["expect"])
         return problems
     }
 

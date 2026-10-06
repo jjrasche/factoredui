@@ -2,8 +2,7 @@
 import os
 from pathlib import Path
 
-DEFAULT_DESIGN = "C:/Users/rasche_j/Documents/workspace/van-life/.git-worktrees/design-world-engine/design/world-engine"
-DESIGN = Path(os.environ.get("WORLD_ENGINE_DESIGN_DIR", DEFAULT_DESIGN))
+DESIGN = Path(__file__).resolve().parent.parent / "reference"
 MODULE = Path(__file__).resolve().parent.parent / "src"
 
 

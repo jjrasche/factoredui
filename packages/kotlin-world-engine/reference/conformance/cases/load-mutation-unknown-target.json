@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-unknown-target",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["rules", {"id": "van-pad-needs-path"}, "applies_to"], "value": ["vanpad"]}]},
+  "input": {},
+  "expect": {"valid": false, "first": "unknown-target", "fired": ["unknown-target"]},
+  "notes": "mutations.json's broken copy for unknown-target; the reference's verdict, recorded."
+}

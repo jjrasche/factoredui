@@ -1,0 +1,36 @@
+{
+  "id": "replay-dungeon-demo",
+  "kind": "replay",
+  "source": "generated",
+  "world": {"file": "dungeon-tiny.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "wall", "col": 0, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 1, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 2, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 3, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 4, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 5, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 6, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 7, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 8, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 9, "row": 0}},
+      {"do": "place", "parameters": {"type": "floor", "col": 1, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 2, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 3, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 4, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 6, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 7, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 8, "row": 1}},
+      {"do": "place", "parameters": {"type": "door", "col": 5, "row": 1}},
+      {"do": "place", "parameters": {"type": "door", "col": 5, "row": 4}},
+      {"do": "place", "parameters": {"type": "monster", "col": 2, "row": 2}},
+      {"do": "place", "parameters": {"type": "monster", "col": 10, "row": 6}},
+      {"do": "place", "parameters": {"type": "treasure", "col": 3, "row": 2}},
+      {"do": "place", "parameters": {"type": "treasure", "col": 8, "row": 2}},
+      {"do": "tick", "actor": "clock", "parameters": {"n": 10}}
+    ]
+  },
+  "expect": {"loads": true},
+  "notes": "The dungeon demo's 22 events replayed from the saved log rebuild the live state byte for byte. With 22 events the text order of ids (e10 before e2) differs from log order, so a replay that reorders by id cannot pass."
+}

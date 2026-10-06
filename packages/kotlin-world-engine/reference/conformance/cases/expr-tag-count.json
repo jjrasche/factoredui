@@ -1,0 +1,17 @@
+{
+  "id": "expr-tag-count",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "text": "count('#open')",
+    "setup": [
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 12}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 0}},
+      {"do": "place", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "place", "parameters": {"type": "woodland_tree", "col": 10, "row": 22}}
+    ]
+  },
+  "expect": {"value": 3, "unit": "tile"},
+  "notes": "Tag open is carried by paddock, path and pond, not by woodland_tree (tall): 1 + 1 + 1 = 3 tiles."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "expr-unknown-unit-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "1 [furlong]"},
+  "expect": {"error": "unknown_word"},
+  "notes": "furlong is not in the unit table (conformance/units.json)."
+}

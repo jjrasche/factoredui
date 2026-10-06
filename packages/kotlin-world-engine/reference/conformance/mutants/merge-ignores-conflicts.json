@@ -1,0 +1,7 @@
+{
+  "id": "merge-ignores-conflicts",
+  "breaks": "merges branches that both changed the same tile, clock or agent",
+  "edits": [
+    {"find": "        if clash:\n            return Refusal(\"merge-conflict\"", "replace": "        if False:\n            return Refusal(\"merge-conflict\""}
+  ]
+}

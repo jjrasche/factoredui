@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-link-resolves",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["links", 0, "parcel"], "value": "parcel-z"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "unknown-word", "fired": ["unknown-word", "link-resolves"]},
+  "notes": "mutations.json's broken copy for link-resolves; the reference's verdict, recorded. unknown-word fires first (rules.json order): the inherited setback rule still reads parcel.structure_setback, and with no linked parcel the alias names nothing."
+}

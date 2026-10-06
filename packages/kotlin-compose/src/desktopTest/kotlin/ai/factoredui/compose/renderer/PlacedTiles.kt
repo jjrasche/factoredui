@@ -45,9 +45,9 @@ internal class PlacedTiles(
         return check.png().toPixelMap()[(x + dx * fit.scale).toInt(), (y + dy * fit.scale).toInt()]
     }
 
-    fun tapGround(point: GroundPoint) {
+    fun tapGround(point: GroundPoint, rightContent: Float = 0f, downContent: Float = 0f) {
         val (x, y) = screenAt(point)
-        check.tapAt("world:map", x - region.left.value, y - region.top.value)
+        check.tapAt("world:map", x - region.left.value + rightContent * fit.scale, y - region.top.value + downContent * fit.scale)
     }
 
     fun pixelAt(col: Int, row: Int, dx: Float = 0f, dy: Float = 0f): Color {

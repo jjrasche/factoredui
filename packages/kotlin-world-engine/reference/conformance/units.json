@@ -1,0 +1,20 @@
+{
+  "purpose": "the unit table every port evaluates in and every case's expected value is stated in; a value in unit u is stored as value * ratio[0] / ratio[1] in the base dimensions",
+  "base": ["ft", "lb", "usd", "hour", "tile", "head"],
+  "units": {
+    "ft": {"ratio": [1, 1], "dims": {"ft": 1}},
+    "mm": {"ratio": [5, 1524], "dims": {"ft": 1}},
+    "sq_ft": {"ratio": [1, 1], "dims": {"ft": 2}},
+    "acre": {"ratio": [43560, 1], "dims": {"ft": 2}},
+    "lb": {"ratio": [1, 1], "dims": {"lb": 1}},
+    "ton": {"ratio": [2000, 1], "dims": {"lb": 1}},
+    "usd": {"ratio": [1, 1], "dims": {"usd": 1}},
+    "second": {"ratio": [1, 3600], "dims": {"hour": 1}},
+    "minute": {"ratio": [1, 60], "dims": {"hour": 1}},
+    "hour": {"ratio": [1, 1], "dims": {"hour": 1}},
+    "day": {"ratio": [24, 1], "dims": {"hour": 1}},
+    "year": {"ratio": [8760, 1], "dims": {"hour": 1}},
+    "tile": {"ratio": [1, 1], "dims": {"tile": 1}},
+    "head": {"ratio": [1, 1], "dims": {"head": 1}}
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "id": "always-rule-only-on-place",
+  "breaks": "checks an always rule after a place but not after a remove",
+  "edits": [
+    {"find": "        if rule.get(\"on\") == \"always\":", "replace": "        if rule.get(\"on\") == \"always\" and verb == \"place\":"}
+  ]
+}

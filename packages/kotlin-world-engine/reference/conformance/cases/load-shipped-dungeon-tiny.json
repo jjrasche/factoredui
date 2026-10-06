@@ -1,0 +1,9 @@
+{
+  "id": "load-shipped-dungeon-tiny",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "dungeon-tiny.frozen.world.json"},
+  "input": {},
+  "expect": {"valid": true, "fired": []},
+  "notes": "The shipped dungeon passes every rule in rules.json; the reference's verdict, recorded."
+}

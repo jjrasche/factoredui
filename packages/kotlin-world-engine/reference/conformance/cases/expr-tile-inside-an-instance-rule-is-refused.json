@@ -1,0 +1,9 @@
+{
+  "id": "expr-tile-inside-an-instance-rule-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {"text": "edge(tile) > 0 [ft]", "site": "instance_rule"},
+  "expect": {"error": "unknown_word"},
+  "notes": "An instance rule acts on an instance, which has no tiles, so 'tile' is not a word there."
+}

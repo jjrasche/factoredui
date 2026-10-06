@@ -1,0 +1,9 @@
+{
+  "id": "load-shipped-locality-stub",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "locality-stub.frozen.world.json"},
+  "input": {},
+  "expect": {"valid": true, "fired": []},
+  "notes": "The shipped locality passes every rule in rules.json, including its child-scope setback rule, which is checked in the locality's own scope; the reference's verdict, recorded."
+}

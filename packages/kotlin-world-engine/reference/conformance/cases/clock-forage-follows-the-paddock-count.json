@@ -1,0 +1,21 @@
+{
+  "id": "clock-forage-follows-the-paddock-count",
+  "kind": "clock",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 10, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 11, "row": 12}},
+      {"do": "tick", "actor": "clock", "parameters": {"n": 10}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 13}},
+      {"do": "tick", "actor": "clock", "parameters": {"n": 20}}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"applied": "e4"}, {"applied": "e5"}, {"applied": "e6"}],
+    "final": {"main": {"ticks": 30, "stocks": {"standing_forage": 0.0172962501729625}}}
+  },
+  "notes": "10 days with 3 paddocks: 10/365 year x 7500/43560 ton/year. A 4th paddock, then 20 days: 20/365 x 10000/43560 (4 x 625 x 4 = 10000). Sum (10 x 7500 + 20 x 10000) / (365 x 43560) = 275000 / 15899400 = 0.01729625 ton. A stock that read the paddock count once, at the start, would give 30/365 x 7500/43560 = 0.01415171."
+}

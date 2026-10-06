@@ -1,0 +1,9 @@
+{
+  "id": "load-proposed-instance-in-the-seed-is-refused",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "set", "path": ["seed", {"id": "m-oak-1"}, "parameters", "provenance"], "value": "proposed"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "world-schema", "fired": ["world-schema"]},
+  "notes": "Proposed instances come only from place_instance events; every seed instance is measured."
+}

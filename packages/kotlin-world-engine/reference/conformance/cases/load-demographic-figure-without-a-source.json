@@ -1,0 +1,9 @@
+{
+  "id": "load-demographic-figure-without-a-source",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "locality-stub.frozen.world.json", "edits": [{"op": "delete", "path": ["object_types", {"id": "census_block"}, "properties", {"name": "population"}, "source"]}]},
+  "input": {},
+  "expect": {"valid": false, "first": "figure-sourced", "fired": ["figure-sourced"]},
+  "notes": "population is kind demographic, one of the five sourced kinds (price, labor, yield, regulation, demographic); without a twin id, row id or placeholder it is an unbacked figure."
+}

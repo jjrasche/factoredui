@@ -1,0 +1,73 @@
+{
+  "id": "replay-parcel-demo",
+  "kind": "replay",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 0}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 1}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 2}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 4}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 5}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 2}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 5, "row": 3}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 10, "row": 10}},
+      {"do": "place", "parameters": {"type": "commons_building", "col": 7, "row": 4}},
+      {"do": "place", "parameters": {"type": "commons_building", "col": 0, "row": 10}},
+      {"do": "place", "parameters": {"type": "hoop_house", "col": 2, "row": 8}},
+      {"do": "place", "parameters": {"type": "woodland_tree", "col": 2, "row": 9}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 10, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 11, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 13}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 10, "row": 13}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 11, "row": 13}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 14}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 10, "row": 14}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 11, "row": 14}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 15}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 10, "row": 15}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 11, "row": 15}},
+      {"do": "place", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "place", "parameters": {"type": "pond", "col": 4, "row": 20}},
+      {"do": "place", "parameters": {"type": "woodland_tree", "col": 10, "row": 22}},
+      {"do": "place", "parameters": {"type": "woodland_tree", "col": 11, "row": 22}},
+      {"do": "place", "parameters": {"type": "woodland_tree", "col": 10, "row": 23}},
+      {"do": "remove", "parameters": {"col": 5, "row": 3}},
+      {"do": "branch", "name": "proposal-more-trees", "from": "main", "proposal": true},
+      {"do": "place", "on": "proposal-more-trees", "parameters": {"type": "woodland_tree", "col": 10, "row": 24}},
+      {"do": "merge", "branch": "proposal-more-trees", "into": "main"},
+      {"do": "endorse", "on": "proposal-more-trees", "actor": "neighbor-1", "parameters": {"weight_class": "nearby"}},
+      {"do": "endorse", "on": "proposal-more-trees", "actor": "jim", "parameters": {"weight_class": "on_site"}},
+      {"do": "merge", "branch": "proposal-more-trees", "into": "main"},
+      {"do": "tick", "actor": "clock", "parameters": {"n": 365}}
+    ]
+  },
+  "expect": {
+    "loads": true,
+    "state": {
+      "main": {
+        "agents": {
+          "neighbor-1": {"attributes": {"distance_ft": 600, "van_aversion": 0, "wants_food": 1}, "id": "neighbor-1", "synthetic": true, "type": "neighbor"},
+          "neighbor-2": {"attributes": {"distance_ft": 1500, "van_aversion": 1, "wants_food": 0}, "id": "neighbor-2", "synthetic": true, "type": "neighbor"},
+          "neighbor-3": {"attributes": {"distance_ft": 3000, "van_aversion": 0, "wants_food": 1}, "id": "neighbor-3", "synthetic": true, "type": "neighbor"}
+        },
+        "cells": [
+          [2, 8, "hoop_house"], [3, 8, "hoop_house"], [3, 20, "pond"], [4, 20, "pond"],
+          [6, 0, "path"], [6, 1, "path"], [6, 2, "path"], [6, 3, "path"], [6, 4, "path"], [6, 5, "path"],
+          [7, 2, "van_pad"], [7, 4, "commons_building"], [7, 5, "commons_building"], [8, 4, "commons_building"], [8, 5, "commons_building"],
+          [9, 12, "paddock"], [9, 13, "paddock"], [9, 14, "paddock"], [9, 15, "paddock"],
+          [10, 12, "paddock"], [10, 13, "paddock"], [10, 14, "paddock"], [10, 15, "paddock"],
+          [10, 22, "woodland_tree"], [10, 23, "woodland_tree"], [10, 24, "woodland_tree"],
+          [11, 12, "paddock"], [11, 13, "paddock"], [11, 14, "paddock"], [11, 15, "paddock"], [11, 22, "woodland_tree"]
+        ],
+        "endorsements": [],
+        "stocks": {"standing_forage": 1377.41046832},
+        "ticks": 365
+      }
+    }
+  },
+  "notes": "The parcel demo's log, with a remove, a proposal branch, an endorsement and a merge, replayed from the saved log: every branch's canonical state equals the live run's byte for byte, and the main branch's state is recorded from the reference."
+}

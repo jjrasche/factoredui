@@ -1,0 +1,9 @@
+{
+  "id": "expr-self-reads-an-agent-attribute",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "self.distance_ft", "site": "agent", "bindings": {"self": "neighbor-1"}},
+  "expect": {"value": 600, "unit": "ft"},
+  "notes": "neighbor-1 is enrolled by the seed with distance_ft 600."
+}

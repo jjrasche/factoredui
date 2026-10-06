@@ -1,0 +1,9 @@
+{
+  "id": "expr-undeclared-use-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "count('driveway')"},
+  "expect": {"error": "unknown_word"},
+  "notes": "driveway is neither an object type, a #tag nor 'any' in the parcel world."
+}

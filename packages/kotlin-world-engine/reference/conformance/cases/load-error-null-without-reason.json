@@ -1,0 +1,9 @@
+{
+  "id": "load-error-null-without-reason",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "set", "path": ["seed", {"id": "m-oak-1"}, "parameters", "error", "height_mm"], "value": {"value": null}}]},
+  "input": {},
+  "expect": {"valid": false, "first": "instance-error-reason", "fired": ["instance-error-reason"]},
+  "notes": "A null error figure must say why it is null."
+}

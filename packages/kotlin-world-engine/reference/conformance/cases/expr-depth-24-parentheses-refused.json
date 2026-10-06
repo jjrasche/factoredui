@@ -1,0 +1,9 @@
+{
+  "id": "expr-depth-24-parentheses-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": [["(", 24], ["1", 1], [")", 24]]},
+  "expect": {"error": "bound"},
+  "notes": "1 + 24 = 25 levels, one over the depth bound of 24."
+}

@@ -1,0 +1,15 @@
+{
+  "id": "replay-tampered-instance-position-does-not-load",
+  "kind": "replay",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "steps": [{"do": "place_instance", "parameters": {"type": "oak", "x_mm": 12000, "y_mm": 9000, "rotation_deg": 0}}],
+    "tamper": [
+      {"op": "set", "path": ["events", 0, "parameters", "x_mm"], "value": 5000},
+      {"op": "set", "path": ["events", 0, "parameters", "y_mm"], "value": 4000}
+    ]
+  },
+  "expect": {"steps": [{"applied": "e1"}], "loads": false, "reason_contains": "tree-clear-of-structures"},
+  "notes": "Moved to 5000,4000 mm the oak is 2500 mm from the shed; replay re-checks the rule and the log does not load."
+}

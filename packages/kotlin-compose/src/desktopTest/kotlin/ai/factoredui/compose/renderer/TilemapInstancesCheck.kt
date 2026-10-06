@@ -146,6 +146,57 @@ class TilemapInstancesCheck {
         assertEquals(listOf(0.0, 3.0), listOf(tileTaps.single()["col"], tileTaps.single()["row"]).map { (it as Number).toDouble() })
         assertEquals(1, instanceTaps.size)
     }
+    private fun tapRecorders(): Triple<MutableList<Map<String, Any?>>, MutableList<Map<String, Any?>>, Map<String, ActionHandler>> {
+        val instanceTaps = mutableListOf<Map<String, Any?>>()
+        val tileTaps = mutableListOf<Map<String, Any?>>()
+        val actions = mapOf<String, ActionHandler>(
+            "world.instanceTapped" to { params -> instanceTaps.add(params) },
+            "world.tileTapped" to { params -> tileTaps.add(params) },
+        )
+        return Triple(instanceTaps, tileTaps, actions)
+    }
+
+    @Test
+    fun tappingTheCanopyAboveTheTrunkReportsTheTree() = runComposeUiTest {
+        val (instanceTaps, tileTaps, actions) = tapRecorders()
+        val check = SpecVisualCheck(this, contextOf(instances = listOf(instance("t1", 2.5, 3.0, crownMm = 12000.0)), actions = actions))
+        check.render(tilemap(), viewport = 500.dp)
+        PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows).tapGround(GroundPoint(2.5f, 3.0f), downContent = -135f)
+        assertEquals(listOf("t1"), instanceTaps.map { it["id"] }, "a tap on the drawn canopy is a tap on the tree")
+        assertTrue(tileTaps.isEmpty(), "and not also on the tile behind it")
+    }
+
+    @Test
+    fun tappingAboveTheTopOfTheCanopyFallsThroughToTheTile() = runComposeUiTest {
+        val (instanceTaps, tileTaps, actions) = tapRecorders()
+        val check = SpecVisualCheck(this, contextOf(instances = listOf(instance("t1", 2.5, 3.5, crownMm = 9000.0)), actions = actions))
+        check.render(tilemap(), viewport = 500.dp)
+        PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows).tapGround(GroundPoint(2.5f, 3.5f), downContent = -190f)
+        assertTrue(instanceTaps.isEmpty(), "above the drawn tree is not the tree")
+        assertEquals(1, tileTaps.size)
+    }
+
+    @Test
+    fun aTreeStandingOnAFootprintWinsTheTapOverTheTile() = runComposeUiTest {
+        val (instanceTaps, tileTaps, actions) = tapRecorders()
+        val check = SpecVisualCheck(this, contextOf(footprints = listOf(footprint("s1", "shed", 1, 1, 3, 2)), instances = listOf(instance("t1", 2.5, 2.0)), actions = actions))
+        check.render(tilemap(), viewport = 500.dp)
+        PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows).tapGround(GroundPoint(2.5f, 2.0f))
+        assertEquals(listOf("t1"), instanceTaps.map { it["id"] })
+        assertTrue(tileTaps.isEmpty())
+    }
+
+    @Test
+    fun whereTwoCanopiesOverlapTheNearerTreeWins() = runComposeUiTest {
+        val (instanceTaps, _, actions) = tapRecorders()
+        val back = instance("back", 2.0, 2.0, crownMm = 9000.0)
+        val front = instance("front", 2.4, 2.4, crownMm = 9000.0)
+        val check = SpecVisualCheck(this, contextOf(instances = listOf(back, front), actions = actions))
+        check.render(tilemap(), viewport = 500.dp)
+        PlacedTiles(check, TileShape.SQUARE, TileView.TOP, cols, rows).tapGround(GroundPoint(2.2f, 2.2f), downContent = -30f)
+        assertEquals(listOf("front"), instanceTaps.map { it["id"] })
+    }
+
     private fun svgDataUri(colour: String): String {
         val svg = "<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='$colour'/></svg>"
         return "data:image/svg+xml;base64," + java.util.Base64.getEncoder().encodeToString(svg.toByteArray())

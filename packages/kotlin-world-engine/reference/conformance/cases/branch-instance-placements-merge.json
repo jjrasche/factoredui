@@ -1,0 +1,19 @@
+{
+  "id": "branch-instance-placements-merge",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "place_instance", "on": "idea", "parameters": {"type": "oak", "x_mm": 12000, "y_mm": 9000, "rotation_deg": 0}},
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 20000, "y_mm": 3000, "rotation_deg": 0}},
+      {"do": "merge", "branch": "idea"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"applied": "e4"}],
+    "final": {"main": {"equations": {"tree_count": 3}}, "idea": {"equations": {"tree_count": 2}}}
+  },
+  "notes": "Each placement touches only its own new id (instance:e2 on idea, instance:e3 on main), so they never clash. After the merge main holds the measured oak, e3 and e2: 3; idea holds the measured oak and e2."
+}

@@ -1,0 +1,183 @@
+{
+  "id": "parcel-five-acre",
+  "version": 1,
+  "title": "Five-acre parcel",
+  "description": "The offered portion as a 13 by 26 grid of 25 ft tiles (625 sq ft each, 4.85 acres), the seven uses of the farm, the rules each placement must pass, and the figures the task-model twin can back. It links to a locality parcel and inherits that locality's structure setback.",
+  "sprites": {"extensions": []},
+  "grid": {"cols": 13, "rows": 26, "tile_ft": 25, "shape": "square", "view": "iso", "north": "row_0"},
+  "clock": {"tick_unit": "day", "tick_length": 1},
+  "object_types": [
+    {
+      "id": "paddock",
+      "label": "Paddock",
+      "sprite": "fence",
+      "color": "#9CCB6B",
+      "footprint": [1, 1],
+      "tags": ["open"],
+      "properties": [
+        {"name": "annual_forage_yield", "unit": "ton/acre/year", "default": 4.0, "kind": "yield",
+         "source": {"twin": "eq-aux-stocking-static", "binding": "mi_grass_clover_tons_per_acre", "row": "yield-mi-grass-clover-4.0t"},
+         "note": "the twin's bound Michigan grass-clover annual herbage figure"},
+        {"name": "forage_dm_per_tile", "unit": "lb/tile/year", "default": 114.7842056932966, "kind": "yield",
+         "source": {"twin": "twin-constants.json#paddock.yield_kg_dm_per_tile_per_year", "row": "yield-mi-grass-clover-4.0t"},
+         "note": "52.0652398989899 kg dry matter per tile a year, shown in lb because the engine's unit table has no kg"},
+        {"name": "labor_hours_per_use", "unit": "hour/year", "default": 38.25, "kind": "labor",
+         "source": {"twin": "twin-constants.json#paddock.hours_per_year_per_use", "row": "uw-moving-cattle-15-min"},
+         "note": "one herd moved daily through the grazing season, charged once when any paddock exists"},
+        {"name": "capex_per_use", "unit": "usd", "default": 219.98, "kind": "price",
+         "source": {"twin": "twin-constants.json#paddock.capex_usd_per_use", "row": "cap-fence-energizer"},
+         "note": "energizer 129.99 and stock tank 89.99 (row cap-stock-tank-110), up front, once"}
+      ]
+    },
+    {
+      "id": "hoop_house",
+      "label": "Hoop house",
+      "sprite": "arch",
+      "color": "#E8EEF4",
+      "footprint": [2, 1],
+      "tags": ["structure"],
+      "properties": [
+        {"name": "labor_hours_per_tile", "unit": "hour/tile/year", "default": 24.576822916666668, "kind": "labor",
+         "source": {"twin": "twin-constants.json#hoop_house.hours_per_year_per_tile", "row": "uky-tunnel-labor-hours"},
+         "note": "75.5 hours a year for the row's 96 by 20 ft house, scaled by area to one 625 sq ft tile"}
+      ]
+    },
+    {
+      "id": "commons_building",
+      "label": "Commons building",
+      "sprite": "block",
+      "color": "#C98B5A",
+      "footprint": [2, 2],
+      "tags": ["structure", "tall"]
+    },
+    {
+      "id": "van_pad",
+      "label": "Van pad",
+      "sprite": "flat",
+      "color": "#B7B0A4",
+      "footprint": [1, 1],
+      "tags": ["parking"]
+    },
+    {
+      "id": "path",
+      "label": "Path",
+      "sprite": "flat",
+      "color": "#D9C9A3",
+      "footprint": [1, 1],
+      "tags": ["access", "open"]
+    },
+    {
+      "id": "pond",
+      "label": "Pond",
+      "sprite": "water",
+      "color": "#5B9BD5",
+      "footprint": [1, 1],
+      "tags": ["water", "open"]
+    },
+    {
+      "id": "woodland_tree",
+      "label": "Woodland tree",
+      "sprite": "tree",
+      "color": "#3F7D3A",
+      "footprint": [1, 1],
+      "tags": ["tall"]
+    }
+  ],
+  "rules": [
+    {
+      "id": "van-pad-needs-path",
+      "on": "always",
+      "applies_to": ["van_pad"],
+      "require": "neighbors(tile, 1 [tile], 'path') >= 1 [tile]",
+      "message": "a van pad needs a path on one of its four sides"
+    },
+    {
+      "id": "hoop-house-open-south",
+      "on": "place",
+      "applies_to": ["hoop_house"],
+      "require": "side(tile, 'south', '#tall') == 0 [tile]",
+      "message": "a hoop house needs an open south side: nothing tall directly south of it"
+    },
+    {
+      "id": "tall-not-south-of-hoop-house",
+      "on": "place",
+      "applies_to_tag": "tall",
+      "require": "side(tile, 'north', 'hoop_house') == 0 [tile]",
+      "message": "a tall object would shade the hoop house directly north of it"
+    }
+  ],
+  "equations": [
+    {
+      "id": "pasture_yield",
+      "expr": "count('paddock') * tile_area * paddock.annual_forage_yield",
+      "unit": "ton/year",
+      "source": {"twin": "eq-aux-stocking-static", "binding": "mi_grass_clover_tons_per_acre"},
+      "note": "paddock area times the twin's annual herbage figure: the static stocking equation's forage term, not the twin's day-by-day growth"
+    }
+  ],
+  "stocks": [
+    {
+      "id": "standing_forage",
+      "unit": "ton",
+      "initial": 0,
+      "next": "standing_forage + pasture_yield * tick_length",
+      "source": {"placeholder": true, "reason": "linear accrual of the annual figure, with no grazing; the twin's eq-state-herbage_mass driven by eq-aux-growth replaces it"}
+    }
+  ],
+  "actions": [
+    {"verb": "place", "label": "Place", "parameters": [{"name": "type", "type": "object_type"}, {"name": "col", "type": "col"}, {"name": "row", "type": "row"}], "emits": ["place"]},
+    {"verb": "remove", "label": "Remove", "parameters": [{"name": "col", "type": "col"}, {"name": "row", "type": "row"}], "emits": ["remove"]},
+    {"verb": "tick", "label": "Advance days", "parameters": [{"name": "n", "type": "count"}], "emits": ["tick"]},
+    {"verb": "enroll", "label": "Add a neighbour", "parameters": [{"name": "agent_type", "type": "agent_type"}, {"name": "agent_id", "type": "agent_id"}, {"name": "synthetic", "type": "boolean"}, {"name": "attributes", "type": "attributes"}], "emits": ["enroll"]},
+    {"verb": "opt_in", "label": "A real person takes the place of a synthetic one", "parameters": [{"name": "agent_id", "type": "agent_id"}, {"name": "attributes", "type": "attributes"}], "emits": ["opt_in"]}
+  ],
+  "agents": [
+    {
+      "type": "neighbor",
+      "label": "Neighbour",
+      "attributes": [
+        {"name": "distance_ft", "unit": "ft", "default": 1320},
+        {"name": "wants_food", "unit": "1", "default": 0},
+        {"name": "van_aversion", "unit": "1", "default": 0}
+      ],
+      "weight": "1 / (1 + self.distance_ft / 1320 [ft])",
+      "utility": "self.wants_food * pasture_yield / 1 [ton/year] - self.van_aversion * count('van_pad') / 1 [tile]",
+      "vote": "projection",
+      "source": {"placeholder": true, "reason": "no choices are collected yet; the matchmaking design's estimate waits for 50 people at 10 tasks each, so these coefficients are a shape, not a fit"}
+    }
+  ],
+  "scoring": [
+    {"id": "area_paddock", "label": "Paddock area", "expr": "count('paddock') * tile_area", "unit": "sq_ft"},
+    {"id": "area_hoop_house", "label": "Hoop house area", "expr": "count('hoop_house') * tile_area", "unit": "sq_ft"},
+    {"id": "area_commons_building", "label": "Commons building area", "expr": "count('commons_building') * tile_area", "unit": "sq_ft"},
+    {"id": "area_van_pad", "label": "Van pad area", "expr": "count('van_pad') * tile_area", "unit": "sq_ft"},
+    {"id": "area_path", "label": "Path area", "expr": "count('path') * tile_area", "unit": "sq_ft"},
+    {"id": "area_pond", "label": "Pond area", "expr": "count('pond') * tile_area", "unit": "sq_ft"},
+    {"id": "area_woodland_tree", "label": "Woodland tree area", "expr": "count('woodland_tree') * tile_area", "unit": "sq_ft"},
+    {"id": "pasture_yield_annual", "label": "Pasture yield", "expr": "pasture_yield", "unit": "ton/year",
+     "source": {"twin": "eq-aux-stocking-static"}},
+    {"id": "hoop_house_labor", "label": "Hoop house labour", "expr": "count('hoop_house') * hoop_house.labor_hours_per_tile", "unit": "hour/year",
+     "source": {"twin": "twin-constants.json#hoop_house.hours_per_year_per_tile", "row": "uky-tunnel-labor-hours"}},
+    {"id": "labor_hours_total", "label": "Labour hours", "expr": "hoop_house_labor + if(count('paddock') > 0 [tile], paddock.labor_hours_per_use, 0 [hour/year])", "unit": "hour/year",
+     "source": {"twin": "twin-constants.json"},
+     "note": "only the uses with a cited labor figure: hoop-house tiles and one herd move; every other use counts zero until a row times it"},
+    {"id": "capex_floor", "label": "Sourced capital floor", "expr": "if(count('paddock') > 0 [tile], paddock.capex_per_use, 0 [usd])", "unit": "usd",
+     "source": {"twin": "twin-constants.json#paddock.capex_usd_per_use"},
+     "note": "a floor: banked up-front prices only; the hoop house, buildings, pads, paths, pond and trees have no banked price and count zero"},
+    {"id": "paddock_dm_yield", "label": "Paddock dry matter", "expr": "count('paddock') * paddock.forage_dm_per_tile", "unit": "lb/year",
+     "source": {"twin": "twin-constants.json#paddock.yield_kg_dm_per_tile_per_year", "row": "yield-mi-grass-clover-4.0t"}},
+    {"id": "neighbor_support", "label": "Projected neighbour support", "expr": "projected_support('neighbor')", "unit": "1",
+     "binding": false, "note": "a projection from synthetic and opted-in neighbours; never a vote"}
+  ],
+  "links": [
+    {"parent": "locality-stub.world.json", "parcel": "parcel-a", "as": "parcel", "inherit": ["structure-setback"]}
+  ],
+  "seed": [
+    {"id": "neighbor-1", "action": "enroll", "parameters": {"agent_type": "neighbor", "agent_id": "neighbor-1", "synthetic": true, "attributes": {"distance_ft": 600, "wants_food": 1, "van_aversion": 0}},
+     "note": "illustrative synthetic neighbour; no Census draw has run"},
+    {"id": "neighbor-2", "action": "enroll", "parameters": {"agent_type": "neighbor", "agent_id": "neighbor-2", "synthetic": true, "attributes": {"distance_ft": 1500, "wants_food": 0, "van_aversion": 1}},
+     "note": "illustrative synthetic neighbour; no Census draw has run"},
+    {"id": "neighbor-3", "action": "enroll", "parameters": {"agent_type": "neighbor", "agent_id": "neighbor-3", "synthetic": true, "attributes": {"distance_ft": 3000, "wants_food": 1, "van_aversion": 0}},
+     "note": "illustrative synthetic neighbour; no Census draw has run"}
+  ]
+}

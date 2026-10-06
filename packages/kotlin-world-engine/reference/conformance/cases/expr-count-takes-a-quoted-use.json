@@ -1,0 +1,9 @@
+{
+  "id": "expr-count-takes-a-quoted-use",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "count(pasture_yield)"},
+  "expect": {"error": "syntax"},
+  "notes": "count's argument must be a quoted use literal; a computed name in its place is a syntax error."
+}

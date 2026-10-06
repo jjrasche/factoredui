@@ -1,0 +1,9 @@
+{
+  "id": "load-error-number-without-source",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "set", "path": ["seed", {"id": "m-oak-1"}, "parameters", "error", "position_mm"], "value": {"value": 950}}]},
+  "input": {},
+  "expect": {"valid": false, "first": "instance-error-reason", "fired": ["instance-error-reason"]},
+  "notes": "An error figure that is a number must cite its source."
+}

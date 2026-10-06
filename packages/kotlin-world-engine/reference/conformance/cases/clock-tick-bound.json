@@ -1,0 +1,22 @@
+{
+  "id": "clock-tick-bound",
+  "kind": "clock",
+  "source": "hand",
+  "world": {"file": "dungeon-tiny.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "tick", "actor": "clock", "parameters": {"n": 0}},
+      {"do": "tick", "actor": "clock", "parameters": {"n": 100001}},
+      {"do": "tick", "actor": "clock", "parameters": {"n": 100000}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"refused": "tick-bound", "message": "a tick event advances 1 to 100000 ticks"},
+      {"refused": "tick-bound", "message": "a tick event advances 1 to 100000 ticks"},
+      {"applied": "e1"}
+    ],
+    "final": {"main": {"ticks": 100000}}
+  },
+  "notes": "A tick event carries 1 <= n <= 100000; 0 and 100001 are refused and 100000, the largest, is accepted. The dungeon has no stocks, so the 100000 steps are cheap."
+}

@@ -1,0 +1,21 @@
+{
+  "id": "branch-from-an-earlier-event",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 0}},
+      {"do": "branch", "name": "past", "from": "e1"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}],
+    "final": {
+      "main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 1, "pond": 1, "woodland_tree": 0}},
+      "past": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 1, "woodland_tree": 0}}
+    }
+  },
+  "notes": "A branch opened at e1 holds the fold of the chain up to e1: the pond and not the path."
+}

@@ -1,0 +1,24 @@
+{
+  "id": "seq-taps-become-actions",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "tap", "col": 3, "row": 20, "brush": "pond"},
+      {"do": "tap", "col": 3, "row": 20, "brush": "paddock"},
+      {"do": "tap", "col": 4, "row": 20},
+      {"do": "tap", "col": 3, "row": 20, "brush": "pond"}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"},
+      {"refused": "occupied", "message": "tile 3,20 holds pond; tap with its own brush to remove it first"},
+      {"refused": "no-brush", "message": "nothing selected to place"},
+      {"applied": "e2"}
+    ],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 0, "woodland_tree": 0}}}
+  },
+  "notes": "The renderer contract on_tile_tap: a tap on an empty tile with a brush places (e1); a tap with another brush on an occupied tile is refused; an empty tile with no brush is refused; a tap with the occupant's own brush removes it (e2), leaving nothing."
+}

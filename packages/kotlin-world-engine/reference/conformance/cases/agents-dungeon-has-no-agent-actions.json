@@ -1,0 +1,20 @@
+{
+  "id": "agents-dungeon-has-no-agent-actions",
+  "kind": "agents",
+  "source": "hand",
+  "world": {"file": "dungeon-tiny.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "enroll", "parameters": {"agent_type": "neighbor", "agent_id": "n"}},
+      {"do": "opt_in", "parameters": {"agent_id": "n"}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"refused": "unknown-action", "message": "world dungeon-tiny declares no action 'enroll'"},
+      {"refused": "unknown-action", "message": "world dungeon-tiny declares no action 'opt_in'"}
+    ],
+    "final": {"main": {"counts": {"wall": 0, "floor": 0, "door": 0, "monster": 0, "treasure": 0}}}
+  },
+  "notes": "The dungeon declares only place, remove and tick; an action the world does not declare is refused before its parameters are read."
+}

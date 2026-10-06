@@ -1,0 +1,9 @@
+{
+  "id": "expr-self-outside-an-agent-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "self.distance_ft"},
+  "expect": {"error": "unknown_word"},
+  "notes": "self exists only inside an agent's weight or utility; at the default equation site it is an unknown word."
+}

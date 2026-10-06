@@ -1,0 +1,18 @@
+{
+  "id": "expr-neighbors-radius-two",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "text": "neighbors(tile, 2 [tile], 'path')",
+    "site": "rule",
+    "bindings": {"tile": [7, 3]},
+    "setup": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 2}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 3}}
+    ]
+  },
+  "expect": {"value": 2, "unit": "tile"},
+  "notes": "Same layout with radius 2: 6,3 (distance 1) and 6,2 (distance 2) both count: 2 tiles."
+}

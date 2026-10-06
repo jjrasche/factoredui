@@ -1,0 +1,19 @@
+{
+  "id": "branch-instance-removed-on-both-sides-conflicts",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "remove_instance", "on": "idea", "parameters": {"id": "m-oak-1"}},
+      {"do": "remove_instance", "parameters": {"id": "m-oak-1"}},
+      {"do": "merge", "branch": "idea"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"refused": "merge-conflict", "message": "both branches changed instance:m-oak-1 since they split"}],
+    "final": {"main": {"equations": {"tree_count": 0}}, "idea": {"equations": {"tree_count": 0}}}
+  },
+  "notes": "Both branches removed the measured oak after splitting. The conflict rule refuses the merge on the shared touch instance:m-oak-1, before a replay could fail on the missing instance (which would refuse as unknown-instance instead)."
+}

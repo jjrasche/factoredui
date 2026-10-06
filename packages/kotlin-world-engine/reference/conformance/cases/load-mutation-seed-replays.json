@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-seed-replays",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "locality-stub.frozen.world.json", "edits": [{"op": "set", "path": ["seed", {"id": "parcel-b"}, "parameters", "col"], "value": 8}]},
+  "input": {},
+  "expect": {"valid": false, "first": "seed-replays", "fired": ["seed-replays"]},
+  "notes": "mutations.json's broken copy for seed-replays; the reference's verdict, recorded."
+}

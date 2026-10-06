@@ -1,0 +1,38 @@
+{
+  "id": "replay-two-placements-canonical",
+  "kind": "replay",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 3}}
+    ]
+  },
+  "expect": {
+    "loads": true,
+    "log": {
+      "world": "parcel-five-acre",
+      "events": [
+        {"id": "e1", "parent": null, "world": "parcel-five-acre", "branch": "main", "actor": "jim", "action": "place",
+         "parameters": {"type": "path", "col": 6, "row": 3}, "timestamp": "2026-10-05T00:00:00Z", "touches": ["6,3"]},
+        {"id": "e2", "parent": "e1", "world": "parcel-five-acre", "branch": "main", "actor": "jim", "action": "place",
+         "parameters": {"type": "van_pad", "col": 7, "row": 3}, "timestamp": "2026-10-05T00:00:01Z", "touches": ["7,3"]}
+      ]
+    },
+    "state": {
+      "main": {
+        "cells": [[6, 3, "path"], [7, 3, "van_pad"]],
+        "stocks": {"standing_forage": 0},
+        "ticks": 0,
+        "agents": {
+          "neighbor-1": {"id": "neighbor-1", "type": "neighbor", "synthetic": true, "attributes": {"distance_ft": 600, "wants_food": 1, "van_aversion": 0}},
+          "neighbor-2": {"id": "neighbor-2", "type": "neighbor", "synthetic": true, "attributes": {"distance_ft": 1500, "wants_food": 0, "van_aversion": 1}},
+          "neighbor-3": {"id": "neighbor-3", "type": "neighbor", "synthetic": true, "attributes": {"distance_ft": 3000, "wants_food": 1, "van_aversion": 0}}
+        },
+        "endorsements": []
+      }
+    }
+  },
+  "notes": "Written by hand from the event and state shapes. Two places make two events, e2 parented on e1, actor jim by default, stamped 2026-10-05T00:00:SSZ with SS the step index, each touching its one tile. The state is the seed's three synthetic neighbours (attributes in base units: ft and dimensionless keep their numbers), the two cells sorted by column then row, the forage stock at 0, no ticks, no endorsements. Replaying the log must give this state byte for byte in canonical form."
+}

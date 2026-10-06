@@ -1,0 +1,31 @@
+{
+  "id": "replay-a-year-of-forage-in-base-units",
+  "kind": "replay",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 10, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 11, "row": 12}},
+      {"do": "tick", "actor": "clock", "parameters": {"n": 365}}
+    ]
+  },
+  "expect": {
+    "loads": true,
+    "state": {
+      "main": {
+        "cells": [[9, 12, "paddock"], [10, 12, "paddock"], [11, 12, "paddock"]],
+        "stocks": {"standing_forage": 344.35261708},
+        "ticks": 365,
+        "agents": {
+          "neighbor-1": {"id": "neighbor-1", "type": "neighbor", "synthetic": true, "attributes": {"distance_ft": 600, "wants_food": 1, "van_aversion": 0}},
+          "neighbor-2": {"id": "neighbor-2", "type": "neighbor", "synthetic": true, "attributes": {"distance_ft": 1500, "wants_food": 0, "van_aversion": 1}},
+          "neighbor-3": {"id": "neighbor-3", "type": "neighbor", "synthetic": true, "attributes": {"distance_ft": 3000, "wants_food": 1, "van_aversion": 0}}
+        },
+        "endorsements": []
+      }
+    }
+  },
+  "notes": "Canonical state holds stocks in base units, lb for a ton stock. A year of forage on 3 paddocks is 7500/43560 ton = 0.17217631 ton x 2000 lb/ton = 344.352617080 lb, which is 344.35261708 at nine decimals with trailing zeros dropped."
+}

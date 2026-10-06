@@ -1,0 +1,19 @@
+{
+  "id": "branch-nothing-left-to-merge",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "place", "on": "idea", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "merge", "branch": "idea"},
+      {"do": "merge", "branch": "idea"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"refused": "nothing-to-merge", "message": "main already holds every event of idea"}],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 1, "woodland_tree": 0}}}
+  },
+  "notes": "After the first merge main holds the pond event, so a second merge has nothing to apply; the pond is not placed twice."
+}

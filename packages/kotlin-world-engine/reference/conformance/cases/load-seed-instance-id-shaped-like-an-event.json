@@ -1,0 +1,9 @@
+{
+  "id": "load-seed-instance-id-shaped-like-an-event",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "set", "path": ["seed", {"id": "m-oak-1"}, "id"], "value": "e1"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "world-schema", "fired": ["world-schema"]},
+  "notes": "A proposed instance takes its event's id (e1, e2, ...). A seed instance called e1 would collide with the first placement, and since a refused event takes no id the next draft would be e1 again, forever; so the schema keeps seed instance ids out of the e<n> shape."
+}

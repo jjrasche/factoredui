@@ -1,0 +1,9 @@
+{
+  "id": "expr-type-property-keeps-its-unit",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "paddock.annual_forage_yield"},
+  "expect": {"value": 4, "unit": "ton/acre/year"},
+  "notes": "paddock declares annual_forage_yield default 4.0 in ton/acre/year; read back in that unit it is 4 (stored in base units as 4 x 2000 / 43560 / 8760 lb per sq ft per hour)."
+}

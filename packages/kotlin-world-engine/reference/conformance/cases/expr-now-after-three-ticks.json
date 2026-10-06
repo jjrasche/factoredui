@@ -1,0 +1,9 @@
+{
+  "id": "expr-now-after-three-ticks",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "now", "setup": [{"do": "tick", "actor": "clock", "parameters": {"n": 3}}]},
+  "expect": {"value": 3, "unit": "day"},
+  "notes": "The parcel clock is 1 day per tick; after one tick event of n = 3, now = 3 x 1 day = 3 day (72 hour)."
+}

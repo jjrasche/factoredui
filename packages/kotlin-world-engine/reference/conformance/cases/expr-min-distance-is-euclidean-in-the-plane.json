@@ -1,0 +1,12 @@
+{
+  "id": "expr-min-distance-is-euclidean-in-the-plane",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "delete", "path": ["seed", {"id": "m-oak-1"}]}]},
+  "input": {
+    "text": "min_distance_mm('#tree', '#structure')",
+    "setup": [{"do": "place_instance", "parameters": {"type": "oak", "x_mm": 6500, "y_mm": 6000, "rotation_deg": 0}}]
+  },
+  "expect": {"value": 5000, "unit": "mm"},
+  "notes": "With the measured oak deleted, the only tree is a proposed one at 6500,6000 mm and the only structure instance the shed at 3500,2000 mm: sqrt(3000^2 + 4000^2) = 5000 mm. z is not read."
+}

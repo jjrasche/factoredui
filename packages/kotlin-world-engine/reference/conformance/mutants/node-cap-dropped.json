@@ -1,0 +1,7 @@
+{
+  "id": "node-cap-dropped",
+  "breaks": "parses expressions of more than 256 nodes",
+  "edits": [
+    {"find": "MAX_NODES = 256", "replace": "MAX_NODES = 1_000_000"}
+  ]
+}

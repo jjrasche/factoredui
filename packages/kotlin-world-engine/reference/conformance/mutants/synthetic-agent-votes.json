@@ -1,0 +1,7 @@
+{
+  "id": "synthetic-agent-votes",
+  "breaks": "lets a synthetic agent's endorsement count as a binding vote",
+  "edits": [
+    {"find": "    if agent is not None and agent[\"synthetic\"]:", "replace": "    if False:"}
+  ]
+}

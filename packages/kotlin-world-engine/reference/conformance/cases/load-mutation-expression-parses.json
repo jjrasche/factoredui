@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-expression-parses",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["rules", {"id": "van-pad-needs-path"}, "require"], "value": "neighbors(tile, 1 [tile], 'path') >= ; while"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "expression-parses", "fired": ["expression-parses"]},
+  "notes": "mutations.json's broken copy for expression-parses; the reference's verdict, recorded."
+}

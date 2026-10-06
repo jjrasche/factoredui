@@ -1,0 +1,9 @@
+{
+  "id": "expr-256-nodes-accepted",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": [["-1", 1], [" + 1", 127]]},
+  "expect": {"value": 126, "unit": "1"},
+  "notes": "128 number nodes + 1 negation + 127 additions = 256 nodes, at the bound and not over it. Value -1 + 127 x 1 = 126."
+}

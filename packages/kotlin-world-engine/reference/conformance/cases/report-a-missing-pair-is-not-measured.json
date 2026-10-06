@@ -1,0 +1,26 @@
+{
+  "id": "report-a-missing-pair-is-not-measured",
+  "kind": "report",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "delete", "path": ["seed", {"id": "m-shed-1"}]}]},
+  "input": {
+    "expressions": [
+      {"text": "min_distance_mm('oak', 'shed')", "unit": "mm"},
+      {"text": "min_distance_mm('oak', 'shed') >= 3000 [mm]"},
+      {"text": "min_distance_mm('oak', 'shed') >= 3000 [mm] and false"},
+      {"text": "min_distance_mm('oak', 'shed') >= 3000 [mm] and true"},
+      {"text": "min_distance_mm('oak', 'shed') >= 3000 [mm] or true"},
+      {"text": "min_distance_mm('oak', 'shed') >= 3000 [mm] or false"},
+      {"text": "not (min_distance_mm('oak', 'shed') >= 3000 [mm])"},
+      {"text": "min_distance_mm('oak', 'shed') + 1 [mm]", "unit": "mm"},
+      {"text": "-min_distance_mm('oak', 'shed')", "unit": "mm"},
+      {"text": "min(min_distance_mm('oak', 'shed'), 5 [mm])", "unit": "mm"},
+      {"text": "if(min_distance_mm('oak', 'shed') > 0 [mm], 1, 2)"}
+    ]
+  },
+  "expect": {
+    "outputs": {"equations": {"tree_count": 1, "nearest_tree_to_shed": null}},
+    "expressions": [null, null, false, null, true, null, null, null, null, null, null]
+  },
+  "notes": "With the shed deleted no oak-shed pair exists: min_distance_mm is null (not measured), and so is the equation that reads it. Null propagates through arithmetic, negation, min, max, comparisons and an if condition. and/or are three-valued (Kleene): null and false is false, null and true is null, null or true is true, null or false is null, not null is null. A rule refuses only on false."
+}

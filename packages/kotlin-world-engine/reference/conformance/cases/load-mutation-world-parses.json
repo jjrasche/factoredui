@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-world-parses",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "dungeon-tiny.frozen.world.json", "edits": [{"op": "write_text", "value": "{ \"id\": \"dungeon-tiny\", "}]},
+  "input": {},
+  "expect": {"valid": false, "first": "world-parses", "fired": ["world-parses"]},
+  "notes": "mutations.json's broken copy for world-parses; the reference's verdict, recorded."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "expr-agent-weight",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "1 / (1 + self.distance_ft / 1320 [ft])", "site": "agent", "bindings": {"self": "neighbor-1"}},
+  "expect": {"value": 0.6875, "unit": "1"},
+  "notes": "neighbor-1: 1 / (1 + 600/1320) = 1320 / 1920 = 11/16 = 0.6875."
+}

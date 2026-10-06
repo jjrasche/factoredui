@@ -1,0 +1,32 @@
+{
+  "id": "agents-enrolment-refusals",
+  "kind": "agents",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "enroll", "parameters": {"agent_type": "neighbor", "agent_id": "neighbor-1"}},
+      {"do": "enroll", "parameters": {"agent_type": "dragon", "agent_id": "d-1"}},
+      {"do": "enroll", "parameters": {"agent_type": "neighbor", "agent_id": "neighbor-4", "attributes": {"income": 5}}},
+      {"do": "opt_in", "parameters": {"agent_id": "neighbor-9"}},
+      {"do": "enroll", "parameters": {"agent_type": "neighbor", "agent_id": "neighbor-4", "synthetic": false, "attributes": {"distance_ft": 0, "wants_food": 1}}},
+      {"do": "branch", "name": "proposal", "from": "main", "proposal": true},
+      {"do": "place", "on": "proposal", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "endorse", "on": "proposal", "actor": "neighbor-4", "parameters": {"weight_class": "on_site"}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"refused": "agent-exists", "message": "agent neighbor-1 is already enrolled"},
+      {"refused": "unknown-agent-type", "message": "no agent type 'dragon'"},
+      {"refused": "unknown-attribute"},
+      {"refused": "unknown-agent", "message": "no agent neighbor-9 to replace"},
+      {"applied": "e1"},
+      {"applied": "e2"},
+      {"applied": "e3"},
+      {"applied": "e4"}
+    ],
+    "final": {"main": {"scoring": {"neighbor_support": 0}}}
+  },
+  "notes": "neighbor-1 is already in the seed; dragon is not an agent type; income is not a neighbour attribute; neighbor-9 was never enrolled. A neighbour enrolled with synthetic false is a real person and may endorse. Support stays 0: with no paddocks and no van pads every utility is 0, including neighbor-4's, whose weight is 1/(1 + 0/1320) = 1."
+}

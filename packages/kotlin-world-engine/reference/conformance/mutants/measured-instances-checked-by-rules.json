@@ -1,0 +1,7 @@
+{
+  "id": "measured-instances-checked-by-rules",
+  "breaks": "checks a world's rules against the measured instances its seed records, so a standing tree near a standing shed stops the world loading",
+  "edits": [
+    {"find": "    check_instance_room(world, state, record)\n    state.instance_layer[record[\"id\"]] = record", "replace": "    check_instance_room(world, state, record)\n    state.instance_layer[record[\"id\"]] = record\n    check_rules(world, state, \"place_instance\", record)"}
+  ]
+}

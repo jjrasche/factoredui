@@ -1,0 +1,9 @@
+{
+  "id": "expr-min-distance-is-a-length",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {"text": "min_distance_mm('oak', 'shed') >= 3"},
+  "expect": {"error": "unit_mismatch"},
+  "notes": "min_distance_mm is a length; comparing it with a bare number is refused like any length."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "load-grid-one-row-larger-than-the-parcel",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["grid", "rows"], "value": 27}]},
+  "input": {},
+  "expect": {"valid": false, "first": "link-fits", "fired": ["link-fits"]},
+  "notes": "parcel-a is 1 x 2 locality tiles of 330 ft: 2 x 108900 = 217800 sq ft. With 26 rows the grid is 13 x 26 x 625 = 211250 sq ft and fits; with 27 rows it is 13 x 27 x 625 = 219375 > 217800 and does not."
+}

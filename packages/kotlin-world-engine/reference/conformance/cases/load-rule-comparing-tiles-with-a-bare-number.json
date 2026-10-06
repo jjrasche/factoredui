@@ -1,0 +1,9 @@
+{
+  "id": "load-rule-comparing-tiles-with-a-bare-number",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["rules", {"id": "hoop-house-open-south"}, "require"], "value": "side(tile, 'south', '#tall') == 0"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "unit-mismatch", "fired": ["unit-mismatch"]},
+  "notes": "side() returns tile; the bare 0 is dimensionless; == between tile and dimensionless is a unit mismatch. The shipped rule writes 0 [tile]."
+}

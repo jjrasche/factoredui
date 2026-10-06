@@ -1,0 +1,9 @@
+{
+  "id": "expr-tile-area",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "tile_area"},
+  "expect": {"value": 625, "unit": "sq_ft/tile"},
+  "notes": "The parcel grid has tile_ft 25, so tile_area = 25 x 25 = 625 sq_ft per tile."
+}

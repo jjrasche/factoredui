@@ -1,0 +1,18 @@
+{
+  "id": "expr-neighbors-are-manhattan",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "text": "neighbors(tile, 1 [tile], 'path')",
+    "site": "rule",
+    "bindings": {"tile": [7, 3]},
+    "setup": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 2}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 3}}
+    ]
+  },
+  "expect": {"value": 1, "unit": "tile"},
+  "notes": "Paths at 6,3 and 6,2 around a van pad at 7,3. Manhattan distance: 6,3 is |7-6| + |3-3| = 1; the diagonal 6,2 is |1| + |1| = 2 > 1. Only 1 tile counts (a Chebyshev ring would count 2)."
+}

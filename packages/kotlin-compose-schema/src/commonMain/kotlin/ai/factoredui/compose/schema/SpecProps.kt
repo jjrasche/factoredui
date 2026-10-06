@@ -899,34 +899,69 @@ fun resolveTilemapCells(resolvedCells: Any?): List<TileCell> =
         TileCell(col, row, use)
     }
 
-fun resolveTilemapFootprints(resolvedFootprints: Any?): List<TileFootprint> =
-    (resolvedFootprints as? List<*>).orEmpty().mapNotNull { entry ->
-        val fields = entry as? Map<*, *> ?: return@mapNotNull null
-        val col = (fields["col"] as? Number)?.toInt() ?: return@mapNotNull null
-        val row = (fields["row"] as? Number)?.toInt() ?: return@mapNotNull null
-        val use = fields["use"] as? String ?: return@mapNotNull null
-        val width = (fields["width"] as? Number)?.toInt()?.coerceAtLeast(1) ?: 1
-        val height = (fields["height"] as? Number)?.toInt()?.coerceAtLeast(1) ?: 1
-        TileFootprint(fields["id"] as? String ?: "$col,$row", use, col, row, width, height)
+data class Resolved<T>(val items: List<T>, val dropped: List<String>)
+
+private fun <T> resolveRecords(raw: Any?, kind: String, build: (Map<*, *>) -> Pair<T?, String?>): Resolved<T> {
+    val items = mutableListOf<T>()
+    val dropped = mutableListOf<String>()
+    (raw as? List<*>).orEmpty().forEachIndexed { index, entry ->
+        val fields = entry as? Map<*, *>
+        if (fields == null) {
+            dropped.add("$kind $index is not a record")
+            return@forEachIndexed
+        }
+        val (item, reason) = build(fields)
+        if (item != null) items.add(item) else dropped.add("$kind $index: ${reason ?: "unreadable"}")
+    }
+    return Resolved(items, dropped)
+}
+
+fun resolveTilemapFootprintsChecked(resolvedFootprints: Any?): Resolved<TileFootprint> =
+    resolveRecords(resolvedFootprints, "footprint") { fields ->
+        val col = (fields["col"] as? Number)?.toInt()
+        val row = (fields["row"] as? Number)?.toInt()
+        val use = fields["use"] as? String
+        when {
+            col == null -> null to "no numeric col"
+            row == null -> null to "no numeric row"
+            use == null -> null to "no use"
+            else -> TileFootprint(
+                fields["id"] as? String ?: "$col,$row",
+                use,
+                col,
+                row,
+                (fields["width"] as? Number)?.toInt()?.coerceAtLeast(1) ?: 1,
+                (fields["height"] as? Number)?.toInt()?.coerceAtLeast(1) ?: 1,
+            ) to null
+        }
     }
 
-fun resolveTilemapInstances(resolvedInstances: Any?): List<TileInstance> =
-    (resolvedInstances as? List<*>).orEmpty().mapNotNull { entry ->
-        val fields = entry as? Map<*, *> ?: return@mapNotNull null
-        val id = fields["id"] as? String ?: return@mapNotNull null
-        val use = fields["type"] as? String ?: return@mapNotNull null
-        val xMm = (fields["x_mm"] as? Number)?.toDouble() ?: return@mapNotNull null
-        val yMm = (fields["y_mm"] as? Number)?.toDouble() ?: return@mapNotNull null
-        TileInstance(
-            id = id,
-            use = use,
-            xMm = xMm,
-            yMm = yMm,
-            heightMm = (fields["height_mm"] as? Number)?.toDouble(),
-            crownRadiusMm = (fields["crown_radius_mm"] as? Number)?.toDouble(),
-            rotationDeg = (fields["rotation_deg"] as? Number)?.toDouble() ?: 0.0,
-        )
+fun resolveTilemapFootprints(resolvedFootprints: Any?): List<TileFootprint> = resolveTilemapFootprintsChecked(resolvedFootprints).items
+
+fun resolveTilemapInstancesChecked(resolvedInstances: Any?): Resolved<TileInstance> =
+    resolveRecords(resolvedInstances, "instance") { fields ->
+        val id = fields["id"] as? String
+        val use = fields["type"] as? String
+        val xMm = (fields["x_mm"] as? Number)?.toDouble()
+        val yMm = (fields["y_mm"] as? Number)?.toDouble()
+        when {
+            id == null -> null to "no id"
+            use == null -> null to "no type"
+            xMm == null -> null to "no numeric x_mm"
+            yMm == null -> null to "no numeric y_mm"
+            else -> TileInstance(
+                id = id,
+                use = use,
+                xMm = xMm,
+                yMm = yMm,
+                heightMm = (fields["height_mm"] as? Number)?.toDouble(),
+                crownRadiusMm = (fields["crown_radius_mm"] as? Number)?.toDouble(),
+                rotationDeg = (fields["rotation_deg"] as? Number)?.toDouble() ?: 0.0,
+            ) to null
+        }
     }
+
+fun resolveTilemapInstances(resolvedInstances: Any?): List<TileInstance> = resolveTilemapInstancesChecked(resolvedInstances).items
 
 fun resolveTilemapShape(resolvedShape: Any?): TileShape =
     if ((resolvedShape as? String).equals("hex", ignoreCase = true)) {

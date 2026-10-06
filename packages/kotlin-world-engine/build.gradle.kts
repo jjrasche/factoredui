@@ -56,16 +56,11 @@ kotlin {
     }
 }
 
-val defaultWorldEngineDesignDir = "C:/Users/rasche_j/Documents/workspace/van-life/.git-worktrees/design-world-engine/design/world-engine"
+val worldReferenceDir = layout.projectDirectory.dir("reference")
 
 tasks.withType<Test>().configureEach {
-    val conformanceDir = System.getenv("WORLD_ENGINE_CONFORMANCE_DIR") ?: System.getProperty("WORLD_ENGINE_CONFORMANCE_DIR")
-    val designDir = System.getenv("WORLD_ENGINE_DESIGN_DIR") ?: defaultWorldEngineDesignDir
-    conformanceDir?.let { systemProperty("WORLD_ENGINE_CONFORMANCE_DIR", it) }
-    systemProperty("WORLD_ENGINE_DESIGN_DIR", designDir)
-    // The cases live outside this repo, so without these inputs Gradle serves a cached verdict on a reference that has since moved.
-    inputs.files(fileTree(designDir)).withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("worldEngineReference")
-    conformanceDir?.let { inputs.files(fileTree(it)).withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("worldEngineConformanceCases") }
+    systemProperty("WORLD_ENGINE_DESIGN_DIR", worldReferenceDir.asFile.path)
+    inputs.files(fileTree(worldReferenceDir)).withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("worldEngineReference")
 }
 
 extensions.configure<LibraryExtension>("android") {

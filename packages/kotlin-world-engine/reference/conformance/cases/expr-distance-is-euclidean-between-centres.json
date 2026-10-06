@@ -1,0 +1,15 @@
+{
+  "id": "expr-distance-is-euclidean-between-centres",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "text": "distance('pond', 'path')",
+    "setup": [
+      {"do": "place", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 24}}
+    ]
+  },
+  "expect": {"value": 125, "unit": "ft"},
+  "notes": "Pond at 3,20 and path at 6,24: sqrt(3^2 + 4^2) = 5 tiles x 25 ft = 125 ft."
+}

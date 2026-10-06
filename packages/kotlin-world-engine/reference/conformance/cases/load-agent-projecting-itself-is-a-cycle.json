@@ -1,0 +1,9 @@
+{
+  "id": "load-agent-projecting-itself-is-a-cycle",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["agents", {"type": "neighbor"}, "utility"], "value": "projected_support('neighbor')"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "name-cycle", "fired": ["name-cycle"]},
+  "notes": "The neighbour's utility calls projected_support('neighbor'), which evaluates every neighbour's utility: agent:neighbor -> agent:neighbor. The utility is not a binding site, so projection-not-binding does not fire; only the cycle does."
+}

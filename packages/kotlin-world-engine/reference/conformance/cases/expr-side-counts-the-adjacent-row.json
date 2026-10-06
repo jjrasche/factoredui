@@ -1,0 +1,17 @@
+{
+  "id": "expr-side-counts-the-adjacent-row",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "text": "side(tile, 'west', 'path')",
+    "site": "rule",
+    "bindings": {"tile": [7, 3]},
+    "setup": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 3}}
+    ]
+  },
+  "expect": {"value": 1, "unit": "tile"},
+  "notes": "The van pad at 7,3 has 6,3 directly to its west, which holds a path: 1 tile."
+}

@@ -1,0 +1,21 @@
+{
+  "id": "agents-projected-support-falls",
+  "kind": "agents",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 10, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 11, "row": 12}},
+      {"do": "opt_in", "actor": "neighbor-1", "parameters": {"agent_id": "neighbor-1", "attributes": {"wants_food": 0, "van_aversion": 1}}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 2}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 2}}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"applied": "e4"}, {"applied": "e5"}, {"applied": "e6"}],
+    "final": {"main": {"scoring": {"neighbor_support": 0.20912124582869857}}}
+  },
+  "notes": "Weights 11/16, 22/47, 11/36 (n1, n2, n3); total 9889/6768 (see expr-projected-support-with-three-paddocks, where support is 6721/9889). After the opt-in n1 has wants_food 0 and van_aversion 1: utility 0 - 1 x 1 pad = -1. n2: 0 - 1 = -1. n3: 1 x pasture_yield > 0, so it approves alone. Support = (11/36) / (9889/6768) = 11 x 188 / 9889 = 2068/9889 = 0.20912125."
+}

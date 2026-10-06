@@ -1,0 +1,12 @@
+{
+  "id": "expr-min-distance-excludes-self",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "text": "min_distance_mm('oak', 'oak')",
+    "setup": [{"do": "place_instance", "parameters": {"type": "oak", "x_mm": 9500, "y_mm": 2000, "rotation_deg": 0}}]
+  },
+  "expect": {"value": 8000, "unit": "mm"},
+  "notes": "An instance is never paired with itself, so the nearest oak-to-oak pair is 1500,2000 to 9500,2000: 8000 mm, not 0. The new oak is 6000 mm from the shed, so the clearance rule lets it in."
+}

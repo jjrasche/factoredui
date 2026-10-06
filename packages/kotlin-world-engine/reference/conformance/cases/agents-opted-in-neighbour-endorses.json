@@ -1,0 +1,20 @@
+{
+  "id": "agents-opted-in-neighbour-endorses",
+  "kind": "agents",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "opt_in", "actor": "neighbor-2", "parameters": {"agent_id": "neighbor-2", "attributes": {"van_aversion": 0}}},
+      {"do": "branch", "name": "proposal-2", "from": "main", "proposal": true},
+      {"do": "place", "on": "proposal-2", "parameters": {"type": "pond", "col": 4, "row": 20}},
+      {"do": "endorse", "on": "proposal-2", "actor": "neighbor-2", "parameters": {"weight_class": "nearby"}},
+      {"do": "merge", "branch": "proposal-2"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"applied": "e4"}, {"applied": "e5"}],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 1, "woodland_tree": 0}}}
+  },
+  "notes": "Opting in replaces the synthetic neighbour with the real person it stood for (synthetic becomes false), so the same id now endorses, and the endorsed proposal merges its pond into main."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "expr-division-by-zero-is-an-error",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "1 / (1 - 1)"},
+  "expect": {"error": "divide_by_zero"},
+  "notes": "1 - 1 = 0. The checker accepts the text (both sides dimensionless); evaluation divides by zero, which is an error the world must guard with if()."
+}

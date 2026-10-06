@@ -1,0 +1,21 @@
+{
+  "id": "seq-instance-rule-reads-only-instances",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "house", "col": 5, "row": 0}},
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 18000, "y_mm": 15000, "rotation_deg": 0}}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}],
+    "final": {"main": {
+      "counts": {"house": 4, "shed": 0, "oak": 0, "garden": 0},
+      "areas": {"house": 400, "shed": 0, "oak": 0, "garden": 0},
+      "equations": {"tree_count": 2}
+    }}
+  },
+  "notes": "The house tile covers cols 5-6 and rows 0-1: x 15240-21336 mm and y 12192-18288 mm from the south-west corner (row 0 is the north edge). A proposed oak inside it at 18000,15000 is still applied: min_distance_mm reads the instance layer only, and the nearest structure instance is the shed at 3500,2000, sqrt(14500^2 + 13000^2) mm away. The oak instance adds nothing to tile counts or areas: house 4 tiles x 100 sq ft = 400. Trees: the measured oak and e2 = 2."
+}

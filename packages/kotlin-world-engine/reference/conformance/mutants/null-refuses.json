@@ -1,0 +1,7 @@
+{
+  "id": "null-refuses",
+  "breaks": "refuses an action when its rule is not measured (null) as well as when it is false",
+  "edits": [
+    {"find": "**rule_binding(subject)).value_of(tree) is False:", "replace": "**rule_binding(subject)).value_of(tree) in (False, None):"}
+  ]
+}

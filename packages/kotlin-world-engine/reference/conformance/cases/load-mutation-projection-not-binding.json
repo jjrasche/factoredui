@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-projection-not-binding",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["scoring", {"id": "neighbor_support"}, "binding"], "value": true}]},
+  "input": {},
+  "expect": {"valid": false, "first": "projection-not-binding", "fired": ["projection-not-binding"]},
+  "notes": "mutations.json's broken copy for projection-not-binding; the reference's verdict, recorded."
+}

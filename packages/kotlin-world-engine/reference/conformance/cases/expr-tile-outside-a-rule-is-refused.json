@@ -1,0 +1,9 @@
+{
+  "id": "expr-tile-outside-a-rule-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "edge(tile)"},
+  "expect": {"error": "unknown_word"},
+  "notes": "tile exists only inside a rule, where it is the acted-on object; at the default equation site it is an unknown word."
+}

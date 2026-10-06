@@ -1,0 +1,9 @@
+{
+  "id": "load-rule-reading-a-projection",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["rules", {"id": "van-pad-needs-path"}, "require"], "value": "projected_support('neighbor') >= 0.5"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "projection-not-binding", "fired": ["projection-not-binding"]},
+  "notes": "A rule decides whether an action happens, so it is binding by definition, and this one reads projected_support(): a projected vote may never decide an action. The text itself is well formed (dimensionless >= dimensionless)."
+}

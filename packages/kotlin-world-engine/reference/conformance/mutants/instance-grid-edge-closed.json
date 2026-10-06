@@ -1,0 +1,7 @@
+{
+  "id": "instance-grid-edge-closed",
+  "breaks": "admits an instance standing exactly on the grid's east or north edge (closed interval instead of half-open)",
+  "edits": [
+    {"find": "return 0 <= exact(x_mm) < width and 0 <= exact(y_mm) < height", "replace": "return 0 <= exact(x_mm) <= width and 0 <= exact(y_mm) <= height"}
+  ]
+}

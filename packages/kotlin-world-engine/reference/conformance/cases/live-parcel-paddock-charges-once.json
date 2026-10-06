@@ -1,0 +1,28 @@
+{
+  "id": "live-parcel-paddock-charges-once",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 10, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 11, "row": 12}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"},
+      {"applied": "e2"},
+      {"applied": "e3"}
+    ],
+    "final": {
+      "main": {
+        "counts": {"paddock": 3, "hoop_house": 0},
+        "scoring": {"area_paddock": 1875, "pasture_yield_annual": 0.17217630853994492, "hoop_house_labor": 0,
+                    "labor_hours_total": 38.25, "capex_floor": 219.98, "paddock_dm_yield": 344.3526170798898}
+      }
+    }
+  },
+  "notes": "Three paddock tiles. The herd move is 15 min a day for 153 grazing days: 15 x 153 / 60 = 38.25 h a year, charged once because any paddock exists, not per tile. The capital floor is the energizer 129.99 plus the stock tank 89.99 = 219.98 usd, also once. Dry matter is 4.0 ton/acre x 2000 lb/ton x 625/43560 acre per tile = 114.7842056932966 lb a tile, x 3 = 15,000,000 / 43,560 = 344.3526170798898 lb a year. Pasture yield is 3 x 625 / 43560 x 4.0 = 0.17217630853994492 ton a year."
+}

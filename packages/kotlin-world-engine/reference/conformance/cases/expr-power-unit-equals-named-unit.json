@@ -1,0 +1,9 @@
+{
+  "id": "expr-power-unit-equals-named-unit",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "1 [ft^2] == 1 [sq_ft]"},
+  "expect": {"value": true},
+  "notes": "ft^2 is ft x ft with factor 1 x 1 = 1; sq_ft is ft^2 with factor 1. Equal dimensions and equal values, so true."
+}

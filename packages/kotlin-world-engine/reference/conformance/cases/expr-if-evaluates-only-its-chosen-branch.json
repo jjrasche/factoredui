@@ -1,0 +1,9 @@
+{
+  "id": "expr-if-evaluates-only-its-chosen-branch",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "dungeon-tiny.frozen.world.json"},
+  "input": {"text": "if(count('monster') > 0 [tile], count('treasure') / count('monster'), 0)"},
+  "expect": {"value": 0, "unit": "1"},
+  "notes": "The empty dungeon has 0 monster tiles, so the condition is false and only the else branch 0 runs; the division by 0 in the other branch never happens."
+}

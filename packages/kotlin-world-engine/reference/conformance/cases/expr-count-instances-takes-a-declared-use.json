@@ -1,0 +1,9 @@
+{
+  "id": "expr-count-instances-takes-a-declared-use",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {"text": "count_instances('pine')"},
+  "expect": {"error": "unknown_word"},
+  "notes": "pine is not an object type, a #tag or 'any'."
+}

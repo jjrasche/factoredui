@@ -1,0 +1,9 @@
+{
+  "id": "load-shipped-parcel-five-acre",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {},
+  "expect": {"valid": true, "fired": []},
+  "notes": "The shipped parcel passes every rule in rules.json, with its link resolved through the locality; the reference's verdict, recorded."
+}

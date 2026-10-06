@@ -1,0 +1,9 @@
+{
+  "id": "load-parent-seed-broken",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "locality-stub.frozen.world.json", "edits": [{"op": "set", "path": ["seed", {"id": "parcel-a"}, "parameters", "col"], "value": 3}]},
+  "input": {},
+  "expect": {"valid": false, "first": "seed-replays", "fired": ["seed-replays"]},
+  "notes": "parcel-a moved to 3,0 covers 3,0 and 3,1; the roads are at column 0, three columns away, so parcel-needs-road (radius 1) refuses the seed."
+}

@@ -1,0 +1,27 @@
+{
+  "id": "agents-synthetic-neighbour-cannot-endorse",
+  "kind": "agents",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "proposal", "from": "main", "proposal": true},
+      {"do": "place", "on": "proposal", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "endorse", "on": "proposal", "actor": "neighbor-2", "parameters": {"weight_class": "nearby"}},
+      {"do": "merge", "branch": "proposal"}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"},
+      {"applied": "e2"},
+      {"refused": "projection-not-binding", "message": "neighbor-2 is a synthetic agent; its vote is a projection and cannot endorse"},
+      {"refused": "proposal-unendorsed", "message": "proposal proposal carries no endorsement from a real person"}
+    ],
+    "final": {
+      "main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 0, "woodland_tree": 0}},
+      "proposal": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 1, "woodland_tree": 0}}
+    }
+  },
+  "notes": "neighbor-2 is enrolled synthetic by the seed, so its endorsement is refused as a binding vote; with no endorsement the proposal does not merge, and main stays empty."
+}

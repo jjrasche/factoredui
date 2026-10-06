@@ -1,0 +1,12 @@
+{
+  "id": "load-footprint-mm-on-a-tile-edge-agrees",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [
+    {"op": "set", "path": ["object_types", {"id": "house"}, "footprint"], "value": [2, 1]},
+    {"op": "set", "path": ["object_types", {"id": "house"}, "footprint_mm"], "value": [6096, 3048]}
+  ]},
+  "input": {},
+  "expect": {"valid": true, "fired": []},
+  "notes": "footprint_mm [6096, 3048] on 3048 mm tiles is exactly 2 x 1 tiles, and the ceiling of a whole number is that number. The quotient is computed exactly on the decimal values as written, not in binary floating point."
+}

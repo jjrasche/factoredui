@@ -1,0 +1,19 @@
+{
+  "id": "branch-merge-conflict-on-the-clock",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "tick", "on": "idea", "actor": "clock", "parameters": {"n": 1}},
+      {"do": "tick", "actor": "clock", "parameters": {"n": 1}},
+      {"do": "merge", "branch": "idea"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"refused": "merge-conflict", "message": "both branches changed clock since they split"}],
+    "final": {"main": {"ticks": 1}, "idea": {"ticks": 1}}
+  },
+  "notes": "Both branches advanced the clock after splitting; a tick touches 'clock', so they conflict, and each keeps its own one tick."
+}

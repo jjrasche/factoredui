@@ -1,0 +1,9 @@
+{
+  "id": "expr-acre-states-in-square-feet",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "1 [acre]"},
+  "expect": {"value": 43560, "unit": "sq_ft"},
+  "notes": "The unit table makes 1 acre = 43560 sq_ft, so 1 [acre] stated in sq_ft is 1 x 43560 = 43560."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "expr-statement-separator-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "count('path'); count('path')"},
+  "expect": {"error": "syntax"},
+  "notes": "';' is not a token of the grammar, so the tokenizer refuses the text: there are no statements, only one expression."
+}

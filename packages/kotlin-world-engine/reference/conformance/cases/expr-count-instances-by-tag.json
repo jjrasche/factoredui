@@ -1,0 +1,12 @@
+{
+  "id": "expr-count-instances-by-tag",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "text": "count_instances('#tree')",
+    "setup": [{"do": "place_instance", "parameters": {"type": "oak", "x_mm": 12000, "y_mm": 9000, "rotation_deg": 0}}]
+  },
+  "expect": {"value": 2, "unit": "1"},
+  "notes": "The seed's measured oak plus one proposed oak at 12000,9000 mm both carry #tree; the measured shed does not. Dimensionless: an instance is not a tile."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "expr-min-of-unlike-units-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "min(1 [ft], 1 [lb])"},
+  "expect": {"error": "unit_mismatch"},
+  "notes": "min needs both arguments in the same dimensions; ft and lb differ."
+}

@@ -1,10 +1,8 @@
 package ai.factoredui.compose.layout
 
-import kotlin.math.max
 import kotlin.math.sqrt
 
 const val MM_PER_FOOT = 304.8
-private const val PICK_MARGIN_TILES = 0.35
 
 data class TileFootprint(val id: String, val use: String, val col: Int, val row: Int, val width: Int, val height: Int)
 
@@ -35,19 +33,6 @@ fun footprintCorners(footprint: TileFootprint): List<GroundPoint> = listOf(
 
 fun footprintCentre(footprint: TileFootprint): GroundPoint =
     GroundPoint(footprint.col + footprint.width / 2f, footprint.row + footprint.height / 2f)
-
-fun pickInstance(instances: List<TileInstance>, tileSideMm: Double, rows: Int, ground: GroundPoint): TileInstance? =
-    instances
-        .map { instance -> instance to distanceTiles(instanceGround(instance, tileSideMm, rows), ground) }
-        .filter { (instance, distance) -> distance <= max(instanceRadiusTiles(instance, tileSideMm), 0f) + PICK_MARGIN_TILES }
-        .minByOrNull { (_, distance) -> distance }
-        ?.first
-
-private fun distanceTiles(a: GroundPoint, b: GroundPoint): Float {
-    val dx = a.x - b.x
-    val dy = a.y - b.y
-    return sqrt(dx * dx + dy * dy)
-}
 
 sealed interface TileDrawable {
     val centre: GroundPoint

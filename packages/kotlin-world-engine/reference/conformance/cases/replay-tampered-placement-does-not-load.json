@@ -1,0 +1,18 @@
+{
+  "id": "replay-tampered-placement-does-not-load",
+  "kind": "replay",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 3}}
+    ],
+    "tamper": [
+      {"op": "set", "path": ["events", 1, "parameters", "col"], "value": 10},
+      {"op": "set", "path": ["events", 1, "parameters", "row"], "value": 10}
+    ]
+  },
+  "expect": {"loads": false, "reason_contains": "does not replay"},
+  "notes": "The van pad's event is moved to 10,10, where no path stands; replay re-checks every rule and refuses the log."
+}

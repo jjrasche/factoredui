@@ -2,17 +2,21 @@ package ai.factoredui.worldengine
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class ConformanceSuiteTest {
     private val runner = ConformanceRunner()
 
     @Test
-    fun the_conformance_cases_exist_so_a_green_run_is_not_blind() {
+    fun the_reference_is_the_pinned_commit_untouched() {
+        assertEquals(emptyList(), ReferenceLocations.findManifestProblems())
+    }
+
+    @Test
+    fun every_pinned_case_is_read_and_judged_not_just_one() {
         val cases = runner.readCases()
-        assertTrue(cases.isNotEmpty(), "BLIND: no cases under ${ReferenceLocations.conformanceCasesDir}, so nothing was checked")
+        assertEquals(ReferenceLocations.expectedCaseCount, cases.size, "cases read from ${ReferenceLocations.conformanceCasesDir} against the ${ReferenceLocations.expectedCaseCount} pinned at ${ReferenceLocations.pinnedCommit}")
         val failing = cases.filter { (name, case) -> runner.judge(name, case).isNotEmpty() }.map { it.first }
-        println("${cases.size - failing.size} cases pass")
+        println("${cases.size - failing.size} of ${cases.size} cases pass at ${ReferenceLocations.pinnedCommit}")
         println("${failing.size} fail")
         assertEquals(emptyList(), failing)
     }

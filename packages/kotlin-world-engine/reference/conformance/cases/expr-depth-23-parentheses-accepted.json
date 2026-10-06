@@ -1,0 +1,9 @@
+{
+  "id": "expr-depth-23-parentheses-accepted",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": [["(", 23], ["1", 1], [")", 23]]},
+  "expect": {"value": 1, "unit": "1"},
+  "notes": "Depth counts the top level as 1 and each parenthesis adds 1: 1 + 23 = 24, which is not over 24, so it parses and is 1."
+}

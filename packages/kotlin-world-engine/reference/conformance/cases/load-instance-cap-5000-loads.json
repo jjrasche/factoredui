@@ -1,0 +1,13 @@
+{
+  "id": "load-instance-cap-5000-loads",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "set_items", "path": ["seed"], "times": 5000, "template": {
+    "id": "g{i}", "action": "place_instance",
+    "parameters": {"type": "oak", "x_mm": 12000, "y_mm": 12000, "provenance": "measured", "source": {"tag": "generated for the cap case"},
+      "error": {"position_mm": {"value": null, "null_reason": "generated: no survey"}, "height_mm": {"value": null, "null_reason": "generated: no survey"}, "crown_radius_mm": {"value": null, "null_reason": "generated: no survey"}}}
+  }}]},
+  "input": {},
+  "expect": {"valid": true, "fired": []},
+  "notes": "5000 measured instances is exactly the cap, and the world loads."
+}

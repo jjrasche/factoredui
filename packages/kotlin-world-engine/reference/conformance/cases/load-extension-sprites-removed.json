@@ -1,0 +1,9 @@
+{
+  "id": "load-extension-sprites-removed",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "dungeon-tiny.frozen.world.json", "edits": [{"op": "set", "path": ["sprites", "extensions"], "value": []}]},
+  "input": {},
+  "expect": {"valid": false, "first": "sprite-known", "fired": ["sprite-known"]},
+  "notes": "monster draws 'figure' and treasure draws 'chest', both declared only as extensions; with no extensions neither sprite is generic or declared."
+}

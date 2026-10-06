@@ -1,0 +1,21 @@
+{
+  "id": "branch-revert-place-and-remove",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "revert", "event": "e1"},
+      {"do": "place", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "remove", "parameters": {"col": 3, "row": 20}},
+      {"do": "revert", "event": "e4"},
+      {"do": "revert", "event": "e1"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"applied": "e4"}, {"applied": "e5"}, {"refused": "already-reverted", "message": "e1 is already reverted"}],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 1, "woodland_tree": 0}}}
+  },
+  "notes": "Reverting a place removes the pond (e2); a new pond (e3) is removed (e4) and reverting that removal puts it back (e5); e1 cannot be reverted twice. One pond stands at the end."
+}

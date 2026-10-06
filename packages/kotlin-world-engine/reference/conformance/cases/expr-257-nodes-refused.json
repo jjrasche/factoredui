@@ -1,0 +1,9 @@
+{
+  "id": "expr-257-nodes-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": [["1", 1], [" + 1", 128]]},
+  "expect": {"error": "bound"},
+  "notes": "129 number nodes + 128 additions = 257 nodes, one over the bound of 256."
+}

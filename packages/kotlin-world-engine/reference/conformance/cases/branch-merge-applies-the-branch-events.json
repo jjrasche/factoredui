@@ -1,0 +1,19 @@
+{
+  "id": "branch-merge-applies-the-branch-events",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "place", "on": "idea", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 0}},
+      {"do": "merge", "branch": "idea"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"applied": "e4"}],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 1, "pond": 1, "woodland_tree": 0}}}
+  },
+  "notes": "The branch's pond (3,20) and main's path (6,0) touch different tiles, so the merge applies the pond to main, which then holds both."
+}

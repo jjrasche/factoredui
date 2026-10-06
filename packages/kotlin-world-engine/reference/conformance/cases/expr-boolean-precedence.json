@@ -1,0 +1,9 @@
+{
+  "id": "expr-boolean-precedence",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "not true or 1 [ft] < 2 [ft] and 'a' == 'a'"},
+  "expect": {"value": true},
+  "notes": "not binds tighter than and, and binds tighter than or: (not true) or ((1 ft < 2 ft) and ('a' == 'a')) = false or (true and true) = true. Read left to right without precedence, ((not true) or 1 < 2) and ... would also be true, so the next case pins precedence apart."
+}

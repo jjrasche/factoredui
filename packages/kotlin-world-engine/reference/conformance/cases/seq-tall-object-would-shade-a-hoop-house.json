@@ -1,0 +1,24 @@
+{
+  "id": "seq-tall-object-would-shade-a-hoop-house",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "hoop_house", "col": 2, "row": 8}},
+      {"do": "place", "parameters": {"type": "woodland_tree", "col": 3, "row": 9}},
+      {"do": "place", "parameters": {"type": "commons_building", "col": 2, "row": 9}},
+      {"do": "place", "parameters": {"type": "woodland_tree", "col": 2, "row": 10}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"},
+      {"refused": "tall-not-south-of-hoop-house", "message": "a tall object would shade the hoop house directly north of it"},
+      {"refused": "tall-not-south-of-hoop-house", "message": "a tall object would shade the hoop house directly north of it"},
+      {"applied": "e2"}
+    ],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 2, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 0, "woodland_tree": 1}}}
+  },
+  "notes": "With the house on 2,8 and 3,8: a tree at 3,9 has the house directly north, refused. A 2x2 commons at 2,9 (tagged tall) has 2,8 and 3,8 directly north, refused by the same rule though it meets the 50 ft setback (clearance 2); the shade rule comes before the inherited setback in rule order and fails first. A tree at 2,10 has 2,9 north of it, empty: accepted."
+}

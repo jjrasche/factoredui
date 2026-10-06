@@ -1,0 +1,9 @@
+{
+  "id": "expr-min-of-lengths",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "min(3 [ft], 2 [ft])"},
+  "expect": {"value": 2, "unit": "ft"},
+  "notes": "min(3, 2) = 2, both in ft."
+}

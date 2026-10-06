@@ -1,0 +1,28 @@
+{
+  "id": "agents-a-person-endorses-with-a-known-class",
+  "kind": "agents",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "proposal", "from": "main", "proposal": true},
+      {"do": "place", "on": "proposal", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "endorse", "on": "proposal", "actor": "jim", "parameters": {"weight_class": "landlord"}},
+      {"do": "endorse", "on": "main", "actor": "jim", "parameters": {"weight_class": "on_site"}},
+      {"do": "endorse", "on": "proposal", "actor": "jim", "parameters": {"weight_class": "on_site"}},
+      {"do": "merge", "branch": "proposal"}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"},
+      {"applied": "e2"},
+      {"refused": "unknown-weight-class"},
+      {"refused": "not-a-proposal", "message": "branch main is not a proposal"},
+      {"applied": "e3"},
+      {"applied": "e4"}
+    ],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 1, "woodland_tree": 0}}}
+  },
+  "notes": "landlord is not a vote class (on_site, nearby, supporting); main is not a proposal; jim, who is not an enrolled agent, is a real person and endorses on_site, so the merge goes through. The unknown-weight-class message names the classes in a language-specific list form, so only the rule id is compared."
+}

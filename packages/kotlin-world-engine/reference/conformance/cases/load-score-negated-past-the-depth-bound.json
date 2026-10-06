@@ -1,0 +1,9 @@
+{
+  "id": "load-score-negated-past-the-depth-bound",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "dungeon-tiny.frozen.world.json", "edits": [{"op": "set_repeated", "path": ["scoring", {"id": "guarded_treasure"}, "expr"], "unit": "-", "times": 24, "tail": "sum('guarded')"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "expression-bound", "fired": ["expression-bound"]},
+  "notes": "Each unary minus adds a level: 1 (top) + 24 = 25, over the depth bound of 24. The text is otherwise well typed (negating a dimensionless sum)."
+}

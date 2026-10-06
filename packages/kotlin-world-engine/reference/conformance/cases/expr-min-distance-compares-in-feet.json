@@ -1,0 +1,9 @@
+{
+  "id": "expr-min-distance-compares-in-feet",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {"text": "min_distance_mm('oak', 'shed') > 6 [ft] and min_distance_mm('oak', 'shed') < 7 [ft]"},
+  "expect": {"value": true},
+  "notes": "2000 mm / 304.8 = 6.5617 ft, between 6 and 7 ft: a millimetre length and a foot length share one dimension."
+}

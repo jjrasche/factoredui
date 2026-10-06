@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-figure-sourced",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "delete", "path": ["object_types", {"id": "hoop_house"}, "properties", {"name": "labor_hours"}, "source"]}]},
+  "input": {},
+  "expect": {"valid": false, "first": "figure-sourced", "fired": ["figure-sourced"]},
+  "notes": "mutations.json's broken copy for figure-sourced; the reference's verdict, recorded."
+}

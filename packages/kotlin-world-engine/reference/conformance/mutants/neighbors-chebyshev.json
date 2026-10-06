@@ -1,0 +1,7 @@
+{
+  "id": "neighbors-chebyshev",
+  "breaks": "counts diagonal tiles as neighbours (Chebyshev ring instead of Manhattan)",
+  "edits": [
+    {"find": "min(abs(col - fc) + abs(row - fr) for fc, fr in footprint) <= radius", "replace": "min(max(abs(col - fc), abs(row - fr)) for fc, fr in footprint) <= radius"}
+  ]
+}

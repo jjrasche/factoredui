@@ -1,0 +1,7 @@
+{
+  "id": "unit-check-skipped",
+  "breaks": "adds and subtracts quantities of different dimensions",
+  "edits": [
+    {"find": "        if left[1] != right[1]:\n            raise ExprError(\"unit_mismatch\", f\"'{operator}' joins", "replace": "        if False:\n            raise ExprError(\"unit_mismatch\", f\"'{operator}' joins"}
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "report-render-props-carry-instances",
+  "kind": "report",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "steps": [{"do": "place_instance", "parameters": {"type": "oak", "x_mm": 12000, "y_mm": 9000, "rotation_deg": 15}}]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}],
+    "render": {
+      "units": "mm",
+      "frame": {"epsg": 26916, "origin_east_m": 695000.7, "origin_north_m": 4728383.3, "x_axis": "east", "y_axis": "north"},
+      "cells": [],
+      "counts": {"house": 0, "shed": 0, "oak": 0, "garden": 0},
+      "instances": [
+        {"id": "e1", "type": "oak", "x_mm": 12000, "y_mm": 9000, "z_mm": 0, "rotation_deg": 15, "height_mm": 18000, "crown_radius_mm": null, "provenance": "proposed"},
+        {"id": "m-oak-1", "type": "oak", "x_mm": 1500, "y_mm": 2000, "z_mm": 0, "rotation_deg": 0, "height_mm": 16500, "crown_radius_mm": 4000, "provenance": "measured"},
+        {"id": "m-shed-1", "type": "shed", "x_mm": 3500, "y_mm": 2000, "z_mm": 0, "rotation_deg": 90, "height_mm": 2700, "crown_radius_mm": null, "provenance": "measured"}
+      ]
+    },
+    "outputs": {"equations": {"tree_count": 2, "nearest_tree_to_shed": 2000}}
+  },
+  "notes": "render_props gains units 'mm', the frame when the world has one, and instances sorted by id with id, type, x_mm, y_mm, z_mm, rotation_deg, height_mm, crown_radius_mm and provenance; source and error stay in the state, not the drawing. The proposed oak takes the type's 18000 mm height and has no crown radius. Outputs are in each equation's declared unit: nearest_tree_to_shed in mm."
+}

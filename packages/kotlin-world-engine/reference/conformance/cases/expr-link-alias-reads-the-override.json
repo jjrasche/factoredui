@@ -1,0 +1,12 @@
+{
+  "id": "expr-link-alias-reads-the-override",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "parcel-five-acre.frozen.world.json",
+    "edits": [{"op": "set", "path": ["links", 0, "parcel"], "value": "parcel-b"}]
+  },
+  "input": {"text": "parcel.structure_setback"},
+  "expect": {"value": 25, "unit": "ft"},
+  "notes": "Relinked to parcel-b, whose seed entry overrides structure_setback to 25 ft: the instance's value, not the type's default."
+}

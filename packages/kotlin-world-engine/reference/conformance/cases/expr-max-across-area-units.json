@@ -1,0 +1,9 @@
+{
+  "id": "expr-max-across-area-units",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "max(1 [acre], 40000 [sq_ft])"},
+  "expect": {"value": 43560, "unit": "sq_ft"},
+  "notes": "Both are ft^2. 1 acre = 43560 sq_ft > 40000 sq_ft, so max is 43560 sq_ft. Compared in base units, not in the units as written."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-blind-worlds",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": null, "edits": [{"op": "delete_all_worlds"}]},
+  "input": {},
+  "expect": {"blind": "blind-worlds", "valid": false, "fired": []},
+  "notes": "mutations.json's broken copy for blind-worlds: with no world files the validator has nothing to judge and must say BLIND, never valid."
+}

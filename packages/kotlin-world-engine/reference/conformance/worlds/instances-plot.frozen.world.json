@@ -1,0 +1,67 @@
+{
+  "id": "instances-plot",
+  "version": 1,
+  "title": "Instances test plot",
+  "description": "A conformance world for the millimetre layer: an 8 x 6 grid of 10 ft tiles (24384 x 18288 mm) placed on the earth by a frame, object types sized in millimetres, a measured shed and a measured oak 2000 mm apart, and a rule that keeps a proposed tree 3000 mm clear of every structure instance.",
+  "sprites": {"extensions": []},
+  "grid": {"cols": 8, "rows": 6, "tile_ft": 10, "shape": "square", "view": "top", "north": "row_0"},
+  "frame": {"epsg": 26916, "origin_east_m": 695000.7, "origin_north_m": 4728383.3, "x_axis": "east", "y_axis": "north"},
+  "clock": {"tick_unit": "day", "tick_length": 1},
+  "object_types": [
+    {"id": "house", "label": "House", "sprite": "block", "color": "#8E6E53", "footprint": [2, 2], "footprint_mm": [6000, 4500], "height_mm": 7000, "tags": ["structure"]},
+    {"id": "shed", "label": "Shed", "sprite": "block", "color": "#A0522D", "footprint_mm": [2400, 3100], "height_mm": 2700, "tags": ["structure"]},
+    {"id": "oak", "label": "Oak", "sprite": "tree", "color": "#2E7D32", "footprint": [1, 1], "height_mm": 18000, "tags": ["tree"]},
+    {"id": "garden", "label": "Garden bed", "sprite": "flat", "color": "#9CCC65", "footprint": [1, 1]}
+  ],
+  "rules": [
+    {
+      "id": "tree-clear-of-structures",
+      "on": "place_instance",
+      "applies_to_tag": "tree",
+      "require": "min_distance_mm(instance, '#structure') >= 3000 [mm]",
+      "message": "a tree needs 3000 mm clear of every structure"
+    }
+  ],
+  "equations": [
+    {"id": "tree_count", "expr": "count_instances('#tree')", "unit": "1"},
+    {"id": "nearest_tree_to_shed", "expr": "min_distance_mm('oak', 'shed')", "unit": "mm"}
+  ],
+  "stocks": [],
+  "actions": [
+    {"verb": "place", "label": "Place", "parameters": [{"name": "type", "type": "object_type"}, {"name": "col", "type": "col"}, {"name": "row", "type": "row"}], "emits": ["place"]},
+    {"verb": "remove", "label": "Remove", "parameters": [{"name": "col", "type": "col"}, {"name": "row", "type": "row"}], "emits": ["remove"]},
+    {"verb": "place_instance", "label": "Place at a point", "parameters": [{"name": "type", "type": "object_type"}, {"name": "x_mm", "type": "x_mm"}, {"name": "y_mm", "type": "y_mm"}, {"name": "rotation_deg", "type": "rotation_deg"}], "emits": ["place_instance"]},
+    {"verb": "remove_instance", "label": "Remove a point object", "parameters": [{"name": "id", "type": "instance_id"}], "emits": ["remove_instance"]}
+  ],
+  "agents": [],
+  "scoring": [],
+  "links": [],
+  "seed": [
+    {
+      "id": "m-shed-1",
+      "action": "place_instance",
+      "parameters": {
+        "type": "shed", "x_mm": 3500, "y_mm": 2000, "rotation_deg": 90, "provenance": "measured",
+        "source": {"tag": "conformance fixture: a hand-placed shed, standing in for a surveyed one"},
+        "error": {
+          "position_mm": {"value": null, "null_reason": "fixture: no survey was made"},
+          "height_mm": {"value": null, "null_reason": "fixture: no survey was made"},
+          "crown_radius_mm": {"value": null, "null_reason": "a shed has no crown"}
+        }
+      }
+    },
+    {
+      "id": "m-oak-1",
+      "action": "place_instance",
+      "parameters": {
+        "type": "oak", "x_mm": 1500, "y_mm": 2000, "height_mm": 16500, "crown_radius_mm": 4000, "provenance": "measured",
+        "source": {"file": "conformance/worlds/instances-plot.frozen.world.json", "tag": "conformance fixture: a hand-placed oak, standing in for a lidar tree"},
+        "error": {
+          "position_mm": {"value": 950, "source": {"row": "gatziolis10-apex-stem-offset"}},
+          "height_mm": {"value": null, "null_reason": "fixture: no field height was measured"},
+          "crown_radius_mm": {"value": null, "null_reason": "fixture: no field crown was measured"}
+        }
+      }
+    }
+  ]
+}

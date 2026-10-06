@@ -1,0 +1,7 @@
+{
+  "id": "replay-reordered",
+  "breaks": "replays a saved log in the text order of its event ids instead of log order",
+  "edits": [
+    {"find": "        for event in document[\"events\"]:\n            log.replay(event)", "replace": "        for event in sorted(document[\"events\"], key=lambda e: e[\"id\"]):\n            log.replay(event)"}
+  ]
+}

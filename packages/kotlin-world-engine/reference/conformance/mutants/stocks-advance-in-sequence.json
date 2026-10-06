@@ -1,0 +1,7 @@
+{
+  "id": "stocks-advance-in-sequence",
+  "breaks": "updates each stock before the next is evaluated, instead of all from the previous tick",
+  "edits": [
+    {"find": "        following = {stock_id: evaluation.value_of(world.ast(stock[\"next\"])) for stock_id, stock in world.stocks.items()}\n        candidate.stocks.update(following)", "replace": "        for stock_id, stock in world.stocks.items():\n            candidate.stocks[stock_id] = evaluation.value_of(world.ast(stock[\"next\"]))"}
+  ]
+}

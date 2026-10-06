@@ -1,0 +1,9 @@
+{
+  "id": "expr-negation-and-addition",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "-(2 [ft]) + 5 [ft]"},
+  "expect": {"value": 3, "unit": "ft"},
+  "notes": "-2 ft + 5 ft = 3 ft; negation keeps the unit."
+}

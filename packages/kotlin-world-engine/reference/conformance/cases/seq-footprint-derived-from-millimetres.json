@@ -1,0 +1,20 @@
+{
+  "id": "seq-footprint-derived-from-millimetres",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "shed", "col": 7, "row": 4}},
+      {"do": "place", "parameters": {"type": "shed", "col": 6, "row": 5}}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"refused": "off-grid", "message": "shed at 6,5 leaves the grid"}],
+    "final": {"main": {
+      "counts": {"house": 0, "shed": 2, "oak": 0, "garden": 0},
+      "areas": {"house": 0, "shed": 200, "oak": 0, "garden": 0}
+    }}
+  },
+  "notes": "shed declares only footprint_mm [2400, 3100]. A tile is 10 ft x 304.8 = 3048 mm: ceil(2400/3048) = 1 and ceil(3100/3048) = 2, so it covers 1 x 2 tiles. At 7,4 it covers 7,4 and 7,5. At 6,5 it would need row 6 of a 6-row grid."
+}

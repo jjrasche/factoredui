@@ -1,0 +1,18 @@
+{
+  "id": "branch-merge-conflict-on-an-agent",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "opt_in", "on": "idea", "parameters": {"agent_id": "neighbor-1"}},
+      {"do": "opt_in", "parameters": {"agent_id": "neighbor-1"}},
+      {"do": "merge", "branch": "idea"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"refused": "merge-conflict", "message": "both branches changed agent:neighbor-1 since they split"}]
+  },
+  "notes": "Both branches opted neighbor-1 in after splitting; an opt-in touches agent:neighbor-1, so they conflict."
+}

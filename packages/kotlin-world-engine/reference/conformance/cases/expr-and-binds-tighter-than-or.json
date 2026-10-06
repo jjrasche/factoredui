@@ -1,0 +1,9 @@
+{
+  "id": "expr-and-binds-tighter-than-or",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "true or false and false"},
+  "expect": {"value": true},
+  "notes": "With and binding tighter: true or (false and false) = true or false = true. Left to right it would be (true or false) and false = false."
+}

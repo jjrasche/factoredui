@@ -1,0 +1,21 @@
+{
+  "id": "branch-isolates-its-changes",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 0}},
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "place", "on": "idea", "parameters": {"type": "pond", "col": 3, "row": 20}}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}],
+    "final": {
+      "main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 1, "pond": 0, "woodland_tree": 0}},
+      "idea": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 1, "pond": 1, "woodland_tree": 0}}
+    }
+  },
+  "notes": "The branch opens at main's head, so it holds the path; its pond is on the branch only. The branch event itself takes an id (e2)."
+}

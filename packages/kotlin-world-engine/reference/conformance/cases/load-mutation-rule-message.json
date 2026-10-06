@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-rule-message",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "dungeon-tiny.frozen.world.json", "edits": [{"op": "set", "path": ["rules", {"id": "door-connects-floors"}, "message"], "value": ""}]},
+  "input": {},
+  "expect": {"valid": false, "first": "rule-message", "fired": ["rule-message"]},
+  "notes": "mutations.json's broken copy for rule-message; the reference's verdict, recorded."
+}

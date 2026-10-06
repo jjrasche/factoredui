@@ -1,0 +1,7 @@
+{
+  "id": "tick-bound-dropped",
+  "breaks": "accepts tick events of 0 or more than 100000 ticks",
+  "edits": [
+    {"find": "    if not 1 <= steps <= MAX_TICKS_PER_EVENT:", "replace": "    if steps > 10 ** 9:"}
+  ]
+}

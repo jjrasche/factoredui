@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-name-cycle",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["equations", {"id": "pasture_yield"}, "expr"], "value": "pasture_yield + count('paddock') * tile_area * paddock.annual_forage_yield"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "name-cycle", "fired": ["name-cycle"]},
+  "notes": "mutations.json's broken copy for name-cycle; the reference's verdict, recorded."
+}

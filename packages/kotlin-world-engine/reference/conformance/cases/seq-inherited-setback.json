@@ -1,0 +1,30 @@
+{
+  "id": "seq-inherited-setback",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "hoop_house", "col": 1, "row": 8}},
+      {"do": "place", "parameters": {"type": "hoop_house", "col": 2, "row": 8}},
+      {"do": "place", "parameters": {"type": "commons_building", "col": 10, "row": 10}},
+      {"do": "place", "parameters": {"type": "commons_building", "col": 9, "row": 10}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"refused": "structure-setback", "message": "a structure must stand at least the parcel's setback from the lot line"},
+      {"applied": "e1"},
+      {"refused": "structure-setback", "message": "a structure must stand at least the parcel's setback from the lot line"},
+      {"applied": "e2"}
+    ],
+    "final": {
+      "main": {
+        "counts": {"paddock": 0, "hoop_house": 2, "commons_building": 4, "van_pad": 0, "path": 0, "pond": 0, "woodland_tree": 0},
+        "areas": {"hoop_house": 1250, "commons_building": 2500},
+        "scoring": {"area_hoop_house": 1250, "area_commons_building": 2500, "hoop_house_labor": 75.5}
+      }
+    }
+  },
+  "notes": "The setback, inherited from the locality through parcel-a, is 50 ft = 2 tiles of 25 ft. Hoop house at 1,8: clearance 1 tile = 25 ft < 50, refused. At 2,8: clearance min(2, 3) = 2 tiles = 50 ft >= 50, accepted (the bound is inclusive). Commons 2x2 at 10,10 covers column 11: 12 - 11 = 1 tile = 25 ft, refused. At 9,10 it covers columns 9-10 and rows 10-11: min(9, 12 - 10, 10, 25 - 11) = 2 tiles = 50 ft, accepted. Counts are tiles: hoop 2, commons 4; areas 2 x 625 = 1250 and 4 x 625 = 2500; labour 1 house x 75.5."
+}

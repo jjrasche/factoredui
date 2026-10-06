@@ -1,0 +1,29 @@
+{
+  "id": "seq-locality-parcels-need-a-road",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "locality-stub.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "parcel", "col": 5, "row": 0}},
+      {"do": "place", "parameters": {"type": "road", "col": 0, "row": 4}},
+      {"do": "place", "parameters": {"type": "parcel", "col": 1, "row": 4}},
+      {"do": "place", "parameters": {"type": "census_block", "col": 7, "row": 7, "properties": {"population": 120}}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"refused": "parcel-needs-road", "message": "a parcel must touch a road"},
+      {"applied": "e1"},
+      {"applied": "e2"},
+      {"applied": "e3"}
+    ],
+    "final": {
+      "main": {
+        "counts": {"road": 5, "parcel": 6, "census_block": 2},
+        "scoring": {"parcel_area": 15, "population": 120}
+      }
+    }
+  },
+  "notes": "A parcel at 5,0 (covering 5,0 and 5,1) has no road within one step: refused. Road 0,4, then a parcel at 1,4 (covering 1,4 and 1,5; the road at 0,4 is one step west): accepted. The seed holds 4 roads, 2 parcels of 2 tiles and 1 census block, so counts are 4 + 1 roads, 4 + 2 parcel tiles, 1 + 1 blocks. Parcel area: 6 tiles x 330^2 = 6 x 108900 = 653400 sq ft / 43560 = 15 acre. Population: seed block 0 + placed block 120 = 120 head."
+}

@@ -1,0 +1,17 @@
+{
+  "id": "expr-side-direction-is-closed",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "text": "side(tile, 'up', 'path')",
+    "site": "rule",
+    "bindings": {"tile": [7, 3]},
+    "setup": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 3}}
+    ]
+  },
+  "expect": {"error": "unknown_word"},
+  "notes": "side's direction must be north, south, east or west; 'up' is not one of them."
+}

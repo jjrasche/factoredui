@@ -1,0 +1,344 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "world.schema.json",
+  "title": "world file",
+  "description": "One world: what can exist on its grid, the rules an action must pass, the equations and scores read from its state, and the actions a person can take. Every expression is a string in the expression language engine_ref.py parses; nothing here executes code.",
+  "type": "object",
+  "required": ["id", "version", "title", "sprites", "grid", "clock", "object_types", "rules", "equations", "stocks", "actions", "agents", "scoring", "links", "seed"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"$ref": "#/$defs/identifier"},
+    "version": {"type": "integer", "minimum": 1},
+    "title": {"type": "string", "minLength": 1},
+    "description": {"type": "string"},
+    "sprites": {
+      "description": "The generic art set is closed: flat, block, tree, arch, water, fence. A world may declare extensions, each drawn from one generic base so any renderer can fall back to the base.",
+      "type": "object",
+      "required": ["extensions"],
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "base"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {"$ref": "#/$defs/identifier"},
+              "base": {"enum": ["flat", "block", "tree", "arch", "water", "fence"]},
+              "note": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "grid": {
+      "type": "object",
+      "required": ["cols", "rows", "tile_ft", "shape"],
+      "additionalProperties": false,
+      "properties": {
+        "cols": {"type": "integer", "minimum": 1, "maximum": 512},
+        "rows": {"type": "integer", "minimum": 1, "maximum": 512},
+        "tile_ft": {"type": "number", "minimum": 0.1},
+        "shape": {"enum": ["square"], "description": "hex adjacency is not specified yet; see README open questions"},
+        "view": {"enum": ["iso", "top"]},
+        "north": {"enum": ["row_0"], "description": "row 0 is the north edge; south is increasing row"}
+      }
+    },
+    "frame": {
+      "description": "Optional: places the grid on the earth. The origin is the grid's south-west corner in the named EPSG coordinate reference, in metres; x runs east and y north, and an instance at x_mm, y_mm stands at origin + (x_mm, y_mm) / 1000. Without a frame, instance positions are local millimetres from that same corner.",
+      "type": "object",
+      "required": ["epsg", "origin_east_m", "origin_north_m", "x_axis", "y_axis"],
+      "additionalProperties": false,
+      "properties": {
+        "epsg": {"type": "integer", "minimum": 1},
+        "origin_east_m": {"type": "number"},
+        "origin_north_m": {"type": "number"},
+        "x_axis": {"const": "east"},
+        "y_axis": {"const": "north"}
+      }
+    },
+    "clock": {
+      "type": "object",
+      "required": ["tick_unit", "tick_length"],
+      "additionalProperties": false,
+      "properties": {
+        "tick_unit": {"$ref": "#/$defs/unit"},
+        "tick_length": {"type": "number", "minimum": 0}
+      }
+    },
+    "object_types": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/object_type"}},
+    "rules": {"type": "array", "items": {"$ref": "#/$defs/rule"}},
+    "equations": {"type": "array", "items": {"$ref": "#/$defs/equation"}},
+    "stocks": {"type": "array", "items": {"$ref": "#/$defs/stock"}},
+    "actions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+    "agents": {"type": "array", "items": {"$ref": "#/$defs/agent"}},
+    "scoring": {"type": "array", "items": {"$ref": "#/$defs/score"}},
+    "links": {"type": "array", "maxItems": 1, "items": {"$ref": "#/$defs/link"}},
+    "seed": {"type": "array", "items": {"$ref": "#/$defs/seed_entry"}}
+  },
+  "$defs": {
+    "identifier": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*$"},
+    "expression": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "unit": {"type": "string", "pattern": "^([a-z_]+(\\^[0-9]+)?(\\s*[*/]\\s*[a-z_]+(\\^[0-9]+)?)*|1)$"},
+    "source": {
+      "description": "Where a figure comes from: a twin id (equation, binding or task_hours row of the task model), a research row id, or a declared placeholder with its reason.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "twin": {"type": "string", "minLength": 1},
+        "binding": {"type": "string", "minLength": 1},
+        "row": {"type": "string", "minLength": 1},
+        "placeholder": {"const": true},
+        "reason": {"type": "string", "minLength": 1}
+      },
+      "anyOf": [
+        {"required": ["twin"]},
+        {"required": ["row"]},
+        {"required": ["placeholder", "reason"]}
+      ]
+    },
+    "property": {
+      "type": "object",
+      "required": ["name", "kind", "default"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"$ref": "#/$defs/identifier"},
+        "type": {"enum": ["number", "text"]},
+        "unit": {"$ref": "#/$defs/unit"},
+        "default": {"type": ["number", "string"]},
+        "enum": {"type": "array", "items": {"type": "string"}},
+        "kind": {"enum": ["physical", "design", "state", "price", "labor", "yield", "regulation", "demographic"]},
+        "source": {"$ref": "#/$defs/source"},
+        "note": {"type": "string"}
+      }
+    },
+    "object_type": {
+      "description": "A type is sized in tiles (footprint), in millimetres (footprint_mm, x then y), or both. With only footprint_mm, each axis covers ceil(footprint_mm / (tile_ft x 304.8)) tiles, computed exactly on the decimals as written; with both, they must agree on that or validate.py refuses the world (footprint-mm-agrees).",
+      "type": "object",
+      "required": ["id", "label", "sprite", "color"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "label": {"type": "string", "minLength": 1},
+        "sprite": {"$ref": "#/$defs/identifier"},
+        "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+        "footprint": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": 64}, "minItems": 2, "maxItems": 2},
+        "footprint_mm": {"type": "array", "items": {"type": "number", "exclusiveMinimum": 0}, "minItems": 2, "maxItems": 2},
+        "height_mm": {"type": "number", "exclusiveMinimum": 0},
+        "tags": {"type": "array", "items": {"$ref": "#/$defs/identifier"}},
+        "properties": {"type": "array", "items": {"$ref": "#/$defs/property"}}
+      },
+      "anyOf": [{"required": ["footprint"]}, {"required": ["footprint_mm"]}]
+    },
+    "rule": {
+      "description": "Checked against the state an action would produce. on place or remove: `tile` is the acted-on object. on always: checked after every place and remove for every object the rule targets, with `tile` bound to each in turn, so an invariant holds through removals, merges and reverts too. A `require` that evaluates false refuses the action with `message`. An `effect` sets one property of the acted-on object once, after every require holds; effects never trigger rules.",
+      "type": "object",
+      "required": ["id", "on"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "on": {"enum": ["place", "remove", "always", "place_instance", "remove_instance"], "description": "a place_instance or remove_instance rule binds `instance` (the acted-on instance) instead of `tile`, and sets no effect"},
+        "scope": {"enum": ["self", "child"], "description": "child: exported for worlds that link to this one and inherit it by id"},
+        "applies_to": {"type": "array", "items": {"$ref": "#/$defs/identifier"}},
+        "applies_to_tag": {"$ref": "#/$defs/identifier"},
+        "require": {"$ref": "#/$defs/expression"},
+        "message": {"type": "string"},
+        "effect": {
+          "type": "object",
+          "required": ["set", "to"],
+          "additionalProperties": false,
+          "properties": {
+            "set": {"$ref": "#/$defs/identifier"},
+            "to": {"$ref": "#/$defs/expression"}
+          }
+        },
+        "source": {"$ref": "#/$defs/source"},
+        "note": {"type": "string"}
+      },
+      "anyOf": [{"required": ["require"]}, {"required": ["effect"]}]
+    },
+    "equation": {
+      "type": "object",
+      "required": ["id", "expr", "unit"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "expr": {"$ref": "#/$defs/expression"},
+        "unit": {"$ref": "#/$defs/unit"},
+        "source": {"$ref": "#/$defs/source"},
+        "note": {"type": "string"}
+      }
+    },
+    "stock": {
+      "description": "State the tick clock advances: every tick evaluates every stock's `next` against the previous values, all at once.",
+      "type": "object",
+      "required": ["id", "unit", "initial", "next"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "unit": {"$ref": "#/$defs/unit"},
+        "initial": {"type": "number"},
+        "next": {"$ref": "#/$defs/expression"},
+        "source": {"$ref": "#/$defs/source"},
+        "note": {"type": "string"}
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": ["verb", "parameters", "emits"],
+      "additionalProperties": false,
+      "properties": {
+        "verb": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance"]},
+        "label": {"type": "string"},
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {"$ref": "#/$defs/identifier"},
+              "type": {"enum": ["object_type", "col", "row", "count", "agent_type", "agent_id", "attributes", "properties", "boolean",
+                                "x_mm", "y_mm", "rotation_deg", "instance_id"]}
+            }
+          }
+        },
+        "emits": {"type": "array", "items": {"enum": ["place", "remove", "tick", "enroll", "opt_in", "place_instance", "remove_instance"]}}
+      }
+    },
+    "agent": {
+      "description": "A person-type object. Synthetic agents are drawn from demographics and replaced as real people opt in. `utility` decides an agent's projected vote and `weight` its distance weight; projected_support() reads them, and nothing binding may.",
+      "type": "object",
+      "required": ["type", "label", "attributes", "weight", "utility", "vote", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"$ref": "#/$defs/identifier"},
+        "label": {"type": "string"},
+        "attributes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "unit"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {"$ref": "#/$defs/identifier"},
+              "unit": {"$ref": "#/$defs/unit"},
+              "default": {"type": "number"},
+              "note": {"type": "string"}
+            }
+          }
+        },
+        "weight": {"$ref": "#/$defs/expression"},
+        "utility": {"$ref": "#/$defs/expression"},
+        "vote": {"const": "projection"},
+        "source": {"$ref": "#/$defs/source"}
+      }
+    },
+    "score": {
+      "type": "object",
+      "required": ["id", "label", "expr", "unit"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "label": {"type": "string"},
+        "expr": {"$ref": "#/$defs/expression"},
+        "unit": {"$ref": "#/$defs/unit"},
+        "binding": {"type": "boolean", "description": "true when the score decides an outcome; a binding score may not read projected_support()"},
+        "source": {"$ref": "#/$defs/source"},
+        "note": {"type": "string"}
+      }
+    },
+    "link": {
+      "type": "object",
+      "required": ["parent", "parcel", "as", "inherit"],
+      "additionalProperties": false,
+      "properties": {
+        "parent": {"type": "string", "pattern": "\\.world\\.json$"},
+        "parcel": {"$ref": "#/$defs/identifier"},
+        "as": {"$ref": "#/$defs/identifier"},
+        "inherit": {"type": "array", "items": {"$ref": "#/$defs/identifier"}}
+      }
+    },
+    "seed_entry": {
+      "description": "Events the world ships with, replayed before any log; a seed place's id becomes the placed object's id. A seed place_instance is a measured instance: the one place measured instances live.",
+      "anyOf": [{"$ref": "#/$defs/seed_event"}, {"$ref": "#/$defs/seed_instance"}]
+    },
+    "seed_event": {
+      "type": "object",
+      "required": ["id", "action", "parameters"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "actor": {"type": "string"},
+        "action": {"enum": ["place", "remove", "tick", "enroll", "opt_in"]},
+        "parameters": {"type": "object"},
+        "note": {"type": "string"}
+      }
+    },
+    "seed_instance": {
+      "description": "A measured instance: a fact the seed records, so no rule is checked against it. Its id is the instance id, and never has the shape of an event id (e<n>), which a proposed instance takes. Proposed instances come only from place_instance events.",
+      "type": "object",
+      "required": ["id", "action", "parameters"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^(?!e[0-9]+$)[a-z][a-z0-9_-]*$"},
+        "actor": {"type": "string"},
+        "action": {"const": "place_instance"},
+        "parameters": {"$ref": "#/$defs/measured_instance"},
+        "note": {"type": "string"}
+      }
+    },
+    "measured_instance": {
+      "description": "Positions in millimetres from the grid's south-west corner, x east and y north, at no tile's snap. height_mm defaults to the type's. source and error are required by validate.py (instance-source, instance-error), not here, so a missing one is named.",
+      "type": "object",
+      "required": ["type", "x_mm", "y_mm", "provenance"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {"$ref": "#/$defs/identifier"},
+        "x_mm": {"type": "number"},
+        "y_mm": {"type": "number"},
+        "z_mm": {"type": "number"},
+        "rotation_deg": {"type": "number"},
+        "height_mm": {"type": "number", "exclusiveMinimum": 0},
+        "crown_radius_mm": {"type": "number", "exclusiveMinimum": 0},
+        "provenance": {"const": "measured"},
+        "source": {"$ref": "#/$defs/instance_source"},
+        "error": {"$ref": "#/$defs/instance_error"},
+        "note": {"type": "string"}
+      }
+    },
+    "instance_source": {
+      "description": "Where a measured instance was measured: a twin id, a research row id, a file reference, or a stated source tag.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "twin": {"type": "string", "minLength": 1},
+        "row": {"type": "string", "minLength": 1},
+        "file": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "minLength": 1}
+      },
+      "anyOf": [{"required": ["twin"]}, {"required": ["row"]}, {"required": ["file"]}, {"required": ["tag"]}]
+    },
+    "instance_error": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "position_mm": {"$ref": "#/$defs/error_figure"},
+        "height_mm": {"$ref": "#/$defs/error_figure"},
+        "crown_radius_mm": {"$ref": "#/$defs/error_figure"}
+      }
+    },
+    "error_figure": {
+      "description": "A number with its source, or null with null_reason; validate.py refuses either half missing (instance-error-reason).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {"type": ["number", "null"]},
+        "source": {"$ref": "#/$defs/source"},
+        "null_reason": {"type": "string", "minLength": 1},
+        "note": {"type": "string"}
+      }
+    }
+  }
+}

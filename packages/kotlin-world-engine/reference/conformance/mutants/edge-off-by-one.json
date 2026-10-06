@@ -1,0 +1,7 @@
+{
+  "id": "edge-off-by-one",
+  "breaks": "measures clearance from the east and south lines one tile too generously",
+  "edits": [
+    {"find": "world.cols - 1 - c, world.rows - 1 - r", "replace": "world.cols - c, world.rows - r"}
+  ]
+}

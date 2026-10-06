@@ -1,0 +1,13 @@
+{
+  "id": "load-child-of-a-broken-parent",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {
+    "file": "parcel-five-acre.frozen.world.json",
+    "edits_in": "locality-stub.frozen.world.json",
+    "edits": [{"op": "set", "path": ["seed", {"id": "parcel-a"}, "parameters", "col"], "value": 3}]
+  },
+  "input": {},
+  "expect": {"valid": false, "first": "link-resolves", "fired": ["link-resolves"]},
+  "notes": "The same broken locality seed, judged from the child: the parcel's link cannot resolve because the parent's seed does not replay, though the parcel file itself is untouched."
+}

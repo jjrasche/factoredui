@@ -1,0 +1,9 @@
+{
+  "id": "expr-tick-length-in-seconds",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "dungeon-tiny.frozen.world.json"},
+  "input": {"text": "tick_length"},
+  "expect": {"value": 6, "unit": "second"},
+  "notes": "The dungeon clock declares tick_unit second and tick_length 6: 6 second per tick (6/3600 hour in base units)."
+}

@@ -17,7 +17,6 @@ import ai.factoredui.compose.layout.cellsAsFootprints
 import ai.factoredui.compose.layout.countUses
 import ai.factoredui.compose.layout.drawOrder
 import ai.factoredui.compose.layout.fitFlowView
-import ai.factoredui.compose.layout.pickInstance
 import ai.factoredui.compose.layout.pickTile
 import ai.factoredui.compose.layout.project
 import ai.factoredui.compose.layout.tileCorners
@@ -97,6 +96,7 @@ private const val DEFAULT_ROWS = 10
 private const val FIT_MARGIN_PX = 12f
 private const val MAX_FIT_SCALE = 2f
 private const val WHEEL_ZOOM_RATE = 0.12f
+private const val INSTANCE_HIT_PAD_PIXELS = 3f
 private val GROUND_LIGHT = Color(0xFFCFE0A8)
 private val GROUND_LIGHT_ALT = Color(0xFFC3D79B)
 private val GROUND_NIGHT = Color(0xFF2B3A2E)
@@ -196,6 +196,10 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     val sceneLayer = rememberGraphicsLayer()
     val recordedGround = remember { RecordedKey() }
     val recordedScene = remember { RecordedKey() }
+    val scenePhase = if (animated) phase else 0
+    val scene = remember(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images) {
+        TilemapScene(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images)
+    }
 
     LaunchedEffect(cells, footprints, tileArea) {
         val counts = uses.associate { it.id to 0 } + countUses(cells, footprints)
@@ -256,15 +260,14 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
             val current = gestureView ?: fit
             val latest by rememberUpdatedState(current)
 
-            fun groundAt(screen: Offset): GroundPoint {
-                val content = Offset((screen.x - latest.translateX) / latest.scale, (screen.y - latest.translateY) / latest.scale)
-                return space.toGround(content)
-            }
+            fun contentAt(screen: Offset): Offset = Offset((screen.x - latest.translateX) / latest.scale, (screen.y - latest.translateY) / latest.scale)
+
+            fun groundAt(screen: Offset): GroundPoint = space.toGround(contentAt(screen))
 
             fun tileAt(screen: Offset): TileCoord? = pickTile(shape, cols, rows, groundAt(screen))
 
             fun instanceAt(screen: Offset): TileInstance? =
-                if (props.onInstanceTapped == null) null else pickInstance(instances, sideMm, rows, groundAt(screen))
+                if (props.onInstanceTapped == null) null else pickDrawnInstance(scene, contentAt(screen), INSTANCE_HIT_PAD_PIXELS / latest.scale)
 
             fun tapAt(screen: Offset) {
                 val instance = instanceAt(screen)
@@ -273,7 +276,7 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
 
             Canvas(
                 modifier = Modifier.fillMaxSize()
-                    .pointerInput(shape, view, cols, rows, cells, brush, instances) {
+                    .pointerInput(scene, brush, props.onInstanceTapped) {
                         detectTapGestures(onTap = { offset -> tapAt(offset) })
                     }
                     .pointerInput(fit) {
@@ -305,11 +308,9 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
                     groundLayer.record(size = contentSize) { drawGround(shape, space, cols, rows, look, density, withChecker) }
                     recordedGround.remember(shape, space, look, density, withChecker)
                 }
-                val scenePhase = if (animated) phase else 0
-                if (!recordedScene.holds(drawables, styles, look, space, scenePhase, density, sideMm, images)) {
-                    val scene = TilemapScene(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images)
+                if (!recordedScene.holds(scene)) {
                     sceneLayer.record(size = contentSize) { drawScene(scene) }
-                    recordedScene.remember(drawables, styles, look, space, scenePhase, density, sideMm, images)
+                    recordedScene.remember(scene)
                 }
                 withTransform({
                     translate(current.translateX, current.translateY)

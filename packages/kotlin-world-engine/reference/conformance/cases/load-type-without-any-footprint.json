@@ -1,0 +1,9 @@
+{
+  "id": "load-type-without-any-footprint",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "delete", "path": ["object_types", {"id": "garden"}, "footprint"]}]},
+  "input": {},
+  "expect": {"valid": false, "first": "world-schema", "fired": ["world-schema"]},
+  "notes": "A type needs footprint (tiles), footprint_mm, or both."
+}

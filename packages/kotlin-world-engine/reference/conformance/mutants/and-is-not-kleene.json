@@ -1,0 +1,7 @@
+{
+  "id": "and-is-not-kleene",
+  "breaks": "evaluates 'null and false' as null instead of false, as a host language's short-circuit and would",
+  "edits": [
+    {"find": "        if right is False:\n            return False\n        return None if left is None or right is None else True", "replace": "        return left and right"}
+  ]
+}

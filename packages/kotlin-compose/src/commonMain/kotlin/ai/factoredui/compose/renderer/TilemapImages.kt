@@ -32,9 +32,13 @@ internal inline fun rememberLoadedTileImages(sourcesByUse: Map<String, String>):
     return loaded
 }
 
-internal fun DrawScope.drawPicture(painter: Painter, centreX: Float, bottomY: Float, widthPx: Float) {
+internal fun pictureHeight(painter: Painter, widthPx: Float): Float {
     val intrinsic = painter.intrinsicSize
     val ratio = if (intrinsic.isSpecified && intrinsic.width > 0f) intrinsic.height / intrinsic.width else 1f
-    val size = Size(widthPx, widthPx * ratio)
+    return widthPx * ratio
+}
+
+internal fun DrawScope.drawPicture(painter: Painter, centreX: Float, bottomY: Float, widthPx: Float) {
+    val size = Size(widthPx, pictureHeight(painter, widthPx))
     translate(centreX - widthPx / 2f, bottomY - size.height) { with(painter) { draw(size) } }
 }

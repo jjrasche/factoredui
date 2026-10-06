@@ -1,0 +1,9 @@
+{
+  "id": "expr-string-and-number-do-not-compare",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "'a' == 1"},
+  "expect": {"error": "unit_mismatch"},
+  "notes": "== compares two numbers of equal dimension, two strings, or two booleans; a string against a number is refused."
+}

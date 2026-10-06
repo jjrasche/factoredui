@@ -1,0 +1,9 @@
+{
+  "id": "expr-link-alias-reads-the-parent-parcel",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "parcel.structure_setback"},
+  "expect": {"value": 50, "unit": "ft"},
+  "notes": "The parcel links to parcel-a as 'parcel'; parcel-a is placed in the locality seed with the district default structure_setback 50 ft."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "load-frame-axes-are-closed",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "set", "path": ["frame", "x_axis"], "value": "west"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "world-schema", "fired": ["world-schema"]},
+  "notes": "A frame's x_axis is always east and its y_axis always north."
+}

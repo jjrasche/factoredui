@@ -1,0 +1,17 @@
+{
+  "id": "expr-neighbors-radius-needs-tiles",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "text": "neighbors(tile, 1, 'path')",
+    "site": "rule",
+    "bindings": {"tile": [7, 3]},
+    "setup": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 3}}
+    ]
+  },
+  "expect": {"error": "unit_mismatch"},
+  "notes": "The radius 1 is dimensionless; neighbors needs it in tile (1 [tile])."
+}

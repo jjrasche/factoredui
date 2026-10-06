@@ -1,0 +1,12 @@
+{
+  "id": "load-binding-score-reading-a-projection-through-a-score",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {
+    "file": "parcel-five-acre.frozen.world.json",
+    "edits": [{"op": "set", "path": ["scoring", {"id": "pasture_yield_annual"}], "value": {"id": "pasture_yield_annual", "label": "Support, copied", "expr": "neighbor_support", "unit": "1", "binding": true}}]
+  },
+  "input": {},
+  "expect": {"valid": false, "first": "projection-not-binding", "fired": ["projection-not-binding"]},
+  "notes": "A binding score whose expression is the non-binding score neighbor_support, itself projected_support('neighbor'). The binding score decides an outcome from a projection one name removed, so it must be refused like a direct call."
+}

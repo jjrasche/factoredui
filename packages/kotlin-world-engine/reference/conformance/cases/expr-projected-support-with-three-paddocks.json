@@ -1,0 +1,16 @@
+{
+  "id": "expr-projected-support-with-three-paddocks",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "text": "projected_support('neighbor')",
+    "setup": [
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 10, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 11, "row": 12}}
+    ]
+  },
+  "expect": {"value": 0.6796440489432704, "unit": "1"},
+  "notes": "Weights 1/(1 + d/1320): n1 d=600 -> 1320/1920 = 11/16; n2 d=1500 -> 1320/2820 = 22/47; n3 d=3000 -> 1320/4320 = 11/36. pasture_yield > 0 and no van pads: n1 and n3 (wants_food 1) have utility > 0 and approve; n2 (wants_food 0, no pads) has 0 and does not. Approving 11/16 + 11/36 = (99 + 44)/144 = 143/144. Total 143/144 + 22/47 = (6721 + 3168)/6768 = 9889/6768. Support = (143/144) x (6768/9889) = 143 x 47 / 9889 = 6721/9889 = 0.67964405."
+}

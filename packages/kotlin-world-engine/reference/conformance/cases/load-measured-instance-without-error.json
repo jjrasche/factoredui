@@ -1,0 +1,9 @@
+{
+  "id": "load-measured-instance-without-error",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "delete", "path": ["seed", {"id": "m-oak-1"}, "parameters", "error"]}]},
+  "input": {},
+  "expect": {"valid": false, "first": "instance-error", "fired": ["instance-error"]},
+  "notes": "A measured instance must carry an error object naming position_mm, height_mm and crown_radius_mm."
+}

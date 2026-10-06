@@ -1,0 +1,22 @@
+{
+  "id": "seq-hoop-house-needs-an-open-south",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "woodland_tree", "col": 3, "row": 9}},
+      {"do": "place", "parameters": {"type": "hoop_house", "col": 2, "row": 8}},
+      {"do": "place", "parameters": {"type": "hoop_house", "col": 4, "row": 8}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"},
+      {"refused": "hoop-house-open-south", "message": "a hoop house needs an open south side: nothing tall directly south of it"},
+      {"applied": "e2"}
+    ],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 2, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 0, "woodland_tree": 1}}}
+  },
+  "notes": "A house at 2,8 covers 2,8 and 3,8; directly south are 2,9 and 3,9, and the tree at 3,9 is tall: refused. At 4,8 the house covers 4,8 and 5,8 and the tiles south, 4,9 and 5,9, are empty (the tree at 3,9 is diagonal): accepted. Setback is met at both (clearance >= 2 tiles)."
+}

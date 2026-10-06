@@ -1,0 +1,9 @@
+{
+  "id": "expr-instance-outside-an-instance-rule-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {"text": "min_distance_mm(instance, 'shed')"},
+  "expect": {"error": "unknown_word"},
+  "notes": "'instance' is the acted-on instance and exists only inside a place_instance or remove_instance rule."
+}

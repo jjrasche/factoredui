@@ -1,0 +1,17 @@
+{
+  "id": "replay-endorsement-forged-to-a-synthetic-agent",
+  "kind": "replay",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "proposal", "from": "main", "proposal": true},
+      {"do": "place", "on": "proposal", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "endorse", "on": "proposal", "actor": "jim", "parameters": {"weight_class": "on_site"}},
+      {"do": "merge", "branch": "proposal"}
+    ],
+    "tamper": [{"op": "set", "path": ["events", 2, "actor"], "value": "neighbor-2"}]
+  },
+  "expect": {"loads": false, "reason_contains": "does not replay"},
+  "notes": "The endorsement e3 is rewritten to come from neighbor-2, a synthetic agent; replay re-checks governance and refuses its vote."
+}

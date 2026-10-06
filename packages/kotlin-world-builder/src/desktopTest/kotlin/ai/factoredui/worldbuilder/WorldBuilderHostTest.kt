@@ -14,9 +14,10 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 internal fun designDirectory(): File {
-    val configured = System.getProperty("WORLD_ENGINE_DESIGN_DIR") ?: System.getenv("WORLD_ENGINE_DESIGN_DIR")
-    val directory = File(configured ?: "C:/Users/rasche_j/Documents/workspace/van-life/.git-worktrees/design-world-engine/design/world-engine")
-    check(directory.isDirectory) { "design directory not found: $directory (set WORLD_ENGINE_DESIGN_DIR)" }
+    val configured = System.getProperty("WORLD_ENGINE_DESIGN_DIR")?.takeIf { it.isNotBlank() }
+        ?: error("WORLD_ENGINE_DESIGN_DIR is not set: Gradle passes the vendored reference at packages/kotlin-world-engine/reference")
+    val directory = File(configured)
+    check(directory.isDirectory) { "design directory not found: $directory" }
     return directory
 }
 

@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-link-fits",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["grid", "rows"], "value": 60}]},
+  "input": {},
+  "expect": {"valid": false, "first": "link-fits", "fired": ["link-fits"]},
+  "notes": "mutations.json's broken copy for link-fits; the reference's verdict, recorded."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "load-footprint-mm-disagrees-with-tiles",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "set", "path": ["object_types", {"id": "house"}, "footprint_mm"], "value": [6100, 4500]}]},
+  "input": {},
+  "expect": {"valid": false, "first": "footprint-mm-agrees", "fired": ["footprint-mm-agrees"]},
+  "notes": "house declares footprint [2, 2] and footprint_mm [6100, 4500] on 3048 mm tiles. ceil(6100/3048) = 3, not 2; ceil(4500/3048) = 2 agrees."
+}

@@ -1,0 +1,24 @@
+{
+  "id": "branch-revert-refusals",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "tick", "actor": "clock", "parameters": {"n": 1}},
+      {"do": "revert", "event": "e1"},
+      {"do": "revert", "event": "e9"},
+      {"do": "revert", "event": "e1", "on": "nowhere"}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"},
+      {"refused": "revert-unsupported", "message": "only place and remove revert; branch from before e1 instead"},
+      {"refused": "revert-unknown", "message": "e9 is not applied on main"},
+      {"refused": "unknown-branch", "message": "no branch 'nowhere'"}
+    ],
+    "final": {"main": {"ticks": 1}}
+  },
+  "notes": "A tick has no inverse; e9 does not exist on main; the branch nowhere does not exist."
+}

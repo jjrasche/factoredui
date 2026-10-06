@@ -1,0 +1,41 @@
+{
+  "id": "replay-instance-placement-canonical",
+  "kind": "replay",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "steps": [{"do": "place_instance", "parameters": {"type": "oak", "x_mm": 12000, "y_mm": 9000, "rotation_deg": 15}}]
+  },
+  "expect": {
+    "loads": true,
+    "log": {
+      "world": "instances-plot",
+      "events": [
+        {"id": "e1", "parent": null, "world": "instances-plot", "branch": "main", "actor": "jim", "action": "place_instance",
+         "parameters": {"type": "oak", "x_mm": 12000, "y_mm": 9000, "rotation_deg": 15}, "timestamp": "2026-10-05T00:00:00Z", "touches": ["instance:e1"]}
+      ]
+    },
+    "state": {
+      "main": {
+        "cells": [], "stocks": {}, "ticks": 0, "agents": {}, "endorsements": [],
+        "instances": {
+          "e1": {"id": "e1", "type": "oak", "x_mm": 12000, "y_mm": 9000, "z_mm": 0, "rotation_deg": 15, "height_mm": 18000, "crown_radius_mm": null,
+                 "provenance": "proposed", "source": null, "error": null},
+          "m-oak-1": {"id": "m-oak-1", "type": "oak", "x_mm": 1500, "y_mm": 2000, "z_mm": 0, "rotation_deg": 0, "height_mm": 16500, "crown_radius_mm": 4000,
+                      "provenance": "measured",
+                      "source": {"file": "conformance/worlds/instances-plot.frozen.world.json", "tag": "conformance fixture: a hand-placed oak, standing in for a lidar tree"},
+                      "error": {"position_mm": {"value": 950, "source": {"row": "gatziolis10-apex-stem-offset"}},
+                                "height_mm": {"value": null, "null_reason": "fixture: no field height was measured"},
+                                "crown_radius_mm": {"value": null, "null_reason": "fixture: no field crown was measured"}}},
+          "m-shed-1": {"id": "m-shed-1", "type": "shed", "x_mm": 3500, "y_mm": 2000, "z_mm": 0, "rotation_deg": 90, "height_mm": 2700, "crown_radius_mm": null,
+                       "provenance": "measured",
+                       "source": {"tag": "conformance fixture: a hand-placed shed, standing in for a surveyed one"},
+                       "error": {"position_mm": {"value": null, "null_reason": "fixture: no survey was made"},
+                                 "height_mm": {"value": null, "null_reason": "fixture: no survey was made"},
+                                 "crown_radius_mm": {"value": null, "null_reason": "a shed has no crown"}}}
+        }
+      }
+    }
+  },
+  "notes": "A place_instance event touches instance:<its own id>. The canonical state gains `instances`, keyed by id, present only when the layer is non-empty. Every record has id, type, x_mm, y_mm, z_mm (default 0), rotation_deg (default 0), height_mm (its own, else the type's), crown_radius_mm (null when absent), provenance, source and error (both null for a proposed instance). Millimetres are stored as given, never converted."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "expr-distance-to-nothing-is-infinite",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "distance('pond', 'path')"},
+  "expect": {"value": "inf", "unit": "ft"},
+  "notes": "No pond and no path are placed; the nearest distance over an empty set is +infinity, so a 'distance >= x' rule holds when nothing is there."
+}

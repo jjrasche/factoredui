@@ -1,0 +1,44 @@
+{
+  "id": "replay-measured-instance-removal-keeps-provenance",
+  "kind": "replay",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "remove_instance", "on": "idea", "parameters": {"id": "m-oak-1"}}
+    ]
+  },
+  "expect": {
+    "loads": true,
+    "log": {
+      "world": "instances-plot",
+      "events": [
+        {"id": "e1", "parent": null, "world": "instances-plot", "branch": "idea", "actor": "jim", "action": "branch",
+         "parameters": {"name": "idea", "from": null, "proposal": false}, "timestamp": "2026-10-05T00:00:00Z", "touches": []},
+        {"id": "e2", "parent": "e1", "world": "instances-plot", "branch": "idea", "actor": "jim", "action": "remove_instance",
+         "parameters": {"id": "m-oak-1"}, "timestamp": "2026-10-05T00:00:01Z", "touches": ["instance:m-oak-1"],
+         "removed_instance": {"id": "m-oak-1", "type": "oak", "x_mm": 1500, "y_mm": 2000, "z_mm": 0, "rotation_deg": 0, "height_mm": 16500, "crown_radius_mm": 4000,
+                              "provenance": "measured",
+                              "source": {"file": "conformance/worlds/instances-plot.frozen.world.json", "tag": "conformance fixture: a hand-placed oak, standing in for a lidar tree"},
+                              "error": {"position_mm": {"value": 950, "source": {"row": "gatziolis10-apex-stem-offset"}},
+                                        "height_mm": {"value": null, "null_reason": "fixture: no field height was measured"},
+                                        "crown_radius_mm": {"value": null, "null_reason": "fixture: no field crown was measured"}}}}
+      ]
+    },
+    "state": {
+      "idea": {
+        "cells": [], "stocks": {}, "ticks": 0, "agents": {}, "endorsements": [],
+        "instances": {
+          "m-shed-1": {"id": "m-shed-1", "type": "shed", "x_mm": 3500, "y_mm": 2000, "z_mm": 0, "rotation_deg": 90, "height_mm": 2700, "crown_radius_mm": null,
+                       "provenance": "measured",
+                       "source": {"tag": "conformance fixture: a hand-placed shed, standing in for a surveyed one"},
+                       "error": {"position_mm": {"value": null, "null_reason": "fixture: no survey was made"},
+                                 "height_mm": {"value": null, "null_reason": "fixture: no survey was made"},
+                                 "crown_radius_mm": {"value": null, "null_reason": "a shed has no crown"}}}
+        }
+      }
+    }
+  },
+  "notes": "Removing a measured instance on a branch is allowed, and the remove event keeps the whole record it removed, provenance, source and error included, in removed_instance; main still holds both measured instances."
+}

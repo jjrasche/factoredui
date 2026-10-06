@@ -1,0 +1,9 @@
+{
+  "id": "expr-min-distance-between-two-uses",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {"text": "min_distance_mm('oak', 'shed')"},
+  "expect": {"value": 2000, "unit": "mm"},
+  "notes": "Measured oak at 1500,2000 mm and measured shed at 3500,2000 mm: centre to centre 2000 mm."
+}

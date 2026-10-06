@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-sprite-known",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["object_types", {"id": "pond"}, "sprite"], "value": "lake"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "sprite-known", "fired": ["sprite-known"]},
+  "notes": "mutations.json's broken copy for sprite-known; the reference's verdict, recorded."
+}

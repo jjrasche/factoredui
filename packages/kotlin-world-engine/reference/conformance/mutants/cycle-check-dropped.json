@@ -1,0 +1,7 @@
+{
+  "id": "cycle-check-dropped",
+  "breaks": "loads worlds whose equations, scores or agents refer to each other in a cycle",
+  "edits": [
+    {"find": "    def find_cycle(self) -> list[str]:\n        graph = self.name_graph()", "replace": "    def find_cycle(self) -> list[str]:\n        return []\n        graph = self.name_graph()"}
+  ]
+}

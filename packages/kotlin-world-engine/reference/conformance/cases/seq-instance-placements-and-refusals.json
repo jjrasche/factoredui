@@ -1,0 +1,36 @@
+{
+  "id": "seq-instance-placements-and-refusals",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 12000, "y_mm": 9000, "rotation_deg": 15}},
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 5000, "y_mm": 4000, "rotation_deg": 0}},
+      {"do": "place_instance", "parameters": {"type": "garden", "x_mm": 20000, "y_mm": 15000, "rotation_deg": 0}},
+      {"do": "place_instance", "parameters": {"type": "pine", "x_mm": 20000, "y_mm": 15000, "rotation_deg": 0}},
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 24384, "y_mm": 1000, "rotation_deg": 0}},
+      {"do": "remove_instance", "parameters": {"id": "nope"}},
+      {"do": "remove_instance", "parameters": {"id": "m-shed-1"}},
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 5000, "y_mm": 4000, "rotation_deg": 0}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"},
+      {"refused": "tree-clear-of-structures", "message": "a tree needs 3000 mm clear of every structure"},
+      {"refused": "instance-needs-height", "message": "garden has no height_mm and the action gives none"},
+      {"refused": "unknown-type", "message": "no object type 'pine'"},
+      {"refused": "instance-off-grid", "message": "oak at 24384,1000 mm lies outside the 24384 x 18288 mm grid"},
+      {"refused": "unknown-instance", "message": "no instance 'nope' to remove"},
+      {"applied": "e2"},
+      {"applied": "e3"}
+    ],
+    "final": {"main": {
+      "counts": {"house": 0, "shed": 0, "oak": 0, "garden": 0},
+      "areas": {"house": 0, "shed": 0, "oak": 0, "garden": 0},
+      "equations": {"tree_count": 3}
+    }}
+  },
+  "notes": "e1 is sqrt(8500^2 + 7000^2) = 11011 mm from the shed. 5000,4000 is sqrt(1500^2 + 2000^2) = 2500 mm from the shed, under 3000, so refused. garden declares no height_mm and a proposed instance has no height of its own. The grid is 8 x 10 ft x 304.8 = 24384 mm wide and 6 x 3048 = 18288 mm tall, half-open, so x = 24384 is off it. Removing the measured shed is allowed; with no structure instance left min_distance_mm(instance, '#structure') has no pair, is not measured, and refuses nothing, so the same 5000,4000 oak now goes in as e3. Trees: measured oak, e1, e3 = 3. No tile count changes."
+}

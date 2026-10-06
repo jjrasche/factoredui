@@ -1,0 +1,22 @@
+{
+  "id": "seq-unknown-verbs-and-branches",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "merge", "raw": true, "parameters": {}},
+      {"do": "place", "on": "nowhere", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "dig", "parameters": {}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"refused": "governance-verb", "message": "use Log.merge() for 'merge'"},
+      {"refused": "unknown-branch", "message": "no branch 'nowhere'"},
+      {"refused": "unknown-action", "message": "no action 'dig'"}
+    ],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 0, "woodland_tree": 0}}}
+  },
+  "notes": "A merge appended as a plain action is refused (branch, merge and revert go through their own calls, which run the conflict rule); an action on a branch that does not exist is refused; a verb no handler knows is refused. Nothing is placed."
+}

@@ -1,0 +1,438 @@
+{
+  "purpose": "per-use annual figures for the parcel world, each traced to task ids, row ids and arithmetic, or null with a declared reason; written by derive_twin_constants.py, never by hand",
+  "sources": {
+    "task_model": "van-life-65-task-model/design/task-model",
+    "row_stores": {
+      "consolidated": "consolidate-rows/research/rows.jsonl",
+      "economy": "research-economy-inputs/research/economy/rows.jsonl",
+      "livestock": "research-livestock-inputs/research/livestock/rows.jsonl",
+      "heat-network": "research-heat-network-inputs/research/heat-network/rows.jsonl",
+      "dm-grazing": "research-dm-grazing-model/research/dm-grazing/rows.jsonl"
+    },
+    "root": "the .git-worktrees directory that holds this worktree"
+  },
+  "units": {
+    "hours_per_year_per_tile": "hour/tile/year",
+    "hours_per_year_per_use": "hour/year",
+    "capex_usd_per_tile": "usd/tile",
+    "capex_usd_per_use": "usd",
+    "yield_kg_dm_per_tile_per_year": "kg/tile/year"
+  },
+  "conversions": {
+    "sq_ft_per_acre": 43560.0,
+    "lb_per_short_ton": 2000.0,
+    "kg_per_lb": 0.45359237,
+    "basis": "definitions"
+  },
+  "tile": {
+    "tile_ft": 25.0,
+    "sq_ft": 625.0,
+    "acres": 0.014348025711662075,
+    "basis": "grid.tile_ft 25 of parcel-five-acre.world.json, squared; 43560 sq ft per acre"
+  },
+  "task_count": 66,
+  "unmapped_tasks": [
+    "bee-colony-extract",
+    "bee-colony-inspect",
+    "bee-colony-install-scale",
+    "bee-colony-treat",
+    "boiler-stoke",
+    "compost-pile-install-blower",
+    "compost-pile-turn",
+    "education-program-teach",
+    "garden-harvest",
+    "garden-irrigate",
+    "garden-plant",
+    "garden-weed",
+    "goat-herd-milk",
+    "goat-herd-treat",
+    "hen-flock-collect-eggs",
+    "hen-flock-feed",
+    "hen-flock-install-feeder",
+    "hen-flock-move",
+    "horse-herd-groom",
+    "horse-herd-move",
+    "horse-herd-ride",
+    "horse-herd-trim",
+    "horse-stable-clean",
+    "irrigation-install-probes",
+    "milking-machine-clean",
+    "orchard-graze-sheep",
+    "orchard-harvest",
+    "orchard-irrigate",
+    "orchard-prune",
+    "orchard-thin",
+    "perimeter-fence-build",
+    "perimeter-fence-inspect",
+    "perimeter-fence-install-monitor",
+    "perimeter-fence-repair",
+    "pig-batch-butcher",
+    "pig-batch-move",
+    "pig-batch-water",
+    "rehabilitation-program-session",
+    "sheep-flock-shear",
+    "topsoil-sample",
+    "topsoil-spread-compost",
+    "topsoil-spread-lime",
+    "topsoil-till",
+    "topsoil-till-pigs",
+    "tractor-service",
+    "water-system-build-lines"
+  ],
+  "uses": {
+    "paddock": {
+      "hours_per_year_per_tile": null,
+      "hours_basis": {
+        "declared": "the only cited paddock labor, cattle-move, is 15 minutes a day per herd and does not grow with paddock area; it is carried once per use in hours_per_year_per_use",
+        "rows": [
+          "uw-moving-cattle-15-min"
+        ]
+      },
+      "hours_per_year_per_use": 38.25,
+      "hours_per_use_basis": {
+        "tasks": [
+          "cattle-move"
+        ],
+        "rows": [
+          "uw-moving-cattle-15-min"
+        ],
+        "twin": [
+          "grazing_season_days"
+        ],
+        "arithmetic": "15 min/day x 153 grazing_season_days / 60 = 38.25 h/year",
+        "assumes": "one herd, moved daily whatever the paddock area: the row times a move, not an acre, so the figure is charged once when any paddock exists; horse-herd-move cites the same row and the same 15 minutes"
+      },
+      "capex_usd_per_tile": null,
+      "capex_basis": {
+        "declared": "no banked price for livestock fence per foot (row cap-prices-lives-null); the energizer and tank are one per herd, carried in capex_usd_per_use; the other match prices piglets",
+        "rows": [
+          "cap-prices-lives-null"
+        ],
+        "searched": "/fence|polywire|\\bposts?\\b/ over the claims of 192 priced rows in 5 stores",
+        "matches": [
+          "cap-fence-energizer",
+          "mi-agh-heartspasture-prices"
+        ]
+      },
+      "capex_usd_per_use": 219.98,
+      "capex_per_use_basis": {
+        "rows": [
+          "cap-fence-energizer",
+          "cap-stock-tank-110"
+        ],
+        "tasks": [
+          "food-forest-clear-goats",
+          "orchard-graze-sheep",
+          "pig-batch-water"
+        ],
+        "arithmetic": "energizer 129.99 + stock tank 89.99 = 219.98 usd, once",
+        "assumes": "the energizer is rated 150 acres, so one serves every paddock on the parcel; the task model pairs fence_energizer with paddock_fence in food-forest-clear-goats, orchard-graze-sheep and names stock_tank in pig-batch-water, a batch held in paddock_fence; one tank for one herd; up-front price only, because no row gives either item a service life (cap-prices-lives-null)"
+      },
+      "yield_kg_dm_per_tile_per_year": 52.0652398989899,
+      "yield_basis": {
+        "rows": [
+          "yield-mi-grass-clover-4.0t"
+        ],
+        "twin": [
+          "mi_grass_clover_tons_per_acre",
+          "eq-aux-stocking-static"
+        ],
+        "arithmetic": "4 ton/acre/year x 2000 lb/ton x 0.45359237 kg/lb x 625/43560 acre/tile = 52.0652 kg/tile/year",
+        "assumes": "a US short ton (the source is a US SARE report; the engine's ton is 2000 lb); the quote says 'tons/acre' without 'dry matter' and the twin reads it as dry matter (binding quantity annual_herbage_growth; row syn-cow-strip-sqft)"
+      },
+      "task_coverage": {
+        "resources": [
+          "cattle_herd",
+          "grassland"
+        ],
+        "tasks": 7,
+        "cited": [
+          "cattle-move"
+        ],
+        "covered_by_cited": [],
+        "uncited": [
+          "cattle-install-virtual-fence",
+          "cattle-weigh",
+          "grassland-harvest-hay",
+          "grassland-mow-top",
+          "grassland-overseed",
+          "grassland-survey"
+        ]
+      },
+      "mapping": "a paddock is grazed grass: the twin's pasture simulation grazes a cow (declared cow_head, the leader cow) on grassland",
+      "notes": "fence service life 20 years (cap-life-fence-visual, an NRCS practice lifespan, not a measured life) waits for a per-foot fence price"
+    },
+    "hoop_house": {
+      "hours_per_year_per_tile": 24.576822916666668,
+      "hours_basis": {
+        "tasks": [
+          "hoop-house-ventilate",
+          "hoop-house-crop-plant",
+          "hoop-house-crop-harvest",
+          "hoop-house-crop-prune"
+        ],
+        "rows": [
+          "uky-tunnel-labor-hours"
+        ],
+        "arithmetic": "(hoop-house-ventilate 10 + hoop-house-crop-plant 3 + hoop-house-crop-harvest 40 + hoop-house-crop-prune 22.5) = 75.5 h per 96 x 20 ft house = 1920 sq ft; 75.5 / 1920 x 625 sq ft/tile = 24.5768 h/tile/year",
+        "assumes": "labor scales with growing area, and one season a year (the twin's task_hours already takes hours_per_house_per_season as hours_per_year)"
+      },
+      "hours_per_year_per_use": null,
+      "hours_per_use_basis": {
+        "declared": "hoop-house hours scale with the house's tiles; none is fixed per use"
+      },
+      "capex_usd_per_tile": null,
+      "capex_basis": {
+        "declared": "no banked price for a hoop house (row cap-prices-lives-null); the priced rows that name one price a thermal screen or curtain, or name none, and service life is banked without a price",
+        "rows": [
+          "cap-prices-lives-null"
+        ],
+        "searched": "/hoop ?house|high tunnel/ over the claims of 192 priced rows in 5 stores",
+        "matches": [
+          "answer-best-automated-curtain",
+          "answer-regional-manufacture-blocker",
+          "screen-umass-hoophouse-cable-under-1-dollar"
+        ]
+      },
+      "capex_usd_per_use": null,
+      "capex_per_use_basis": {
+        "declared": "no banked price for a hoop house (row cap-prices-lives-null); the priced rows that name one price a thermal screen or curtain, or name none, and service life is banked without a price",
+        "rows": [
+          "cap-prices-lives-null"
+        ],
+        "searched": "/hoop ?house|high tunnel/ over the claims of 192 priced rows in 5 stores",
+        "matches": [
+          "answer-best-automated-curtain",
+          "answer-regional-manufacture-blocker",
+          "screen-umass-hoophouse-cable-under-1-dollar"
+        ]
+      },
+      "yield_kg_dm_per_tile_per_year": null,
+      "yield_basis": {
+        "declared": "the hoop house yields tomatoes, not forage dry matter (row synth-hoop-house-output carries marketable lb, outside this field)"
+      },
+      "task_coverage": {
+        "resources": [
+          "hoop_house",
+          "hoop_house_crop"
+        ],
+        "tasks": 8,
+        "cited": [
+          "hoop-house-crop-harvest",
+          "hoop-house-crop-plant",
+          "hoop-house-crop-prune",
+          "hoop-house-ventilate"
+        ],
+        "covered_by_cited": [
+          "hoop-house-crop-weed"
+        ],
+        "uncited": [
+          "hoop-house-build",
+          "hoop-house-install-roll-up-motors",
+          "hoop-house-repair"
+        ]
+      },
+      "mapping": "the house and the crop grown in it",
+      "notes": "service life 5 years (cap-life-high-tunnel-visual, an NRCS practice lifespan, not a measured life) waits for a hoop-house price"
+    },
+    "commons_building": {
+      "hours_per_year_per_tile": null,
+      "hours_basis": {
+        "declared": "no task maps to this use: no task's resource is a building; education-program-teach and rehabilitation-program-session name no place and no equipment"
+      },
+      "hours_per_year_per_use": null,
+      "hours_per_use_basis": {
+        "declared": "no task maps to this use: no task's resource is a building; education-program-teach and rehabilitation-program-session name no place and no equipment"
+      },
+      "capex_usd_per_tile": null,
+      "capex_basis": {
+        "declared": "the one banked building-scale price is the wood gasifier boiler of task boiler-stoke, and no task or row places that boiler in the commons building, so it is not charged here",
+        "rows": [
+          "cap-wood-gasifier"
+        ],
+        "searched": "/gasif|boiler|building cost|cost to build|commons/ over the claims of 192 priced rows in 5 stores",
+        "matches": [
+          "cap-wood-gasifier",
+          "g-answer-biochar"
+        ]
+      },
+      "capex_usd_per_use": null,
+      "capex_per_use_basis": {
+        "declared": "the one banked building-scale price is the wood gasifier boiler of task boiler-stoke, and no task or row places that boiler in the commons building, so it is not charged here",
+        "rows": [
+          "cap-wood-gasifier"
+        ],
+        "searched": "/gasif|boiler|building cost|cost to build|commons/ over the claims of 192 priced rows in 5 stores",
+        "matches": [
+          "cap-wood-gasifier",
+          "g-answer-biochar"
+        ]
+      },
+      "yield_kg_dm_per_tile_per_year": null,
+      "yield_basis": {
+        "declared": "a building yields no forage"
+      },
+      "task_coverage": {
+        "resources": [],
+        "tasks": 0,
+        "cited": [],
+        "covered_by_cited": [],
+        "uncited": []
+      },
+      "mapping": "no task's resource is a building; education-program-teach and rehabilitation-program-session name no place and no equipment",
+      "notes": ""
+    },
+    "van_pad": {
+      "hours_per_year_per_tile": null,
+      "hours_basis": {
+        "declared": "no task maps to this use: no task's resource is a van pad or a vehicle parking surface"
+      },
+      "hours_per_year_per_use": null,
+      "hours_per_use_basis": {
+        "declared": "no task maps to this use: no task's resource is a van pad or a vehicle parking surface"
+      },
+      "capex_usd_per_tile": null,
+      "capex_basis": {
+        "declared": "no priced row for gravel, base or a pad surface",
+        "searched": "/gravel|crushed|driveway|road base/ over the claims of 192 priced rows in 5 stores",
+        "matches": []
+      },
+      "capex_usd_per_use": null,
+      "capex_per_use_basis": {
+        "declared": "no priced row for gravel, base or a pad surface",
+        "searched": "/gravel|crushed|driveway|road base/ over the claims of 192 priced rows in 5 stores",
+        "matches": []
+      },
+      "yield_kg_dm_per_tile_per_year": null,
+      "yield_basis": {
+        "declared": "a van pad yields no forage"
+      },
+      "task_coverage": {
+        "resources": [],
+        "tasks": 0,
+        "cited": [],
+        "covered_by_cited": [],
+        "uncited": []
+      },
+      "mapping": "no task's resource is a van pad or a vehicle parking surface",
+      "notes": ""
+    },
+    "path": {
+      "hours_per_year_per_tile": null,
+      "hours_basis": {
+        "declared": "no task maps to this use: no task's resource is a path or lane surface"
+      },
+      "hours_per_year_per_use": null,
+      "hours_per_use_basis": {
+        "declared": "no task maps to this use: no task's resource is a path or lane surface"
+      },
+      "capex_usd_per_tile": null,
+      "capex_basis": {
+        "declared": "no priced row for gravel, chips or a walkway surface; the one wood-chip match prices nothing",
+        "searched": "/gravel|wood ?chips|walkway/ over the claims of 192 priced rows in 5 stores",
+        "matches": [
+          "modified-pain-mound-cpn"
+        ]
+      },
+      "capex_usd_per_use": null,
+      "capex_per_use_basis": {
+        "declared": "no priced row for gravel, chips or a walkway surface; the one wood-chip match prices nothing",
+        "searched": "/gravel|wood ?chips|walkway/ over the claims of 192 priced rows in 5 stores",
+        "matches": [
+          "modified-pain-mound-cpn"
+        ]
+      },
+      "yield_kg_dm_per_tile_per_year": null,
+      "yield_basis": {
+        "declared": "a path yields no forage"
+      },
+      "task_coverage": {
+        "resources": [],
+        "tasks": 0,
+        "cited": [],
+        "covered_by_cited": [],
+        "uncited": []
+      },
+      "mapping": "no task's resource is a path or lane surface",
+      "notes": ""
+    },
+    "pond": {
+      "hours_per_year_per_tile": null,
+      "hours_basis": {
+        "declared": "no task maps to this use: no task's resource is a pond or open water; water_system is pipework"
+      },
+      "hours_per_year_per_use": null,
+      "hours_per_use_basis": {
+        "declared": "no task maps to this use: no task's resource is a pond or open water; water_system is pipework"
+      },
+      "capex_usd_per_tile": null,
+      "capex_basis": {
+        "declared": "no priced row for a pond, a liner or excavation",
+        "searched": "/pond|liner|excavat/ over the claims of 192 priced rows in 5 stores",
+        "matches": []
+      },
+      "capex_usd_per_use": null,
+      "capex_per_use_basis": {
+        "declared": "no priced row for a pond, a liner or excavation",
+        "searched": "/pond|liner|excavat/ over the claims of 192 priced rows in 5 stores",
+        "matches": []
+      },
+      "yield_kg_dm_per_tile_per_year": null,
+      "yield_basis": {
+        "declared": "a pond yields no forage"
+      },
+      "task_coverage": {
+        "resources": [],
+        "tasks": 0,
+        "cited": [],
+        "covered_by_cited": [],
+        "uncited": []
+      },
+      "mapping": "no task's resource is a pond or open water; water_system is pipework",
+      "notes": ""
+    },
+    "woodland_tree": {
+      "hours_per_year_per_tile": null,
+      "hours_basis": {
+        "declared": "none of the 5 mapped tasks carries a cited labor figure"
+      },
+      "hours_per_year_per_use": null,
+      "hours_per_use_basis": {
+        "declared": "none of the 5 mapped tasks carries a cited labor figure"
+      },
+      "capex_usd_per_tile": null,
+      "capex_basis": {
+        "declared": "no priced row for nursery stock",
+        "searched": "/nursery|seedling|bare.?root|sapling|tree stock/ over the claims of 192 priced rows in 5 stores",
+        "matches": []
+      },
+      "capex_usd_per_use": null,
+      "capex_per_use_basis": {
+        "declared": "no priced row for nursery stock",
+        "searched": "/nursery|seedling|bare.?root|sapling|tree stock/ over the claims of 192 priced rows in 5 stores",
+        "matches": []
+      },
+      "yield_kg_dm_per_tile_per_year": null,
+      "yield_basis": {
+        "declared": "no banked yield for the food forest's tree crops, and they are not forage"
+      },
+      "task_coverage": {
+        "resources": [
+          "food_forest"
+        ],
+        "tasks": 5,
+        "cited": [],
+        "covered_by_cited": [],
+        "uncited": [
+          "food-forest-clear-goats",
+          "food-forest-harvest-nuts",
+          "food-forest-plant",
+          "food-forest-prune",
+          "food-forest-spread-chips"
+        ]
+      },
+      "mapping": "declared: trees on the parcel are the food forest's tree crops; the orchard's apple rows are full-production orchard figures, not woodland",
+      "notes": ""
+    }
+  }
+}

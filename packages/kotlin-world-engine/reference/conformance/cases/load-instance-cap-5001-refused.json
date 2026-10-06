@@ -1,0 +1,13 @@
+{
+  "id": "load-instance-cap-5001-refused",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "set_items", "path": ["seed"], "times": 5001, "template": {
+    "id": "g{i}", "action": "place_instance",
+    "parameters": {"type": "oak", "x_mm": 12000, "y_mm": 12000, "provenance": "measured", "source": {"tag": "generated for the cap case"},
+      "error": {"position_mm": {"value": null, "null_reason": "generated: no survey"}, "height_mm": {"value": null, "null_reason": "generated: no survey"}, "crown_radius_mm": {"value": null, "null_reason": "generated: no survey"}}}
+  }}]},
+  "input": {},
+  "expect": {"valid": false, "first": "seed-replays", "fired": ["seed-replays"]},
+  "notes": "The 5001st seed instance is refused at load (instance-cap), so min_distance_mm never compares more than 5000 x 5000 pairs."
+}

@@ -1,0 +1,23 @@
+{
+  "id": "branch-merge-rechecks-the-rules",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "place", "on": "idea", "parameters": {"type": "van_pad", "col": 7, "row": 3}},
+      {"do": "remove", "parameters": {"col": 6, "row": 3}},
+      {"do": "merge", "branch": "idea"}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"applied": "e4"},
+      {"refused": "van-pad-needs-path", "message": "merging e3: a van pad needs a path on one of its four sides"}
+    ],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 0, "woodland_tree": 0}}}
+  },
+  "notes": "No tile clashes (the pad is at 7,3, the removal at 6,3), but replayed on main the pad has no path beside it, so the merge is refused, naming the event that failed."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "expr-unknown-function-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "while(true)"},
+  "expect": {"error": "unknown_word"},
+  "notes": "while is not in the closed function vocabulary (count, sum, neighbors, side, edge, distance, if, min, max, projected_support)."
+}

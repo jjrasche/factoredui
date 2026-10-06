@@ -1,0 +1,9 @@
+{
+  "id": "load-relinked-to-the-override-parcel",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["links", 0, "parcel"], "value": "parcel-b"}]},
+  "input": {},
+  "expect": {"valid": true, "fired": []},
+  "notes": "parcel-b is placed by the locality seed and is 1 x 2 tiles like parcel-a, so 211250 <= 217800 sq ft still fits and the link resolves; nothing else changes."
+}

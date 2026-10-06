@@ -1,0 +1,143 @@
+{
+  "purpose": "every refusal validate.py makes of a world file, as data: the set it scans, the condition each record must meet, and the message; validate.py derives the records and one generic runner judges them, and mutations.json holds one broken copy per rule that must trip it",
+  "ops": "empty, nonempty, is_true, is_false, eq_value, when (if, then), all",
+  "rules": [
+    {
+      "id": "blind-worlds",
+      "kind": "blind",
+      "scans": "worlds",
+      "min": 1,
+      "message": "no *.world.json under the worlds directory, so nothing below was checked"
+    },
+    {
+      "id": "world-parses",
+      "scans": "worlds",
+      "condition": {"op": "is_true", "field": "parse_ok"},
+      "message": "{world}: is not JSON: {parse_error}"
+    },
+    {
+      "id": "world-schema",
+      "scans": "worlds",
+      "condition": {"op": "empty", "field": "schema_errors"},
+      "message": "{world}: does not match world.schema.json: {schema_errors}"
+    },
+    {
+      "id": "expression-parses",
+      "scans": "expressions",
+      "condition": {"op": "empty", "field": "syntax_errors"},
+      "message": "{world} {where}: is not in the expression grammar: {syntax_errors}"
+    },
+    {
+      "id": "unknown-word",
+      "scans": "expressions",
+      "condition": {"op": "empty", "field": "unknown_words"},
+      "message": "{world} {where}: uses a word the world does not declare: {unknown_words}"
+    },
+    {
+      "id": "unit-mismatch",
+      "scans": "expressions",
+      "condition": {"op": "empty", "field": "unit_errors"},
+      "message": "{world} {where}: units or types do not agree: {unit_errors}"
+    },
+    {
+      "id": "expression-bound",
+      "scans": "expressions",
+      "condition": {"op": "is_false", "field": "over_bound"},
+      "message": "{world} {where}: exceeds the node or depth bound, so its evaluation cost is not bounded by the world: {bound_errors}"
+    },
+    {
+      "id": "name-cycle",
+      "scans": "names",
+      "condition": {"op": "empty", "field": "cycle"},
+      "message": "{world}: equations, scores or agents refer to each other in a cycle, which would never finish evaluating: {cycle}"
+    },
+    {
+      "id": "seed-replays",
+      "scans": "seeds",
+      "condition": {"op": "empty", "field": "seed_error"},
+      "message": "{world}: the seed the world ships with breaks its own rules: {seed_error}"
+    },
+    {
+      "id": "rule-message",
+      "scans": "rules",
+      "condition": {
+        "op": "when",
+        "if": {"op": "eq_value", "field": "kind", "value": "require"},
+        "then": {"op": "nonempty", "field": "message"}
+      },
+      "message": "{world} rule {id}: refuses without saying why; a require rule needs a message"
+    },
+    {
+      "id": "unknown-target",
+      "scans": "rules",
+      "condition": {"op": "empty", "field": "unknown_targets"},
+      "message": "{world} rule {id}: applies to types or tags the world does not declare: {unknown_targets}"
+    },
+    {
+      "id": "action-emits",
+      "scans": "actions",
+      "condition": {"op": "nonempty", "field": "emits"},
+      "message": "{world} action {verb}: emits no events, so taking it would change nothing in the log"
+    },
+    {
+      "id": "link-resolves",
+      "scans": "links",
+      "condition": {"op": "empty", "field": "problems"},
+      "message": "{world} link to {parent}: dangles: {problems}"
+    },
+    {
+      "id": "link-fits",
+      "scans": "links",
+      "condition": {"op": "is_true", "field": "fits"},
+      "message": "{world} link to {parent}: the grid covers {extent_sq_ft} sq ft, more than the {parent_extent_sq_ft} sq ft of the parcel it links to"
+    },
+    {
+      "id": "projection-not-binding",
+      "scans": "projections",
+      "condition": {"op": "is_false", "field": "binding"},
+      "message": "{world} {where}: a binding outcome reads projected_support(); an agent's assumed vote is a projection and never binding"
+    },
+    {
+      "id": "figure-sourced",
+      "scans": "figures",
+      "condition": {"op": "is_true", "field": "has_source"},
+      "message": "{world} {type}.{property}: a {kind} figure needs a twin id, a row id, or a placeholder with its reason"
+    },
+    {
+      "id": "sprite-known",
+      "scans": "object_types",
+      "condition": {"op": "is_true", "field": "sprite_known"},
+      "message": "{world} type {type}: sprite {sprite} is neither generic nor a declared extension"
+    },
+    {
+      "id": "footprint-mm-agrees",
+      "scans": "footprints",
+      "condition": {"op": "is_true", "field": "agrees"},
+      "message": "{world} type {type}: footprint {footprint} tiles, but footprint_mm spans {derived} tiles of this grid (ceil of footprint_mm / (tile_ft x 304.8))"
+    },
+    {
+      "id": "instance-id-unique",
+      "scans": "instances",
+      "condition": {"op": "is_true", "field": "is_unique"},
+      "message": "{world} instance {id}: two seed instances share this id, so one would overwrite the other"
+    },
+    {
+      "id": "instance-source",
+      "scans": "instances",
+      "condition": {"op": "is_true", "field": "has_source"},
+      "message": "{world} instance {id}: a measured instance needs a source: a twin id, a row id, a file or a stated tag"
+    },
+    {
+      "id": "instance-error",
+      "scans": "instances",
+      "condition": {"op": "empty", "field": "missing_error_fields"},
+      "message": "{world} instance {id}: a measured instance needs an error object; missing {missing_error_fields}"
+    },
+    {
+      "id": "instance-error-reason",
+      "scans": "instances",
+      "condition": {"op": "empty", "field": "unreasoned"},
+      "message": "{world} instance {id}: error {unreasoned} must be a number with a source or null with a null_reason"
+    }
+  ]
+}

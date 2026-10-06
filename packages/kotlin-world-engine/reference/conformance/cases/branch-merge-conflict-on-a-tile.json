@@ -1,0 +1,19 @@
+{
+  "id": "branch-merge-conflict-on-a-tile",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "place", "on": "idea", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 3, "row": 20}},
+      {"do": "merge", "branch": "idea"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"refused": "merge-conflict", "message": "both branches changed 3,20 since they split"}],
+    "final": {"main": {"counts": {"paddock": 1, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 0, "woodland_tree": 0}}}
+  },
+  "notes": "Both branches changed tile 3,20 after splitting, so the merge is refused before any rule is checked, and main keeps its paddock."
+}

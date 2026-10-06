@@ -1,0 +1,26 @@
+{
+  "id": "clock-a-year-of-forage",
+  "kind": "clock",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 10, "row": 12}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 11, "row": 12}},
+      {"do": "tick", "actor": "clock", "parameters": {"n": 365}}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"applied": "e4"}],
+    "final": {
+      "main": {
+        "ticks": 365,
+        "stocks": {"standing_forage": 0.1721763085399449},
+        "equations": {"pasture_yield": 0.1721763085399449},
+        "scoring": {"pasture_yield_annual": 0.1721763085399449}
+      }
+    }
+  },
+  "notes": "pasture_yield = 3 tiles x 625 sq_ft x 4 ton/acre/year / 43560 sq_ft/acre = 7500/43560 ton/year. standing_forage.next = standing_forage + pasture_yield x tick_length, with tick_length 1 day = 24/8760 year. 365 ticks add 365 x 24/8760 = 1 year of it: 7500/43560 = 0.17217631 ton."
+}

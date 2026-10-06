@@ -1,0 +1,7 @@
+{
+  "id": "min-distance-pairs-an-instance-with-itself",
+  "breaks": "lets min_distance_mm pair an instance with itself, so the distance between two uses that overlap is 0",
+  "edits": [
+    {"find": "for a in first for b in second if a[\"id\"] != b[\"id\"])", "replace": "for a in first for b in second)"}
+  ]
+}

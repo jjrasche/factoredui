@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-unit-mismatch",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["equations", {"id": "pasture_yield"}, "expr"], "value": "count('paddock') * paddock.annual_forage_yield"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "unit-mismatch", "fired": ["unit-mismatch"]},
+  "notes": "mutations.json's broken copy for unit-mismatch; the reference's verdict, recorded."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "expr-adding-unlike-units-is-refused",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "count('path') + tile_area"},
+  "expect": {"error": "unit_mismatch"},
+  "notes": "count() is in tile, tile_area is in sq_ft/tile; '+' needs equal dimensions, so the checker refuses it before anything is evaluated."
+}

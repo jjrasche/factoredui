@@ -1,0 +1,7 @@
+{
+  "id": "instance-removal-touches-nothing",
+  "breaks": "records no touch for a remove_instance, so two branches that removed the same instance merge without a conflict",
+  "edits": [
+    {"find": "            return [f\"instance:{parameters['id']}\"]", "replace": "            return []"}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "load-shipped-instances-plot",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {},
+  "expect": {"valid": true, "fired": []},
+  "notes": "The measured oak stands 2000 mm from the measured shed, inside the 3000 mm the clearance rule asks of a proposed tree. A rule refuses actions; a measured instance is a fact the seed records, so the world loads. The seed places the shed first, so a port that checked rules on measured instances would refuse the oak."
+}

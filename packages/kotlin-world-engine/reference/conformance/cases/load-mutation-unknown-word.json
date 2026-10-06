@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-unknown-word",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "parcel-five-acre.frozen.world.json", "edits": [{"op": "set", "path": ["rules", {"id": "van-pad-needs-path"}, "require"], "value": "neighbors(tile, 1 [tile], 'driveway') >= 1 [tile]"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "unknown-word", "fired": ["unknown-word"]},
+  "notes": "mutations.json's broken copy for unknown-word; the reference's verdict, recorded."
+}

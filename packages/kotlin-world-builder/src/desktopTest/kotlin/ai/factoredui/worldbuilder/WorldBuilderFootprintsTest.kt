@@ -1,5 +1,6 @@
 package ai.factoredui.worldbuilder
 
+import ai.factoredui.compose.schema.resolveTilemapInstancesChecked
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -40,13 +41,17 @@ class WorldBuilderFootprintsTest {
     }
 
     @Test
-    fun theLidarSampleReachesTheRendererAsTenPlainRecordsWithNumbers() {
+    fun theLidarSampleReachesTheRendererAsTenPlainRecordsAndNoneIsDropped() {
         val instances = lidarHost().instances()
         assertEquals(10, instances.size)
-        val first = instances.first()
-        assertTrue(first["x_mm"] is Number && first["y_mm"] is Number, "positions arrive as numbers: $first")
-        assertTrue(first["crown_radius_mm"] is Number || first["crown_radius_mm"] == null, "crown is a number or absent: $first")
-        assertEquals("measured", first["provenance"])
+        instances.forEach { record ->
+            assertTrue(record["x_mm"] is Number && record["y_mm"] is Number, "positions arrive as numbers: $record")
+            assertTrue(record["crown_radius_mm"] is Number || record["crown_radius_mm"] == null, "crown is a number or absent: $record")
+            assertEquals("measured", record["provenance"])
+        }
+        val resolved = resolveTilemapInstancesChecked(instances)
+        assertEquals(emptyList<String>(), resolved.dropped)
+        assertEquals(10, resolved.items.size)
     }
 
     @Test

@@ -6,6 +6,7 @@ import ai.factoredui.compose.layout.InstanceDrawable
 import ai.factoredui.compose.layout.TileCoord
 import ai.factoredui.compose.layout.TileDrawable
 import ai.factoredui.compose.layout.TileFootprint
+import ai.factoredui.compose.layout.TileInstance
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
 import ai.factoredui.compose.layout.footprintCorners
@@ -15,6 +16,7 @@ import ai.factoredui.compose.layout.tileCenter
 import ai.factoredui.compose.layout.tileCorners
 import ai.factoredui.compose.schema.TileSprite
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -109,7 +111,7 @@ private fun DrawScope.drawInstance(drawable: InstanceDrawable, scene: TilemapSce
     val space = scene.space
     val centre = space.toContent(drawable.centre)
     val radiusTiles = instanceRadiusTiles(instance, scene.sideMm)
-    val variantKey = TileCoord(instance.id.hashCode() and 0x7fff, (instance.id.hashCode() ushr 15) and 0x7fff)
+    val variantKey = instanceVariantKey(instance)
     val picture = scene.images[instance.use]
     if (picture != null) {
         drawPicture(picture, centre.x, centre.y, crownWidth(radiusTiles, space.tileWidthPx, space.view))
@@ -125,6 +127,40 @@ private fun DrawScope.drawInstance(drawable: InstanceDrawable, scene: TilemapSce
     drawTileSurface(corners, style, scene.look.ground, scene.look, scene.density)
     drawStanding(style, variantKey, corners, centre, space.tileWidthPx, 1, scene.look, scene.phase, scene.density)
 }
+
+internal fun instanceVariantKey(instance: TileInstance): TileCoord =
+    TileCoord(instance.id.hashCode() and 0x7fff, (instance.id.hashCode() ushr 15) and 0x7fff)
+
+internal fun instanceScreenBounds(drawable: InstanceDrawable, scene: TilemapScene): Rect? {
+    val instance = drawable.instance
+    val style = scene.styles[instance.use] ?: return null
+    val space = scene.space
+    val centre = space.toContent(drawable.centre)
+    val radiusTiles = instanceRadiusTiles(instance, scene.sideMm)
+    val picture = scene.images[instance.use]
+    if (picture != null) {
+        val width = crownWidth(radiusTiles, space.tileWidthPx, space.view)
+        return Rect(centre.x - width / 2f, centre.y - pictureHeight(picture, width), centre.x + width / 2f, centre.y)
+    }
+    if (style.use.sprite == TileSprite.TREE) {
+        val pixel = crownPixel(radiusTiles, space.tileWidthPx, space.view)
+        val key = instanceVariantKey(instance)
+        val sprite = treeSprite(treeVariantFor(key.col, key.row))
+        val bottom = centre.y + TREE_FOOT_PIXELS * pixel
+        return Rect(centre.x - sprite.width * pixel / 2f, bottom - sprite.rows.size * pixel, centre.x + sprite.width * pixel / 2f, bottom)
+    }
+    val half = if (radiusTiles > 0f) radiusTiles else INSTANCE_FOOTPRINT_RADIUS_TILES
+    val corners = squareAround(drawable.centre, half).map { space.toContent(it) }
+    val lift = if (style.use.sprite == TileSprite.BLOCK || style.use.sprite == TileSprite.ARCH) (style.use.height ?: BLOCK_DEFAULT_HEIGHT) * space.tileWidthPx * BLOCK_UNIT_FACTOR else 0f
+    return Rect(corners.minOf { it.x }, corners.minOf { it.y } - lift, corners.maxOf { it.x }, corners.maxOf { it.y })
+}
+
+internal fun pickDrawnInstance(scene: TilemapScene, content: Offset, pad: Float): TileInstance? =
+    scene.drawables
+        .filterIsInstance<InstanceDrawable>()
+        .filter { drawable -> instanceScreenBounds(drawable, scene)?.inflate(pad)?.contains(content) == true }
+        .maxWithOrNull(compareBy<InstanceDrawable>({ it.centre.x + it.centre.y }, { it.instance.id }))
+        ?.instance
 
 private fun squareAround(centre: GroundPoint, half: Float): List<GroundPoint> = listOf(
     GroundPoint(centre.x - half, centre.y - half),

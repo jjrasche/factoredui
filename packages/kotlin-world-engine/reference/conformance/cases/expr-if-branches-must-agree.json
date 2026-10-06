@@ -1,0 +1,9 @@
+{
+  "id": "expr-if-branches-must-agree",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "if(true, 1 [ft], 1 [lb])"},
+  "expect": {"error": "unit_mismatch"},
+  "notes": "The two branches of if() are ft and lb; an if must produce one type whichever branch runs, so the checker refuses it."
+}

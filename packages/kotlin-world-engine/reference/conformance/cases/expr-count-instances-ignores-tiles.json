@@ -1,0 +1,12 @@
+{
+  "id": "expr-count-instances-ignores-tiles",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json"},
+  "input": {
+    "text": "count_instances('oak') + count_instances('any')",
+    "setup": [{"do": "place", "parameters": {"type": "oak", "col": 0, "row": 0}}]
+  },
+  "expect": {"value": 3, "unit": "1"},
+  "notes": "An oak placed as a tile is in the tile layer, not the instance layer: count_instances('oak') is the measured oak alone, 1, and count_instances('any') is the oak and the shed, 2. 1 + 2 = 3."
+}

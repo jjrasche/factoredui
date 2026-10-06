@@ -1,0 +1,12 @@
+{
+  "id": "expr-self-reference-is-a-cycle",
+  "kind": "expression",
+  "source": "hand",
+  "world": {
+    "file": "parcel-five-acre.frozen.world.json",
+    "edits": [{"op": "set", "path": ["equations", {"id": "pasture_yield"}, "expr"], "value": "pasture_yield + 0 [ton/year]"}]
+  },
+  "input": {"text": "pasture_yield"},
+  "expect": {"error": "cycle"},
+  "notes": "pasture_yield is redefined to read pasture_yield, so evaluating it would never finish: equation:pasture_yield -> equation:pasture_yield. The cycle is found in the world's name graph before anything is evaluated."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "expr-projected-support-at-the-seed",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "projected_support('neighbor')"},
+  "expect": {"value": 0, "unit": "1"},
+  "notes": "At the seed there are no paddocks and no van pads, so every neighbour's utility is wants_food x 0 - van_aversion x 0 = 0; an agent approves only when utility > 0, so the approving weight is 0 and the support is 0."
+}

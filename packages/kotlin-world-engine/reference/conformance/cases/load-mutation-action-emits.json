@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-action-emits",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "dungeon-tiny.frozen.world.json", "edits": [{"op": "set", "path": ["actions", {"verb": "place"}, "emits"], "value": []}]},
+  "input": {},
+  "expect": {"valid": false, "first": "action-emits", "fired": ["action-emits"]},
+  "notes": "mutations.json's broken copy for action-emits; the reference's verdict, recorded."
+}

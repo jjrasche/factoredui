@@ -1,0 +1,9 @@
+{
+  "id": "expr-year-over-day-is-dimensionless",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {"text": "1 [year] / 1 [day]"},
+  "expect": {"value": 365, "unit": "1"},
+  "notes": "year = 8760 hour and day = 24 hour; 8760 / 24 = 365, and hour / hour cancels to dimensionless."
+}

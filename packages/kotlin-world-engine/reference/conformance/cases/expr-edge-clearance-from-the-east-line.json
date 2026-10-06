@@ -1,0 +1,14 @@
+{
+  "id": "expr-edge-clearance-from-the-east-line",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "text": "edge(tile)",
+    "site": "rule",
+    "bindings": {"tile": [9, 8]},
+    "setup": [{"do": "place", "parameters": {"type": "hoop_house", "col": 9, "row": 8}}]
+  },
+  "expect": {"value": 50, "unit": "ft"},
+  "notes": "A hoop house at 9,8 covers 9,8 and 10,8. A tile's clearance is min(col, row, 12 - col, 25 - row) on the 13 x 26 grid: 9,8 -> min(9, 8, 3, 17) = 3; 10,8 -> min(10, 8, 2, 17) = 2. The object's clearance is the smaller, 2 tiles x 25 ft = 50 ft."
+}

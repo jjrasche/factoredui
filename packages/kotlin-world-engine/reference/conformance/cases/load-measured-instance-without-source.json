@@ -1,0 +1,9 @@
+{
+  "id": "load-measured-instance-without-source",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "delete", "path": ["seed", {"id": "m-oak-1"}, "parameters", "source"]}]},
+  "input": {},
+  "expect": {"valid": false, "first": "instance-source", "fired": ["instance-source"]},
+  "notes": "A measured instance must say where it was measured: a twin id, a row id, a file or a stated tag."
+}

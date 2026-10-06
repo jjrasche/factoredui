@@ -1,0 +1,28 @@
+{
+  "id": "seq-placement-refusals",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 3, "row": 20}},
+      {"do": "place", "parameters": {"type": "commons_building", "col": 12, "row": 25}},
+      {"do": "place", "parameters": {"type": "barn", "col": 0, "row": 0}},
+      {"do": "remove", "parameters": {"col": 0, "row": 0}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 0, "row": 0, "properties": {"colour": 1}}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"},
+      {"refused": "occupied", "message": "tile 3,20 already holds pond; remove it first"},
+      {"refused": "off-grid", "message": "commons_building at 12,25 leaves the grid"},
+      {"refused": "unknown-type", "message": "no object type 'barn'"},
+      {"refused": "empty-tile", "message": "nothing to remove at 0,0"},
+      {"refused": "unknown-property", "message": "paddock has no property 'colour'"}
+    ],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 1, "woodland_tree": 0}}}
+  },
+  "notes": "A 2x2 at 12,25 would cover 13,25, 12,26 and 13,26, outside the 13 x 26 grid (columns 0-12, rows 0-25). Each refusal leaves the log alone, so only the pond is placed, and it is e1."
+}

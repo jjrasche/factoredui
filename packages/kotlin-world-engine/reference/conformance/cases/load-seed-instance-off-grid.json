@@ -1,0 +1,9 @@
+{
+  "id": "load-seed-instance-off-grid",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "set", "path": ["seed", {"id": "m-oak-1"}, "parameters", "x_mm"], "value": 24384}]},
+  "input": {},
+  "expect": {"valid": false, "first": "seed-replays", "fired": ["seed-replays"]},
+  "notes": "x = 24384 mm is the east edge of the half-open 24384 mm grid, so the seed refuses the oak (instance-off-grid)."
+}

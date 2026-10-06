@@ -1,0 +1,18 @@
+{
+  "id": "branch-revert-is-checked-against-the-rules",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 3}},
+      {"do": "revert", "event": "e1"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"refused": "van-pad-needs-path", "message": "a van pad needs a path on one of its four sides"}],
+    "final": {"main": {"counts": {"paddock": 0, "hoop_house": 0, "commons_building": 0, "van_pad": 1, "path": 1, "pond": 0, "woodland_tree": 0}}}
+  },
+  "notes": "Undoing the path would remove it from beside the pad, which the always rule refuses. The pad (e2) touched only 7,3 and the path touched only 6,3, so no revert conflict fires first."
+}

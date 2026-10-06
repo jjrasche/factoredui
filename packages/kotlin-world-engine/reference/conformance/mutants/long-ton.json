@@ -1,0 +1,7 @@
+{
+  "id": "long-ton",
+  "breaks": "uses the 2240 lb long ton instead of the 2000 lb short ton",
+  "edits": [
+    {"find": "\"ton\": (2000.0, {\"lb\": 1}),", "replace": "\"ton\": (2240.0, {\"lb\": 1}),"}
+  ]
+}

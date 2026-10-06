@@ -1,0 +1,57 @@
+{
+  "id": "seq-dungeon-demo",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "dungeon-tiny.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "wall", "col": 0, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 1, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 2, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 3, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 4, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 5, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 6, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 7, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 8, "row": 0}},
+      {"do": "place", "parameters": {"type": "wall", "col": 9, "row": 0}},
+      {"do": "place", "parameters": {"type": "floor", "col": 1, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 2, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 3, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 4, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 6, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 7, "row": 1}},
+      {"do": "place", "parameters": {"type": "floor", "col": 8, "row": 1}},
+      {"do": "place", "parameters": {"type": "door", "col": 5, "row": 1}},
+      {"do": "place", "parameters": {"type": "door", "col": 5, "row": 4}},
+      {"do": "place", "parameters": {"type": "monster", "col": 2, "row": 2}},
+      {"do": "place", "parameters": {"type": "monster", "col": 10, "row": 6}},
+      {"do": "place", "parameters": {"type": "treasure", "col": 3, "row": 2}},
+      {"do": "place", "parameters": {"type": "treasure", "col": 8, "row": 2}},
+      {"do": "tick", "actor": "clock", "parameters": {"n": 10}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"applied": "e4"}, {"applied": "e5"},
+      {"applied": "e6"}, {"applied": "e7"}, {"applied": "e8"}, {"applied": "e9"}, {"applied": "e10"},
+      {"applied": "e11"}, {"applied": "e12"}, {"applied": "e13"}, {"applied": "e14"}, {"applied": "e15"},
+      {"applied": "e16"}, {"applied": "e17"}, {"applied": "e18"},
+      {"refused": "door-connects-floors", "message": "a door must connect two floor tiles on opposite sides"},
+      {"applied": "e19"},
+      {"refused": "monster-stands-by-floor", "message": "a monster must stand beside a floor tile"},
+      {"applied": "e20"},
+      {"applied": "e21"},
+      {"applied": "e22"}
+    ],
+    "final": {
+      "main": {
+        "counts": {"wall": 10, "floor": 7, "door": 1, "monster": 1, "treasure": 2},
+        "areas": {"wall": 250, "floor": 175, "door": 25, "monster": 25, "treasure": 50},
+        "scoring": {"treasure_per_monster": 2, "guarded_treasure": 1, "walkable_area": 200},
+        "ticks": 10
+      }
+    }
+  },
+  "notes": "The dungeon demo script, computed by hand. Walls 0-9 on row 0 (e1-e10); floors at columns 1-4 and 6-8 on row 1 (e11-e17). Door 5,1: north 5,0 wall, south 5,2 empty, so north+south floor = 0; east 6,1 and west 4,1 floor, so east+west = 2: accepted (e18). Door 5,4: nothing around it: refused. Monster 2,2 has floor 2,1 one step north (e19); monster 10,6 has no floor within one step: refused. Treasure 3,2 has the monster at 2,2 one step west, so its effect sets guarded = 1 (e20); treasure 8,2 has no monster within one step, guarded = 0 (e21). Tick of 10 (e22). Tiles are 5 x 5 = 25 sq_ft: wall 250, floor 175, door 25, monster 25, treasure 50. treasure per monster = 2 / 1 = 2; guarded = 1 + 0 = 1; walkable (7 floor + 1 door, tag walkable) x 25 = 200."
+}

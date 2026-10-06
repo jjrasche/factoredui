@@ -1,0 +1,19 @@
+{
+  "id": "branch-revert-conflict",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "pond", "col": 3, "row": 20}},
+      {"do": "remove", "parameters": {"col": 3, "row": 20}},
+      {"do": "place", "parameters": {"type": "paddock", "col": 3, "row": 20}},
+      {"do": "revert", "event": "e1"}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"applied": "e2"}, {"applied": "e3"}, {"refused": "revert-conflict", "message": "3,20 changed after e1"}],
+    "final": {"main": {"counts": {"paddock": 1, "hoop_house": 0, "commons_building": 0, "van_pad": 0, "path": 0, "pond": 0, "woodland_tree": 0}}}
+  },
+  "notes": "Later events (e2, e3) touched 3,20, so the pond's placement cannot be undone; the paddock stays."
+}

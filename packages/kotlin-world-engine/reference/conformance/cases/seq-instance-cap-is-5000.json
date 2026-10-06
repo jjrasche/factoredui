@@ -1,0 +1,21 @@
+{
+  "id": "seq-instance-cap-is-5000",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "set_items", "path": ["seed"], "times": 4999, "template": {
+    "id": "g{i}", "action": "place_instance",
+    "parameters": {"type": "oak", "x_mm": 12000, "y_mm": 12000, "provenance": "measured", "source": {"tag": "generated for the cap case"},
+      "error": {"position_mm": {"value": null, "null_reason": "generated: no survey"}, "height_mm": {"value": null, "null_reason": "generated: no survey"}, "crown_radius_mm": {"value": null, "null_reason": "generated: no survey"}}}
+  }}]},
+  "input": {
+    "steps": [
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 1000, "y_mm": 15000, "rotation_deg": 0}},
+      {"do": "place_instance", "parameters": {"type": "oak", "x_mm": 2000, "y_mm": 15000, "rotation_deg": 0}}
+    ]
+  },
+  "expect": {
+    "steps": [{"applied": "e1"}, {"refused": "instance-cap", "message": "the instance layer already holds 5000 instances, the cap"}],
+    "final": {"main": {"equations": {"tree_count": 5000}}}
+  },
+  "notes": "The seed is replaced by 4999 measured oaks g1..g4999 and no structure, so the clearance rule has no pair and refuses nothing. The first proposed oak is the 5000th instance and is applied; the next would be the 5001st."
+}

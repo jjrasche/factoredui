@@ -1,0 +1,7 @@
+{
+  "id": "depth-cap-dropped",
+  "breaks": "parses expressions nested past depth 24",
+  "edits": [
+    {"find": "MAX_DEPTH = 24", "replace": "MAX_DEPTH = 10_000"}
+  ]
+}

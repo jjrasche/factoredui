@@ -1,0 +1,468 @@
+{
+  "id": "parcel-lidar-sample",
+  "version": 1,
+  "title": "Parcel lidar sample",
+  "description": "Ten lidar trees of parcel 04003630009000 (Isaac, 11157 W Jolly Rd, Delta Twp, MI) as measured instances at their apex-return millimetre positions, placed on the earth by the frame. The grid is the trees' bounding box from the frame origin, rounded up to whole 25 ft tiles; it is not the parcel boundary. Built by import_plot_twin_trees.py from plot-twin/capture/receipts/tree-sample-for-van-build-v2.json.",
+  "sprites": {
+    "extensions": []
+  },
+  "grid": {
+    "cols": 5,
+    "rows": 32,
+    "tile_ft": 25,
+    "shape": "square",
+    "view": "top",
+    "north": "row_0"
+  },
+  "frame": {
+    "epsg": 26916,
+    "origin_east_m": 695000.7,
+    "origin_north_m": 4728383.3,
+    "x_axis": "east",
+    "y_axis": "north"
+  },
+  "clock": {
+    "tick_unit": "day",
+    "tick_length": 1
+  },
+  "object_types": [
+    {
+      "id": "lidar_tree",
+      "label": "Lidar tree",
+      "sprite": "tree",
+      "color": "#2E7D32",
+      "footprint": [
+        1,
+        1
+      ],
+      "tags": [
+        "tree"
+      ]
+    },
+    {
+      "id": "shed",
+      "label": "Shed",
+      "sprite": "block",
+      "color": "#A0522D",
+      "footprint": [
+        1,
+        1
+      ],
+      "footprint_mm": [
+        2400,
+        3000
+      ],
+      "height_mm": 2700,
+      "tags": [
+        "structure"
+      ]
+    }
+  ],
+  "rules": [],
+  "equations": [
+    {
+      "id": "tree_count",
+      "expr": "count_instances('#tree')",
+      "unit": "1"
+    },
+    {
+      "id": "nearest_tree_pair",
+      "expr": "min_distance_mm('#tree', '#tree')",
+      "unit": "mm"
+    }
+  ],
+  "stocks": [],
+  "actions": [
+    {
+      "verb": "place",
+      "label": "Place",
+      "parameters": [
+        {
+          "name": "type",
+          "type": "object_type"
+        },
+        {
+          "name": "col",
+          "type": "col"
+        },
+        {
+          "name": "row",
+          "type": "row"
+        }
+      ],
+      "emits": [
+        "place"
+      ]
+    },
+    {
+      "verb": "remove",
+      "label": "Remove",
+      "parameters": [
+        {
+          "name": "col",
+          "type": "col"
+        },
+        {
+          "name": "row",
+          "type": "row"
+        }
+      ],
+      "emits": [
+        "remove"
+      ]
+    },
+    {
+      "verb": "place_instance",
+      "label": "Place at a point",
+      "parameters": [
+        {
+          "name": "type",
+          "type": "object_type"
+        },
+        {
+          "name": "x_mm",
+          "type": "x_mm"
+        },
+        {
+          "name": "y_mm",
+          "type": "y_mm"
+        },
+        {
+          "name": "rotation_deg",
+          "type": "rotation_deg"
+        }
+      ],
+      "emits": [
+        "place_instance"
+      ]
+    },
+    {
+      "verb": "remove_instance",
+      "label": "Remove a point object",
+      "parameters": [
+        {
+          "name": "id",
+          "type": "instance_id"
+        }
+      ],
+      "emits": [
+        "remove_instance"
+      ]
+    }
+  ],
+  "agents": [],
+  "scoring": [],
+  "links": [],
+  "seed": [
+    {
+      "id": "tree-01",
+      "action": "place_instance",
+      "parameters": {
+        "type": "lidar_tree",
+        "x_mm": 12147,
+        "y_mm": 238379,
+        "height_mm": 29650,
+        "crown_radius_mm": 6000,
+        "provenance": "measured",
+        "source": {
+          "file": "plot-twin/capture/receipts/tree-sample-for-van-build-v2.json#/trees/0",
+          "tag": "USGS 3DEP QL2 MI_31County_2016_A16, flown 2017-12-01 to 2018-04-23 per the vendor metadata (leaf-off, inferred); extract_features.py with the ground grid row order corrected (branch fix/ground-north-south-flip): 102 trees; every 10th in height order, tallest first; position is the apex return (highest return in the 3x3 cells around the 1 m CHM peak), the crown apex and not the stem; the tree count is not validated against a stem map"
+        },
+        "error": {
+          "position_mm": {
+            "value": null,
+            "null_reason": "no detection error has been measured on this parcel (procedure step s9 not run)",
+            "note": "the position is the crown apex; a published mean apex-to-stem offset for hardwoods is 950 mm (row gatziolis10-apex-stem-offset, another study's site, not this parcel)"
+          },
+          "height_mm": {
+            "value": null,
+            "null_reason": "no field heights were measured on this parcel; the CHM peak and the apex return are two readings of the same returns, not a check of accuracy"
+          },
+          "crown_radius_mm": {
+            "value": null,
+            "null_reason": "half-height ray walk clipped to 1 to 6 m; no crown error has been measured on this parcel; 6000 is the clip, so the true radius is at least 6000 mm"
+          }
+        }
+      }
+    },
+    {
+      "id": "tree-02",
+      "action": "place_instance",
+      "parameters": {
+        "type": "lidar_tree",
+        "x_mm": 3175,
+        "y_mm": 229566,
+        "height_mm": 24920,
+        "crown_radius_mm": 5030,
+        "provenance": "measured",
+        "source": {
+          "file": "plot-twin/capture/receipts/tree-sample-for-van-build-v2.json#/trees/1",
+          "tag": "USGS 3DEP QL2 MI_31County_2016_A16, flown 2017-12-01 to 2018-04-23 per the vendor metadata (leaf-off, inferred); extract_features.py with the ground grid row order corrected (branch fix/ground-north-south-flip): 102 trees; every 10th in height order, tallest first; position is the apex return (highest return in the 3x3 cells around the 1 m CHM peak), the crown apex and not the stem; the tree count is not validated against a stem map"
+        },
+        "error": {
+          "position_mm": {
+            "value": null,
+            "null_reason": "no detection error has been measured on this parcel (procedure step s9 not run)",
+            "note": "the position is the crown apex; a published mean apex-to-stem offset for hardwoods is 950 mm (row gatziolis10-apex-stem-offset, another study's site, not this parcel)"
+          },
+          "height_mm": {
+            "value": null,
+            "null_reason": "no field heights were measured on this parcel; the CHM peak and the apex return are two readings of the same returns, not a check of accuracy"
+          },
+          "crown_radius_mm": {
+            "value": null,
+            "null_reason": "half-height ray walk clipped to 1 to 6 m; no crown error has been measured on this parcel"
+          }
+        }
+      }
+    },
+    {
+      "id": "tree-03",
+      "action": "place_instance",
+      "parameters": {
+        "type": "lidar_tree",
+        "x_mm": 15416,
+        "y_mm": 220615,
+        "height_mm": 22290,
+        "crown_radius_mm": 5760,
+        "provenance": "measured",
+        "source": {
+          "file": "plot-twin/capture/receipts/tree-sample-for-van-build-v2.json#/trees/2",
+          "tag": "USGS 3DEP QL2 MI_31County_2016_A16, flown 2017-12-01 to 2018-04-23 per the vendor metadata (leaf-off, inferred); extract_features.py with the ground grid row order corrected (branch fix/ground-north-south-flip): 102 trees; every 10th in height order, tallest first; position is the apex return (highest return in the 3x3 cells around the 1 m CHM peak), the crown apex and not the stem; the tree count is not validated against a stem map"
+        },
+        "error": {
+          "position_mm": {
+            "value": null,
+            "null_reason": "no detection error has been measured on this parcel (procedure step s9 not run)",
+            "note": "the position is the crown apex; a published mean apex-to-stem offset for hardwoods is 950 mm (row gatziolis10-apex-stem-offset, another study's site, not this parcel)"
+          },
+          "height_mm": {
+            "value": null,
+            "null_reason": "no field heights were measured on this parcel; the CHM peak and the apex return are two readings of the same returns, not a check of accuracy"
+          },
+          "crown_radius_mm": {
+            "value": null,
+            "null_reason": "half-height ray walk clipped to 1 to 6 m; no crown error has been measured on this parcel"
+          }
+        }
+      }
+    },
+    {
+      "id": "tree-04",
+      "action": "place_instance",
+      "parameters": {
+        "type": "lidar_tree",
+        "x_mm": 4308,
+        "y_mm": 201145,
+        "height_mm": 21240,
+        "crown_radius_mm": 5380,
+        "provenance": "measured",
+        "source": {
+          "file": "plot-twin/capture/receipts/tree-sample-for-van-build-v2.json#/trees/3",
+          "tag": "USGS 3DEP QL2 MI_31County_2016_A16, flown 2017-12-01 to 2018-04-23 per the vendor metadata (leaf-off, inferred); extract_features.py with the ground grid row order corrected (branch fix/ground-north-south-flip): 102 trees; every 10th in height order, tallest first; position is the apex return (highest return in the 3x3 cells around the 1 m CHM peak), the crown apex and not the stem; the tree count is not validated against a stem map"
+        },
+        "error": {
+          "position_mm": {
+            "value": null,
+            "null_reason": "no detection error has been measured on this parcel (procedure step s9 not run)",
+            "note": "the position is the crown apex; a published mean apex-to-stem offset for hardwoods is 950 mm (row gatziolis10-apex-stem-offset, another study's site, not this parcel)"
+          },
+          "height_mm": {
+            "value": null,
+            "null_reason": "no field heights were measured on this parcel; the CHM peak and the apex return are two readings of the same returns, not a check of accuracy"
+          },
+          "crown_radius_mm": {
+            "value": null,
+            "null_reason": "half-height ray walk clipped to 1 to 6 m; no crown error has been measured on this parcel"
+          }
+        }
+      }
+    },
+    {
+      "id": "tree-05",
+      "action": "place_instance",
+      "parameters": {
+        "type": "lidar_tree",
+        "x_mm": 2642,
+        "y_mm": 196695,
+        "height_mm": 20010,
+        "crown_radius_mm": 4220,
+        "provenance": "measured",
+        "source": {
+          "file": "plot-twin/capture/receipts/tree-sample-for-van-build-v2.json#/trees/4",
+          "tag": "USGS 3DEP QL2 MI_31County_2016_A16, flown 2017-12-01 to 2018-04-23 per the vendor metadata (leaf-off, inferred); extract_features.py with the ground grid row order corrected (branch fix/ground-north-south-flip): 102 trees; every 10th in height order, tallest first; position is the apex return (highest return in the 3x3 cells around the 1 m CHM peak), the crown apex and not the stem; the tree count is not validated against a stem map"
+        },
+        "error": {
+          "position_mm": {
+            "value": null,
+            "null_reason": "no detection error has been measured on this parcel (procedure step s9 not run)",
+            "note": "the position is the crown apex; a published mean apex-to-stem offset for hardwoods is 950 mm (row gatziolis10-apex-stem-offset, another study's site, not this parcel)"
+          },
+          "height_mm": {
+            "value": null,
+            "null_reason": "no field heights were measured on this parcel; the CHM peak and the apex return are two readings of the same returns, not a check of accuracy"
+          },
+          "crown_radius_mm": {
+            "value": null,
+            "null_reason": "half-height ray walk clipped to 1 to 6 m; no crown error has been measured on this parcel"
+          }
+        }
+      }
+    },
+    {
+      "id": "tree-06",
+      "action": "place_instance",
+      "parameters": {
+        "type": "lidar_tree",
+        "x_mm": 7874,
+        "y_mm": 193012,
+        "height_mm": 21320,
+        "crown_radius_mm": 6000,
+        "provenance": "measured",
+        "source": {
+          "file": "plot-twin/capture/receipts/tree-sample-for-van-build-v2.json#/trees/5",
+          "tag": "USGS 3DEP QL2 MI_31County_2016_A16, flown 2017-12-01 to 2018-04-23 per the vendor metadata (leaf-off, inferred); extract_features.py with the ground grid row order corrected (branch fix/ground-north-south-flip): 102 trees; every 10th in height order, tallest first; position is the apex return (highest return in the 3x3 cells around the 1 m CHM peak), the crown apex and not the stem; the tree count is not validated against a stem map"
+        },
+        "error": {
+          "position_mm": {
+            "value": null,
+            "null_reason": "no detection error has been measured on this parcel (procedure step s9 not run)",
+            "note": "the position is the crown apex; a published mean apex-to-stem offset for hardwoods is 950 mm (row gatziolis10-apex-stem-offset, another study's site, not this parcel)"
+          },
+          "height_mm": {
+            "value": null,
+            "null_reason": "no field heights were measured on this parcel; the CHM peak and the apex return are two readings of the same returns, not a check of accuracy"
+          },
+          "crown_radius_mm": {
+            "value": null,
+            "null_reason": "half-height ray walk clipped to 1 to 6 m; no crown error has been measured on this parcel; 6000 is the clip, so the true radius is at least 6000 mm"
+          }
+        }
+      }
+    },
+    {
+      "id": "tree-07",
+      "action": "place_instance",
+      "parameters": {
+        "type": "lidar_tree",
+        "x_mm": 7251,
+        "y_mm": 79818,
+        "height_mm": 17160,
+        "crown_radius_mm": 6000,
+        "provenance": "measured",
+        "source": {
+          "file": "plot-twin/capture/receipts/tree-sample-for-van-build-v2.json#/trees/6",
+          "tag": "USGS 3DEP QL2 MI_31County_2016_A16, flown 2017-12-01 to 2018-04-23 per the vendor metadata (leaf-off, inferred); extract_features.py with the ground grid row order corrected (branch fix/ground-north-south-flip): 102 trees; every 10th in height order, tallest first; position is the apex return (highest return in the 3x3 cells around the 1 m CHM peak), the crown apex and not the stem; the tree count is not validated against a stem map"
+        },
+        "error": {
+          "position_mm": {
+            "value": null,
+            "null_reason": "no detection error has been measured on this parcel (procedure step s9 not run)",
+            "note": "the position is the crown apex; a published mean apex-to-stem offset for hardwoods is 950 mm (row gatziolis10-apex-stem-offset, another study's site, not this parcel)"
+          },
+          "height_mm": {
+            "value": null,
+            "null_reason": "no field heights were measured on this parcel; the CHM peak and the apex return are two readings of the same returns, not a check of accuracy"
+          },
+          "crown_radius_mm": {
+            "value": null,
+            "null_reason": "half-height ray walk clipped to 1 to 6 m; no crown error has been measured on this parcel; 6000 is the clip, so the true radius is at least 6000 mm"
+          }
+        }
+      }
+    },
+    {
+      "id": "tree-08",
+      "action": "place_instance",
+      "parameters": {
+        "type": "lidar_tree",
+        "x_mm": 7371,
+        "y_mm": 105405,
+        "height_mm": 18590,
+        "crown_radius_mm": 5260,
+        "provenance": "measured",
+        "source": {
+          "file": "plot-twin/capture/receipts/tree-sample-for-van-build-v2.json#/trees/7",
+          "tag": "USGS 3DEP QL2 MI_31County_2016_A16, flown 2017-12-01 to 2018-04-23 per the vendor metadata (leaf-off, inferred); extract_features.py with the ground grid row order corrected (branch fix/ground-north-south-flip): 102 trees; every 10th in height order, tallest first; position is the apex return (highest return in the 3x3 cells around the 1 m CHM peak), the crown apex and not the stem; the tree count is not validated against a stem map"
+        },
+        "error": {
+          "position_mm": {
+            "value": null,
+            "null_reason": "no detection error has been measured on this parcel (procedure step s9 not run)",
+            "note": "the position is the crown apex; a published mean apex-to-stem offset for hardwoods is 950 mm (row gatziolis10-apex-stem-offset, another study's site, not this parcel)"
+          },
+          "height_mm": {
+            "value": null,
+            "null_reason": "no field heights were measured on this parcel; the CHM peak and the apex return are two readings of the same returns, not a check of accuracy"
+          },
+          "crown_radius_mm": {
+            "value": null,
+            "null_reason": "half-height ray walk clipped to 1 to 6 m; no crown error has been measured on this parcel"
+          }
+        }
+      }
+    },
+    {
+      "id": "tree-09",
+      "action": "place_instance",
+      "parameters": {
+        "type": "lidar_tree",
+        "x_mm": 32996,
+        "y_mm": 145308,
+        "height_mm": 14220,
+        "crown_radius_mm": 3320,
+        "provenance": "measured",
+        "source": {
+          "file": "plot-twin/capture/receipts/tree-sample-for-van-build-v2.json#/trees/8",
+          "tag": "USGS 3DEP QL2 MI_31County_2016_A16, flown 2017-12-01 to 2018-04-23 per the vendor metadata (leaf-off, inferred); extract_features.py with the ground grid row order corrected (branch fix/ground-north-south-flip): 102 trees; every 10th in height order, tallest first; position is the apex return (highest return in the 3x3 cells around the 1 m CHM peak), the crown apex and not the stem; the tree count is not validated against a stem map"
+        },
+        "error": {
+          "position_mm": {
+            "value": null,
+            "null_reason": "no detection error has been measured on this parcel (procedure step s9 not run)",
+            "note": "the position is the crown apex; a published mean apex-to-stem offset for hardwoods is 950 mm (row gatziolis10-apex-stem-offset, another study's site, not this parcel)"
+          },
+          "height_mm": {
+            "value": null,
+            "null_reason": "no field heights were measured on this parcel; the CHM peak and the apex return are two readings of the same returns, not a check of accuracy"
+          },
+          "crown_radius_mm": {
+            "value": null,
+            "null_reason": "half-height ray walk clipped to 1 to 6 m; no crown error has been measured on this parcel"
+          }
+        }
+      }
+    },
+    {
+      "id": "tree-10",
+      "action": "place_instance",
+      "parameters": {
+        "type": "lidar_tree",
+        "x_mm": 6135,
+        "y_mm": 18485,
+        "height_mm": 12440,
+        "crown_radius_mm": 4300,
+        "provenance": "measured",
+        "source": {
+          "file": "plot-twin/capture/receipts/tree-sample-for-van-build-v2.json#/trees/9",
+          "tag": "USGS 3DEP QL2 MI_31County_2016_A16, flown 2017-12-01 to 2018-04-23 per the vendor metadata (leaf-off, inferred); extract_features.py with the ground grid row order corrected (branch fix/ground-north-south-flip): 102 trees; every 10th in height order, tallest first; position is the apex return (highest return in the 3x3 cells around the 1 m CHM peak), the crown apex and not the stem; the tree count is not validated against a stem map"
+        },
+        "error": {
+          "position_mm": {
+            "value": null,
+            "null_reason": "no detection error has been measured on this parcel (procedure step s9 not run)",
+            "note": "the position is the crown apex; a published mean apex-to-stem offset for hardwoods is 950 mm (row gatziolis10-apex-stem-offset, another study's site, not this parcel)"
+          },
+          "height_mm": {
+            "value": null,
+            "null_reason": "no field heights were measured on this parcel; the CHM peak and the apex return are two readings of the same returns, not a check of accuracy"
+          },
+          "crown_radius_mm": {
+            "value": null,
+            "null_reason": "half-height ray walk clipped to 1 to 6 m; no crown error has been measured on this parcel"
+          }
+        }
+      }
+    }
+  ]
+}

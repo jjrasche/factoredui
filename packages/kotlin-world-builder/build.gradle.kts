@@ -44,8 +44,12 @@ kotlin {
     }
 }
 
+val worldReferenceDir = project(":kotlin-world-engine").layout.projectDirectory.dir("reference")
+
 tasks.withType<Test>().configureEach {
-    System.getenv("WORLD_ENGINE_DESIGN_DIR")?.let { systemProperty("WORLD_ENGINE_DESIGN_DIR", it) }
+    systemProperty("WORLD_ENGINE_DESIGN_DIR", worldReferenceDir.asFile.path)
+    inputs.files(fileTree(worldReferenceDir)).withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("worldEngineReference")
+    if (!project.hasProperty("benchmarks")) exclude("**/FiveFootPerformanceTest*")
 }
 
 tasks.register<JavaExec>("worldBuilder") {

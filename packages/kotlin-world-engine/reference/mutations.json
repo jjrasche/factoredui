@@ -1,0 +1,142 @@
+{
+  "purpose": "one broken copy of the worlds directory per rule in rules.json; test_validate.py applies each to a copy and requires the named rule to fire and the named world to come out invalid",
+  "path": "keys into the world document; a string is a key, an integer an index, and an object picks the list member whose fields equal it",
+  "mutations": [
+    {
+      "rule": "blind-worlds",
+      "world": null,
+      "edits": [{"op": "delete_all_worlds"}]
+    },
+    {
+      "rule": "world-parses",
+      "world": "dungeon-tiny.world.json",
+      "edits": [{"op": "write_text", "value": "{ \"id\": \"dungeon-tiny\", "}]
+    },
+    {
+      "rule": "world-schema",
+      "world": "dungeon-tiny.world.json",
+      "edits": [{"op": "set", "path": ["grid", "cols"], "value": "twelve"}]
+    },
+    {
+      "rule": "expression-parses",
+      "world": "parcel-five-acre.world.json",
+      "edits": [{"op": "set", "path": ["rules", {"id": "van-pad-needs-path"}, "require"], "value": "neighbors(tile, 1 [tile], 'path') >= ; while"}]
+    },
+    {
+      "rule": "unknown-word",
+      "world": "parcel-five-acre.world.json",
+      "edits": [{"op": "set", "path": ["rules", {"id": "van-pad-needs-path"}, "require"], "value": "neighbors(tile, 1 [tile], 'driveway') >= 1 [tile]"}]
+    },
+    {
+      "rule": "unit-mismatch",
+      "world": "parcel-five-acre.world.json",
+      "edits": [{"op": "set", "path": ["equations", {"id": "pasture_yield"}, "expr"], "value": "count('paddock') * paddock.annual_forage_yield"}]
+    },
+    {
+      "rule": "expression-bound",
+      "world": "dungeon-tiny.world.json",
+      "edits": [{"op": "set_repeated", "path": ["scoring", {"id": "guarded_treasure"}, "expr"], "unit": "sum('guarded') + ", "times": 150, "tail": "sum('guarded')"}]
+    },
+    {
+      "rule": "name-cycle",
+      "world": "parcel-five-acre.world.json",
+      "edits": [{"op": "set", "path": ["equations", {"id": "pasture_yield"}, "expr"], "value": "pasture_yield + count('paddock') * tile_area * paddock.annual_forage_yield"}]
+    },
+    {
+      "rule": "seed-replays",
+      "world": "locality-stub.world.json",
+      "edits": [{"op": "set", "path": ["seed", {"id": "parcel-b"}, "parameters", "col"], "value": 8}]
+    },
+    {
+      "rule": "rule-message",
+      "world": "dungeon-tiny.world.json",
+      "edits": [{"op": "set", "path": ["rules", {"id": "door-connects-floors"}, "message"], "value": ""}]
+    },
+    {
+      "rule": "unknown-target",
+      "world": "parcel-five-acre.world.json",
+      "edits": [{"op": "set", "path": ["rules", {"id": "van-pad-needs-path"}, "applies_to"], "value": ["vanpad"]}]
+    },
+    {
+      "rule": "action-emits",
+      "world": "dungeon-tiny.world.json",
+      "edits": [{"op": "set", "path": ["actions", {"verb": "place"}, "emits"], "value": []}]
+    },
+    {
+      "rule": "link-resolves",
+      "world": "parcel-five-acre.world.json",
+      "edits": [{"op": "set", "path": ["links", 0, "parcel"], "value": "parcel-z"}]
+    },
+    {
+      "rule": "link-fits",
+      "world": "parcel-five-acre.world.json",
+      "edits": [{"op": "set", "path": ["grid", "rows"], "value": 60}]
+    },
+    {
+      "rule": "projection-not-binding",
+      "world": "parcel-five-acre.world.json",
+      "edits": [{"op": "set", "path": ["scoring", {"id": "neighbor_support"}, "binding"], "value": true}]
+    },
+    {
+      "rule": "projection-not-binding",
+      "world": "parcel-five-acre.world.json",
+      "edits": [
+        {"op": "set", "path": ["equations"], "value": [
+          {"id": "pasture_yield", "expr": "count('paddock') * tile_area * paddock.annual_forage_yield", "unit": "ton/year", "source": {"twin": "eq-aux-stocking-static"}},
+          {"id": "support_now", "expr": "projected_support('neighbor')", "unit": "1"}
+        ]},
+        {"op": "set", "path": ["rules", {"id": "van-pad-needs-path"}, "require"], "value": "support_now >= 0.5"}
+      ]
+    },
+    {
+      "rule": "figure-sourced",
+      "world": "parcel-five-acre.world.json",
+      "edits": [{"op": "delete", "path": ["object_types", {"id": "hoop_house"}, "properties", {"name": "labor_hours_per_tile"}, "source"]}]
+    },
+    {
+      "rule": "sprite-known",
+      "world": "parcel-five-acre.world.json",
+      "edits": [{"op": "set", "path": ["object_types", {"id": "pond"}, "sprite"], "value": "lake"}]
+    },
+    {
+      "rule": "footprint-mm-agrees",
+      "world": "parcel-lidar-sample.world.json",
+      "edits": [{"op": "set", "path": ["object_types", {"id": "shed"}, "footprint_mm"], "value": [8000, 3000]}]
+    },
+    {
+      "rule": "instance-id-unique",
+      "world": "parcel-lidar-sample.world.json",
+      "edits": [{"op": "set", "path": ["seed", {"id": "tree-02"}, "id"], "value": "tree-01"}]
+    },
+    {
+      "rule": "instance-source",
+      "world": "parcel-lidar-sample.world.json",
+      "edits": [{"op": "delete", "path": ["seed", {"id": "tree-01"}, "parameters", "source"]}]
+    },
+    {
+      "rule": "instance-error",
+      "world": "parcel-lidar-sample.world.json",
+      "edits": [{"op": "delete", "path": ["seed", {"id": "tree-01"}, "parameters", "error", "crown_radius_mm"]}]
+    },
+    {
+      "rule": "instance-error-reason",
+      "world": "parcel-lidar-sample.world.json",
+      "edits": [{"op": "set", "path": ["seed", {"id": "tree-01"}, "parameters", "error", "height_mm"], "value": {"value": null}}]
+    },
+    {
+      "rule": "instance-error-reason",
+      "world": "parcel-lidar-sample.world.json",
+      "edits": [{"op": "set", "path": ["seed", {"id": "tree-01"}, "parameters", "error", "position_mm"], "value": {"value": 950}}]
+    },
+    {
+      "rule": "world-schema",
+      "world": "parcel-lidar-sample.world.json",
+      "edits": [{"op": "set", "path": ["frame", "y_axis"], "value": "south"}]
+    },
+    {
+      "rule": "seed-replays",
+      "world": "parcel-lidar-sample.world.json",
+      "edits": [{"op": "set", "path": ["seed", {"id": "tree-01"}, "parameters", "y_mm"], "value": -1}]
+    }
+  ]
+}

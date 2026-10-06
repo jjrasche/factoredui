@@ -1,0 +1,24 @@
+{
+  "id": "live-parcel-hoop-house-hours",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "hoop_house", "col": 2, "row": 8}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"}
+    ],
+    "final": {
+      "main": {
+        "counts": {"hoop_house": 2, "paddock": 0},
+        "scoring": {"area_hoop_house": 1250, "hoop_house_labor": 49.153645833333336, "labor_hours_total": 49.153645833333336,
+                    "capex_floor": 0, "paddock_dm_yield": 0}
+      }
+    }
+  },
+  "notes": "One hoop house, footprint 2 x 1, covers 2 tiles of 625 sq_ft. The UKY row's 96 x 20 ft house takes 10 + 3 + 40 + 22.5 = 75.5 h a year, so one tile takes 75.5 / 1920 x 625 = 24.576822916666668 h and two take 49.153645833333336. No paddock, so labor_hours_total adds no herd move (0) and capex_floor and paddock_dm_yield are 0."
+}

@@ -1,0 +1,7 @@
+{
+  "id": "proposal-merges-unendorsed",
+  "breaks": "merges a proposal that carries no endorsement",
+  "edits": [
+    {"find": "        if self.branch_meta[source][\"proposal\"] and not self.endorsements_on(source):", "replace": "        if False:"}
+  ]
+}

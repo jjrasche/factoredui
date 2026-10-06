@@ -1,0 +1,18 @@
+{
+  "id": "load-rule-reading-a-projection-through-an-equation",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {
+    "file": "parcel-five-acre.frozen.world.json",
+    "edits": [
+      {"op": "set", "path": ["equations"], "value": [
+        {"id": "pasture_yield", "expr": "count('paddock') * tile_area * paddock.annual_forage_yield", "unit": "ton/year", "source": {"twin": "eq-aux-stocking-static"}},
+        {"id": "support_now", "expr": "projected_support('neighbor')", "unit": "1"}
+      ]},
+      {"op": "set", "path": ["rules", {"id": "van-pad-needs-path"}, "require"], "value": "support_now >= 0.5"}
+    ]
+  },
+  "input": {},
+  "expect": {"valid": false, "first": "projection-not-binding", "fired": ["projection-not-binding"]},
+  "notes": "The rule reads the equation support_now, which is projected_support('neighbor'). Laundering the projection through a name does not make it a vote: the rule is binding and depends on a projection, so the world must be refused exactly as when the rule calls projected_support() directly."
+}

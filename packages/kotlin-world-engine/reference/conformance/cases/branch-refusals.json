@@ -1,0 +1,23 @@
+{
+  "id": "branch-refusals",
+  "kind": "branching",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "branch", "name": "idea", "from": "main"},
+      {"do": "branch", "name": "x", "from": "nowhere"},
+      {"do": "merge", "branch": "ghost"}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"},
+      {"refused": "branch-exists", "message": "branch idea already exists"},
+      {"refused": "unknown-branch", "message": "no branch or event 'nowhere'"},
+      {"refused": "unknown-branch", "message": "merge needs two branches, got ghost and main"}
+    ]
+  },
+  "notes": "A branch name is opened once; a branch starts from a branch or an event that exists; a merge needs both branches to exist."
+}

@@ -1,0 +1,15 @@
+{
+  "id": "replay-event-from-another-world",
+  "kind": "replay",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "path", "col": 6, "row": 3}},
+      {"do": "place", "parameters": {"type": "van_pad", "col": 7, "row": 3}}
+    ],
+    "tamper": [{"op": "set", "path": ["events", 0, "world"], "value": "dungeon-tiny"}]
+  },
+  "expect": {"loads": false, "reason_contains": "belongs to world dungeon-tiny"},
+  "notes": "An event stamped with another world's id does not belong in this log, whatever else it says."
+}

@@ -1,0 +1,7 @@
+{
+  "id": "render-drops-the-frame",
+  "breaks": "leaves the frame out of render_props, so a renderer cannot place the parcel on the earth",
+  "edits": [
+    {"find": "    if world.frame is not None:\n        props[\"frame\"] = dict(world.frame)\n", "replace": ""}
+  ]
+}

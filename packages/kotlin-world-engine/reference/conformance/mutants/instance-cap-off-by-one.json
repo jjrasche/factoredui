@@ -1,0 +1,7 @@
+{
+  "id": "instance-cap-off-by-one",
+  "breaks": "admits a 5001st instance",
+  "edits": [
+    {"find": "    if len(state.instance_layer) >= MAX_INSTANCES:", "replace": "    if len(state.instance_layer) > MAX_INSTANCES:"}
+  ]
+}

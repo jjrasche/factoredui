@@ -1,0 +1,15 @@
+{
+  "id": "expr-sum-adds-a-property-over-instances",
+  "kind": "expression",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.frozen.world.json"},
+  "input": {
+    "text": "sum('labor_hours')",
+    "setup": [
+      {"do": "place", "parameters": {"type": "hoop_house", "col": 2, "row": 8}},
+      {"do": "place", "parameters": {"type": "hoop_house", "col": 5, "row": 8}}
+    ]
+  },
+  "expect": {"value": 151, "unit": "hour/year"},
+  "notes": "Two hoop houses (instances, not tiles: each covers 2 tiles), each 75.5 hour/year by default: 2 x 75.5 = 151."
+}

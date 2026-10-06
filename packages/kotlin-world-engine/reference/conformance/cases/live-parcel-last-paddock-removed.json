@@ -1,0 +1,25 @@
+{
+  "id": "live-parcel-last-paddock-removed",
+  "kind": "action_sequence",
+  "source": "hand",
+  "world": {"file": "parcel-five-acre.world.json"},
+  "input": {
+    "steps": [
+      {"do": "place", "parameters": {"type": "paddock", "col": 9, "row": 12}},
+      {"do": "remove", "parameters": {"col": 9, "row": 12}}
+    ]
+  },
+  "expect": {
+    "steps": [
+      {"applied": "e1"},
+      {"applied": "e2"}
+    ],
+    "final": {
+      "main": {
+        "counts": {"paddock": 0},
+        "scoring": {"labor_hours_total": 0, "capex_floor": 0, "paddock_dm_yield": 0}
+      }
+    }
+  },
+  "notes": "The herd move and the energizer and tank are charged only while count('paddock') > 0 tiles. Once the last paddock goes, all three paddock scores return to 0: no hours, no capital, no dry matter."
+}

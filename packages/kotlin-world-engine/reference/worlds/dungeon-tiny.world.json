@@ -1,0 +1,68 @@
+{
+  "id": "dungeon-tiny",
+  "version": 1,
+  "title": "Tiny dungeon",
+  "description": "A second world on the same engine: five-foot squares, walls, floor, doors, monsters and treasure. Nothing in the engine knows about farms or dungeons.",
+  "sprites": {
+    "extensions": [
+      {"id": "figure", "base": "block", "note": "a standing creature"},
+      {"id": "chest", "base": "block", "note": "a treasure chest"}
+    ]
+  },
+  "grid": {"cols": 12, "rows": 8, "tile_ft": 5, "shape": "square", "view": "top", "north": "row_0"},
+  "clock": {"tick_unit": "second", "tick_length": 6},
+  "object_types": [
+    {"id": "wall", "label": "Wall", "sprite": "block", "color": "#4A4A55", "footprint": [1, 1], "tags": ["solid"]},
+    {"id": "floor", "label": "Floor", "sprite": "flat", "color": "#C2B280", "footprint": [1, 1], "tags": ["walkable"]},
+    {"id": "door", "label": "Door", "sprite": "arch", "color": "#7B4A2A", "footprint": [1, 1], "tags": ["walkable"]},
+    {"id": "monster", "label": "Monster", "sprite": "figure", "color": "#B03A2E", "footprint": [1, 1], "tags": ["creature"]},
+    {
+      "id": "treasure",
+      "label": "Treasure",
+      "sprite": "chest",
+      "color": "#D4AF37",
+      "footprint": [1, 1],
+      "tags": ["loot"],
+      "properties": [
+        {"name": "guarded", "unit": "1", "default": 0, "kind": "state", "note": "1 when a monster stood beside it as it was placed"}
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "id": "door-connects-floors",
+      "on": "place",
+      "applies_to": ["door"],
+      "require": "side(tile, 'north', 'floor') + side(tile, 'south', 'floor') == 2 [tile] or side(tile, 'east', 'floor') + side(tile, 'west', 'floor') == 2 [tile]",
+      "message": "a door must connect two floor tiles on opposite sides"
+    },
+    {
+      "id": "monster-stands-by-floor",
+      "on": "place",
+      "applies_to": ["monster"],
+      "require": "neighbors(tile, 1 [tile], 'floor') >= 1 [tile]",
+      "message": "a monster must stand beside a floor tile"
+    },
+    {
+      "id": "treasure-guarded",
+      "on": "place",
+      "applies_to": ["treasure"],
+      "effect": {"set": "guarded", "to": "if(neighbors(tile, 1 [tile], 'monster') >= 1 [tile], 1, 0)"}
+    }
+  ],
+  "equations": [],
+  "stocks": [],
+  "actions": [
+    {"verb": "place", "label": "Place", "parameters": [{"name": "type", "type": "object_type"}, {"name": "col", "type": "col"}, {"name": "row", "type": "row"}], "emits": ["place"]},
+    {"verb": "remove", "label": "Remove", "parameters": [{"name": "col", "type": "col"}, {"name": "row", "type": "row"}], "emits": ["remove"]},
+    {"verb": "tick", "label": "Next round", "parameters": [{"name": "n", "type": "count"}], "emits": ["tick"]}
+  ],
+  "agents": [],
+  "scoring": [
+    {"id": "treasure_per_monster", "label": "Treasure per monster", "expr": "if(count('monster') > 0 [tile], count('treasure') / count('monster'), 0)", "unit": "1"},
+    {"id": "guarded_treasure", "label": "Guarded treasure", "expr": "sum('guarded')", "unit": "1"},
+    {"id": "walkable_area", "label": "Walkable area", "expr": "count('#walkable') * tile_area", "unit": "sq_ft"}
+  ],
+  "links": [],
+  "seed": []
+}

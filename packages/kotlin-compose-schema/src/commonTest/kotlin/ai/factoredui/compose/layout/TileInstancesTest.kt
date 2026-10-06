@@ -1,7 +1,9 @@
 package ai.factoredui.compose.layout
 
 import ai.factoredui.compose.schema.resolveTilemapFootprints
+import ai.factoredui.compose.schema.resolveTilemapFootprintsChecked
 import ai.factoredui.compose.schema.resolveTilemapInstances
+import ai.factoredui.compose.schema.resolveTilemapInstancesChecked
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -36,27 +38,6 @@ class TileInstancesTest {
     @Test
     fun theCrownRadiusInTilesIsTheMillimetreRadiusOverTheTileSide() {
         assertEquals(0.5f, instanceRadiusTiles(tree("a", 0.0, 0.0, crownRadiusMm = 3810.0), TILE_SIDE_MM), 1e-4f)
-    }
-
-    @Test
-    fun aTapPicksTheNearestInstanceWithinItsCrown() {
-        val near = tree("near", TILE_SIDE_MM * 5, TILE_SIDE_MM * 20)
-        val far = tree("far", TILE_SIDE_MM * 9, TILE_SIDE_MM * 20)
-        val tapped = pickInstance(listOf(far, near), TILE_SIDE_MM, ROWS, GroundPoint(5.2f, 6.1f))
-        assertEquals("near", tapped?.id)
-    }
-
-    @Test
-    fun aTapOutsideEveryCrownPicksNothing() {
-        val only = tree("only", TILE_SIDE_MM * 5, TILE_SIDE_MM * 20)
-        assertNull(pickInstance(listOf(only), TILE_SIDE_MM, ROWS, GroundPoint(12f, 12f)))
-    }
-
-    @Test
-    fun overlappingCrownsGoToTheCloserCentre() {
-        val left = tree("left", TILE_SIDE_MM * 5, TILE_SIDE_MM * 20, crownRadiusMm = TILE_SIDE_MM * 2)
-        val right = tree("right", TILE_SIDE_MM * 6, TILE_SIDE_MM * 20, crownRadiusMm = TILE_SIDE_MM * 2)
-        assertEquals("right", pickInstance(listOf(left, right), TILE_SIDE_MM, ROWS, GroundPoint(5.8f, 6f))?.id)
     }
 
     @Test
@@ -98,6 +79,27 @@ class TileInstancesTest {
     }
 
     @Test
+    fun droppedRecordsAreReportedWithTheirIndexAndReason() {
+        val resolved = resolveTilemapInstancesChecked(
+            listOf(
+                mapOf("id" to "ok", "type" to "t", "x_mm" to 1.0, "y_mm" to 2.0),
+                mapOf("id" to "bad-x", "type" to "t", "x_mm" to "12", "y_mm" to 2.0),
+                "not a record",
+                mapOf("type" to "t", "x_mm" to 1.0, "y_mm" to 2.0),
+            ),
+        )
+        assertEquals(listOf("ok"), resolved.items.map { it.id })
+        assertEquals(listOf("instance 1: no numeric x_mm", "instance 2 is not a record", "instance 3: no id"), resolved.dropped)
+    }
+
+    @Test
+    fun droppedFootprintsAreReportedToo() {
+        val resolved = resolveTilemapFootprintsChecked(listOf(mapOf("use" to "path", "col" to 1), mapOf("use" to "path", "col" to 1, "row" to 2)))
+        assertEquals(1, resolved.items.size)
+        assertEquals(listOf("footprint 0: no numeric row"), resolved.dropped)
+    }
+
+    @Test
     fun footprintsAndInstancesResolveFromBoundMaps() {
         val footprints = resolveTilemapFootprints(listOf(mapOf("id" to "p1", "use" to "paddock", "col" to 2, "row" to 3, "width" to 5, "height" to 5), mapOf("use" to "path")))
         assertEquals(listOf(TileFootprint("p1", "paddock", 2, 3, 5, 5)), footprints)
@@ -111,11 +113,6 @@ class TileInstancesTest {
         assertEquals(TileInstance("t1", "woodland_tree", 1000.0, 2000.5, 9000.0, 3000.0, 90.0), instances.single())
     }
 
-    @Test
-    fun anInstanceWithNoCrownIsStillPickableAtItsCentre() {
-        val bare = tree("bare", TILE_SIDE_MM * 5, TILE_SIDE_MM * 20, crownRadiusMm = null)
-        assertTrue(pickInstance(listOf(bare), TILE_SIDE_MM, ROWS, GroundPoint(5f, 6f)) != null)
-    }
 }
 
 private fun drawableId(drawable: TileDrawable): String = when (drawable) {

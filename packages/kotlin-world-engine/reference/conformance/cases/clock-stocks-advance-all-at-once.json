@@ -1,0 +1,15 @@
+{
+  "id": "clock-stocks-advance-all-at-once",
+  "kind": "clock",
+  "source": "hand",
+  "world": {
+    "file": "dungeon-tiny.frozen.world.json",
+    "edits": [{"op": "set", "path": ["stocks"], "value": [
+      {"id": "a", "unit": "1", "initial": 0, "next": "a + 1"},
+      {"id": "b", "unit": "1", "initial": 0, "next": "a"}
+    ]}]
+  },
+  "input": {"steps": [{"do": "tick", "actor": "clock", "parameters": {"n": 3}}]},
+  "expect": {"steps": [{"applied": "e1"}], "final": {"main": {"ticks": 3, "stocks": {"a": 3, "b": 2}}}},
+  "notes": "a.next = a + 1 and b.next = a, both read from the previous tick's values. Tick 1: a 1, b 0. Tick 2: a 2, b 1. Tick 3: a 3, b 2. An engine that updates a before evaluating b would give b = 3."
+}

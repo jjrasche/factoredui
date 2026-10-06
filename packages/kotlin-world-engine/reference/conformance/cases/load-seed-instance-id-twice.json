@@ -1,0 +1,9 @@
+{
+  "id": "load-seed-instance-id-twice",
+  "kind": "world_load",
+  "source": "hand",
+  "world": {"file": "instances-plot.frozen.world.json", "edits": [{"op": "set", "path": ["seed", {"id": "m-shed-1"}, "id"], "value": "m-oak-1"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "instance-id-unique", "fired": ["instance-id-unique"]},
+  "notes": "Two seed instances both called m-oak-1: the second would overwrite the first."
+}

@@ -1,0 +1,9 @@
+{
+  "id": "load-mutation-expression-bound",
+  "kind": "world_load",
+  "source": "generated",
+  "world": {"file": "dungeon-tiny.frozen.world.json", "edits": [{"op": "set_repeated", "path": ["scoring", {"id": "guarded_treasure"}, "expr"], "unit": "sum('guarded') + ", "times": 150, "tail": "sum('guarded')"}]},
+  "input": {},
+  "expect": {"valid": false, "first": "expression-bound", "fired": ["expression-bound"]},
+  "notes": "mutations.json's broken copy for expression-bound; the reference's verdict, recorded."
+}

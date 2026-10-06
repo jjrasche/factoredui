@@ -1,0 +1,91 @@
+{
+  "id": "locality-stub",
+  "version": 1,
+  "title": "Locality stub",
+  "description": "A township at the zoom of parcels and roads. It exports one rule to the parcels that link to it (a structure setback) and shows one parcel-level override. Every figure is a declared placeholder: this is not Bowne Township's ordinance.",
+  "sprites": {
+    "extensions": [
+      {"id": "road", "base": "flat", "note": "a paved or gravel road segment"}
+    ]
+  },
+  "grid": {"cols": 10, "rows": 10, "tile_ft": 330, "shape": "square", "view": "top", "north": "row_0"},
+  "clock": {"tick_unit": "year", "tick_length": 1},
+  "object_types": [
+    {
+      "id": "road",
+      "label": "Road",
+      "sprite": "road",
+      "color": "#8A8A8A",
+      "footprint": [1, 1],
+      "tags": ["access"]
+    },
+    {
+      "id": "parcel",
+      "label": "Parcel",
+      "sprite": "flat",
+      "color": "#C9D9A6",
+      "footprint": [1, 2],
+      "tags": ["land"],
+      "properties": [
+        {"name": "zoning", "type": "text", "default": "AG", "enum": ["AG", "R1"], "kind": "regulation",
+         "source": {"placeholder": true, "reason": "stub district; the real district comes from the township's zoning map"}},
+        {"name": "structure_setback", "unit": "ft", "default": 50, "kind": "regulation",
+         "source": {"placeholder": true, "reason": "stub district setback; no banked ordinance row is cited here"}}
+      ]
+    },
+    {
+      "id": "census_block",
+      "label": "Census block",
+      "sprite": "flat",
+      "color": "#E4D7F2",
+      "footprint": [1, 1],
+      "tags": ["demographics"],
+      "properties": [
+        {"name": "population", "unit": "head", "default": 0, "kind": "demographic",
+         "source": {"placeholder": true, "reason": "no Census draw has run; ACS block-group counts belong here and synthetic agents are drawn from them"}}
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "id": "parcel-needs-road",
+      "on": "place",
+      "applies_to": ["parcel"],
+      "require": "neighbors(tile, 1 [tile], 'road') >= 1 [tile]",
+      "message": "a parcel must touch a road"
+    },
+    {
+      "id": "structure-setback",
+      "on": "place",
+      "scope": "child",
+      "applies_to_tag": "structure",
+      "require": "edge(tile) >= parcel.structure_setback",
+      "message": "a structure must stand at least the parcel's setback from the lot line",
+      "source": {"placeholder": true, "reason": "the shape of a setback rule; its distance is the parcel's structure_setback"}
+    }
+  ],
+  "equations": [],
+  "stocks": [],
+  "actions": [
+    {"verb": "place", "label": "Place", "parameters": [{"name": "type", "type": "object_type"}, {"name": "col", "type": "col"}, {"name": "row", "type": "row"}, {"name": "properties", "type": "properties"}], "emits": ["place"]},
+    {"verb": "remove", "label": "Remove", "parameters": [{"name": "col", "type": "col"}, {"name": "row", "type": "row"}], "emits": ["remove"]},
+    {"verb": "tick", "label": "Advance", "parameters": [{"name": "n", "type": "count"}], "emits": ["tick"]}
+  ],
+  "agents": [],
+  "scoring": [
+    {"id": "parcel_area", "label": "Parcel area", "expr": "count('parcel') * tile_area", "unit": "acre"},
+    {"id": "population", "label": "Population", "expr": "sum('population')", "unit": "head"}
+  ],
+  "links": [],
+  "seed": [
+    {"id": "road-0", "action": "place", "parameters": {"type": "road", "col": 0, "row": 0}},
+    {"id": "road-1", "action": "place", "parameters": {"type": "road", "col": 0, "row": 1}},
+    {"id": "road-2", "action": "place", "parameters": {"type": "road", "col": 0, "row": 2}},
+    {"id": "road-3", "action": "place", "parameters": {"type": "road", "col": 0, "row": 3}},
+    {"id": "parcel-a", "action": "place", "parameters": {"type": "parcel", "col": 1, "row": 0},
+     "note": "takes the district setback"},
+    {"id": "parcel-b", "action": "place", "parameters": {"type": "parcel", "col": 1, "row": 2, "properties": {"structure_setback": 25}},
+     "note": "parcel-level override: an illustrative variance halving the setback, not a real record"},
+    {"id": "block-1", "action": "place", "parameters": {"type": "census_block", "col": 5, "row": 5}}
+  ]
+}

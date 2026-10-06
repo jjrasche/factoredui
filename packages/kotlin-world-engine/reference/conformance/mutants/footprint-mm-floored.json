@@ -1,0 +1,7 @@
+{
+  "id": "footprint-mm-floored",
+  "breaks": "derives a footprint_mm-only type's tiles with floor instead of ceil, so a 3100 mm shed covers one 3048 mm tile",
+  "edits": [
+    {"find": "    return math.ceil(exact(length_mm) / tile_mm)", "replace": "    return math.floor(exact(length_mm) / tile_mm)"}
+  ]
+}
