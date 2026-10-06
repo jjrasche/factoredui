@@ -2,7 +2,7 @@
   "id": "parcel-five-acre-5ft",
   "version": 1,
   "title": "Five-acre parcel",
-  "description": "The offered portion as a 13 by 26 grid of 25 ft tiles (625 sq ft each, 4.85 acres), the seven uses of the farm, the rules each placement must pass, and the figures the task-model twin can back. It links to a locality parcel and inherits that locality's structure setback.",
+  "description": "The offered portion as a 65 by 130 grid of 5 ft tiles (25 sq ft each, 4.85 acres), the seven uses of the farm, the rules each placement must pass, and the figures the task-model twin can back. It links to a locality parcel and inherits that locality's structure setback.",
   "sprites": {
     "extensions": []
   },
@@ -47,13 +47,13 @@
         {
           "name": "forage_dm_per_tile",
           "unit": "lb/tile/year",
-          "default": 114.7842056932966,
+          "default": 4.591368227731864,
           "kind": "yield",
           "source": {
             "twin": "twin-constants.json#paddock.yield_kg_dm_per_tile_per_year",
             "row": "yield-mi-grass-clover-4.0t"
           },
-          "note": "52.0652398989899 kg dry matter per tile a year, shown in lb because the engine's unit table has no kg"
+          "note": "the twin's 52.0652398989899 kg dry matter per 625 sq ft tile a year (114.7842056932966 lb, shown in lb because the engine's unit table has no kg) divided by 25 for one 25 sq ft tile"
         },
         {
           "name": "labor_hours_per_use",
@@ -95,13 +95,13 @@
         {
           "name": "labor_hours_per_tile",
           "unit": "hour/tile/year",
-          "default": 24.576822916666668,
+          "default": 0.9830729166666667,
           "kind": "labor",
           "source": {
             "twin": "twin-constants.json#hoop_house.hours_per_year_per_tile",
             "row": "uky-tunnel-labor-hours"
           },
-          "note": "75.5 hours a year for the row's 96 by 20 ft house, scaled by area to one 625 sq ft tile"
+          "note": "75.5 hours a year for the row's 96 by 20 ft house, scaled by area to one 25 sq ft tile: the twin's 24.576822916666668 hours per 625 sq ft tile divided by 25"
         }
       ]
     },
