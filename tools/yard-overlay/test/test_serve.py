@@ -51,6 +51,10 @@ class PageServingTest(ServerCase):
         self.assertEqual("text/javascript", self.request("GET", "/app.js")[1])
         self.assertEqual("application/wasm", self.request("GET", "/module.wasm")[1])
 
+    def test_a_second_server_cannot_take_a_port_that_is_in_use(self):
+        with self.assertRaises(OSError):
+            serve.make_server(self.web, self.captures, self.port)
+
     def test_the_server_listens_on_loopback_only(self):
         self.assertEqual("127.0.0.1", self.server.server_address[0])
 

@@ -71,9 +71,13 @@ class YardHandler(http.server.SimpleHTTPRequestHandler):
         pathlib.Path(partial.name).replace(folder / file_name)
 
 
+class ExclusiveServer(http.server.ThreadingHTTPServer):
+    allow_reuse_address = False
+
+
 def make_server(web_dir, captures_dir, port):
     handler = functools.partial(YardHandler, directory=str(web_dir), captures_dir=pathlib.Path(captures_dir))
-    return http.server.ThreadingHTTPServer((LOOPBACK, port), handler)
+    return ExclusiveServer((LOOPBACK, port), handler)
 
 
 def main():
