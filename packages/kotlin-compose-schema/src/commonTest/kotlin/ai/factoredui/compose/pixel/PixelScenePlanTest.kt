@@ -117,6 +117,15 @@ class PixelScenePlanTest {
     }
 
     @Test
+    fun aTreeBehindABuildingIsStillPickedThroughIt() {
+        val draws = plan(listOf(TileFootprint("c", "commons_building", 10, 10, 4, 4)), listOf(tree("behind", "lidar_tree", 11f, 11f, 2000.0)))
+        val toContent: (GroundPoint) -> Pair<Float, Float> = { (it.x - it.y) * 16f to (it.x + it.y) * 8f }
+        val (x, y) = toContent(GroundPoint(11f, 11f))
+        assertEquals(listOf("behind", null), draws.map { it.instanceId })
+        assertEquals("behind", pickPixelInstance(draws, toContent, x, y - 5f, 0f))
+    }
+
+    @Test
     fun aPickReturnsTheFrontmostInstanceWhoseSpriteCoversThePointAndIgnoresFootprints() {
         val draws = plan(listOf(TileFootprint("c", "commons_building", 30, 0, 2, 2)), listOf(tree("back", "lidar_tree", 10f, 10f, 4000.0), tree("front", "lidar_tree", 10.3f, 10.3f, 4000.0)))
         val toContent: (GroundPoint) -> Pair<Float, Float> = { (it.x - it.y) * 16f to (it.x + it.y) * 8f }
