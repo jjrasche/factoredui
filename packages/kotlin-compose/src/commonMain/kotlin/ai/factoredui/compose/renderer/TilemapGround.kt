@@ -48,7 +48,7 @@ private fun addTile(path: Path, space: TilemapSpace, col: Int, row: Int) {
     path.close()
 }
 
-private fun gridLines(space: TilemapSpace, cols: Int, rows: Int): Path = Path().apply {
+internal fun gridLines(space: TilemapSpace, cols: Int, rows: Int): Path = Path().apply {
     for (col in 0..cols) addLine(this, space.toContent(GroundPoint(col.toFloat(), 0f)), space.toContent(GroundPoint(col.toFloat(), rows.toFloat())))
     for (row in 0..rows) addLine(this, space.toContent(GroundPoint(0f, row.toFloat())), space.toContent(GroundPoint(cols.toFloat(), row.toFloat())))
 }
