@@ -55,6 +55,108 @@
             ]
           },
           {
+            "id": "terrain-bar",
+            "type": "row",
+            "visible": "{terrain}",
+            "props": {
+              "padding": 8,
+              "gap": 8,
+              "align": "center"
+            },
+            "children": [
+              {
+                "id": "terrain-label",
+                "type": "text",
+                "props": {
+                  "value": "Terrain",
+                  "variant": "label"
+                }
+              },
+              {
+                "id": "terrain-mode-select",
+                "type": "select",
+                "props": {
+                  "flex": 1,
+                  "value": "{terrain_mode}",
+                  "placeholder": "off",
+                  "options": [
+                    {
+                      "label": "off",
+                      "value": "off"
+                    },
+                    {
+                      "label": "hillshade",
+                      "value": "hillshade"
+                    },
+                    {
+                      "label": "height heat map",
+                      "value": "heat"
+                    },
+                    {
+                      "label": "cut and fill",
+                      "value": "cutfill"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "contour-interval-label",
+                "type": "text",
+                "props": {
+                  "value": "Contour interval",
+                  "variant": "label"
+                }
+              },
+              {
+                "id": "contour-interval-select",
+                "type": "select",
+                "props": {
+                  "flex": 1,
+                  "value": "{contour_interval_mm}",
+                  "placeholder": "50 mm",
+                  "options": [
+                    {
+                      "label": "25 mm",
+                      "value": "25"
+                    },
+                    {
+                      "label": "50 mm",
+                      "value": "50"
+                    },
+                    {
+                      "label": "100 mm",
+                      "value": "100"
+                    },
+                    {
+                      "label": "250 mm",
+                      "value": "250"
+                    },
+                    {
+                      "label": "500 mm",
+                      "value": "500"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "contours-label",
+                "type": "text",
+                "props": {
+                  "value": "Contours",
+                  "variant": "label"
+                }
+              },
+              {
+                "id": "contours-toggle",
+                "type": "toggle",
+                "props": {
+                  "flex": 0.4,
+                  "value": "{contours}"
+                }
+              }
+            ]
+          },
+          {
             "id": "brush-line",
             "type": "text",
             "props": {
@@ -81,7 +183,11 @@
               "on_tile_tap": "world.tileTapped",
               "on_instance_tap": "world.instanceTapped",
               "palette": "top",
-              "brush_label": "{brush_label}"
+              "brush_label": "{brush_label}",
+              "terrain": "{terrain}",
+              "terrain_mode": "{terrain_mode}",
+              "contours": "{contours}",
+              "contour_interval_mm": "{contour_interval_mm}"
             }
           }
         ]
