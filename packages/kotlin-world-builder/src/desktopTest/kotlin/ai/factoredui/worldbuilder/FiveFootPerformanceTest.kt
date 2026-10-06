@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.swipe
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import java.io.File
 import kotlin.math.exp
@@ -30,6 +31,9 @@ import kotlinx.serialization.json.Json
 private const val TREE = "woodland_tree"
 private const val TREE_SIDE_TILES = 5
 private const val FRAME_SAMPLES = 15
+private val DESKTOP_WINDOW = DpSize(1100.dp, 800.dp)
+private val PHONE_WINDOW = DpSize(400.dp, 800.dp)
+private val PIXEL_LOOK = mapOf("look" to "pixel")
 
 private fun fiveFootWorld(): String = File("examples/parcel-five-acre-5ft.world.json").path
 
@@ -106,24 +110,24 @@ class FiveFootPerformanceTest {
         saveReport("perf-25ft-engine")
     }
 
-    private fun ComposeUiTest.open(worldPath: String, fillTrees: Boolean, terrain: Map<String, Any?> = emptyMap()): WorldBuilderHost {
+    private fun ComposeUiTest.open(worldPath: String, fillTrees: Boolean, terrain: Map<String, Any?> = emptyMap(), look: Map<String, Any?> = emptyMap(), window: DpSize = DESKTOP_WINDOW): WorldBuilderHost {
         val host = WorldBuilderHost(openSession(worldPath), loadPresentation("examples/parcel.presentation.json"))
         if (fillTrees) fillWithTrees(host)
         var publish: () -> Unit = {}
         val context = RenderContext(
             actions = host.actions { publish() },
-            initialData = host.bindings() + mapOf("theme" to "dark", "animate" to false, "brush" to host.initialBrush(), "rename_draft" to "") + terrain,
+            initialData = host.bindings() + mapOf("theme" to "dark", "animate" to false, "brush" to host.initialBrush(), "rename_draft" to "") + terrain + look,
         )
         publish = { context.applyBindings(host.bindings() + terrain.filterKeys { it == "terrain" }) }
-        setContent { Box(Modifier.size(1100.dp, 800.dp)) { RenderSpec(spec = spec, context = context) } }
+        setContent { Box(Modifier.size(window)) { RenderSpec(spec = spec, context = context) } }
         waitForIdle()
         return host
     }
 
     private fun ComposeUiTest.drawMillis(): Double = elapsedMillis { onNodeWithTag("world:map").captureToImage() }
 
-    private fun ComposeUiTest.measureWindow(label: String, worldPath: String, fillTrees: Boolean, terrain: Map<String, Any?> = emptyMap()) {
-        val host = open(worldPath, fillTrees, terrain)
+    private fun ComposeUiTest.measureWindow(label: String, worldPath: String, fillTrees: Boolean, terrain: Map<String, Any?> = emptyMap(), look: Map<String, Any?> = emptyMap(), window: DpSize = DESKTOP_WINDOW) {
+        val host = open(worldPath, fillTrees, terrain, look, window)
         val map = onNodeWithTag("world:map")
         val still = (1..FRAME_SAMPLES).map { drawMillis() }
         note("$label still frame: ${still.summary()}")
@@ -219,6 +223,23 @@ class FiveFootPerformanceTest {
     fun theFiveFootWindowOverABowlAndRidgeWithContoursOnly() = runComposeUiTest {
         measureWindow("window 5ft bowl-and-ridge 50 mm contours only", fiveFootWorld(), fillTrees = false, terrain = syntheticTerrain("off", isContoursShown = true))
         saveReport("perf-5ft-window-terrain-contours")
+    }
+
+    private fun measureBothLooks(label: String, fillTrees: Boolean) {
+        runComposeUiTest { measureWindow("$label default look", fiveFootWorld(), fillTrees, window = PHONE_WINDOW) }
+        runComposeUiTest { measureWindow("$label pixel look", fiveFootWorld(), fillTrees, look = PIXEL_LOOK, window = PHONE_WINDOW) }
+    }
+
+    @Test
+    fun theFiveFootWindowOnAPhoneInTheDefaultAndPixelLooks() {
+        measureBothLooks("phone 5ft empty", fillTrees = false)
+        saveReport("perf-5ft-phone-looks-empty")
+    }
+
+    @Test
+    fun theFiveFootWindowFullOfTreesOnAPhoneInTheDefaultAndPixelLooks() {
+        measureBothLooks("phone 5ft full", fillTrees = true)
+        saveReport("perf-5ft-phone-looks-full")
     }
 
     @Test
