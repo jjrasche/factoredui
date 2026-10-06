@@ -1,13 +1,12 @@
 from model import Box, Model, slot
-from palette import COW_PATCH, COW_WHITE, SHIRTS, SKIN, TROUSERS, ramp
+from palette import COW_BODY_RAMP, COW_DARK_RAMP, COW_SNOUT_RAMP, HAIR_RAMP, SHIRT_RAMPS, SKIN_RAMP, TROUSER_RAMP
 
-SHIRT_RAMPS = [ramp("#7E1E1E", "#A82828", "#D63B3B", "#F07070"), ramp("#1B3F7A", "#2859A8", "#2F6FD6", "#6FA4F2"), ramp("#8A6A12", "#B8901C", "#E8C23A", "#F6DE7A")]
-TROUSER_PAINT = slot(ramp("#1B2538", "#2B3A55", "#3C5072", "#58709A"))
-SKIN_PAINT = slot(ramp("#9A6444", "#C98B64", "#E3A87C", "#F1C7A0"))
-HAIR_PAINT = slot(ramp("#2A1A0E", "#3E2814", "#5A3A1E", "#7A5230"))
-COW_BODY = slot(ramp("#8A9096", "#B9BEC4", "#E4E8EC", "#FFFFFF"))
-COW_DARK = slot(ramp("#101014", "#1E1E22", "#2C2C34", "#3A3A42"))
-COW_SNOUT = slot(ramp("#9A6070", "#C58A9A", "#E5A8B6", "#F4C8D2"))
+TROUSER_PAINT = slot(TROUSER_RAMP)
+SKIN_PAINT = slot(SKIN_RAMP)
+HAIR_PAINT = slot(HAIR_RAMP)
+COW_BODY = slot(COW_BODY_RAMP)
+COW_DARK = slot(COW_DARK_RAMP)
+COW_SNOUT = slot(COW_SNOUT_RAMP)
 
 STRIDE = (0.45, 0.0, -0.45, 0.0)
 LIFT = (0.0, 0.5, 0.0, 0.5)

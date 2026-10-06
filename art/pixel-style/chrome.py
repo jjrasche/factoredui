@@ -1,8 +1,7 @@
 from canvas import Canvas
-from palette import CHROME, CHROME_ACCENT, CHROME_GOOD, CHROME_TEXT, DIRT, GLASS, OUTLINE, PATH, ROOF_RED, TRUNK, WALL_CREAM, WATER, WOOD, BROADLEAF, ramp
+from palette import BROADLEAF, CHROME, CHROME_ACCENT, CHROME_GOOD, CHROME_TEXT, DIRT, GLASS, OUTLINE, PATH, ROOF_RED, STATUS_BLUE, TITLE, TRUNK, WALL_CREAM, WATER, WOOD
 from pixtext import pixel_text
 
-TITLE = ramp("#17394F", "#1F4F6B", "#2B6A8C", "#4A8FB8")
 
 
 def bevel(canvas, x, y, w, h, face, light, dark, u, raised=True):
@@ -146,7 +145,7 @@ def compose(scene, u):
     canvas = Canvas(width, height, CHROME[0])
     status_bar(
         canvas, margin, margin, width - margin * 2, status_h,
-        [("CAPITAL", "$220", CHROME_ACCENT), ("LABOUR", "87 h/yr", CHROME_GOOD), ("PASTURE", "0.4 t/yr", (125, 200, 255, 255))], u,
+        [("CAPITAL", "$220", CHROME_ACCENT), ("LABOUR", "87 h/yr", CHROME_GOOD), ("PASTURE", "0.4 t/yr", STATUS_BLUE)], u,
     )
     field_y = margin * 2 + status_h
     bevel(canvas, margin, field_y, scene.width + 4 * u, scene.height + 4 * u, CHROME[0], CHROME[0], CHROME[4], u, raised=False)

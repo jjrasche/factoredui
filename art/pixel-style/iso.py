@@ -1,6 +1,7 @@
 import math
 
-SHADOW = (0, 0, 0, 78)
+from palette import SHADOW
+
 TILE_FEET = 5.0
 VERTICAL_RATIO = 1.2247
 

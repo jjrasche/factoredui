@@ -7,9 +7,9 @@ from buildings import commons, fence, hoop_house, shed
 from canvas import Canvas, hashed, scaled
 from chrome import compose
 from creatures import cow, person
-from machines import TRACTOR_BODIES, tractor, tractor_effects, van
+from machines import tractor, tractor_effects, van
 from model import FACINGS
-from palette import BROADLEAF, CHROME, CONIFER, DIRT, GRASS, PATH, ROOF_RED, SAND, UNKNOWN, WATER, WOOD
+from palette import BROADLEAF, CHROME, CONIFER, DIRT, GRASS, PATH, ROOF_RED, SAND, SHEET_ACCENT, SHEET_BACKGROUND, SHEET_BAND, SHEET_LABEL, SHEET_TITLE, TRACTOR_BODIES, UNKNOWN, WATER, WOOD
 from render import render_model
 from scene import build_scene
 from terrain import dirt_tile, grass_tile, path_tile, sand_tile, shore_tile, water_tile
@@ -53,23 +53,23 @@ class Section:
             row_sizes.append((heading_h + cell_h + label_h + 10, cell_w, cell_h))
         width = max(size[1] for size in row_sizes) + MARGIN
         height = sum(size[0] for size in row_sizes) + 56 + MARGIN
-        sheet = Image.new("RGBA", (width, height), (20, 24, 30, 255))
+        sheet = Image.new("RGBA", (width, height), SHEET_BACKGROUND)
         draw = ImageDraw.Draw(sheet)
         title_font = ImageFont.truetype(LABEL_BOLD, 28)
         head_font = ImageFont.truetype(LABEL_BOLD, 20)
         label_font = ImageFont.truetype(LABEL_FONT, 17)
-        draw.text((MARGIN, 12), self.title, font=title_font, fill=(232, 237, 244))
+        draw.text((MARGIN, 12), self.title, font=title_font, fill=SHEET_TITLE)
         y = 56
         for (heading, cells), (row_h, row_w, cell_h) in zip(self.rows, row_sizes):
-            draw.text((MARGIN, y), heading, font=head_font, fill=(232, 184, 58))
+            draw.text((MARGIN, y), heading, font=head_font, fill=SHEET_ACCENT)
             band_top = y + heading_h
-            band = grass_background(width - MARGIN * 2, cell_h + 8) if self.background == "grass" else Image.new("RGBA", (width - MARGIN * 2, cell_h + 8), (32, 38, 48, 255))
+            band = grass_background(width - MARGIN * 2, cell_h + 8) if self.background == "grass" else Image.new("RGBA", (width - MARGIN * 2, cell_h + 8), SHEET_BAND)
             sheet.alpha_composite(scaled(band, 1), (MARGIN, band_top))
             x = MARGIN + MARGIN * factor // 2
             for image, label in cells:
                 big = scaled(image, factor)
                 sheet.alpha_composite(big, (x, band_top + 4 + cell_h - big.height))
-                draw.text((x, band_top + cell_h + 12), label, font=label_font, fill=(214, 220, 228))
+                draw.text((x, band_top + cell_h + 12), label, font=label_font, fill=SHEET_LABEL)
                 x += big.width + GAP * factor
             y += row_h
         sheet.save(path)
@@ -86,7 +86,7 @@ def water_cells(width):
 
 def patch(width):
     columns, rows = 9, 7
-    canvas = Canvas(columns * width, rows * width // 2 + 4, (20, 24, 30, 255))
+    canvas = Canvas(columns * width, rows * width // 2 + 4, SHEET_BACKGROUND)
     for r in range(rows):
         for c in range(columns):
             if not (0 <= c - r + 3 < 9):
@@ -133,16 +133,16 @@ def sections(width, factor):
 def palette_sheet(path, factor):
     groups = [("Grass", GRASS), ("Path", PATH), ("Sand", SAND), ("Dirt", DIRT), ("Water", WATER), ("Broadleaf", BROADLEAF), ("Conifer", CONIFER), ("Unknown crown", UNKNOWN), ("Roof red", ROOF_RED), ("Wood", WOOD), ("UI chrome", CHROME)]
     swatch = 74
-    sheet = Image.new("RGBA", (MARGIN * 2 + 6 * swatch + 190, 70 + len(groups) * (swatch + 12)), (20, 24, 30, 255))
+    sheet = Image.new("RGBA", (MARGIN * 2 + 6 * swatch + 190, 70 + len(groups) * (swatch + 12)), SHEET_BACKGROUND)
     draw = ImageDraw.Draw(sheet)
-    draw.text((MARGIN, 14), "Palette (every sprite and texture uses only these ramps)", font=ImageFont.truetype(LABEL_BOLD, 26), fill=(232, 237, 244))
+    draw.text((MARGIN, 14), "Palette: the base colour ramps (shading and mixing derive from them)", font=ImageFont.truetype(LABEL_BOLD, 26), fill=SHEET_TITLE)
     for row, (name, ramp_) in enumerate(groups):
         y = 64 + row * (swatch + 12)
-        draw.text((MARGIN, y + swatch // 2 - 12), name, font=ImageFont.truetype(LABEL_BOLD, 20), fill=(232, 184, 58))
+        draw.text((MARGIN, y + swatch // 2 - 12), name, font=ImageFont.truetype(LABEL_BOLD, 20), fill=SHEET_ACCENT)
         for index, color in enumerate(ramp_):
             x = 190 + index * swatch
             draw.rectangle((x, y, x + swatch - 4, y + swatch - 4), fill=color)
-            draw.text((x + 6, y + swatch - 26), "#%02X%02X%02X" % color[:3], font=ImageFont.truetype(LABEL_FONT, 12), fill=(0, 0, 0) if sum(color[:3]) > 380 else (255, 255, 255))
+            draw.text((x + 6, y + swatch - 26), "#%02X%02X%02X" % color[:3], font=ImageFont.truetype(LABEL_FONT, 12), fill=SHEET_BACKGROUND if sum(color[:3]) > 380 else SHEET_TITLE)
     sheet.save(path)
 
 

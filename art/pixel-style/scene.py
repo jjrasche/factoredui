@@ -5,6 +5,7 @@ from canvas import Canvas, hashed
 from creatures import cow, person
 from machines import tractor
 from render import render_model
+from palette import VOID
 from terrain import grass_tile, path_tile, shore_tile, water_tile
 from trees import CLASSES, RADII
 
@@ -51,7 +52,7 @@ def build_scene(width):
     field_w = GRID * width
     field_h = GRID * width // 2
     headroom = int(HEADROOM * width)
-    scene = Canvas(field_w, field_h + headroom, (14, 17, 22, 255))
+    scene = Canvas(field_w, field_h + headroom, VOID)
     origin = (field_w / 2, headroom)
     for r in range(GRID):
         for c in range(GRID):

@@ -1,10 +1,8 @@
 import math
 
 from model import Faces, Model
-from palette import CHROME, DOOR, GLASS, ROOF_GREY, ROOF_RED, WALL_CREAM, WINDOW, WOOD, ramp
+from palette import DOOR, FRAME, PLASTIC, ROOF_GREY, ROOF_RED, WALL_CREAM, WINDOW, WOOD
 
-PLASTIC = ramp("#6E98B4", "#98BFD8", "#C4E0F0", "#F2FAFF")
-FRAME = ramp("#7C8798", "#9AA5B4", "#C3CCD8", "#E8EDF4")
 
 
 def block(low, high, ramp_, colour=None, layer=0):

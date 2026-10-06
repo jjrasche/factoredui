@@ -18,3 +18,5 @@ work-ontology-*.png
 # Kotlin compiler error dumps (build noise)
 .kotlin/
 .git-worktrees/
+__pycache__/
+*.pyc

@@ -42,3 +42,31 @@ CHROME = ramp("#14171C", "#20252D", "#2D343F", "#3C4553", "#566173", "#7C8798")
 CHROME_ACCENT = hex_rgb("#E8B83A")
 CHROME_TEXT = hex_rgb("#E8EDF4")
 CHROME_GOOD = hex_rgb("#7DDC5C")
+
+PLASTIC = ramp("#6E98B4", "#98BFD8", "#C4E0F0", "#F2FAFF")
+FRAME = ramp("#7C8798", "#9AA5B4", "#C3CCD8", "#E8EDF4")
+TITLE = ramp("#17394F", "#1F4F6B", "#2B6A8C", "#4A8FB8")
+SHIRT_RAMPS = [ramp("#7E1E1E", "#A82828", "#D63B3B", "#F07070"), ramp("#1B3F7A", "#2859A8", "#2F6FD6", "#6FA4F2"), ramp("#8A6A12", "#B8901C", "#E8C23A", "#F6DE7A")]
+TROUSER_RAMP = ramp("#1B2538", "#2B3A55", "#3C5072", "#58709A")
+SKIN_RAMP = ramp("#9A6444", "#C98B64", "#E3A87C", "#F1C7A0")
+HAIR_RAMP = ramp("#2A1A0E", "#3E2814", "#5A3A1E", "#7A5230")
+COW_BODY_RAMP = ramp("#8A9096", "#B9BEC4", "#E4E8EC", "#FFFFFF")
+COW_DARK_RAMP = ramp("#101014", "#1E1E22", "#2C2C34", "#3A3A42")
+COW_SNOUT_RAMP = ramp("#9A6070", "#C58A9A", "#E5A8B6", "#F4C8D2")
+TRACTOR_BODIES = {
+    "Red": ramp("#6E1D1A", "#9B2A25", "#C73A33", "#E8625A"),
+    "Green": ramp("#1E5A26", "#2C7A36", "#3F9B4A", "#6CC27A"),
+    "Blue": ramp("#1B3F7A", "#2859A8", "#3B7BD6", "#6FA4F2"),
+}
+VAN_BODY = ramp("#9AA3AE", "#C8D0D8", "#E9EEF2", "#FFFFFF")
+VAN_STRIPE = ramp("#1B3F7A", "#2859A8", "#3B7BD6", "#6FA4F2")
+HUB_COLOUR = hex_rgb("#E6BE46")
+SMOKE = hex_rgb("#C8CCD2")
+DUST = hex_rgb("#966E46")
+STATUS_BLUE = hex_rgb("#7DC8FF")
+VOID = hex_rgb("#0E1116")
+SHEET_BACKGROUND = hex_rgb("#14181E")
+SHEET_BAND = hex_rgb("#202630")
+SHEET_TITLE = hex_rgb("#E8EDF4")
+SHEET_ACCENT = hex_rgb("#E8B83A")
+SHEET_LABEL = hex_rgb("#D6DCE4")

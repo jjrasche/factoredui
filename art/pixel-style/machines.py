@@ -1,13 +1,7 @@
 from model import Box, Disc, Model, slot, to_ground
-from palette import CHROME, GLASS, ramp
+from palette import CHROME, DUST, GLASS, HUB_COLOUR, SMOKE, TRACTOR_BODIES, VAN_BODY, VAN_STRIPE
 
-TRACTOR_BODIES = {
-    "Red": ramp("#6E1D1A", "#9B2A25", "#C73A33", "#E8625A"),
-    "Green": ramp("#1E5A26", "#2C7A36", "#3F9B4A", "#6CC27A"),
-    "Blue": ramp("#1B3F7A", "#2859A8", "#3B7BD6", "#6FA4F2"),
-}
 TIRE = (CHROME[3], CHROME[2], CHROME[0])
-HUB_COLOUR = (230, 190, 70, 255)
 DARK = (CHROME[2], CHROME[1], CHROME[0])
 GLASS_PAINT = (GLASS[2], GLASS[1], GLASS[0])
 IMPLEMENT = (CHROME[5], CHROME[4], CHROME[3])
@@ -44,8 +38,7 @@ def tractor(body_name, state):
 
 
 def van(body_name="White"):
-    body = ramp("#9AA3AE", "#C8D0D8", "#E9EEF2", "#FFFFFF")
-    stripe = ramp("#1B3F7A", "#2859A8", "#3B7BD6", "#6FA4F2")
+    body, stripe = VAN_BODY, VAN_STRIPE
     parts = [
         Box((-9.0, -3.0, 1.6), (6.5, 3.0, 4.2), slot(body), "lower"),
         Box((-9.0, -3.05, 3.0), (6.5, 3.05, 3.6), slot(stripe), "stripe"),
@@ -76,12 +69,12 @@ def tractor_effects(state):
 
     def draw(canvas, iso, origin, facing):
         ox, oy = origin
-        smoke = (200, 204, 210, 255)
+        smoke = SMOKE
         exhaust = to_ground(facing, 4.7, 0.75) + (7.4,)
         for step, radius in enumerate((1.2, 1.8, 2.5)):
             sx, sy = iso.point(exhaust[0], exhaust[1], exhaust[2] + step * 1.7)
             dither_puff(canvas, (ox + sx + step * 1.5, oy + sy), radius * iso.across / 3.2 * 2.4, smoke)
-        dust = (150, 110, 70, 255)
+        dust = DUST
         rear = to_ground(facing, -10.4, 0.0) + (0.4,)
         for step in range(3):
             lateral = (step - 1) * 2.2
