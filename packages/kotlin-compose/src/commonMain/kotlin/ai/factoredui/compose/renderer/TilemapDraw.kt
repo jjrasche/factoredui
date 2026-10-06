@@ -51,6 +51,7 @@ internal class TilemapScene(
     val density: Float,
     val sideMm: Double,
     val images: Map<String, Painter>,
+    val pixelSprites: PixelSprites? = null,
 )
 
 internal class RecordedKey {
@@ -66,6 +67,7 @@ internal class RecordedKey {
 }
 
 internal fun DrawScope.drawScene(scene: TilemapScene) {
+    scene.pixelSprites?.let { return drawPixelSprites(it, scene.space) }
     for (drawable in scene.drawables) {
         when (drawable) {
             is FootprintDrawable -> drawFootprint(drawable.footprint, scene)
@@ -156,6 +158,9 @@ internal fun instanceScreenBounds(drawable: InstanceDrawable, scene: TilemapScen
 }
 
 internal fun pickDrawnInstance(scene: TilemapScene, content: Offset, pad: Float): TileInstance? =
+    if (scene.pixelSprites != null) pickPixelSprite(scene.pixelSprites, scene, content, pad) else pickDrawnShape(scene, content, pad)
+
+private fun pickDrawnShape(scene: TilemapScene, content: Offset, pad: Float): TileInstance? =
     scene.drawables
         .filterIsInstance<InstanceDrawable>()
         .filter { drawable -> instanceScreenBounds(drawable, scene)?.inflate(pad)?.contains(content) == true }

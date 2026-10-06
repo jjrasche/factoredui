@@ -1,7 +1,15 @@
 package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.layout.GroundPoint
+import ai.factoredui.compose.layout.InstanceDrawable
 import ai.factoredui.compose.layout.TileBounds
+import ai.factoredui.compose.layout.TileInstance
+import ai.factoredui.compose.pixel.PixelDraw
+import ai.factoredui.compose.pixel.PixelSwap
+import ai.factoredui.compose.pixel.pickPixelInstance
+import ai.factoredui.compose.pixel.spriteBoxAt
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import ai.factoredui.compose.layout.TileCoord
 import ai.factoredui.compose.layout.TileFootprint
 import ai.factoredui.compose.layout.TileShape
@@ -109,6 +117,30 @@ private fun groundPaint(images: PixelImages, patternName: String, costs: PixelCo
     isAntiAlias = false
     filterQuality = FilterQuality.None
     if (costs.isGroundTextured) shader = ImageShader(images.pattern(patternName), TileMode.Repeated, TileMode.Repeated) else color = images.flatColour(patternName)
+}
+
+internal class PixelSprites(val draws: List<PixelDraw>, val images: PixelImages, val swaps: Map<String, PixelSwap>)
+
+internal fun DrawScope.drawPixelSprites(sprites: PixelSprites, space: TilemapSpace) {
+    for (draw in sprites.draws) {
+        val at = space.toContent(draw.ground)
+        val box = spriteBoxAt(draw.sprite, at.x, at.y)
+        val size = IntSize(draw.sprite.width, draw.sprite.height)
+        val target = IntOffset(box.left, box.top)
+        if (isSwapped(draw, sprites.swaps)) {
+            drawImage(sprites.images.swappedImage(draw.sprite, draw.ramp!!), IntOffset.Zero, size, target, size, filterQuality = FilterQuality.None)
+        } else {
+            drawImage(sprites.images.sheets[draw.sprite.sheet], IntOffset(draw.sprite.x, draw.sprite.y), size, target, size, filterQuality = FilterQuality.None)
+        }
+    }
+}
+
+private fun isSwapped(draw: PixelDraw, swaps: Map<String, PixelSwap>): Boolean =
+    draw.ramp != null && swaps[draw.sprite.swap]?.let { it.base != draw.ramp && draw.ramp in it.ramps } == true
+
+internal fun pickPixelSprite(sprites: PixelSprites, scene: TilemapScene, content: Offset, pad: Float): TileInstance? {
+    val picked = pickPixelInstance(sprites.draws, { ground -> scene.space.toContent(ground).let { it.x to it.y } }, content.x, content.y, pad) ?: return null
+    return scene.drawables.filterIsInstance<InstanceDrawable>().firstOrNull { it.instance.id == picked }?.instance
 }
 
 internal fun DrawScope.drawPixelGround(ground: PixelGroundScene) {

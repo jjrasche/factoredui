@@ -22,7 +22,10 @@ import ai.factoredui.compose.layout.tileCorners
 import ai.factoredui.compose.layout.tileSideMm
 import ai.factoredui.compose.layout.tilemapScreenBounds
 import ai.factoredui.compose.layout.unproject
+import ai.factoredui.compose.pixel.EMBEDDED_PIXEL_ATLAS
 import ai.factoredui.compose.pixel.PIXEL_LOOK
+import ai.factoredui.compose.pixel.PixelPlanInput
+import ai.factoredui.compose.pixel.planPixelSprites
 import ai.factoredui.compose.pixel.pixelArtScaleFor
 import ai.factoredui.compose.pixel.pixelCostsFor
 import ai.factoredui.compose.pixel.pixelFitView
@@ -211,12 +214,19 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     val recordedGround = remember { RecordedKey() }
     val recordedScene = remember { RecordedKey() }
     val scenePhase = if (animated) phase else 0
-    val scene = remember(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images) {
-        TilemapScene(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images)
+    val usesById = remember(uses) { uses.associateBy { it.id } }
+    val quarterTurns = resolveViewState(resolvedProps["view_state"]).quarterTurns
+    val pixelSprites = pixelImages?.let { images ->
+        remember(sceneFootprints, instances, usesById, images, sceneView.tileFeet, cols, rows, quarterTurns, pixelCosts) {
+            val swaps = EMBEDDED_PIXEL_ATLAS.manifest.swaps
+            PixelSprites(planPixelSprites(PixelPlanInput(sceneFootprints, instances, usesById, images.scale, swaps, sceneView.tileFeet, cols, rows, quarterTurns, pixelCosts)), images, swaps)
+        }
+    }
+    val scene = remember(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images, pixelSprites) {
+        TilemapScene(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images, pixelSprites)
     }
     val terrain = rememberTerrainPass(resolvedProps, shape, space, cols, rows, sideMm, look)
     val waterFrame = waterFrameFor(phase, animated, pixelCosts)
-    val usesById = remember(uses) { uses.associateBy { it.id } }
     val pixelGround = pixelImages?.let { images ->
         remember(space, sceneFootprints, usesById, waterFrame, pixelCosts, images) { pixelGroundSceneOf(space, cols, rows, sceneFootprints, usesById, images, waterFrame, pixelCosts) }
     }
@@ -339,9 +349,9 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
                     groundLayer.record(size = contentSize) { drawGround(shape, space, cols, rows, look, density, withChecker) }
                     recordedGround.remember(shape, space, look, density, withChecker)
                 }
-                if (!recordedScene.holds(scene, pixelGround)) {
-                    sceneLayer.record(size = contentSize) { if (pixelGround == null) drawScene(scene) }
-                    recordedScene.remember(scene, pixelGround)
+                if (!recordedScene.holds(scene, pixelCosts)) {
+                    sceneLayer.record(size = contentSize) { drawScene(scene) }
+                    recordedScene.remember(scene, pixelCosts)
                 }
                 recordTerrainLayer(terrain, space, cols, rows, current.scale, contentSize)
                 withTransform({
