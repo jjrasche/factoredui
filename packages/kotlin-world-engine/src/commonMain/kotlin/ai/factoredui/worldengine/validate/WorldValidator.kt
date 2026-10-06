@@ -4,6 +4,8 @@ import ai.factoredui.worldengine.expression.ExprNode
 import ai.factoredui.worldengine.expression.ExpressionException
 import ai.factoredui.worldengine.expression.projectedAgentTypes
 import ai.factoredui.worldengine.expression.referencedNames
+import ai.factoredui.worldengine.ground.expectedGroundLength
+import ai.factoredui.worldengine.ground.outOfRangeVertices
 import ai.factoredui.worldengine.json.MalformedDataException
 import ai.factoredui.worldengine.json.isTruthy
 import ai.factoredui.worldengine.json.objects
@@ -33,7 +35,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 
-val SCANS: List<String> = listOf("worlds", "expressions", "names", "seeds", "rules", "actions", "links", "projections", "figures", "object_types", "footprints", "instances")
+val SCANS: List<String> = listOf("worlds", "expressions", "names", "seeds", "rules", "actions", "links", "projections", "figures", "object_types", "footprints", "instances", "grounds")
 val ERROR_FIELDS: List<String> = listOf("position_mm", "height_mm", "crown_radius_mm")
 val SOURCED_KINDS: List<String> = listOf("price", "labor", "yield", "regulation", "demographic")
 val GENERIC_SPRITES: List<String> = listOf("flat", "block", "tree", "arch", "water", "fence")
@@ -78,6 +80,7 @@ object WorldValidator {
         facts.getValue("object_types") += typeFacts(name, world)
         facts.getValue("footprints") += footprintFacts(name, world)
         facts.getValue("instances") += instanceFacts(name, world)
+        facts.getValue("grounds") += groundFacts(name, world)
     }
 
     private fun classifySiteProblem(kind: String?, message: String?): List<Pair<String, Any?>> {
@@ -218,6 +221,23 @@ object WorldValidator {
                 "unreasoned" to ERROR_FIELDS.filter { it in error && !isFigureReasoned(error.getValue(it)) },
             )
         }
+    }
+
+    private fun groundFacts(name: String, world: World): List<JsonObject> {
+        val ground = world.ground ?: return emptyList()
+        val expected = expectedGroundLength(world.cols, world.rows)
+        return listOf(
+            fact(
+                "world" to name,
+                "cols" to world.cols,
+                "rows" to world.rows,
+                "length" to ground.heights.size,
+                "expected_length" to expected,
+                "size_agrees" to (ground.heights.size == expected),
+                "out_of_range" to outOfRangeVertices(ground.heights),
+                "error_reasoned" to isFigureReasoned(ground.verticalError),
+            ),
+        )
     }
 
     private fun isFigureReasoned(figure: JsonElement): Boolean {

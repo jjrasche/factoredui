@@ -6,6 +6,7 @@ import ai.factoredui.worldengine.json.requiredText
 import ai.factoredui.worldengine.log.EventLog
 import ai.factoredui.worldengine.log.LogResult
 import ai.factoredui.worldengine.outputs.WorldOutputs
+import ai.factoredui.worldengine.text.formatFixedTrimmed
 import ai.factoredui.worldengine.text.formatGeneral
 import ai.factoredui.worldengine.text.pythonJsonDumps
 import ai.factoredui.worldengine.world.World
@@ -58,6 +59,7 @@ fun formatOutputs(world: World, outputs: WorldOutputs): List<String> {
     outputs.stocks.forEach { (id, value) -> lines += "stock $id ${formatGeneral(value, 6)} ${world.stocks.getValue(id).unit}" }
     outputs.scoring.forEach { (id, value) -> lines += "score $id ${formatMeasured(value)} ${world.scoring.getValue(id).unit}" }
     lines += "ticks ${outputs.ticks}"
+    outputs.ground?.let { lines += "ground version ${it.version} min ${formatFixedTrimmed(it.minMm, 3)} mm max ${formatFixedTrimmed(it.maxMm, 3)} mm" }
     return lines
 }
 

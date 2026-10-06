@@ -259,9 +259,11 @@ class ConformanceRunner(private val locations: ReferenceLocations = ReferenceLoc
         }
     }
 
-    private fun jsonOfOutputs(outputs: WorldOutputs): JsonElement = jsonOfObserved(
-        mapOf("counts" to outputs.counts, "areas" to outputs.areas, "equations" to outputs.equations, "stocks" to outputs.stocks, "scoring" to outputs.scoring, "ticks" to outputs.ticks),
-    )
+    private fun jsonOfOutputs(outputs: WorldOutputs): JsonElement {
+        val sections = mapOf("counts" to outputs.counts, "areas" to outputs.areas, "equations" to outputs.equations, "stocks" to outputs.stocks, "scoring" to outputs.scoring, "ticks" to outputs.ticks)
+        val ground = outputs.ground?.let { mapOf("ground" to mapOf("version" to it.version, "min_mm" to it.minMm, "max_mm" to it.maxMm)) }.orEmpty()
+        return jsonOfObserved(sections + ground)
+    }
 
     private fun jsonOfObserved(value: Any?): JsonElement = when (value) {
         null -> JsonNull

@@ -2,10 +2,14 @@ package ai.factoredui.worldengine.outputs
 
 import ai.factoredui.worldengine.events.Refusal
 import ai.factoredui.worldengine.expression.Evaluation
+import ai.factoredui.worldengine.ground.GroundSpec
+import ai.factoredui.worldengine.ground.GroundState
 import ai.factoredui.worldengine.json.missingKey
 import ai.factoredui.worldengine.state.State
 import ai.factoredui.worldengine.units.parseUnit
 import ai.factoredui.worldengine.world.World
+import kotlin.math.abs
+import kotlin.math.floor
 
 data class WorldOutputs(
     val counts: Map<String, Int>,
@@ -14,7 +18,10 @@ data class WorldOutputs(
     val stocks: Map<String, Double>,
     val scoring: Map<String, Double?>,
     val ticks: Long,
+    val ground: GroundReport? = null,
 )
+
+data class GroundReport(val version: Long, val minMm: Double, val maxMm: Double)
 
 fun convertToUnit(value: Double, unit: String?): Double = value / parseUnit(unit).factor
 
@@ -39,16 +46,46 @@ fun reportOutputs(world: World, state: State): WorldOutputs {
         stocks = world.stocks.values.associate { it.id to convertToUnit(state.stocks.getValue(it.id), it.requiredUnit()) },
         scoring = world.scoring.values.associate { it.id to convertMeasuredToUnit(evaluation.measuredNumberOf(world.ast(it.expr)), it.requiredUnit()) },
         ticks = state.ticks,
+        ground = state.ground?.let { reportGround(it) },
     )
 }
+
+private fun reportGround(ground: GroundState): GroundReport = GroundReport(ground.version, ground.lowestMm(), ground.highestMm())
 
 fun renderProps(world: World, state: State): Map<String, Any?> {
     val props = tilemapProps(world, state)
     props["units"] = "mm"
     props["instances"] = state.sortedInstanceRecords().map { it.drawnFields() }
     world.frame?.let { props["frame"] = it }
+    val ground = world.ground
+    val surface = state.ground
+    if (ground != null && surface != null) props.putAll(groundProps(world, ground, surface))
     return props
 }
+
+private fun groundProps(world: World, ground: GroundSpec, surface: GroundState): Map<String, Any?> {
+    val base = ground.seedHeightsMm()
+    return linkedMapOf(
+        "ground" to linkedMapOf(
+            "unit" to "mm",
+            "datum" to ground.datum,
+            "source" to ground.source,
+            "vertex_cols" to world.cols + 1,
+            "vertex_rows" to world.rows + 1,
+            "heights_mm" to surface.heightsMm.map { millimetreNumber(it) },
+            "version" to surface.version,
+        ),
+        "ground_base" to linkedMapOf(
+            "heights_mm" to base.map { millimetreNumber(it) },
+            "cut_fill_mm" to surface.cutFillMm(base).map { millimetreNumber(it) },
+        ),
+    )
+}
+
+private const val LARGEST_EXACT_WHOLE_MM = 9_007_199_254_740_992.0
+
+// A whole height is written as an integer, as the reference writes the integer heights a world declares.
+fun millimetreNumber(value: Double): Number = if (value == floor(value) && abs(value) <= LARGEST_EXACT_WHOLE_MM) value.toLong() else value
 
 private fun tilemapProps(world: World, state: State): MutableMap<String, Any?> {
     val outputs = reportOutputs(world, state)

@@ -184,6 +184,7 @@ private fun checkCall(function: String, arguments: List<ExprNode>, scope: Scope)
     "projected_support" -> checkProjectedSupport(arguments, scope)
     "count_instances" -> checkCountInstances(arguments, scope)
     "min_distance_mm" -> checkMinDistance(arguments, scope)
+    in GROUND_FUNCTIONS -> checkGroundCall(function, arguments, scope)
     else -> throw ExpressionException("unknown_word", "function '$function' is not in the closed vocabulary")
 }
 
@@ -269,6 +270,15 @@ private fun checkMinDistance(arguments: List<ExprNode>, scope: Scope): ValueType
     requireArity("min_distance_mm", arguments, listOf(2))
     arguments.forEach { requireInstanceSet(it, scope, "min_distance_mm") }
     return ValueType.Num(FT_DIMENSION)
+}
+
+private fun checkGroundCall(function: String, arguments: List<ExprNode>, scope: Scope): ValueType {
+    requireArity(function, arguments, listOf(0))
+    if (scope.world.ground == null) throw ExpressionException("unknown_word", "$function(): world ${scope.world.id} declares no ground")
+    if (function in TILE_GROUND_FUNCTIONS && scope.site != ScopeSite.RULE) {
+        throw ExpressionException("unknown_word", "$function() reads the tile a rule is bound to; it exists only inside a rule")
+    }
+    return if (function == "slope_pct") ValueType.Num(Dimension.NONE) else ValueType.Num(FT_DIMENSION)
 }
 
 private fun checkProjectedSupport(arguments: List<ExprNode>, scope: Scope): ValueType {

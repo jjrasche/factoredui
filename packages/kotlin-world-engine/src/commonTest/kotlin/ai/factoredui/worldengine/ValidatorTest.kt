@@ -37,7 +37,7 @@ class ValidatorTest {
         val report = WorldValidator.validate(REFERENCE_WORLD_FILES)
         assertEquals(emptyList(), report.fired)
         assertEquals(emptyList(), report.blind)
-        assertEquals(listOf(DUNGEON_FILE, LOCALITY_FILE, PARCEL_FILE, LIDAR_FILE), report.valid.sorted())
+        assertEquals(listOf(DUNGEON_FILE, LOCALITY_FILE, PARCEL_FILE, GROUND_DEMO_FILE, LIDAR_FILE), report.valid.sorted())
     }
 
     @Test
@@ -69,6 +69,9 @@ class ValidatorTest {
     @Test fun broken_copy_instance_source() = assertEveryBrokenCopyTrips("instance-source")
     @Test fun broken_copy_instance_error() = assertEveryBrokenCopyTrips("instance-error")
     @Test fun broken_copy_instance_error_reason() = assertEveryBrokenCopyTrips("instance-error-reason")
+    @Test fun broken_copy_ground_size() = assertEveryBrokenCopyTrips("ground-size")
+    @Test fun broken_copy_ground_range() = assertEveryBrokenCopyTrips("ground-range")
+    @Test fun broken_copy_ground_error_reason() = assertEveryBrokenCopyTrips("ground-error-reason")
 
     @Test
     fun an_empty_worlds_directory_is_blind_not_green() {
@@ -129,7 +132,7 @@ class ValidatorTest {
             "blind-worlds", "world-parses", "world-schema", "expression-parses", "unknown-word", "unit-mismatch", "expression-bound",
             "name-cycle", "seed-replays", "rule-message", "unknown-target", "action-emits", "link-resolves", "link-fits",
             "projection-not-binding", "figure-sourced", "sprite-known", "footprint-mm-agrees", "instance-id-unique", "instance-source",
-            "instance-error", "instance-error-reason",
+            "instance-error", "instance-error-reason", "ground-size", "ground-range", "ground-error-reason",
         )
     }
 }

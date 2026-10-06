@@ -1,6 +1,7 @@
 package ai.factoredui.worldengine.state
 
 import ai.factoredui.worldengine.expression.Value
+import ai.factoredui.worldengine.ground.GroundState
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -12,14 +13,25 @@ data class Tile(val col: Int, val row: Int) : Comparable<Tile> {
     fun touchKey(): String = "$col,$row"
 }
 
+interface TileFootprint {
+    val id: String?
+    val type: String?
+    val tiles: List<Tile>
+}
+
+data class GroundTile(val tile: Tile, override val type: String?) : TileFootprint {
+    override val id: String? get() = null
+    override val tiles: List<Tile> get() = listOf(tile)
+}
+
 class Instance(
-    val id: String,
-    val type: String,
+    override val id: String,
+    override val type: String,
     val col: Int,
     val row: Int,
-    val tiles: List<Tile>,
+    override val tiles: List<Tile>,
     val props: MutableMap<String, Value>,
-) {
+) : TileFootprint {
     fun copy(): Instance = Instance(id, type, col, row, tiles, LinkedHashMap(props))
 }
 
@@ -72,6 +84,7 @@ class State {
     val agents: MutableMap<String, AgentRecord> = LinkedHashMap()
     val endorsements: MutableList<Endorsement> = mutableListOf()
     val instanceLayer: MutableMap<String, InstanceRecord> = LinkedHashMap()
+    var ground: GroundState? = null
 
     fun copy(): State {
         val copied = State()
@@ -82,6 +95,7 @@ class State {
         agents.forEach { (id, agent) -> copied.agents[id] = agent.copy() }
         copied.endorsements.addAll(endorsements)
         copied.instanceLayer.putAll(instanceLayer)
+        copied.ground = ground
         return copied
     }
 
@@ -109,8 +123,13 @@ class State {
             "endorsements" to JsonArray(endorsements.map { JsonObject(mapOf("actor" to JsonPrimitive(it.actor), "weight_class" to JsonPrimitive(it.weightClass))) }),
         )
         if (instanceLayer.isNotEmpty()) canonical["instances"] = JsonObject(instanceLayer.entries.sortedBy { it.key }.associate { it.key to it.value.toJson() })
+        ground?.let { canonical["ground"] = groundSnapshot(it) }
         return JsonObject(canonical)
     }
+
+    private fun groundSnapshot(ground: GroundState): JsonObject = JsonObject(
+        linkedMapOf("heights_mm" to JsonArray(ground.heightsMm.map { JsonPrimitive(it) }), "version" to JsonPrimitive(ground.version)),
+    )
 
     private fun cellEntry(tile: Tile, instanceId: String): JsonArray =
         JsonArray(listOf(JsonPrimitive(tile.col), JsonPrimitive(tile.row), JsonPrimitive(instances.getValue(instanceId).type)))

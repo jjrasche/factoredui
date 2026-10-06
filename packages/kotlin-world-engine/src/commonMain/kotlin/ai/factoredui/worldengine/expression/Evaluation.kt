@@ -4,7 +4,9 @@ import ai.factoredui.worldengine.json.MalformedDataException
 import ai.factoredui.worldengine.json.missingKey
 import ai.factoredui.worldengine.state.AgentRecord
 import ai.factoredui.worldengine.json.pythonFloat
-import ai.factoredui.worldengine.state.Instance
+import ai.factoredui.worldengine.ground.tileMeanMm
+import ai.factoredui.worldengine.ground.tileSlopePct
+import ai.factoredui.worldengine.state.TileFootprint
 import ai.factoredui.worldengine.state.InstanceRecord
 import ai.factoredui.worldengine.state.State
 import ai.factoredui.worldengine.state.Tile
@@ -20,7 +22,7 @@ private val FALSE: Value = Value.Bool(false)
 class Evaluation(
     val world: World,
     val state: State,
-    val tileInstance: Instance? = null,
+    val tileInstance: TileFootprint? = null,
     val agent: AgentRecord? = null,
     val actedInstance: InstanceRecord? = null,
 ) {
@@ -99,7 +101,23 @@ class Evaluation(
         "edge" -> Value.Num(edgeClearance())
         "distance" -> Value.Num(nearestDistance(tilesOf(arguments[0]), tilesOf(arguments[1])))
         "projected_support" -> Value.Num(projectedSupport(quotedUse(arguments[0])))
+        in GROUND_FUNCTIONS -> groundValue(function)
         else -> throw ExpressionException("unknown_word", "function '$function'")
+    }
+
+    private fun groundValue(function: String): Value {
+        val surface = state.ground ?: throw MalformedDataException("'NoneType' object is not iterable")
+        return when (function) {
+            "min_ground_mm" -> Value.Num(surface.lowestMm() / MM_PER_FT)
+            "max_ground_mm" -> Value.Num(surface.highestMm() / MM_PER_FT)
+            else -> tileInstance?.let { Value.Num(boundGroundValue(function, surface.heightsMm, it.tiles)) } ?: Value.Null
+        }
+    }
+
+    private fun boundGroundValue(function: String, heights: List<Double>, tiles: List<Tile>): Double {
+        if (function == "ground_mm") return compensatedSum(tiles.map { tileMeanMm(heights, world.cols, it) }) / tiles.size / MM_PER_FT
+        val sideMm = world.tileMm().toDouble()
+        return tiles.maxOf { tileSlopePct(heights, world.cols, it, sideMm) }
     }
 
     private fun choose(arguments: List<ExprNode>): Value {

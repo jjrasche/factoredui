@@ -6,6 +6,7 @@ import ai.factoredui.worldengine.json.MalformedDataException
 import ai.factoredui.worldengine.log.EventLog
 import ai.factoredui.worldengine.log.LogEvent
 import ai.factoredui.worldengine.log.LogResult
+import ai.factoredui.worldengine.log.REVERTIBLE_VERBS
 import ai.factoredui.worldengine.outputs.TapDecision
 import ai.factoredui.worldengine.outputs.countUses
 import ai.factoredui.worldengine.outputs.renderProps
@@ -23,6 +24,8 @@ sealed interface WorldAction {
     data class Place(val use: String, val col: Int, val row: Int) : WorldAction
     data class Remove(val col: Int, val row: Int) : WorldAction
     data class Tick(val steps: Int) : WorldAction
+    data class Dig(val col: Int, val row: Int, val depthMm: Number) : WorldAction
+    data class Raise(val col: Int, val row: Int, val heightMm: Number) : WorldAction
     data class Verb(val verb: String, val parameters: JsonObject) : WorldAction
 }
 
@@ -33,6 +36,17 @@ sealed interface DispatchResult {
 }
 
 data class PlacedObject(val id: String, val type: String, val col: Int, val row: Int, val width: Int, val height: Int)
+
+data class GroundView(
+    val datum: String,
+    val source: String,
+    val vertexCols: Int,
+    val vertexRows: Int,
+    val heightsMm: List<Double>,
+    val baseHeightsMm: List<Double>,
+    val cutFillMm: List<Double>,
+    val version: Long,
+)
 
 data class ScoreView(
     val id: String,
@@ -94,6 +108,13 @@ class WorldSession(
 
     fun counts(branch: String = currentBranch): Map<String, Int> = countUses(world, log.stateOf(branch))
 
+    fun ground(branch: String = currentBranch): GroundView? {
+        val declared = world.ground ?: return null
+        val surface = log.stateOf(branch).ground ?: return null
+        val base = declared.seedHeightsMm()
+        return GroundView(declared.datum, declared.source, world.cols + 1, world.rows + 1, surface.heightsMm, base, surface.cutFillMm(base), surface.version)
+    }
+
     fun instanceRecords(branch: String = currentBranch): List<InstanceRecord> = log.stateOf(branch).sortedInstanceRecords()
 
     fun placedObjects(branch: String = currentBranch): List<PlacedObject> =
@@ -130,14 +151,14 @@ class WorldSession(
 
     fun undoLast(branch: String = currentBranch, actor: String = defaultActor): DispatchResult {
         if (branch !in log.heads) return DispatchResult.Refused("unknown-branch", "no branch '$branch'")
-        val undoable = lastUndoableEvent(branch) ?: return DispatchResult.Refused("nothing-to-undo", "no place or remove on $branch is left to undo")
+        val undoable = lastUndoableEvent(branch) ?: return DispatchResult.Refused("nothing-to-undo", "no place, remove, dig or raise on $branch is left to undo")
         return revert(undoable.id, branch, actor)
     }
 
     private fun lastUndoableEvent(branch: String): LogEvent? {
         val applied = log.flatten(log.chain(log.heads[branch]))
         val reverted = applied.filter { it.action == "revert" }.mapNotNull { (it.parameters["event"] as? JsonPrimitive)?.content }.toSet()
-        return applied.lastOrNull { (it.action == "place" || it.action == "remove") && it.id !in reverted }
+        return applied.lastOrNull { it.action in REVERTIBLE_VERBS && it.id !in reverted }
     }
 
     fun endorse(weightClass: String, actor: String = defaultActor, branch: String = currentBranch): DispatchResult =
@@ -147,8 +168,13 @@ class WorldSession(
         is WorldAction.Place -> "place" to JsonObject(linkedMapOf("type" to JsonPrimitive(action.use), "col" to JsonPrimitive(action.col), "row" to JsonPrimitive(action.row)))
         is WorldAction.Remove -> "remove" to JsonObject(linkedMapOf("col" to JsonPrimitive(action.col), "row" to JsonPrimitive(action.row)))
         is WorldAction.Tick -> "tick" to JsonObject(mapOf("n" to JsonPrimitive(action.steps)))
+        is WorldAction.Dig -> "dig" to groundParameters(action.col, action.row, "depth_mm", action.depthMm)
+        is WorldAction.Raise -> "raise" to groundParameters(action.col, action.row, "height_mm", action.heightMm)
         is WorldAction.Verb -> action.verb to action.parameters
     }
+
+    private fun groundParameters(col: Int, row: Int, amountField: String, amountMm: Number): JsonObject =
+        JsonObject(linkedMapOf("col" to JsonPrimitive(col), "row" to JsonPrimitive(row), amountField to JsonPrimitive(amountMm)))
 
     private fun guarded(attempt: () -> LogResult): DispatchResult = try {
         when (val result = attempt()) {

@@ -33,6 +33,7 @@ class ReferenceParityTest {
         assertEmbeddedMatches(LOCALITY_WORLD_JSON, "worlds/locality-stub.world.json")
         assertEmbeddedMatches(DUNGEON_WORLD_JSON, "worlds/dungeon-tiny.world.json")
         assertEmbeddedMatches(LIDAR_WORLD_JSON, "worlds/parcel-lidar-sample.world.json")
+        assertEmbeddedMatches(GROUND_DEMO_WORLD_JSON, "worlds/parcel-ground-demo.world.json")
         assertEmbeddedMatches(PARCEL_DEMO_JSON, "demos/parcel-five-acre.demo.json")
         assertEmbeddedMatches(DUNGEON_DEMO_JSON, "demos/dungeon-tiny.demo.json")
         assertEmbeddedMatches(MUTATIONS_JSON, "mutations.json")

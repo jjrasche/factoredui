@@ -2,7 +2,7 @@ package ai.factoredui.worldengine.expression
 
 import ai.factoredui.worldengine.json.MalformedDataException
 import ai.factoredui.worldengine.json.pythonFloat
-import ai.factoredui.worldengine.state.Instance
+import ai.factoredui.worldengine.state.TileFootprint
 import ai.factoredui.worldengine.state.InstanceRecord
 import ai.factoredui.worldengine.text.pythonFloatRepr
 import ai.factoredui.worldengine.units.parseUnit
@@ -16,7 +16,7 @@ sealed interface Value {
     data class Num(val value: Double) : Value
     data class Bool(val value: Boolean) : Value
     data class Text(val value: String) : Value
-    data class TileRef(val instance: Instance?) : Value
+    data class TileRef(val instance: TileFootprint?) : Value
     data class InstanceRef(val record: InstanceRecord?) : Value
     data object Null : Value
 }

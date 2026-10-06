@@ -8,7 +8,9 @@ import ai.factoredui.worldengine.units.parseUnit
 const val MAX_NODES = 256
 const val MAX_DEPTH = 24
 
-val FUNCTIONS: List<String> = listOf("count", "sum", "neighbors", "side", "edge", "distance", "if", "min", "max", "projected_support", "count_instances", "min_distance_mm")
+val GROUND_FUNCTIONS: List<String> = listOf("ground_mm", "min_ground_mm", "max_ground_mm", "slope_pct")
+val TILE_GROUND_FUNCTIONS: List<String> = listOf("ground_mm", "slope_pct")
+val FUNCTIONS: List<String> = listOf("count", "sum", "neighbors", "side", "edge", "distance", "if", "min", "max", "projected_support", "count_instances", "min_distance_mm") + GROUND_FUNCTIONS
 val KEYWORDS: List<String> = listOf("and", "or", "not", "true", "false")
 val COMPARATORS: List<String> = listOf("<", "<=", ">", ">=", "==", "!=")
 
@@ -150,7 +152,8 @@ private class ExpressionParser(private val tokens: List<Token>) {
             throw ExpressionException("unknown_word", "function '$function' is not in the closed vocabulary ${pythonTupleRepr(FUNCTIONS)}")
         }
         expect("(")
-        val arguments = mutableListOf(parseOr())
+        val arguments = mutableListOf<ExprNode>()
+        if (peek() != ")") arguments += parseOr()
         while (peek() == ",") {
             take()
             arguments += parseOr()

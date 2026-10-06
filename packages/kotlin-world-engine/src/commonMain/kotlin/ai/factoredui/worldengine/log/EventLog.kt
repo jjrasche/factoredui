@@ -4,6 +4,9 @@ import ai.factoredui.worldengine.events.Refusal
 import ai.factoredui.worldengine.events.RefusalException
 import ai.factoredui.worldengine.events.applyEvent
 import ai.factoredui.worldengine.events.footprintTiles
+import ai.factoredui.worldengine.events.inverseGroundChange
+import ai.factoredui.worldengine.ground.GROUND_VERBS
+import ai.factoredui.worldengine.ground.tileCornerTouches
 import ai.factoredui.worldengine.expression.Value
 import ai.factoredui.worldengine.json.MalformedDataException
 import ai.factoredui.worldengine.json.asTextOrNull
@@ -18,6 +21,7 @@ import ai.factoredui.worldengine.schema.EVENTS_SCHEMA_JSON
 import ai.factoredui.worldengine.schema.schemaErrors
 import ai.factoredui.worldengine.state.Instance
 import ai.factoredui.worldengine.state.State
+import ai.factoredui.worldengine.state.Tile
 import ai.factoredui.worldengine.text.pythonListRepr
 import ai.factoredui.worldengine.text.pythonRepr
 import ai.factoredui.worldengine.text.pythonStr
@@ -31,7 +35,8 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-val MERGEABLE_VERBS: List<String> = listOf("place", "remove", "tick", "enroll", "opt_in", "revert", "place_instance", "remove_instance")
+val MERGEABLE_VERBS: List<String> = listOf("place", "remove", "tick", "enroll", "opt_in", "revert", "place_instance", "remove_instance") + GROUND_VERBS
+val REVERTIBLE_VERBS: List<String> = listOf("place", "remove") + GROUND_VERBS
 
 data class BranchMeta(val from: String?, val isProposal: Boolean)
 
@@ -148,6 +153,7 @@ class EventLog(val world: World) {
             "remove" -> instanceAtParameters(event, prior).tiles.map { it.touchKey() }
             "place_instance" -> listOf("instance:${event.id}")
             "remove_instance" -> listOf("instance:${pythonStr(parameters.required("id"))}")
+            in GROUND_VERBS -> tileCornerTouches(Tile(pythonInt(parameters.required("col")).toInt(), pythonInt(parameters.required("row")).toInt()))
             "tick" -> listOf("clock")
             "enroll", "opt_in" -> listOf("agent:${pythonStr(parameters.required("agent_id"))}")
             "revert" -> lookup(pythonStr(parameters.required("event"))).touches
@@ -224,7 +230,7 @@ class EventLog(val world: World) {
         val ids = applied.map { it.id }
         if (eventId !in ids) return Plan.Refused(Refusal("revert-unknown", "$eventId is not applied on $branch"))
         val target = lookup(eventId)
-        if (target.action != "place" && target.action != "remove") {
+        if (target.action !in REVERTIBLE_VERBS) {
             return Plan.Refused(Refusal("revert-unsupported", "only place and remove revert; branch from before $eventId instead"))
         }
         if (applied.any { it.action == "revert" && pythonStr(it.parameters.required("event")) == eventId }) {
@@ -241,6 +247,7 @@ class EventLog(val world: World) {
             val position = JsonObject(linkedMapOf("col" to target.parameters.required("col"), "row" to target.parameters.required("row")))
             return JsonObject(linkedMapOf("action" to JsonPrimitive("remove"), "parameters" to position))
         }
+        if (target.action in GROUND_VERBS) return inverseGroundChange(target.action, target.parameters)
         val removed = target.removed ?: throw missingKey("removed")
         return JsonObject(linkedMapOf("action" to JsonPrimitive("place"), "parameters" to removed))
     }

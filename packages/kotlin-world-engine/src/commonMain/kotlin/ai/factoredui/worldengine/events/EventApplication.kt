@@ -19,6 +19,7 @@ import ai.factoredui.worldengine.state.Instance
 import ai.factoredui.worldengine.state.InstanceRecord
 import ai.factoredui.worldengine.state.State
 import ai.factoredui.worldengine.state.Tile
+import ai.factoredui.worldengine.state.TileFootprint
 import ai.factoredui.worldengine.units.parseUnit
 import ai.factoredui.worldengine.world.RuleSpec
 import ai.factoredui.worldengine.world.World
@@ -47,6 +48,7 @@ fun applyEvent(world: World, state: State, event: AppliedEvent, lookup: EventLoo
     "remove" -> applyRemove(world, state, event)
     "place_instance" -> applyPlaceInstance(world, state, event)
     "remove_instance" -> applyRemoveInstance(world, state, event)
+    "dig", "raise" -> applyGroundChange(world, state, event)
     "tick" -> applyTick(world, state, event)
     "enroll" -> applyEnroll(world, state, event)
     "opt_in" -> applyOptIn(world, state, event)
@@ -65,10 +67,10 @@ fun footprintTiles(world: World, typeId: String, col: Int, row: Int): List<Tile>
 fun isOnGrid(world: World, tile: Tile): Boolean = tile.col in 0 until world.cols && tile.row in 0 until world.rows
 
 sealed interface RuleSubject {
-    val type: String
+    val type: String?
 
-    data class TileObject(val instance: Instance) : RuleSubject {
-        override val type: String get() = instance.type
+    data class TileObject(val footprint: TileFootprint) : RuleSubject {
+        override val type: String? get() = footprint.type
     }
 
     data class PointObject(val record: InstanceRecord) : RuleSubject {
@@ -76,13 +78,14 @@ sealed interface RuleSubject {
     }
 }
 
-private fun ruleTargets(world: World, rule: RuleSpec, typeId: String): Boolean {
+private fun ruleTargets(world: World, rule: RuleSpec, typeId: String?): Boolean {
+    if (typeId == null) return "applies_to" !in rule.raw && "applies_to_tag" !in rule.raw
     rule.appliesTo?.let { return typeId in it }
     if ("applies_to_tag" in rule.raw) return rule.appliesToTag in (world.types[typeId]?.tags ?: emptyList())
     return true
 }
 
-private fun ruleApplies(world: World, rule: RuleSpec, verb: String, typeId: String): Boolean =
+private fun ruleApplies(world: World, rule: RuleSpec, verb: String, typeId: String?): Boolean =
     (rule.on ?: "place") == verb && ruleTargets(world, rule, typeId)
 
 fun checkRules(world: World, state: State, verb: String, acted: RuleSubject) {
@@ -98,7 +101,7 @@ fun checkRules(world: World, state: State, verb: String, acted: RuleSubject) {
 }
 
 private fun bindingFor(world: World, state: State, subject: RuleSubject): Evaluation = when (subject) {
-    is RuleSubject.TileObject -> Evaluation(world, state, tileInstance = subject.instance)
+    is RuleSubject.TileObject -> Evaluation(world, state, tileInstance = subject.footprint)
     is RuleSubject.PointObject -> Evaluation(world, state, actedInstance = subject.record)
 }
 

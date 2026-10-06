@@ -11,6 +11,7 @@ import ai.factoredui.worldengine.expression.describeType
 import ai.factoredui.worldengine.expression.numberOfUnit
 import ai.factoredui.worldengine.expression.projectedAgentTypes
 import ai.factoredui.worldengine.expression.referencedNames
+import ai.factoredui.worldengine.ground.findGroundProblems
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -147,6 +148,7 @@ private class CycleSearch(private val graph: Map<String, Set<String>>) {
 
 fun diagnose(world: World): List<Finding> {
     val findings = world.linkProblems.map { Finding("links", "link", it) }.toMutableList()
+    findings += findGroundProblems(world.ground, world.cols, world.rows).map { Finding("ground", "ground", it) }
     val cycle = findCycle(world)
     if (cycle.isNotEmpty()) findings += Finding("names", "cycle", cycle.joinToString(" -> "))
     expressionSites(world).forEach { site -> checkSite(site)?.let { findings += Finding(site.where, it.kind, it.message) } }

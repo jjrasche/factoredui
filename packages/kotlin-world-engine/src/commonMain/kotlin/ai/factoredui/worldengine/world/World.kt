@@ -9,6 +9,8 @@ import ai.factoredui.worldengine.expression.ExpressionException
 import ai.factoredui.worldengine.expression.parseExpression
 import ai.factoredui.worldengine.expression.storedProperty
 import ai.factoredui.worldengine.expression.Value
+import ai.factoredui.worldengine.ground.GroundSpec
+import ai.factoredui.worldengine.ground.GroundState
 import ai.factoredui.worldengine.json.MalformedDataException
 import ai.factoredui.worldengine.json.objects
 import ai.factoredui.worldengine.json.optionalList
@@ -43,6 +45,7 @@ class World private constructor(
     val rows: Int = pythonInt(grid.required("rows")).toInt()
     val tileFt: Double = pythonFloat(grid.required("tile_ft"))
     val frame: JsonElement? = doc["frame"]?.takeIf { it !is JsonNull }
+    val ground: GroundSpec? = doc["ground"]?.takeIf { it !is JsonNull }?.let { GroundSpec(it as? JsonObject ?: throw MalformedDataException("'ground' is not an object")) }
     val types: Map<String, ObjectType> = indexBy(doc.optionalList("object_types").objects().map { ObjectType.from(it) }) { it.id }
     val tags: Set<String> = types.values.flatMap { it.tags }.toSet()
     val equations: Map<String, EquationSpec> = indexBy(doc.optionalList("equations").objects().map { EquationSpec.from(it) }) { it.id }
@@ -170,6 +173,7 @@ class World private constructor(
 
     private fun buildSeedState(): State {
         var state = State()
+        state.ground = ground?.let { GroundState(it.seedHeightsMm(), 0) }
         stocks.values.forEach { stock -> state.stocks[stock.id] = pythonFloat(stock.initial) * parseUnit(stock.requiredUnit()).factor }
         doc.optionalList("seed").objects().forEach { entry ->
             if (entry.requiredText("action") == "place_instance") {
