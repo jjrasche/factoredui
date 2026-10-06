@@ -34,6 +34,13 @@ test("when scene +y points east, a point east of the origin lands on scene +y", 
   closeTo(east.yMm, 81.5 * MM_PER_METRE, 300, "y");
 });
 
+test("when scene +y points east, a point north of the origin lands on scene -x", () => {
+  const rotated = { ...ORIGIN, north_rotation_deg: 90 };
+  const north = sceneMmFromGps(rotated, ORIGIN.origin_latitude + 0.001, ORIGIN.origin_longitude);
+  closeTo(north.xMm, -111.09 * MM_PER_METRE, 300, "x");
+  closeTo(north.yMm, 0, 1, "y");
+});
+
 test("a true heading becomes a scene heading by subtracting the scene's rotation from north", () => {
   assert.equal(sceneHeadingDeg(90, { ...ORIGIN, north_rotation_deg: 90 }), 0);
   assert.equal(sceneHeadingDeg(10, { ...ORIGIN, north_rotation_deg: 30 }), 340);

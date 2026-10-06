@@ -135,16 +135,19 @@ async def run_checks(page, port, captures, server):
         check("the photo file is a real image", (folders[0] / "photo.jpg").read_bytes()[:2] == b"\xff\xd8")
 
     check("the page reports it is ready offline", await page.wait_for("document.getElementById('status-cache').textContent.includes('ready')"))
+    await page.send("Network.enable")
+    await page.send("Network.setCacheDisabled", cacheDisabled=True)
     server.shutdown()
     server.server_close()
     await page.send("Page.navigate", url=f"http://localhost:{port}/")
-    check("with the server stopped the cached page still loads its twin", await page.wait_for("window.yardOverlay && yardOverlay.state.twin !== null", 15))
+    check("with the server stopped and the browser cache off the page still loads its twin", await page.wait_for("window.yardOverlay && yardOverlay.state.twin !== null", 15))
+    check("and the service worker is what answered", await page.evaluate("navigator.serviceWorker.controller !== null"))
     await asyncio.sleep(0.5)
     check("and still paints the overlay", await page.evaluate(PAINTED_PIXELS) > 500)
 
 
 async def main():
-    workspace = tempfile.TemporaryDirectory()
+    workspace = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
     captures = pathlib.Path(workspace.name) / "captures"
     server = serve.make_server(WEB, captures, 0)
     port = server.server_address[1]
@@ -171,6 +174,7 @@ async def main():
             await run_checks(Page(connection), port, captures, server)
     finally:
         browser.terminate()
+        browser.wait(timeout=15)
         server.server_close()
     print(f"{sum(results)}/{len(results)} checks passed")
     return 0 if all(results) else 1
