@@ -1,8 +1,10 @@
 package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.scene.DeviceProfile
+import ai.factoredui.compose.scene.PIXEL_MAP_CAPABILITY
 import ai.factoredui.compose.scene.RendererCapability
-import ai.factoredui.compose.scene.SceneLayerKind
+import ai.factoredui.compose.scene.VECTOR_DEFAULT_TERRAIN_MODE
+import ai.factoredui.compose.scene.VECTOR_MAP_CAPABILITY
 import ai.factoredui.compose.scene.ViewState
 import ai.factoredui.compose.scene.selectRenderer
 import ai.factoredui.compose.schema.SpecNode
@@ -37,11 +39,7 @@ internal class SceneRenderers(private val registered: List<SceneRenderer>) {
 }
 
 internal object PixelMapRenderer : SceneRenderer {
-    override val capability = RendererCapability(
-        id = "pixel-map",
-        layers = setOf(SceneLayerKind.GROUND, SceneLayerKind.FOOTPRINTS, SceneLayerKind.INSTANCES, SceneLayerKind.GRID),
-        levelsFeet = setOf(1, 5, 25, 125),
-    )
+    override val capability = PIXEL_MAP_CAPABILITY
 
     @Composable
     override fun Draw(frame: SceneFrame) = RenderTilemap(frame.node, frame.resolvedProps, frame.context)
@@ -50,18 +48,14 @@ internal object PixelMapRenderer : SceneRenderer {
 internal const val VECTOR_LOOK = "vector"
 
 internal object VectorMapRenderer : SceneRenderer {
-    override val capability = RendererCapability(
-        id = "vector-map",
-        layers = setOf(SceneLayerKind.GROUND, SceneLayerKind.FOOTPRINTS, SceneLayerKind.INSTANCES, SceneLayerKind.GRID),
-        levelsFeet = setOf(25, 125, 625),
-    )
+    override val capability = VECTOR_MAP_CAPABILITY
 
     @Composable
     override fun Draw(frame: SceneFrame) = RenderTilemap(frame.node, vectorPropsOf(frame.resolvedProps), frame.context)
 }
 
 internal fun vectorPropsOf(resolvedProps: Map<String, Any?>): Map<String, Any?> {
-    val terrainMode = resolvedProps["terrain_mode"] ?: "hillshade"
+    val terrainMode = resolvedProps["terrain_mode"] ?: VECTOR_DEFAULT_TERRAIN_MODE
     return resolvedProps + mapOf("view" to "top", "look" to VECTOR_LOOK, "terrain_mode" to terrainMode)
 }
 
