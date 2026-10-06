@@ -13,7 +13,6 @@ import ai.factoredui.compose.layout.TileView
 import ai.factoredui.compose.layout.afterGesture
 import ai.factoredui.compose.layout.applyBrush
 import ai.factoredui.compose.layout.areasOf
-import ai.factoredui.compose.layout.cellsAsFootprints
 import ai.factoredui.compose.layout.countUses
 import ai.factoredui.compose.layout.drawOrder
 import ai.factoredui.compose.layout.fitFlowView
@@ -23,6 +22,9 @@ import ai.factoredui.compose.layout.tileCorners
 import ai.factoredui.compose.layout.tileSideMm
 import ai.factoredui.compose.layout.tilemapScreenBounds
 import ai.factoredui.compose.layout.unproject
+import ai.factoredui.compose.scene.adaptRenderProps
+import ai.factoredui.compose.scene.tileFootprintsOf
+import ai.factoredui.compose.scene.tileInstancesOf
 import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecValue
@@ -32,11 +34,8 @@ import ai.factoredui.compose.schema.assignGraphColors
 import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.resolveTileArea
 import ai.factoredui.compose.schema.resolveTilemapCells
-import ai.factoredui.compose.schema.resolveTilemapFootprints
 import ai.factoredui.compose.schema.resolveTilemapImages
-import ai.factoredui.compose.schema.resolveTilemapInstances
 import ai.factoredui.compose.schema.resolveTilemapShape
-import ai.factoredui.compose.schema.resolveTilemapSize
 import ai.factoredui.compose.schema.resolveTilemapUses
 import ai.factoredui.compose.schema.resolveTilemapView
 import androidx.compose.foundation.Canvas
@@ -91,8 +90,6 @@ import kotlinx.coroutines.launch
 
 internal const val TILEMAP_TILE_WIDTH_DP = 64f
 internal const val TILEMAP_HEADROOM = 0.95f
-private const val DEFAULT_COLS = 10
-private const val DEFAULT_ROWS = 10
 private const val FIT_MARGIN_PX = 12f
 private const val MAX_FIT_SCALE = 2f
 private const val WHEEL_ZOOM_RATE = 0.12f
@@ -145,8 +142,6 @@ internal class TilemapSpace(val view: TileView, val tileWidthPx: Float, val boun
 @Composable
 internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val props = node.props.asTilemapProps()
-    val cols = resolveTilemapSize(resolvedProps["cols"], DEFAULT_COLS)
-    val rows = resolveTilemapSize(resolvedProps["rows"], DEFAULT_ROWS)
     val shape = resolveTilemapShape(resolvedProps["shape"])
     val view = resolveTilemapView(resolvedProps["view"])
     val tileArea = resolveTileArea(resolvedProps["tile_area"])
@@ -175,19 +170,22 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
     var hovered by remember { mutableStateOf<TileCoord?>(null) }
     val cells = if (cellsPath != null) resolveTilemapCells(resolvedProps["cells"]) else localCells
     val brush = if (brushPath != null) resolvedProps["selected_use"] as? String else localBrush
+    val sceneView = remember(resolvedProps, cells) { adaptRenderProps(resolvedProps + ("cells" to cells.map(::cellRecord))).scene }
+    val cols = sceneView.cols
+    val rows = sceneView.rows
     val density = LocalDensity.current.density
     val space = remember(shape, view, cols, rows, density) {
         val tileWidthPx = TILEMAP_TILE_WIDTH_DP * density
         TilemapSpace(view, tileWidthPx, tilemapScreenBounds(shape, view, cols, rows, tileWidthPx))
     }
-    val footprints = resolveTilemapFootprints(resolvedProps["footprints"])
+    val sceneFootprints = remember(sceneView) { tileFootprintsOf(sceneView) }
     val imageAliases = resolveTilemapImages(resolvedProps["images"])
     val imageSources = uses.mapNotNull { use -> use.image?.let { use.id to (imageAliases[it] ?: it) } }.toMap()
     val images = rememberLoadedTileImages(imageSources)
-    val instances = resolveTilemapInstances(resolvedProps["instances"])
+    val instances = remember(sceneView) { tileInstancesOf(sceneView) }
     val sideMm = tileSideMm(tileArea)
-    val drawables = remember(shape, cells, footprints, instances, sideMm, rows) {
-        drawOrder(shape, cellsAsFootprints(cells) + footprints, instances, sideMm, rows)
+    val drawables = remember(shape, sceneFootprints, instances, sideMm, rows) {
+        drawOrder(shape, sceneFootprints, instances, sideMm, rows)
     }
     val scope = rememberCoroutineScope()
     val animated = resolvedProps["animate"] == true
@@ -201,8 +199,8 @@ internal fun RenderTilemap(node: SpecNode, resolvedProps: Map<String, Any?>, con
         TilemapScene(shape, space, cols, rows, drawables, styles, look, scenePhase, density, sideMm, images)
     }
 
-    LaunchedEffect(cells, footprints, tileArea) {
-        val counts = uses.associate { it.id to 0 } + countUses(cells, footprints)
+    LaunchedEffect(sceneFootprints, tileArea) {
+        val counts = uses.associate { it.id to 0 } + countUses(emptyList(), sceneFootprints)
         if (countsPath != null) context.setBinding(countsPath, counts)
         if (areasPath != null) context.setBinding(areasPath, areasOf(counts, tileArea).mapValues { wholeWhenIntegral(it.value) })
     }

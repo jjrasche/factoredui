@@ -1,10 +1,12 @@
 package ai.factoredui.compose.scene
 
+import ai.factoredui.compose.layout.MM_PER_FOOT
+import ai.factoredui.compose.schema.DEFAULT_TILEMAP_SIZE
+import ai.factoredui.compose.schema.resolveTileArea
+import ai.factoredui.compose.schema.resolveTilemapSize
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
-
-const val MM_PER_FOOT = 304.8
 
 data class LookEntry(val color: String? = null, val sprite: String? = null, val height: Double? = null, val critter: String? = null, val image: String? = null)
 
@@ -22,9 +24,9 @@ private fun millimetres(value: Any?): Long? = (value as? Number)?.toDouble()?.le
 
 fun adaptRenderProps(props: Map<String, Any?>): AdaptedScene {
     val dropped = mutableListOf<String>()
-    val cols = (props["cols"] as? Number)?.toInt() ?: 1
-    val rows = (props["rows"] as? Number)?.toInt() ?: 1
-    val tileFeet = sqrt((props["tile_area"] as? Number)?.toDouble()?.takeIf { it > 0.0 } ?: 1.0)
+    val cols = resolveTilemapSize(props["cols"], DEFAULT_TILEMAP_SIZE)
+    val rows = resolveTilemapSize(props["rows"], DEFAULT_TILEMAP_SIZE)
+    val tileFeet = sqrt(resolveTileArea(props["tile_area"]))
     val tileMm = roundHalfUp(tileFeet * MM_PER_FOOT)
     val uses = (props["uses"] as? List<*>).orEmpty().mapNotNull { it as? Map<*, *> }
     val scene = SceneView(
@@ -54,8 +56,7 @@ private fun lookTableOf(uses: List<Map<*, *>>): LookTable =
     }.toMap()
 
 private fun footprintsOf(props: Map<String, Any?>, dropped: MutableList<String>): FootprintLayer? {
-    val explicit = (props["footprints"] as? List<*>).orEmpty()
-    val records = explicit.ifEmpty { (props["cells"] as? List<*>).orEmpty() }
+    val records = (props["cells"] as? List<*>).orEmpty() + (props["footprints"] as? List<*>).orEmpty()
     if (records.isEmpty()) return null
     val items = records.mapIndexedNotNull { index, entry ->
         val fields = entry as? Map<*, *>

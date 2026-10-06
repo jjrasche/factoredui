@@ -977,6 +977,8 @@ fun resolveTilemapView(resolvedView: Any?): TileView =
         TileView.ISO
     }
 
+const val DEFAULT_TILEMAP_SIZE = 10
+
 fun resolveTilemapSize(resolvedSize: Any?, fallback: Int): Int =
     ((resolvedSize as? Number)?.toInt() ?: fallback).coerceAtLeast(1)
 

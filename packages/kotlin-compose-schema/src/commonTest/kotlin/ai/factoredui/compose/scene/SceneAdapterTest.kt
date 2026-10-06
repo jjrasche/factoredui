@@ -1,5 +1,7 @@
 package ai.factoredui.compose.scene
 
+import ai.factoredui.compose.layout.TileFootprint
+import ai.factoredui.compose.layout.TileInstance
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -57,14 +59,14 @@ class SceneAdapterTest {
     }
 
     @Test
-    fun plainCellsBecomeOneByOneFootprintsAndExplicitFootprintsWin() {
+    fun plainCellsBecomeOneByOneFootprintsAndAreKeptBesideExplicitFootprints() {
         val cell = mapOf("col" to 1, "row" to 0, "use" to "path")
         val fromCells = adaptRenderProps(parcel("cells" to listOf(cell))).scene.footprints!!.items
         assertEquals(listOf(SceneFootprint("1,0", "path", 1, 0, 1, 1)), fromCells)
 
         val wide = mapOf("id" to "barn", "col" to 0, "row" to 0, "use" to "shed", "width" to 2, "height" to 1)
-        val explicit = adaptRenderProps(parcel("cells" to listOf(cell), "footprints" to listOf(wide))).scene.footprints!!.items
-        assertEquals(listOf(SceneFootprint("barn", "shed", 0, 0, 2, 1)), explicit)
+        val both = adaptRenderProps(parcel("cells" to listOf(cell), "footprints" to listOf(wide))).scene.footprints!!.items
+        assertEquals(listOf(SceneFootprint("1,0", "path", 1, 0, 1, 1), SceneFootprint("barn", "shed", 0, 0, 2, 1)), both)
     }
 
     @Test
@@ -98,6 +100,30 @@ class SceneAdapterTest {
     fun aGroundWhoseHeightCountDisagreesWithTheGridIsLeftOutRatherThanMisread() {
         val short = mapOf("heights_mm" to listOf(0, 1, 2), "version" to 1)
         assertNull(adaptRenderProps(parcel("ground" to short)).scene.ground)
+    }
+
+    @Test
+    fun aParcelThatNamesNoSizeIsTenByTenOfOneSquareFootTiles() {
+        val scene = adaptRenderProps(emptyMap()).scene
+        assertEquals(10, scene.cols)
+        assertEquals(10, scene.rows)
+        assertEquals(1.0, scene.tileFeet)
+    }
+
+    @Test
+    fun theTileModelsTheRendererDrawsComeBackOutOfTheScene() {
+        val scene = adaptRenderProps(
+            parcel(
+                "cells" to listOf(mapOf("col" to 1, "row" to 0, "use" to "path")),
+                "footprints" to listOf(mapOf("id" to "barn", "col" to 0, "row" to 1, "use" to "shed", "width" to 2, "height" to 0)),
+                "instances" to listOf(mapOf("id" to "oak", "type" to "tree", "x_mm" to 100.5, "y_mm" to 200, "crown_radius_mm" to 900, "rotation_deg" to 45)),
+            ),
+        ).scene
+        assertEquals(
+            listOf(TileFootprint("1,0", "path", 1, 0, 1, 1), TileFootprint("barn", "shed", 0, 1, 2, 1)),
+            tileFootprintsOf(scene),
+        )
+        assertEquals(listOf(TileInstance("oak", "tree", 101.0, 200.0, null, 900.0, 45.0)), tileInstancesOf(scene))
     }
 
     @Test
