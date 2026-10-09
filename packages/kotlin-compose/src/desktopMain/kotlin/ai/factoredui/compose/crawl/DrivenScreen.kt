@@ -94,6 +94,21 @@ class DrivenScreen internal constructor(
         }
     }
 
+    fun tapText(text: String): List<DrivenIntent> {
+        settle()
+        val target = nodeShowing(text) ?: throw AssertionError("cannot tap '$text': no drawn node shows that text")
+        val centre = target.boundsInRoot.center
+        return tapAt(centre.x, centre.y)
+    }
+
+    private fun nodeShowing(text: String): androidx.compose.ui.semantics.SemanticsNode? {
+        fun find(node: androidx.compose.ui.semantics.SemanticsNode): androidx.compose.ui.semantics.SemanticsNode? {
+            if (node.config.getOrNull(SemanticsProperties.Text)?.any { it.text == text } == true) return node
+            return node.children.firstNotNullOfOrNull(::find)
+        }
+        return scene.semanticsOwners.firstNotNullOfOrNull { find(it.unmergedRootSemanticsNode) }
+    }
+
     fun stateDescriptionOf(tag: String): String? {
         settle()
         return taggedNode(tag)?.config?.getOrNull(SemanticsProperties.StateDescription)

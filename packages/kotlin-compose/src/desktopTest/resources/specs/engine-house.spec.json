@@ -1,0 +1,65 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "engine-house", "type": "column", "props": { "gap": 8, "padding": 8 },
+    "children": [
+      {
+        "id": "house", "type": "scene",
+        "props": {
+          "flex": 3,
+          "view_state": { "renderer": "structure" },
+          "scene_view": "{house.scene}",
+          "view": "{house.view}",
+          "highlight": "{bom.picked}",
+          "selected": "{house.selected}"
+        }
+      },
+      {
+        "id": "bom", "type": "list",
+        "props": {
+          "flex": 2,
+          "data": "{bom.rows}",
+          "emptyText": "The scene lists no parts.",
+          "itemTemplate": {
+            "id": "bom-row", "type": "card",
+            "props": { "padding": 8 },
+            "action": { "action": "set_binding", "params": { "path": "bom.picked", "value": "{row.ids}" } },
+            "children": [
+              {
+                "id": "bom-row-line", "type": "row", "props": { "justify": "between", "align": "center" },
+                "children": [
+                  { "id": "bom-row-title", "type": "text", "props": { "value": "{row.quantity} × {row.label}", "bold": true } },
+                  { "id": "bom-row-unit", "type": "text", "props": { "value": "{row.unit_cost_usd}", "format": "usd" } },
+                  { "id": "bom-row-cost", "type": "text", "props": { "value": "{row.cost_usd}", "format": "usd" } },
+                  { "id": "bom-row-weight", "type": "text", "props": { "value": "{row.weight_kg}", "format": "pounds", "missing": "weight not known" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "parts-total", "type": "row", "props": { "justify": "between" },
+        "children": [
+          { "id": "parts-total-label", "type": "text", "props": { "value": "Parts total (sum of the part types)", "bold": true } },
+          { "id": "parts-total-value", "type": "text", "props": { "value": "{bom.parts_total_usd}", "format": "usd", "bold": true } }
+        ]
+      },
+      {
+        "id": "hardware", "type": "row", "props": { "justify": "between" }, "visible": "{house.report.hardware_usd}",
+        "children": [
+          { "id": "hardware-label", "type": "text", "props": { "value": "Hardware" } },
+          { "id": "hardware-value", "type": "text", "props": { "value": "{house.report.hardware_usd}", "format": "usd" } }
+        ]
+      },
+      {
+        "id": "engine-total", "type": "row", "props": { "justify": "between" }, "visible": "{house.report.bom_usd}",
+        "children": [
+          { "id": "engine-total-label", "type": "text", "props": { "value": "Engine total", "bold": true } },
+          { "id": "engine-total-value", "type": "text", "props": { "value": "{house.report.bom_usd}", "format": "usd", "bold": true } }
+        ]
+      }
+    ]
+  }
+}
