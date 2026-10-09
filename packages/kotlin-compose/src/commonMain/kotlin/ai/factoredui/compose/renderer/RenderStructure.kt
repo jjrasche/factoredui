@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 internal object StructureRenderer : SceneRenderer {
@@ -83,6 +84,41 @@ private fun StructureNotice(nodeId: String, message: String) {
 
 private fun partTapAction(action: String, partId: String) = ActionRef(action = action, params = mapOf("id" to SpecValue.StringValue(partId)))
 
+private class StructureTapTarget(
+    val nodeId: String,
+    val scene: SceneView,
+    val parts: List<VisiblePart>,
+    val drawing: StructureDrawing,
+    val fit: CanvasFit,
+    val selection: Set<String>,
+    val selectedPath: String?,
+    val onPartTap: String?,
+    val context: RenderContext,
+    val scope: CoroutineScope,
+    val keepLocalSelection: (Set<String>) -> Unit,
+)
+
+private fun applyPartTap(target: StructureTapTarget, xPx: Double, yPx: Double) {
+    val hit = findTappedPart(target, xPx, yPx)
+    val nextSelection = selectionAfterTap(target.selection, hit?.footprint?.id)
+    writeSelection(target, nextSelection)
+    dispatchPartTap(target, hit)
+}
+
+private fun findTappedPart(target: StructureTapTarget, xPx: Double, yPx: Double): VisiblePart? =
+    hitDrawnPart(target.scene, target.parts, target.drawing, target.fit, xPx, yPx)
+
+private fun writeSelection(target: StructureTapTarget, nextSelection: List<String>) {
+    val path = target.selectedPath
+    if (path != null) target.context.setBinding(path, nextSelection) else target.keepLocalSelection(nextSelection.toSet())
+}
+
+private fun dispatchPartTap(target: StructureTapTarget, hit: VisiblePart?) {
+    val action = target.onPartTap ?: return
+    val partId = hit?.footprint?.id ?: return
+    target.scope.launch { target.context.dispatch(target.nodeId, partTapAction(action, partId)) }
+}
+
 @Composable
 private fun RenderReadStructure(node: SpecNode, scene: SceneView, props: StructureProps, resolvedSelected: Any?, context: RenderContext) {
     val selectedPath = node.props["selected"]?.bindingPath()
@@ -104,16 +140,10 @@ private fun RenderReadStructure(node: SpecNode, scene: SceneView, props: Structu
                 .testTag(partsTag(node.id))
                 .semantics { stateDescription = drawnPartsSummary(parts, props.highlightIds, selection) }
                 .pointerInput(parts, fit, selection, selectedPath, props.onPartTap) {
-                    val onPartTap = props.onPartTap
-                    detectTapGestures(onTap = { offset ->
-                        val hit = hitDrawnPart(scene, parts, props.drawing, fit, offset.x.toDouble(), offset.y.toDouble())
-                        val nextSelection = selectionAfterTap(selection, hit?.footprint?.id)
-                        if (selectedPath != null) context.setBinding(selectedPath, nextSelection)
-                        else localSelection = nextSelection.toSet()
-                        if (hit != null && onPartTap != null) {
-                            scope.launch { context.dispatch(node.id, partTapAction(onPartTap, hit.footprint.id)) }
-                        }
-                    })
+                    val target = StructureTapTarget(node.id, scene, parts, props.drawing, fit, selection, selectedPath, props.onPartTap, context, scope) {
+                        localSelection = it
+                    }
+                    detectTapGestures(onTap = { offset -> applyPartTap(target, offset.x.toDouble(), offset.y.toDouble()) })
                 },
         ) {
             drawStructure(StructurePicture(scene, parts, props.drawing, fit, figures, outlined), palette)
