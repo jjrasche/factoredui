@@ -2,13 +2,17 @@ package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.crawl.driveScreen
 import ai.factoredui.compose.scene.readSceneView
+import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.File
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 private val REVIEW_DIR = File(System.getProperty("user.dir"), "../../reviews/scene-structure-2026-10-09")
+
+private fun distinctColourCount(image: BufferedImage): Int = image.getRGB(0, 0, image.width, image.height, null, 0, image.width).toSet().size
 
 class EngineHousePicturesTest {
 
@@ -16,6 +20,7 @@ class EngineHousePicturesTest {
         val png = driveScreen(engineHouseSpec(), engineHouseStore(view, picked), HOUSE_SCREEN_WIDTH, HOUSE_SCREEN_HEIGHT).use { it.frame().png }
         val image = ImageIO.read(ByteArrayInputStream(png))
         assertEquals(HOUSE_SCREEN_WIDTH to HOUSE_SCREEN_HEIGHT, image.width to image.height, name)
+        assertTrue(distinctColourCount(image) > 1, "$name is a single flat colour: nothing was drawn")
         REVIEW_DIR.mkdirs()
         File(REVIEW_DIR, name).writeBytes(png)
     }
