@@ -33,6 +33,15 @@ class SceneRenderingTest {
     }
 
     @Test
+    fun theStructureRendererServesEveryRungWhenAskedForAndIsNeverTheDefault() {
+        val withStructure = STANDARD_RENDERER_CAPABILITIES + STRUCTURE_CAPABILITY
+        ZOOM_LADDER_FEET.forEach { level ->
+            assertEquals("structure", selectRenderer(withStructure, DeviceProfile.PHONE, level, "structure")?.id)
+            assertEquals(selectRenderer(STANDARD_RENDERER_CAPABILITIES, DeviceProfile.PHONE, level, null)?.id, selectRenderer(withStructure, DeviceProfile.PHONE, level, null)?.id)
+        }
+    }
+
+    @Test
     fun noRendererIsSelectedWhereNoneSupportsTheLevel() {
         assertNull(selectRenderer(registry, DeviceProfile.DESKTOP, 3, null))
         assertNull(selectRenderer(emptyList(), DeviceProfile.DESKTOP, 25, null))

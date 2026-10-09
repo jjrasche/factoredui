@@ -94,6 +94,33 @@ class DrivenScreen internal constructor(
         }
     }
 
+    fun stateDescriptionOf(tag: String): String? {
+        settle()
+        return taggedNode(tag)?.config?.getOrNull(SemanticsProperties.StateDescription)
+    }
+
+    fun textsUnder(tag: String): List<String> {
+        settle()
+        val texts = mutableListOf<String>()
+        fun walk(node: androidx.compose.ui.semantics.SemanticsNode) {
+            node.config.getOrNull(SemanticsProperties.Text)?.forEach { texts += it.text }
+            node.children.forEach(::walk)
+        }
+        taggedNode(tag)?.let(::walk)
+        return texts
+    }
+
+    private fun taggedNode(tag: String): androidx.compose.ui.semantics.SemanticsNode? {
+        scene.semanticsOwners.forEach { owner ->
+            fun find(node: androidx.compose.ui.semantics.SemanticsNode): androidx.compose.ui.semantics.SemanticsNode? {
+                if (node.config.getOrNull(SemanticsProperties.TestTag) == tag) return node
+                return node.children.firstNotNullOfOrNull(::find)
+            }
+            find(owner.unmergedRootSemanticsNode)?.let { return it }
+        }
+        return null
+    }
+
     private fun regionOf(nodeId: String): DpRect? = regionsNow()[nodeId]
 
     private fun shadowNodes(): List<SpecShadowNode> {

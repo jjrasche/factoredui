@@ -5,7 +5,10 @@ import ai.factoredui.compose.layout.TileFootprint
 import ai.factoredui.compose.layout.TileInstance
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
+import ai.factoredui.compose.structure.LevelFocus
 import ai.factoredui.compose.structure.MISSING_FIGURE
+import ai.factoredui.compose.structure.StructureDrawing
+import ai.factoredui.compose.structure.structureDrawingOf
 import ai.factoredui.compose.structure.dollarsText
 import ai.factoredui.compose.structure.feetInches
 import ai.factoredui.compose.structure.percentText
@@ -495,6 +498,12 @@ fun Map<String, SpecValue>.asGeomapProps(): GeomapProps = GeomapProps(
 
 fun resolveGeomapSelection(resolvedSelected: Any?): Set<String> =
     (resolvedSelected as? List<*>).orEmpty().filterIsInstance<String>().toSet()
+
+fun selectionAfterTap(selection: Set<String>, tappedId: String?): List<String> = when {
+    tappedId == null -> emptyList()
+    selection == setOf(tappedId) -> emptyList()
+    else -> listOf(tappedId)
+}
 
 fun resolveGeomapGeometries(resolvedGeometries: Any?): Map<String, List<List<GeoPoint>>> =
     (resolvedGeometries as? Map<*, *>).orEmpty().mapNotNull { (key, rings) ->
@@ -1011,3 +1020,32 @@ fun resolveTilemapSize(resolvedSize: Any?, fallback: Int): Int =
 
 fun resolveTileArea(resolvedArea: Any?): Double =
     (resolvedArea as? Number)?.toDouble()?.takeIf { it > 0.0 } ?: 1.0
+
+// --- Structure scene props (scene node, view_state.renderer == "structure") ---
+
+const val STRUCTURE_COLOR_BY_UTILISATION = "utilisation"
+
+data class StructureProps(
+    val drawing: StructureDrawing = StructureDrawing.PLAN,
+    val focus: LevelFocus = LevelFocus.AllLevels,
+    val showLower: Boolean = false,
+    val hideTopCount: Int = 0,
+    val highlightIds: Set<String> = emptySet(),
+    val onPartTap: String? = null,
+    val colorBy: String = STRUCTURE_COLOR_BY_UTILISATION,
+)
+
+private fun levelFocusOf(raw: Any?): LevelFocus {
+    val level = (raw as? Number)?.toInt() ?: (raw as? String)?.toIntOrNull() ?: return LevelFocus.AllLevels
+    return LevelFocus.OneLevel(level)
+}
+
+fun resolveStructureProps(resolved: Map<String, Any?>): StructureProps = StructureProps(
+    drawing = structureDrawingOf(resolved["view"]),
+    focus = levelFocusOf(resolved["focus"]),
+    showLower = resolved["show_lower"] as? Boolean ?: false,
+    hideTopCount = (resolved["hide_top"] as? Number)?.toInt()?.coerceAtLeast(0) ?: 0,
+    highlightIds = resolveGeomapSelection(resolved["highlight"]),
+    onPartTap = resolved["on_part_tap"] as? String,
+    colorBy = resolved["color_by"] as? String ?: STRUCTURE_COLOR_BY_UTILISATION,
+)

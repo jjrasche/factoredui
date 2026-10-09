@@ -124,6 +124,8 @@ kotlin {
         }
 
         val desktopTest by getting {
+            // The engine's real scene payloads live once, beside the schema tests that read them.
+            resources.srcDir(file("../kotlin-compose-schema/src/jvmTest/resources"))
             dependencies {
                 implementation(compose.desktop.currentOs)
             }

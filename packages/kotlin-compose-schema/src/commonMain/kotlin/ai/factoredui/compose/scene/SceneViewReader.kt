@@ -23,6 +23,31 @@ fun readSceneView(text: String): SceneView {
     return sceneViewOf(root)
 }
 
+fun readSceneViewValue(value: Any?): SceneView = when (value) {
+    is String -> readSceneView(value)
+    is Map<*, *> -> sceneViewOf(JsonObject(value.entries.associate { (key, field) -> key.toString() to jsonValueOf(field) }))
+    null -> throw SceneViewFormatException("no scene is bound to scene_view")
+    else -> throw SceneViewFormatException("scene_view must be a scene object or its JSON text, not ${value::class.simpleName}")
+}
+
+/** A store decoded from JSON holds whole numbers as doubles, and the reader's whole-number fields refuse "6405.0". */
+private fun wholeOrFraction(value: Double): JsonPrimitive =
+    if (value.isFinite() && value % 1.0 == 0.0 && kotlin.math.abs(value) < MAX_EXACT_WHOLE) JsonPrimitive(value.toLong()) else JsonPrimitive(value)
+
+private const val MAX_EXACT_WHOLE = 9.0e15
+
+private fun jsonValueOf(value: Any?): JsonElement = when (value) {
+    null -> JsonNull
+    is String -> JsonPrimitive(value)
+    is Boolean -> JsonPrimitive(value)
+    is Double -> wholeOrFraction(value)
+    is Float -> wholeOrFraction(value.toDouble())
+    is Number -> JsonPrimitive(value.toLong())
+    is Map<*, *> -> JsonObject(value.entries.associate { (key, field) -> key.toString() to jsonValueOf(field) })
+    is List<*> -> JsonArray(value.map(::jsonValueOf))
+    else -> throw SceneViewFormatException("the scene holds a ${value::class.simpleName}, which is not a JSON value")
+}
+
 private fun sceneViewOf(root: JsonObject): SceneView {
     val units = root.string("units") ?: throw SceneViewFormatException("the scene states no units")
     if (units != MILLIMETRES) throw SceneViewFormatException("the scene must be in millimetres, not $units")

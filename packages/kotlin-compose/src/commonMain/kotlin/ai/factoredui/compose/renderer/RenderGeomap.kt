@@ -577,11 +577,8 @@ private class GeomapSelectionStyle(val strokeArgb: Int, val strokeWidth: Float)
 
 private const val DEFAULT_SELECTION_STROKE_WIDTH = 3f
 
-internal fun selectionAfterTap(selection: Set<String>, hit: GeomapHit?): List<String> = when {
-    hit == null -> emptyList()
-    selection == setOf(hit.featureId) -> emptyList()
-    else -> listOf(hit.featureId)
-}
+internal fun selectionAfterTap(selection: Set<String>, hit: GeomapHit?): List<String> =
+    ai.factoredui.compose.schema.selectionAfterTap(selection, hit?.featureId)
 
 private fun featureTapAction(action: String, hit: GeomapHit) = ActionRef(
     action = action,
