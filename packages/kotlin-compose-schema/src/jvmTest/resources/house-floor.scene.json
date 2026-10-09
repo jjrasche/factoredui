@@ -44,7 +44,7 @@
   },
   {
    "id": "interior_beam",
-   "label": "Interior LVL beam segment",
+   "label": "Interior 2-ply LVL beam segment",
    "tags": [
     "support"
    ],
@@ -53,7 +53,7 @@
     305
    ],
    "height_mm": null,
-   "unit_cost_usd": 62,
+   "unit_cost_usd": 124,
    "unit_weight_kg": null,
    "unit_weight_null_reason": "no weight for this part is banked in the world or the structural rows"
   },
@@ -64,11 +64,11 @@
     "deck"
    ],
    "footprint_mm": [
-    3050,
+    1220,
     2135
    ],
    "height_mm": null,
-   "unit_cost_usd": 629.68,
+   "unit_cost_usd": 251.87,
    "unit_weight_kg": null,
    "unit_weight_null_reason": "no weight for this part is banked in the world or the structural rows"
   }
@@ -1307,7 +1307,7 @@
     "type": "sip_floor_panel",
     "col": 1,
     "row": 1,
-    "width": 10,
+    "width": 4,
     "height": 7,
     "stack_level": 0,
     "z_mm": 0
@@ -1315,9 +1315,39 @@
    {
     "id": "e22",
     "type": "sip_floor_panel",
-    "col": 11,
+    "col": 5,
     "row": 1,
-    "width": 10,
+    "width": 4,
+    "height": 7,
+    "stack_level": 0,
+    "z_mm": 0
+   },
+   {
+    "id": "e23",
+    "type": "sip_floor_panel",
+    "col": 9,
+    "row": 1,
+    "width": 4,
+    "height": 7,
+    "stack_level": 0,
+    "z_mm": 0
+   },
+   {
+    "id": "e24",
+    "type": "sip_floor_panel",
+    "col": 13,
+    "row": 1,
+    "width": 4,
+    "height": 7,
+    "stack_level": 0,
+    "z_mm": 0
+   },
+   {
+    "id": "e25",
+    "type": "sip_floor_panel",
+    "col": 17,
+    "row": 1,
+    "width": 4,
     "height": 7,
     "stack_level": 0,
     "z_mm": 0
@@ -1373,21 +1403,51 @@
     "z_mm": 0
    },
    {
-    "id": "e23",
+    "id": "e26",
     "type": "sip_floor_panel",
     "col": 1,
     "row": 9,
-    "width": 10,
+    "width": 4,
     "height": 7,
     "stack_level": 0,
     "z_mm": 0
    },
    {
-    "id": "e24",
+    "id": "e27",
     "type": "sip_floor_panel",
-    "col": 11,
+    "col": 5,
     "row": 9,
-    "width": 10,
+    "width": 4,
+    "height": 7,
+    "stack_level": 0,
+    "z_mm": 0
+   },
+   {
+    "id": "e28",
+    "type": "sip_floor_panel",
+    "col": 9,
+    "row": 9,
+    "width": 4,
+    "height": 7,
+    "stack_level": 0,
+    "z_mm": 0
+   },
+   {
+    "id": "e29",
+    "type": "sip_floor_panel",
+    "col": 13,
+    "row": 9,
+    "width": 4,
+    "height": 7,
+    "stack_level": 0,
+    "z_mm": 0
+   },
+   {
+    "id": "e30",
+    "type": "sip_floor_panel",
+    "col": 17,
+    "row": 9,
+    "width": 4,
     "height": 7,
     "stack_level": 0,
     "z_mm": 0
@@ -1443,21 +1503,51 @@
     "z_mm": 0
    },
    {
-    "id": "e25",
+    "id": "e31",
     "type": "sip_floor_panel",
     "col": 1,
     "row": 17,
-    "width": 10,
+    "width": 4,
     "height": 7,
     "stack_level": 0,
     "z_mm": 0
    },
    {
-    "id": "e26",
+    "id": "e32",
     "type": "sip_floor_panel",
-    "col": 11,
+    "col": 5,
     "row": 17,
-    "width": 10,
+    "width": 4,
+    "height": 7,
+    "stack_level": 0,
+    "z_mm": 0
+   },
+   {
+    "id": "e33",
+    "type": "sip_floor_panel",
+    "col": 9,
+    "row": 17,
+    "width": 4,
+    "height": 7,
+    "stack_level": 0,
+    "z_mm": 0
+   },
+   {
+    "id": "e34",
+    "type": "sip_floor_panel",
+    "col": 13,
+    "row": 17,
+    "width": 4,
+    "height": 7,
+    "stack_level": 0,
+    "z_mm": 0
+   },
+   {
+    "id": "e35",
+    "type": "sip_floor_panel",
+    "col": 17,
+    "row": 17,
+    "width": 4,
     "height": 7,
     "stack_level": 0,
     "z_mm": 0
@@ -1522,11 +1612,11 @@
    "registration_error_mm": null,
    "note": null
   },
-  "version": 7643300124244250715,
+  "version": 6204438327713853070,
   "stack_versions": [
    {
     "stack_level": 0,
-    "version": 1264986188301142284
+    "version": 4044343094074246289
    }
   ]
  },
@@ -1540,7 +1630,7 @@
     "ref_id": "e13",
     "kind": "utilisation",
     "value": 0.31938214280064053,
-    "text": "Edge beam: 20 ft LVL 1-3/4 by 11-7/8 in on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 19%).",
+    "text": "Edge beam: 20 ft LVL, 11-7/8 in deep, on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 19%).",
     "source": "engine equations edge_bending_use, edge_shear_use, edge_live_deflection_use, edge_total_deflection_use"
    },
    {
@@ -1548,7 +1638,7 @@
     "ref_id": "e14",
     "kind": "utilisation",
     "value": 0.31938214280064053,
-    "text": "Edge beam: 20 ft LVL 1-3/4 by 11-7/8 in on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 19%).",
+    "text": "Edge beam: 20 ft LVL, 11-7/8 in deep, on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 19%).",
     "source": "engine equations edge_bending_use, edge_shear_use, edge_live_deflection_use, edge_total_deflection_use"
    },
    {
@@ -1569,22 +1659,6 @@
    },
    {
     "ref_kind": "FOOTPRINT",
-    "ref_id": "e15",
-    "kind": "utilisation",
-    "value": 0.6387642856012811,
-    "text": "Interior beam: 20 ft LVL 1-3/4 by 11-7/8 in on piers 10 ft apart carries 64% of its shear limit (bending 57%, shear 64%, live-load deflection 45%, total-load deflection 37%).",
-    "source": "engine equations interior_bending_use, interior_shear_use, interior_live_deflection_use, interior_total_deflection_use"
-   },
-   {
-    "ref_kind": "FOOTPRINT",
-    "ref_id": "e16",
-    "kind": "utilisation",
-    "value": 0.6387642856012811,
-    "text": "Interior beam: 20 ft LVL 1-3/4 by 11-7/8 in on piers 10 ft apart carries 64% of its shear limit (bending 57%, shear 64%, live-load deflection 45%, total-load deflection 37%).",
-    "source": "engine equations interior_bending_use, interior_shear_use, interior_live_deflection_use, interior_total_deflection_use"
-   },
-   {
-    "ref_kind": "FOOTPRINT",
     "ref_id": "e23",
     "kind": "utilisation",
     "value": 0.7576350143203,
@@ -1601,27 +1675,27 @@
    },
    {
     "ref_kind": "FOOTPRINT",
-    "ref_id": "e17",
-    "kind": "utilisation",
-    "value": 0.6387642856012811,
-    "text": "Interior beam: 20 ft LVL 1-3/4 by 11-7/8 in on piers 10 ft apart carries 64% of its shear limit (bending 57%, shear 64%, live-load deflection 45%, total-load deflection 37%).",
-    "source": "engine equations interior_bending_use, interior_shear_use, interior_live_deflection_use, interior_total_deflection_use"
-   },
-   {
-    "ref_kind": "FOOTPRINT",
-    "ref_id": "e18",
-    "kind": "utilisation",
-    "value": 0.6387642856012811,
-    "text": "Interior beam: 20 ft LVL 1-3/4 by 11-7/8 in on piers 10 ft apart carries 64% of its shear limit (bending 57%, shear 64%, live-load deflection 45%, total-load deflection 37%).",
-    "source": "engine equations interior_bending_use, interior_shear_use, interior_live_deflection_use, interior_total_deflection_use"
-   },
-   {
-    "ref_kind": "FOOTPRINT",
     "ref_id": "e25",
     "kind": "utilisation",
     "value": 0.7576350143203,
     "text": "Site-built panel: 76% of the 66 psf table value for a 10-1/4 in factory floor panel over a 10 ft span, used here at 8 ft. Nothing but a building official or an engineer can accept a site-built panel.",
     "source": "engine equation panel_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e15",
+    "kind": "utilisation",
+    "value": 0.3157935793983862,
+    "text": "Interior beam: 20 ft LVL, 11-7/8 in deep, on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 18%).",
+    "source": "engine equations interior_bending_use, interior_shear_use, interior_live_deflection_use, interior_total_deflection_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e16",
+    "kind": "utilisation",
+    "value": 0.3157935793983862,
+    "text": "Interior beam: 20 ft LVL, 11-7/8 in deep, on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 18%).",
+    "source": "engine equations interior_bending_use, interior_shear_use, interior_live_deflection_use, interior_total_deflection_use"
    },
    {
     "ref_kind": "FOOTPRINT",
@@ -1633,10 +1707,98 @@
    },
    {
     "ref_kind": "FOOTPRINT",
+    "ref_id": "e27",
+    "kind": "utilisation",
+    "value": 0.7576350143203,
+    "text": "Site-built panel: 76% of the 66 psf table value for a 10-1/4 in factory floor panel over a 10 ft span, used here at 8 ft. Nothing but a building official or an engineer can accept a site-built panel.",
+    "source": "engine equation panel_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e28",
+    "kind": "utilisation",
+    "value": 0.7576350143203,
+    "text": "Site-built panel: 76% of the 66 psf table value for a 10-1/4 in factory floor panel over a 10 ft span, used here at 8 ft. Nothing but a building official or an engineer can accept a site-built panel.",
+    "source": "engine equation panel_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e29",
+    "kind": "utilisation",
+    "value": 0.7576350143203,
+    "text": "Site-built panel: 76% of the 66 psf table value for a 10-1/4 in factory floor panel over a 10 ft span, used here at 8 ft. Nothing but a building official or an engineer can accept a site-built panel.",
+    "source": "engine equation panel_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e30",
+    "kind": "utilisation",
+    "value": 0.7576350143203,
+    "text": "Site-built panel: 76% of the 66 psf table value for a 10-1/4 in factory floor panel over a 10 ft span, used here at 8 ft. Nothing but a building official or an engineer can accept a site-built panel.",
+    "source": "engine equation panel_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e17",
+    "kind": "utilisation",
+    "value": 0.3157935793983862,
+    "text": "Interior beam: 20 ft LVL, 11-7/8 in deep, on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 18%).",
+    "source": "engine equations interior_bending_use, interior_shear_use, interior_live_deflection_use, interior_total_deflection_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e18",
+    "kind": "utilisation",
+    "value": 0.3157935793983862,
+    "text": "Interior beam: 20 ft LVL, 11-7/8 in deep, on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 18%).",
+    "source": "engine equations interior_bending_use, interior_shear_use, interior_live_deflection_use, interior_total_deflection_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e31",
+    "kind": "utilisation",
+    "value": 0.7576350143203,
+    "text": "Site-built panel: 76% of the 66 psf table value for a 10-1/4 in factory floor panel over a 10 ft span, used here at 8 ft. Nothing but a building official or an engineer can accept a site-built panel.",
+    "source": "engine equation panel_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e32",
+    "kind": "utilisation",
+    "value": 0.7576350143203,
+    "text": "Site-built panel: 76% of the 66 psf table value for a 10-1/4 in factory floor panel over a 10 ft span, used here at 8 ft. Nothing but a building official or an engineer can accept a site-built panel.",
+    "source": "engine equation panel_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e33",
+    "kind": "utilisation",
+    "value": 0.7576350143203,
+    "text": "Site-built panel: 76% of the 66 psf table value for a 10-1/4 in factory floor panel over a 10 ft span, used here at 8 ft. Nothing but a building official or an engineer can accept a site-built panel.",
+    "source": "engine equation panel_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e34",
+    "kind": "utilisation",
+    "value": 0.7576350143203,
+    "text": "Site-built panel: 76% of the 66 psf table value for a 10-1/4 in factory floor panel over a 10 ft span, used here at 8 ft. Nothing but a building official or an engineer can accept a site-built panel.",
+    "source": "engine equation panel_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
+    "ref_id": "e35",
+    "kind": "utilisation",
+    "value": 0.7576350143203,
+    "text": "Site-built panel: 76% of the 66 psf table value for a 10-1/4 in factory floor panel over a 10 ft span, used here at 8 ft. Nothing but a building official or an engineer can accept a site-built panel.",
+    "source": "engine equation panel_use"
+   },
+   {
+    "ref_kind": "FOOTPRINT",
     "ref_id": "e19",
     "kind": "utilisation",
     "value": 0.31938214280064053,
-    "text": "Edge beam: 20 ft LVL 1-3/4 by 11-7/8 in on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 19%).",
+    "text": "Edge beam: 20 ft LVL, 11-7/8 in deep, on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 19%).",
     "source": "engine equations edge_bending_use, edge_shear_use, edge_live_deflection_use, edge_total_deflection_use"
    },
    {
@@ -1644,7 +1806,7 @@
     "ref_id": "e20",
     "kind": "utilisation",
     "value": 0.31938214280064053,
-    "text": "Edge beam: 20 ft LVL 1-3/4 by 11-7/8 in on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 19%).",
+    "text": "Edge beam: 20 ft LVL, 11-7/8 in deep, on piers 10 ft apart carries 32% of its shear limit (bending 28%, shear 32%, live-load deflection 22%, total-load deflection 19%).",
     "source": "engine equations edge_bending_use, edge_shear_use, edge_live_deflection_use, edge_total_deflection_use"
    }
   ]

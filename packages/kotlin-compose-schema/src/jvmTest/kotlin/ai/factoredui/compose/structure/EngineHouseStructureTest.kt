@@ -8,26 +8,26 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 private fun engineHouse(): SceneView =
-    readSceneView(EngineHouseStructureTest::class.java.getResource("/house-site-sip.scene.json")!!.readText())
+    readSceneView(EngineHouseStructureTest::class.java.getResource("/house-floor.scene.json")!!.readText())
 
 private fun everyPart(scene: SceneView) = visibleParts(scene, LevelFocus.AllLevels, showLower = true)
 
 class EngineHouseStructureTest {
     @Test
-    fun the_engine_house_bill_of_materials_costs_5382_dollars_52() {
+    fun the_engine_house_bill_of_materials_costs_5630_dollars_49_before_hardware() {
         val scene = engineHouse()
         val totals = bomTotals(bomLines(scene, everyPart(scene)))
-        assertTrue(abs(totals.costUsd!! - 5382.52) < 1e-6, "total ${totals.costUsd}")
-        assertEquals("$5,382.52", bomTotalsText(totals).cost)
-        assertEquals(26, totals.quantity)
+        assertTrue(abs(totals.costUsd!! - 5630.49) < 1e-6, "total ${totals.costUsd}")
+        assertEquals("$5,630.49", bomTotalsText(totals).cost)
+        assertEquals(35, totals.quantity)
         assertEquals(0, totals.unpricedLines)
     }
 
     @Test
-    fun the_engine_house_lines_are_twelve_piers_four_edge_beams_four_interior_beams_and_six_panels() {
+    fun the_engine_house_lines_are_twelve_piers_four_edge_beams_four_interior_beams_and_fifteen_panels() {
         val scene = engineHouse()
         val lines = bomLines(scene, everyPart(scene)).associate { it.typeId to it.quantity }
-        assertEquals(mapOf("cast_pier" to 12, "edge_beam" to 4, "interior_beam" to 4, "sip_floor_panel" to 6), lines)
+        assertEquals(mapOf("cast_pier" to 12, "edge_beam" to 4, "interior_beam" to 4, "sip_floor_panel" to 15), lines)
     }
 
     @Test
@@ -39,19 +39,19 @@ class EngineHouseStructureTest {
     }
 
     @Test
-    fun fourteen_engine_house_parts_carry_a_utilisation_figure_and_no_pier_does() {
+    fun twenty_three_engine_house_parts_carry_a_utilisation_figure_and_no_pier_does() {
         val scene = engineHouse()
         val figures = utilisationByPart(scene)
-        assertEquals(14, figures.size)
+        assertEquals(23, figures.size)
         val typeOf = scene.footprints!!.items.associate { it.id to it.type }
         assertTrue(figures.keys.none { typeOf[it] == "cast_pier" })
     }
 
     @Test
-    fun the_engine_house_is_one_level_named_for_its_piers() {
+    fun the_engine_house_is_one_level_named_for_its_panels() {
         val scene = engineHouse()
         assertEquals(listOf(0), levelsPresent(scene))
-        assertEquals("Cast pier in a form tube", levelName(scene, 0))
+        assertEquals("Site-built SIP floor panel", levelName(scene, 0))
     }
 
     @Test
