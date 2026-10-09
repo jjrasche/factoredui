@@ -48,7 +48,7 @@ data class TextProps(
     val color: String? = null,
     val bold: Boolean = false,
     val numberOfLines: Int? = null,
-    val format: TextFormat? = null,
+    val formatName: String? = null,
     val missingText: String? = null,
 )
 
@@ -73,7 +73,7 @@ fun Map<String, SpecValue>.asTextProps(): TextProps = TextProps(
     color = string("color"),
     bold = boolean("bold") ?: false,
     numberOfLines = int("numberOfLines"),
-    format = textFormatOf(string("format")),
+    formatName = string("format"),
     missingText = string("missing"),
 )
 
@@ -83,8 +83,19 @@ fun textFormatOf(raw: Any?): TextFormat? = TextFormat.entries.firstOrNull { it.w
 
 private fun figureOf(value: Any?): Double? = (value as? Number)?.toDouble()?.takeIf { it.isFinite() }
 
+private fun unknownFormatNotice(rawFormat: Any) = "unknown format '$rawFormat'"
+
+private fun notANumberNotice(value: Any, format: TextFormat) = "${format.wire} needs a number, not '$value'"
+
+fun displayedText(value: Any?, rawFormat: Any?, missingText: String?): String {
+    if (rawFormat == null) return value as? String ?: ""
+    val format = textFormatOf(rawFormat) ?: return unknownFormatNotice(rawFormat)
+    return formattedFigure(value, format, missingText)
+}
+
 fun formattedFigure(value: Any?, format: TextFormat, missingText: String? = null): String {
-    val figure = figureOf(value) ?: return missingText ?: MISSING_FIGURE
+    if (value == null) return missingText ?: MISSING_FIGURE
+    val figure = figureOf(value) ?: return notANumberNotice(value, format)
     return when (format) {
         TextFormat.USD -> dollarsText(figure)
         TextFormat.FEET_INCHES -> feetInches(figure)

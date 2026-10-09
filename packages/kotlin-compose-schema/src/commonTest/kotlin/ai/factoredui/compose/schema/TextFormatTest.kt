@@ -41,10 +41,22 @@ class TextFormatTest {
     }
 
     @Test
-    fun a_missing_or_non_numeric_value_is_the_missing_figure_dash_unless_the_spec_names_its_own_words() {
+    fun a_null_value_is_the_missing_figure_dash_unless_the_spec_names_its_own_words() {
         assertEquals(MISSING_FIGURE, formattedFigure(null, TextFormat.USD))
-        assertEquals(MISSING_FIGURE, formattedFigure("twelve", TextFormat.POUNDS))
-        assertEquals(MISSING_FIGURE, formattedFigure(Double.NaN, TextFormat.PERCENT))
         assertEquals("weight not known", formattedFigure(null, TextFormat.POUNDS, missingText = "weight not known"))
+    }
+
+    @Test
+    fun a_non_numeric_value_under_a_numeric_format_draws_a_notice_never_the_dash() {
+        assertEquals("usd needs a number, not '92.37'", formattedFigure("92.37", TextFormat.USD))
+        assertEquals("pounds needs a number, not 'true'", formattedFigure(true, TextFormat.POUNDS, missingText = "weight not known"))
+        assertEquals("percent needs a number, not 'NaN'", formattedFigure(Double.NaN, TextFormat.PERCENT))
+    }
+
+    @Test
+    fun text_with_no_format_prints_its_value_and_an_unknown_format_names_itself() {
+        assertEquals("Cast pier", displayedText("Cast pier", rawFormat = null, missingText = null))
+        assertEquals("unknown format 'usdd'", displayedText(92.37, rawFormat = "usdd", missingText = null))
+        assertEquals("$92.37", displayedText(92.37, rawFormat = "usd", missingText = null))
     }
 }

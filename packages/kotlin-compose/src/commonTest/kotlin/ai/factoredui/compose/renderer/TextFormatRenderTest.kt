@@ -27,7 +27,9 @@ private const val FORMATTED_FIGURES = """
     { "id": "mass", "type": "text", "props": { "value": "{line.mass_kg}", "format": "pounds" } },
     { "id": "no-price", "type": "text", "props": { "value": "{line.unpriced}", "format": "usd" } },
     { "id": "no-weight", "type": "text", "props": { "value": "{line.weight_kg}", "format": "pounds", "missing": "weight not known" } },
-    { "id": "words", "type": "text", "props": { "value": "{line.label}", "format": "usd" } }
+    { "id": "words", "type": "text", "props": { "value": "{line.label}", "format": "usd" } },
+    { "id": "price-text", "type": "text", "props": { "value": "{line.price_text}", "format": "usd" } },
+    { "id": "misspelt", "type": "text", "props": { "value": "{line.cost}", "format": "usdd" } }
   ]
 }
 """
@@ -42,6 +44,7 @@ private val LINE = mapOf(
         "unpriced" to null,
         "weight_kg" to null,
         "label" to "Cast pier",
+        "price_text" to "92.37",
     ),
 )
 
@@ -59,10 +62,22 @@ class TextFormatRenderTest {
     }
 
     @Test
-    fun a_missing_or_wordy_value_draws_the_dash_or_the_specs_own_missing_words() = runComposeUiTest {
+    fun a_null_value_draws_the_dash_or_the_specs_own_missing_words() = runComposeUiTest {
         setContent { RenderSpec(specOf(FORMATTED_FIGURES), RenderContext(initialData = LINE)) }
         onNodeWithTag("no-price").assertTextEquals("–")
-        onNodeWithTag("words").assertTextEquals("–")
         onNodeWithTag("no-weight").assertTextEquals("weight not known")
+    }
+
+    @Test
+    fun a_text_value_under_a_numeric_format_draws_a_notice_not_the_dash() = runComposeUiTest {
+        setContent { RenderSpec(specOf(FORMATTED_FIGURES), RenderContext(initialData = LINE)) }
+        onNodeWithTag("words").assertIsDisplayed().assertTextEquals("usd needs a number, not 'Cast pier'")
+        onNodeWithTag("price-text").assertTextEquals("usd needs a number, not '92.37'")
+    }
+
+    @Test
+    fun an_unknown_format_name_is_drawn_on_screen() = runComposeUiTest {
+        setContent { RenderSpec(specOf(FORMATTED_FIGURES), RenderContext(initialData = LINE)) }
+        onNodeWithTag("misspelt").assertIsDisplayed().assertTextEquals("unknown format 'usdd'")
     }
 }
