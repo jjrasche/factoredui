@@ -5,6 +5,11 @@ import ai.factoredui.compose.layout.TileFootprint
 import ai.factoredui.compose.layout.TileInstance
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
+import ai.factoredui.compose.structure.MISSING_FIGURE
+import ai.factoredui.compose.structure.dollarsText
+import ai.factoredui.compose.structure.feetInches
+import ai.factoredui.compose.structure.percentText
+import ai.factoredui.compose.structure.poundsText
 
 /**
  * Typed prop accessors for each SpecNodeType.
@@ -40,6 +45,8 @@ data class TextProps(
     val color: String? = null,
     val bold: Boolean = false,
     val numberOfLines: Int? = null,
+    val format: TextFormat? = null,
+    val missingText: String? = null,
 )
 
 enum class TextVariant { HEADING, SUBHEADING, BODY, CAPTION, LABEL }
@@ -63,7 +70,25 @@ fun Map<String, SpecValue>.asTextProps(): TextProps = TextProps(
     color = string("color"),
     bold = boolean("bold") ?: false,
     numberOfLines = int("numberOfLines"),
+    format = textFormatOf(string("format")),
+    missingText = string("missing"),
 )
+
+enum class TextFormat(val wire: String) { USD("usd"), FEET_INCHES("feet_inches"), PERCENT("percent"), POUNDS("pounds") }
+
+fun textFormatOf(raw: Any?): TextFormat? = TextFormat.entries.firstOrNull { it.wire == raw }
+
+private fun figureOf(value: Any?): Double? = (value as? Number)?.toDouble()?.takeIf { it.isFinite() }
+
+fun formattedFigure(value: Any?, format: TextFormat, missingText: String? = null): String {
+    val figure = figureOf(value) ?: return missingText ?: MISSING_FIGURE
+    return when (format) {
+        TextFormat.USD -> dollarsText(figure)
+        TextFormat.FEET_INCHES -> feetInches(figure)
+        TextFormat.PERCENT -> percentText(figure)
+        TextFormat.POUNDS -> poundsText(figure)
+    }
+}
 
 // --- ButtonProps ---
 

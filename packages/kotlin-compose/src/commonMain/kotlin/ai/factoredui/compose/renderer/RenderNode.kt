@@ -76,6 +76,8 @@ import ai.factoredui.compose.schema.asListProps
 import ai.factoredui.compose.schema.asSpacerProps
 import ai.factoredui.compose.schema.asTextProps
 import ai.factoredui.compose.schema.bindingPath
+import ai.factoredui.compose.schema.formattedFigure
+import ai.factoredui.compose.schema.textFormatOf
 import ai.factoredui.compose.schema.ButtonVariant
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
@@ -848,8 +850,13 @@ private data class ResolvedTextProps(
     val numberOfLines: Int?,
 )
 
+private fun Map<String, Any?>.displayedTextValue(): String {
+    val format = textFormatOf(get("format")) ?: return (get("value") as? String) ?: ""
+    return formattedFigure(get("value"), format, get("missing") as? String)
+}
+
 private fun Map<String, Any?>.asResolvedTextProps(): ResolvedTextProps = ResolvedTextProps(
-    value = (get("value") as? String) ?: "",
+    value = displayedTextValue(),
     variant = (get("variant") as? String) ?: "body",
     align = (get("align") as? String) ?: "left",
     colorValue = (get("color") as? String)?.parseColor(),
