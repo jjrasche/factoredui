@@ -3,12 +3,15 @@ package ai.factoredui.compose.renderer
 import ai.factoredui.compose.adapter.ActionHandler
 import ai.factoredui.compose.schema.Spec
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 private val json = Json { ignoreUnknownKeys = true }
 
@@ -44,6 +47,21 @@ private const val PICK_BUTTON_AND_HOST_BUTTON = """
   ]
 }
 """
+
+private const val REFUSED_WRITES = """
+{
+  "id": "root", "type": "column", "props": {},
+  "children": [
+    { "id": "no-path", "type": "button", "props": { "label": "write nowhere" },
+      "action": { "action": "set_binding", "params": { "path": "", "value": ["e1"] } } },
+    { "id": "no-value", "type": "button", "props": { "label": "write nothing" },
+      "action": { "action": "set_binding", "params": { "path": "bom.picked" } } },
+    { "id": "error", "type": "text", "props": { "value": "{renderer.error}" } }
+  ]
+}
+"""
+
+private fun rendererErrorIn(store: Map<String, Any?>): Any? = (store["renderer"] as? Map<*, *>)?.get("error")
 
 private val ROWS = listOf(
     mapOf("label" to "Cast pier", "ids" to listOf("e1", "e2", "e3")),
@@ -81,5 +99,27 @@ class SetBindingActionTest {
         onNodeWithText("save").performClick()
         waitForIdle()
         assertEquals(listOf("save_plan:house"), reachedHost)
+    }
+
+    @Test
+    fun set_binding_with_an_empty_path_is_refused_and_the_refusal_is_drawn_where_the_spec_binds_renderer_error() = runComposeUiTest {
+        val context = RenderContext()
+        setContent { RenderSpec(specOf(REFUSED_WRITES), context) }
+        onNodeWithText("write nowhere").performClick()
+        waitForIdle()
+        val refusal = "set_binding on 'no-path' was refused: 'path' must be non-empty text, not ''"
+        assertEquals(refusal, rendererErrorIn(context.data))
+        assertEquals(setOf("renderer"), context.data.keys)
+        onNodeWithTag("error").assertTextEquals(refusal)
+    }
+
+    @Test
+    fun set_binding_with_no_value_is_refused_and_writes_nothing_to_the_path() = runComposeUiTest {
+        val context = RenderContext()
+        setContent { RenderSpec(specOf(REFUSED_WRITES), context) }
+        onNodeWithText("write nothing").performClick()
+        waitForIdle()
+        assertEquals("set_binding on 'no-value' was refused: it names no 'value' to write to 'bom.picked'", rendererErrorIn(context.data))
+        assertNull(context.data["bom"])
     }
 }

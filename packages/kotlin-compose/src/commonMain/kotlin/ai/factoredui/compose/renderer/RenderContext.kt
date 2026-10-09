@@ -154,7 +154,7 @@ suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
         .resolveProps(actionRef.params, data)
     observability.onInteraction(nodeId, actionRef, resolvedParams)
     if (actionRef.action == SET_BINDING_ACTION) {
-        writeBindingFrom(resolvedParams)
+        writeBindingFrom(nodeId, resolvedParams)
         return
     }
     val handler = actions[actionRef.action]
@@ -167,13 +167,20 @@ suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
 
 const val SET_BINDING_ACTION = "set_binding"
 
-private fun RenderContext.writeBindingFrom(params: Map<String, Any?>) {
-    val path = params["path"] as? String
-    if (path.isNullOrEmpty()) {
-        println("[factoredui] set_binding needs a text 'path' param; got ${params["path"]}")
-        return
-    }
-    setBinding(path, params["value"])
+const val RENDERER_ERROR_PATH = "renderer.error"
+
+private fun setBindingRefusal(nodeId: String, params: Map<String, Any?>): String? {
+    val path = params["path"]
+    if (path !is String || path.isEmpty()) return "set_binding on '$nodeId' was refused: 'path' must be non-empty text, not '$path'"
+    if (SET_BINDING_VALUE !in params) return "set_binding on '$nodeId' was refused: it names no 'value' to write to '$path'"
+    return null
+}
+
+private const val SET_BINDING_VALUE = "value"
+
+private fun RenderContext.writeBindingFrom(nodeId: String, params: Map<String, Any?>) {
+    val refusal = setBindingRefusal(nodeId, params)
+    if (refusal != null) setBinding(RENDERER_ERROR_PATH, refusal) else setBinding(params["path"] as String, params[SET_BINDING_VALUE])
 }
 
 fun sceneIntentDispatcher(
