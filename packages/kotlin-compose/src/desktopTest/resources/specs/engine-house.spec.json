@@ -16,6 +16,15 @@
         }
       },
       {
+        "id": "bom-head", "type": "row", "props": { "gap": 8, "padding": 8 },
+        "children": [
+          { "id": "bom-head-part", "type": "text", "props": { "value": "Part", "flex": 4 } },
+          { "id": "bom-head-each", "type": "text", "props": { "value": "Each", "flex": 2 } },
+          { "id": "bom-head-total", "type": "text", "props": { "value": "Total", "flex": 2 } },
+          { "id": "bom-head-weight", "type": "text", "props": { "value": "Weight", "flex": 3 } }
+        ]
+      },
+      {
         "id": "bom", "type": "list",
         "props": {
           "flex": 2,
@@ -27,12 +36,12 @@
             "action": { "action": "set_binding", "params": { "path": "bom.picked", "value": "{row.ids}" } },
             "children": [
               {
-                "id": "bom-row-line", "type": "row", "props": { "justify": "between", "align": "center" },
+                "id": "bom-row-line", "type": "row", "props": { "align": "center", "gap": 8 },
                 "children": [
-                  { "id": "bom-row-title", "type": "text", "props": { "value": "{row.quantity} × {row.label}", "bold": true } },
-                  { "id": "bom-row-unit", "type": "text", "props": { "value": "{row.unit_cost_usd}", "format": "usd" } },
-                  { "id": "bom-row-cost", "type": "text", "props": { "value": "{row.cost_usd}", "format": "usd" } },
-                  { "id": "bom-row-weight", "type": "text", "props": { "value": "{row.weight_kg}", "format": "pounds", "missing": "weight not known" } }
+                  { "id": "bom-row-title", "type": "text", "props": { "value": "{row.quantity} × {row.label}", "bold": true, "flex": 4 } },
+                  { "id": "bom-row-unit", "type": "text", "props": { "value": "{row.unit_cost_usd}", "format": "usd", "flex": 2 } },
+                  { "id": "bom-row-cost", "type": "text", "props": { "value": "{row.cost_usd}", "format": "usd", "flex": 2 } },
+                  { "id": "bom-row-weight", "type": "text", "props": { "value": "{row.weight_kg}", "format": "pounds", "missing": "weight not known", "flex": 3 } }
                 ]
               }
             ]
