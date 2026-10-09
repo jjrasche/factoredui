@@ -7,7 +7,7 @@ enum class StructureDrawing(val wire: String) { PLAN("plan"), ISO("iso"), SOUTH(
 
 const val STRUCTURE_MARGIN_PX = 24.0
 
-fun structureDrawingOf(raw: Any?): StructureDrawing = StructureDrawing.entries.firstOrNull { it.wire == raw } ?: StructureDrawing.PLAN
+fun structureDrawingOf(raw: Any?): StructureDrawing? = StructureDrawing.entries.firstOrNull { it.wire == raw }
 
 fun flatViewOf(drawing: StructureDrawing): StructureView = when (drawing) {
     StructureDrawing.PLAN, StructureDrawing.ISO -> StructureView.PLAN

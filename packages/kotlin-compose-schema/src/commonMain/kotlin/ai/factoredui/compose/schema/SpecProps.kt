@@ -1036,6 +1036,9 @@ fun resolveTileArea(resolvedArea: Any?): Double =
 
 const val STRUCTURE_COLOR_BY_UTILISATION = "utilisation"
 
+private const val ALL_LEVELS = "all"
+
+/** [notes] name every prop the renderer could not read, so the screen says what it fell back to. */
 data class StructureProps(
     val drawing: StructureDrawing = StructureDrawing.PLAN,
     val focus: LevelFocus = LevelFocus.AllLevels,
@@ -1043,20 +1046,70 @@ data class StructureProps(
     val hideTopCount: Int = 0,
     val highlightIds: Set<String> = emptySet(),
     val onPartTap: String? = null,
-    val colorBy: String = STRUCTURE_COLOR_BY_UTILISATION,
+    val notes: List<String> = emptyList(),
 )
 
-private fun levelFocusOf(raw: Any?): LevelFocus {
-    val level = (raw as? Number)?.toInt() ?: (raw as? String)?.toIntOrNull() ?: return LevelFocus.AllLevels
-    return LevelFocus.OneLevel(level)
+private data class PropReading<T>(val value: T, val note: String? = null)
+
+private fun wholeNumberOf(raw: Any?): Int? =
+    (raw as? Number)?.toDouble()?.takeIf { it % 1.0 == 0.0 && it >= Int.MIN_VALUE && it <= Int.MAX_VALUE }?.toInt()
+
+private fun drawingReading(raw: Any?): PropReading<StructureDrawing> {
+    if (raw == null) return PropReading(StructureDrawing.PLAN)
+    val drawing = structureDrawingOf(raw) ?: return PropReading(StructureDrawing.PLAN, "view '$raw' is not plan, iso, south or west; the plan is drawn.")
+    return PropReading(drawing)
 }
 
-fun resolveStructureProps(resolved: Map<String, Any?>): StructureProps = StructureProps(
-    drawing = structureDrawingOf(resolved["view"]),
-    focus = levelFocusOf(resolved["focus"]),
-    showLower = resolved["show_lower"] as? Boolean ?: false,
-    hideTopCount = (resolved["hide_top"] as? Number)?.toInt()?.coerceAtLeast(0) ?: 0,
-    highlightIds = resolveGeomapSelection(resolved["highlight"]),
-    onPartTap = resolved["on_part_tap"] as? String,
-    colorBy = resolved["color_by"] as? String ?: STRUCTURE_COLOR_BY_UTILISATION,
-)
+private fun focusReading(raw: Any?): PropReading<LevelFocus> {
+    if (raw == null || raw == ALL_LEVELS) return PropReading(LevelFocus.AllLevels)
+    val level = wholeNumberOf(raw) ?: (raw as? String)?.toIntOrNull()
+        ?: return PropReading(LevelFocus.AllLevels, "focus '$raw' is not all or a stack level number; every level is shown.")
+    return PropReading(LevelFocus.OneLevel(level))
+}
+
+private fun showLowerReading(raw: Any?): PropReading<Boolean> = when (raw) {
+    null -> PropReading(false)
+    is Boolean -> PropReading(raw)
+    else -> PropReading(false, "show_lower must be true or false, not '$raw'; lower levels are hidden.")
+}
+
+private fun hideTopReading(raw: Any?): PropReading<Int> {
+    if (raw == null) return PropReading(0)
+    val count = wholeNumberOf(raw)?.takeIf { it >= 0 } ?: return PropReading(0, "hide_top must be a whole number of levels, not '$raw'; no level is hidden.")
+    return PropReading(count)
+}
+
+private fun highlightReading(raw: Any?): PropReading<Set<String>> {
+    if (raw == null) return PropReading(emptySet())
+    val entries = raw as? List<*> ?: return PropReading(emptySet(), "highlight must be a list of part ids, not '$raw'; nothing is highlighted.")
+    val strays = entries.filterNot { it is String }
+    val strayNote = strays.takeIf { it.isNotEmpty() }?.let { "highlight entries that are not part ids are not drawn: ${it.joinToString()}" }
+    return PropReading(entries.filterIsInstance<String>().toSet(), strayNote)
+}
+
+private fun onPartTapReading(raw: Any?): PropReading<String?> = when (raw) {
+    null -> PropReading(null)
+    is String -> PropReading(raw)
+    else -> PropReading(null, "on_part_tap must be an action name, not '$raw'; a tap dispatches nothing.")
+}
+
+private fun colorByNote(raw: Any?): String? =
+    raw?.takeIf { it != STRUCTURE_COLOR_BY_UTILISATION }?.let { "color_by '$it' is not a colouring this renderer knows; parts are coloured by utilisation." }
+
+fun resolveStructureProps(resolved: Map<String, Any?>): StructureProps {
+    val drawing = drawingReading(resolved["view"])
+    val focus = focusReading(resolved["focus"])
+    val showLower = showLowerReading(resolved["show_lower"])
+    val hideTop = hideTopReading(resolved["hide_top"])
+    val highlight = highlightReading(resolved["highlight"])
+    val onPartTap = onPartTapReading(resolved["on_part_tap"])
+    return StructureProps(
+        drawing = drawing.value,
+        focus = focus.value,
+        showLower = showLower.value,
+        hideTopCount = hideTop.value,
+        highlightIds = highlight.value,
+        onPartTap = onPartTap.value,
+        notes = listOfNotNull(drawing.note, focus.note, showLower.note, hideTop.note, highlight.note, onPartTap.note, colorByNote(resolved["color_by"])),
+    )
+}

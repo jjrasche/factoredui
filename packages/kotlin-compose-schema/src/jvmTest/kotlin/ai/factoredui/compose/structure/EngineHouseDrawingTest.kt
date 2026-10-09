@@ -138,7 +138,7 @@ class EngineHouseDrawingTest {
         val defaults = resolveStructureProps(mapOf("focus" to "all"))
         assertEquals(StructureDrawing.PLAN, defaults.drawing)
         assertEquals(LevelFocus.AllLevels, defaults.focus)
-        assertEquals("utilisation", defaults.colorBy)
+        assertEquals(emptyList(), defaults.notes)
     }
 
     @Test

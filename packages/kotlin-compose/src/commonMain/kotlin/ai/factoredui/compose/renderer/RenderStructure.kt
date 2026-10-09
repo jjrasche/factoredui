@@ -4,7 +4,6 @@ import ai.factoredui.compose.scene.STRUCTURE_CAPABILITY
 import ai.factoredui.compose.scene.SceneView
 import ai.factoredui.compose.scene.readSceneViewValue
 import ai.factoredui.compose.schema.ActionRef
-import ai.factoredui.compose.schema.STRUCTURE_COLOR_BY_UTILISATION
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.schema.StructureProps
@@ -127,7 +126,7 @@ private fun RenderReadStructure(node: SpecNode, scene: SceneView, props: Structu
 @Composable
 private fun StructureNotes(scene: SceneView, parts: List<VisiblePart>, props: StructureProps, modifier: Modifier) {
     val notes = buildList {
-        if (props.colorBy != STRUCTURE_COLOR_BY_UTILISATION) add("color_by \"${props.colorBy}\" is not a colouring this renderer knows; parts are coloured by utilisation.")
+        addAll(props.notes)
         if (props.drawing != StructureDrawing.PLAN && isEveryPartFlat(scene, parts)) add("The scene states no part heights, so every part is drawn flat at its base.")
         if (parts.isEmpty()) add("No part of the scene is shown at this focus.")
     }

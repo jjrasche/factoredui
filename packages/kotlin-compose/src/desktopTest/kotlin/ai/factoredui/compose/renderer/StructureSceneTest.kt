@@ -140,6 +140,31 @@ class StructureSceneTest {
     }
 
     @Test
+    fun props_the_renderer_cannot_read_are_each_named_on_screen() {
+        val badProps = json.decodeFromString(
+            Spec.serializer(),
+            """
+            {"spec_version":1,"renderer_min":1,"root":{"id":"house","type":"scene","props":{
+              "view_state": {"renderer": "structure"},
+              "scene_view": "{house.scene}",
+              "view": "isometric", "focus": "top", "highlight": "e1", "show_lower": "yes", "hide_top": 1.5
+            }}}
+            """.trimIndent(),
+        )
+        driveScreen(badProps, storeFor("plan"), WIDTH, HEIGHT).use { screen ->
+            val texts = screen.textsUnder("house")
+            listOf(
+                "view 'isometric' is not plan, iso, south or west; the plan is drawn.",
+                "focus 'top' is not all or a stack level number; every level is shown.",
+                "highlight must be a list of part ids, not 'e1'; nothing is highlighted.",
+                "show_lower must be true or false, not 'yes'; lower levels are hidden.",
+                "hide_top must be a whole number of levels, not '1.5'; no level is hidden.",
+            ).forEach { note -> assertTrue(note in texts, "missing on screen: $note; drawn: $texts") }
+            assertEquals("drawn=35 highlighted=0 faded=0 selected=", screen.stateDescriptionOf(partsTag("house")))
+        }
+    }
+
+    @Test
     fun an_elevation_of_a_scene_with_no_heights_says_its_parts_are_drawn_flat() {
         driveScreen(BOUND, storeFor("south"), WIDTH, HEIGHT).use { screen ->
             assertTrue("The scene states no part heights, so every part is drawn flat at its base." in screen.textsUnder("house"))
