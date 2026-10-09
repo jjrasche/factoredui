@@ -71,27 +71,45 @@ private fun sceneViewOf(root: JsonObject): SceneView {
     )
 }
 
+private fun wrongType(key: String, expected: String, found: JsonElement) = SceneViewFormatException("$key must be $expected, not $found")
+
+private fun textOf(element: JsonElement): String? = (element as? JsonPrimitive)?.takeIf { it.isString }?.content
+
+private fun wholeOf(element: JsonElement): Long? = (element as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull
+
+private fun numberOf(element: JsonElement): Double? = (element as? JsonPrimitive)?.takeUnless { it.isString }?.doubleOrNull
+
+private fun intOf(key: String, whole: Long): Int =
+    whole.takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }?.toInt() ?: throw SceneViewFormatException("$key must be a whole number that fits an int, not $whole")
+
 private fun JsonObject.value(key: String): JsonElement? = this[key]?.takeIf { it !is JsonNull }
 
-private fun JsonObject.string(key: String): String? = (value(key) as? JsonPrimitive)?.takeIf { it.isString }?.content
+private fun JsonObject.string(key: String): String? = value(key)?.let { textOf(it) ?: throw wrongType(key, "text", it) }
 
-private fun JsonObject.long(key: String): Long? = (value(key) as? JsonPrimitive)?.longOrNull
+private fun JsonObject.long(key: String): Long? = value(key)?.let { wholeOf(it) ?: throw wrongType(key, "a whole number", it) }
 
-private fun JsonObject.double(key: String): Double? = (value(key) as? JsonPrimitive)?.doubleOrNull
+private fun JsonObject.int(key: String): Int? = long(key)?.let { intOf(key, it) }
 
-private fun JsonObject.obj(key: String): JsonObject? = value(key) as? JsonObject
+private fun JsonObject.double(key: String): Double? = value(key)?.let { numberOf(it) ?: throw wrongType(key, "a number", it) }
 
-private fun JsonObject.array(key: String): JsonArray = value(key) as? JsonArray ?: JsonArray(emptyList())
+private fun JsonObject.obj(key: String): JsonObject? = value(key)?.let { it as? JsonObject ?: throw wrongType(key, "an object", it) }
 
-private fun JsonObject.objects(key: String): List<JsonObject> = array(key).mapNotNull { it as? JsonObject }
+private fun JsonObject.array(key: String): JsonArray = value(key)?.let { it as? JsonArray ?: throw wrongType(key, "an array", it) } ?: JsonArray(emptyList())
 
-private fun JsonObject.strings(key: String): List<String> = array(key).mapNotNull { (it as? JsonPrimitive)?.takeIf { primitive -> primitive.isString }?.content }
+private fun JsonObject.objects(key: String): List<JsonObject> =
+    array(key).mapIndexed { index, entry -> entry as? JsonObject ?: throw wrongType("$key[$index]", "an object", entry) }
 
-private fun JsonObject.longs(key: String): List<Long> = array(key).map { (it as? JsonPrimitive)?.longOrNull ?: throw SceneViewFormatException("$key holds a value that is not a whole number") }
+private fun JsonObject.strings(key: String): List<String> =
+    array(key).mapIndexed { index, entry -> textOf(entry) ?: throw wrongType("$key[$index]", "text", entry) }
+
+private fun JsonObject.longs(key: String): List<Long> =
+    array(key).mapIndexed { index, entry -> wholeOf(entry) ?: throw wrongType("$key[$index]", "a whole number", entry) }
+
+private fun JsonObject.pairs(key: String): List<Pair<Long, Long>> = array(key).mapIndexed { index, entry -> pairOf("$key[$index]", entry) }
 
 private fun JsonObject.requiredLong(key: String): Long = long(key) ?: throw SceneViewFormatException("the scene lacks a whole number $key")
 
-private fun JsonObject.requiredInt(key: String): Int = requiredLong(key).toInt()
+private fun JsonObject.requiredInt(key: String): Int = intOf(key, requiredLong(key))
 
 private fun JsonObject.requiredDouble(key: String): Double = double(key) ?: throw SceneViewFormatException("the scene lacks a number $key")
 
@@ -99,10 +117,12 @@ private fun JsonObject.requiredString(key: String): String = string(key) ?: thro
 
 private fun JsonObject.requiredObject(key: String): JsonObject = obj(key) ?: throw SceneViewFormatException("the scene lacks an object $key")
 
-private fun pairOf(raw: JsonElement?): Pair<Long, Long>? {
-    val values = (raw as? JsonArray)?.map { (it as? JsonPrimitive)?.longOrNull } ?: return null
-    if (values.size != 2 || values.any { it == null }) return null
-    return values[0]!! to values[1]!!
+private fun pairOf(key: String, element: JsonElement): Pair<Long, Long> {
+    val values = (element as? JsonArray)?.map(::wholeOf)
+    val first = values?.getOrNull(0)
+    val second = values?.getOrNull(1)
+    if (values?.size != 2 || first == null || second == null) throw wrongType(key, "a pair of whole millimetres", element)
+    return first to second
 }
 
 private fun windowOf(window: JsonObject) = WindowMm(window.requiredLong("x0"), window.requiredLong("y0"), window.requiredLong("x1"), window.requiredLong("y1"))
@@ -111,20 +131,36 @@ private fun typeOf(type: JsonObject): SceneType = SceneType(
     id = type.requiredString("id"),
     label = type.string("label") ?: type.requiredString("id"),
     tags = type.strings("tags"),
-    footprintMm = pairOf(type.value("footprint_mm")),
+    footprintMm = type.value("footprint_mm")?.let { pairOf("footprint_mm", it) },
     heightMm = type.long("height_mm"),
     unitCostUsd = type.double("unit_cost_usd"),
     unitWeightKg = type.double("unit_weight_kg"),
     unitWeightNullReason = type.string("unit_weight_null_reason"),
 )
 
+private fun kindByTag(word: String?): ProvenanceKind? = ProvenanceKind.entries.firstOrNull { it.tag == word }
+
+private fun kindByName(word: String?): ProvenanceKind? = ProvenanceKind.entries.firstOrNull { it.name.equals(word, ignoreCase = true) }
+
+private fun unknownProvenance(words: List<String>) =
+    SceneViewFormatException("provenance names no kind this reader knows: ${words.joinToString { "'$it'" }}")
+
+private fun layerProvenanceKindOf(fields: JsonObject): ProvenanceKind {
+    val tag = fields.string("tag")
+    val kind = fields.string("kind")
+    if (tag == null && kind == null) return ProvenanceKind.DERIVED
+    return kindByTag(tag) ?: kindByName(kind) ?: throw unknownProvenance(listOfNotNull(tag, kind))
+}
+
+private fun instanceProvenanceKindOf(item: JsonObject): ProvenanceKind {
+    val word = item.string("provenance") ?: return ProvenanceKind.PROPOSED
+    return kindByTag(word) ?: kindByName(word) ?: throw unknownProvenance(listOf(word))
+}
+
 private fun provenanceOf(layer: JsonObject): Provenance {
     val fields = layer.obj("provenance") ?: return Provenance(ProvenanceKind.DERIVED)
-    val kind = ProvenanceKind.entries.firstOrNull { it.tag == fields.string("tag") }
-        ?: ProvenanceKind.entries.firstOrNull { it.name.equals(fields.string("kind"), ignoreCase = true) }
-        ?: ProvenanceKind.DERIVED
     return Provenance(
-        kind = kind,
+        kind = layerProvenanceKindOf(fields),
         source = fields.string("source"),
         asOf = fields.string("as_of"),
         note = fields.string("note"),
@@ -149,7 +185,7 @@ private fun surfaceOf(layer: JsonObject): SurfaceLayer = SurfaceLayer(
     cols = layer.requiredInt("cols"),
     rows = layer.requiredInt("rows"),
     classes = layer.objects("classes").map { SurfaceClass(it.requiredInt("id"), it.requiredString("name")) },
-    classIds = layer.longs("class_ids").map { it.toInt() },
+    classIds = layer.longs("class_ids").map { intOf("class_ids", it) },
     provenance = provenanceOf(layer),
 )
 
@@ -158,10 +194,10 @@ private fun footprintOf(item: JsonObject): SceneFootprint = SceneFootprint(
     type = item.requiredString("type"),
     col = item.requiredInt("col"),
     row = item.requiredInt("row"),
-    width = item.long("width")?.toInt() ?: 1,
-    height = item.long("height")?.toInt() ?: 1,
+    width = item.int("width") ?: 1,
+    height = item.int("height") ?: 1,
     heightMm = item.long("height_mm"),
-    stackLevel = item.long("stack_level")?.toInt() ?: 0,
+    stackLevel = item.int("stack_level") ?: 0,
     zMm = item.long("z_mm") ?: 0L,
 )
 
@@ -178,7 +214,7 @@ private fun instanceOf(item: JsonObject): SceneInstance = SceneInstance(
     heightMm = item.long("height_mm"),
     crownRadiusMm = item.long("crown_radius_mm"),
     tags = item.strings("tags"),
-    provenance = ProvenanceKind.entries.firstOrNull { it.name.equals(item.string("provenance"), ignoreCase = true) } ?: ProvenanceKind.PROPOSED,
+    provenance = instanceProvenanceKindOf(item),
 )
 
 private fun instancesOf(layer: JsonObject): InstanceLayer =
@@ -192,7 +228,7 @@ private fun waterOf(layer: JsonObject): WaterLayer = WaterLayer(
     flow = layer.objects("flow").map { line ->
         FlowLine(
             line.requiredString("id"),
-            line.array("points_mm").mapNotNull(::pairOf),
+            line.pairs("points_mm"),
             line.requiredDouble("quantity"),
             line.requiredString("unit"),
             line.requiredString("kind"),
@@ -203,7 +239,7 @@ private fun waterOf(layer: JsonObject): WaterLayer = WaterLayer(
 
 private fun boundariesOf(layer: JsonObject): BoundaryLayer = BoundaryLayer(
     version = layer.long("version") ?: 0L,
-    polygons = layer.objects("polygons").map { BoundaryPolygon(it.requiredString("id"), it.requiredString("kind"), it.array("points_mm").mapNotNull(::pairOf)) },
+    polygons = layer.objects("polygons").map { BoundaryPolygon(it.requiredString("id"), it.requiredString("kind"), it.pairs("points_mm")) },
     provenance = provenanceOf(layer),
 )
 

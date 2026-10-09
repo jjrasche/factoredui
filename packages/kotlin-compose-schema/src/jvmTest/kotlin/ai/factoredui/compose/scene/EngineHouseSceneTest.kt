@@ -43,6 +43,12 @@ class EngineHouseSceneTest {
     }
 
     @Test
+    fun the_engine_house_written_and_read_back_is_the_scene_first_read() {
+        val scene = engineHouse()
+        assertEquals(scene, readSceneView(sceneViewJson(scene)))
+    }
+
+    @Test
     fun the_house_is_one_stack_level_standing_on_the_ground() {
         val scene = engineHouse()
         assertEquals(listOf(StackLevel(0, 0, null)), scene.stackLevels)

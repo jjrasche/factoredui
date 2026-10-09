@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -33,6 +34,9 @@ private fun storeValueOf(element: JsonElement, number: (JsonPrimitive) -> Any?):
 
 private fun wholeAsLong(primitive: JsonPrimitive): Any? = primitive.longOrNull ?: primitive.doubleOrNull
 
+private fun withoutLayerVersions(scene: JsonElement): JsonObject =
+    JsonObject(scene.jsonObject.mapValues { (_, field) -> (field as? JsonObject)?.let { layer -> JsonObject(layer - "version") } ?: field })
+
 private const val CANVAS_WIDTH = 800.0
 private const val CANVAS_HEIGHT = 600.0
 
@@ -50,8 +54,14 @@ class EngineHouseDrawingTest {
     }
 
     @Test
+    fun a_store_that_holds_a_64_bit_layer_version_as_a_double_is_refused_naming_the_version() {
+        val failure = assertFailsWith<SceneViewFormatException> { readSceneViewValue(storeValueOf(Json.parseToJsonElement(houseText())) { it.doubleOrNull }) }
+        assertEquals("version must be a whole number, not 8.421684800706511E18", failure.message)
+    }
+
+    @Test
     fun a_store_that_holds_every_number_as_a_double_still_reads_every_part_and_figure() {
-        val fromDoubles = readSceneViewValue(storeValueOf(Json.parseToJsonElement(houseText())) { it.doubleOrNull })
+        val fromDoubles = readSceneViewValue(storeValueOf(withoutLayerVersions(Json.parseToJsonElement(houseText()))) { it.doubleOrNull })
         assertEquals(engineHouse().footprints!!.items, fromDoubles.footprints!!.items)
         assertEquals(engineHouse().types, fromDoubles.types)
         assertEquals(utilisationByPart(engineHouse()), utilisationByPart(fromDoubles))
