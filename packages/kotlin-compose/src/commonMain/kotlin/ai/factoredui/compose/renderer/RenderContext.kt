@@ -153,12 +153,27 @@ suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
     val resolvedParams = ai.factoredui.compose.schema.BindingResolver
         .resolveProps(actionRef.params, data)
     observability.onInteraction(nodeId, actionRef, resolvedParams)
+    if (actionRef.action == SET_BINDING_ACTION) {
+        writeBindingFrom(resolvedParams)
+        return
+    }
     val handler = actions[actionRef.action]
     if (handler == null) {
         println("[factoredui] unknown action '${actionRef.action}' on node '$nodeId'")
         return
     }
     handler(resolvedParams)
+}
+
+const val SET_BINDING_ACTION = "set_binding"
+
+private fun RenderContext.writeBindingFrom(params: Map<String, Any?>) {
+    val path = params["path"] as? String
+    if (path.isNullOrEmpty()) {
+        println("[factoredui] set_binding needs a text 'path' param; got ${params["path"]}")
+        return
+    }
+    setBinding(path, params["value"])
 }
 
 fun sceneIntentDispatcher(
