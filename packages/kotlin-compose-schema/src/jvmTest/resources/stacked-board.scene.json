@@ -1,0 +1,49 @@
+{
+  "units": "mm",
+  "level_feet": 1,
+  "tile_feet": 1.0,
+  "cols": 20,
+  "rows": 16,
+  "window": { "x0": 0, "y0": 0, "x1": 6000, "y1": 4800 },
+  "types": [
+    { "id": "block", "label": "Block", "tags": ["base"], "footprint_mm": [300, 600], "height_mm": null },
+    { "id": "bar", "label": "Bar", "tags": ["span"], "footprint_mm": [6000, 600], "height_mm": 300 },
+    { "id": "wide_bar", "label": "Wide bar", "tags": ["span"], "footprint_mm": [6000, 600], "height_mm": 300 },
+    { "id": "plate", "label": "Plate", "tags": ["top"], "footprint_mm": [1500, 4800], "height_mm": 200 }
+  ],
+  "stack_levels": [
+    { "stack_level": 0, "z_base_mm": 0 },
+    { "stack_level": 1, "z_base_mm": 400 },
+    { "stack_level": 2, "z_base_mm": 700 }
+  ],
+  "footprints": {
+    "version": 7179409882978186897,
+    "provenance": { "tag": "computed", "kind": "derived" },
+    "items": [
+      { "id": "b1", "type": "block", "col": 0, "row": 2, "width": 1, "height": 2, "height_mm": 400, "stack_level": 0, "z_mm": 0 },
+      { "id": "b2", "type": "block", "col": 9, "row": 2, "width": 1, "height": 2, "height_mm": 400, "stack_level": 0, "z_mm": 0 },
+      { "id": "b3", "type": "block", "col": 19, "row": 2, "width": 1, "height": 2, "height_mm": 400, "stack_level": 0, "z_mm": 0 },
+      { "id": "b4", "type": "block", "col": 0, "row": 13, "width": 1, "height": 2, "height_mm": 400, "stack_level": 0, "z_mm": 0 },
+      { "id": "b5", "type": "block", "col": 9, "row": 13, "width": 1, "height": 2, "height_mm": 400, "stack_level": 0, "z_mm": 0 },
+      { "id": "b6", "type": "block", "col": 19, "row": 13, "width": 1, "height": 2, "height_mm": 400, "stack_level": 0, "z_mm": 0 },
+      { "id": "r1", "type": "bar", "col": 0, "row": 2, "width": 20, "height": 2, "stack_level": 1, "z_mm": 400 },
+      { "id": "r2", "type": "wide_bar", "col": 0, "row": 13, "width": 20, "height": 2, "stack_level": 1, "z_mm": 400 },
+      { "id": "p1", "type": "plate", "col": 0, "row": 0, "width": 5, "height": 16, "stack_level": 2, "z_mm": 700 },
+      { "id": "p2", "type": "plate", "col": 5, "row": 0, "width": 5, "height": 16, "stack_level": 2, "z_mm": 700 },
+      { "id": "p3", "type": "plate", "col": 10, "row": 0, "width": 5, "height": 16, "stack_level": 2, "z_mm": 700 },
+      { "id": "p4", "type": "plate", "col": 15, "row": 0, "width": 5, "height": 16, "stack_level": 2, "z_mm": 700 }
+    ]
+  },
+  "annotations": {
+    "version": 1,
+    "items": [
+      { "ref_kind": "FOOTPRINT", "ref_id": "r1", "kind": "crowding", "text": "2 of 10", "source": "host", "value": 0.2 },
+      { "ref_kind": "FOOTPRINT", "ref_id": "r2", "kind": "crowding", "text": "9 of 10", "source": "host", "value": 0.9 },
+      { "ref_kind": "FOOTPRINT", "ref_id": "p1", "kind": "crowding", "text": "1 of 10", "source": "host", "value": 0.1 },
+      { "ref_kind": "FOOTPRINT", "ref_id": "p2", "kind": "crowding", "text": "5 of 10", "source": "host", "value": 0.5 },
+      { "ref_kind": "FOOTPRINT", "ref_id": "p3", "kind": "crowding", "text": "13 of 10", "source": "host", "value": 1.3 },
+      { "ref_kind": "FOOTPRINT", "ref_id": "b1", "kind": "note", "text": "a different channel", "source": null, "value": 0.7 }
+    ]
+  },
+  "dropped": []
+}

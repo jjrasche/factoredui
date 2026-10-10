@@ -72,19 +72,19 @@ class PlanLayoutTest {
 
     @Test
     fun where_parts_overlap_on_the_plan_the_top_one_is_hit() {
-        val parts = listOf(shown(part("beam", level = 1, col = 2, row = 2, width = 13)), shown(part("panel", level = 2, col = 2, row = 2, width = 4, height = 5)))
-        assertEquals("panel", hitPartInView(stackScene(), parts, 1500.0, 1500.0, FlatView.PLAN)?.footprint?.id)
+        val parts = listOf(shown(part("bar", level = 1, col = 2, row = 2, width = 13)), shown(part("plate", level = 2, col = 2, row = 2, width = 4, height = 5)))
+        assertEquals("plate", hitPartInView(stackScene(), parts, 1500.0, 1500.0, FlatView.PLAN)?.footprint?.id)
     }
 
     @Test
     fun a_point_on_a_lower_part_that_no_upper_part_covers_hits_the_lower_part() {
-        val parts = listOf(shown(part("beam", level = 1, col = 2, row = 2, width = 13)), shown(part("panel", level = 2, col = 2, row = 2, width = 4, height = 5)))
-        assertEquals("beam", hitPartInView(stackScene(), parts, 5000.0, 1500.0, FlatView.PLAN)?.footprint?.id)
+        val parts = listOf(shown(part("bar", level = 1, col = 2, row = 2, width = 13)), shown(part("plate", level = 2, col = 2, row = 2, width = 4, height = 5)))
+        assertEquals("bar", hitPartInView(stackScene(), parts, 5000.0, 1500.0, FlatView.PLAN)?.footprint?.id)
     }
 
     @Test
     fun a_point_on_nothing_hits_nothing() =
-        assertNull(hitPartInView(stackScene(), listOf(shown(part("panel", col = 2, row = 2, width = 4, height = 5))), 100.0, 100.0, FlatView.PLAN))
+        assertNull(hitPartInView(stackScene(), listOf(shown(part("plate", col = 2, row = 2, width = 4, height = 5))), 100.0, 100.0, FlatView.PLAN))
 
     @Test
     fun a_part_not_in_the_visible_list_cannot_be_hit() = assertNull(hitPartInView(stackScene(), emptyList(), 1500.0, 1500.0, FlatView.PLAN))

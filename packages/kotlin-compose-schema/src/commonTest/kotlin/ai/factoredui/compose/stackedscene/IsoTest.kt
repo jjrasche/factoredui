@@ -69,17 +69,17 @@ class IsoTest {
 
     @Test
     fun a_higher_box_is_drawn_after_the_lower_one_it_rests_on() =
-        assertEquals(listOf("pier", "beam"), isoOrderOf(part("beam", col = 2, row = 2, width = 13, level = 1, zMm = 352, heightMm = 302), part("pier", col = 2, row = 2, heightMm = 276)))
+        assertEquals(listOf("block", "bar"), isoOrderOf(part("bar", col = 2, row = 2, width = 13, level = 1, zMm = 352, heightMm = 302), part("block", col = 2, row = 2, heightMm = 276)))
 
     @Test
     fun boxes_in_a_stack_of_three_bays_come_out_so_that_every_nearer_box_follows_every_farther_one_it_hides() {
         val items = mutableListOf<SceneFootprint>()
         listOf(2, 7, 12).forEachIndexed { bay, row ->
-            listOf(2, 6, 10, 14).forEachIndexed { column, col -> items += part("pier-$bay-$column", col = col, row = row, heightMm = 276) }
-            items += part("beam-$bay", col = 2, row = row, width = 13, level = 1, zMm = 352, heightMm = 302)
+            listOf(2, 6, 10, 14).forEachIndexed { column, col -> items += part("block-$bay-$column", col = col, row = row, heightMm = 276) }
+            items += part("bar-$bay", col = 2, row = row, width = 13, level = 1, zMm = 352, heightMm = 302)
         }
         listOf(2, 7).forEachIndexed { bay, row ->
-            listOf(2, 6, 10).forEachIndexed { column, col -> items += part("panel-$bay-$column", col = col, row = row, width = 4, height = 5, level = 2, zMm = 654, heightMm = 260) }
+            listOf(2, 6, 10).forEachIndexed { column, col -> items += part("plate-$bay-$column", col = col, row = row, width = 4, height = 5, level = 2, zMm = 654, heightMm = 260) }
         }
         val scene = stackScene(items = items)
         val position = orderForIso(scene, items.reversed().map { shown(it) }).mapIndexed { index, part -> part.footprint.id to index }.toMap()

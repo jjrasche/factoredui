@@ -1,0 +1,19 @@
+{
+  "reports": [
+    {
+      "id": "groups",
+      "label": "Groups",
+      "columns": [
+        { "id": "count", "label": "Count", "unit": "count" },
+        { "id": "worth", "label": "Worth", "unit": "points" }
+      ],
+      "rows": [
+        { "id": "blocks", "label": "Blocks", "object_ids": ["b1", "b2", "b3", "b4", "b5", "b6"], "values": { "count": 6, "worth": 12.5 } },
+        { "id": "bars", "label": "Bars", "object_ids": ["r1", "r2"], "values": { "count": 2, "worth": 40 } },
+        { "id": "plates", "label": "Plates", "object_ids": ["p1", "p2", "p3", "p4"], "values": { "count": 4, "worth": null } },
+        { "id": "loose", "label": "Loose pieces", "object_ids": [], "values": { "count": 3, "worth": 6 } },
+        { "id": "everything", "label": "Everything", "object_ids": ["b1", "b2", "b3", "b4", "b5", "b6", "r1", "r2", "p1", "p2", "p3", "p4"], "values": { "count": 15, "worth": null } }
+      ]
+    }
+  ]
+}
