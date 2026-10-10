@@ -27,8 +27,8 @@ val VECTOR_MAP_CAPABILITY = RendererCapability("vector-map", MAP_LAYERS, setOf(2
 
 val STANDARD_RENDERER_CAPABILITIES = listOf(PIXEL_MAP_CAPABILITY, VECTOR_MAP_CAPABILITY)
 
-/** Draws a built structure from its own payload, so it takes whatever rung the scene sits at; registered last, it is chosen only by name. */
-val STRUCTURE_CAPABILITY = RendererCapability("structure", setOf(SceneLayerKind.FOOTPRINTS, SceneLayerKind.ANNOTATIONS), ZOOM_LADDER_FEET.toSet())
+/** Draws stacked parts from their own payload, so it takes whatever rung the scene sits at; registered last, it is chosen only by name. */
+val STACKED_SCENE_CAPABILITY = RendererCapability("stacked_scene", setOf(SceneLayerKind.FOOTPRINTS, SceneLayerKind.ANNOTATIONS), ZOOM_LADDER_FEET.toSet())
 
 fun isVectorLevel(levelFeet: Int): Boolean =
     selectRenderer(STANDARD_RENDERER_CAPABILITIES, DeviceProfile.DESKTOP, levelFeet, null)?.id == VECTOR_MAP_CAPABILITY.id

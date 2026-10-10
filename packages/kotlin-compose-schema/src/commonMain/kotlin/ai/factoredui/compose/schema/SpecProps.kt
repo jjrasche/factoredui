@@ -10,13 +10,13 @@ import ai.factoredui.compose.layout.TileFootprint
 import ai.factoredui.compose.layout.TileInstance
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
-import ai.factoredui.compose.structure.ColourScale
-import ai.factoredui.compose.structure.ColourStop
-import ai.factoredui.compose.structure.LevelFocus
-import ai.factoredui.compose.structure.NEUTRAL_PART_COLOUR
-import ai.factoredui.compose.structure.StructureDrawing
-import ai.factoredui.compose.structure.colourOfHex
-import ai.factoredui.compose.structure.structureDrawingOf
+import ai.factoredui.compose.stackedscene.ColourScale
+import ai.factoredui.compose.stackedscene.ColourStop
+import ai.factoredui.compose.stackedscene.LevelFocus
+import ai.factoredui.compose.stackedscene.NEUTRAL_PART_COLOUR
+import ai.factoredui.compose.stackedscene.StackedDrawing
+import ai.factoredui.compose.stackedscene.colourOfHex
+import ai.factoredui.compose.stackedscene.stackedDrawingOf
 
 /**
  * Typed prop accessors for each SpecNodeType.
@@ -1048,13 +1048,13 @@ fun resolveTilemapSize(resolvedSize: Any?, fallback: Int): Int =
 fun resolveTileArea(resolvedArea: Any?): Double =
     (resolvedArea as? Number)?.toDouble()?.takeIf { it > 0.0 } ?: 1.0
 
-// --- Structure scene props (scene node, view_state.renderer == "structure") ---
+// --- Stacked scene props (scene node, view_state.renderer == "stacked_scene") ---
 
 private const val ALL_LEVELS = "all"
 
 /** [notes] name every prop the renderer could not read, so the screen says what it fell back to. */
-data class StructureProps(
-    val drawing: StructureDrawing = StructureDrawing.PLAN,
+data class StackedSceneProps(
+    val drawing: StackedDrawing = StackedDrawing.PLAN,
     val focus: LevelFocus = LevelFocus.AllLevels,
     val showLower: Boolean = false,
     val hideTopCount: Int = 0,
@@ -1069,9 +1069,9 @@ private data class PropReading<T>(val value: T, val note: String? = null)
 private fun wholeNumberOf(raw: Any?): Int? =
     (raw as? Number)?.toDouble()?.takeIf { it % 1.0 == 0.0 && it >= Int.MIN_VALUE && it <= Int.MAX_VALUE }?.toInt()
 
-private fun drawingReading(raw: Any?): PropReading<StructureDrawing> {
-    if (raw == null) return PropReading(StructureDrawing.PLAN)
-    val drawing = structureDrawingOf(raw) ?: return PropReading(StructureDrawing.PLAN, "view '$raw' is not plan, iso, south or west; the plan is drawn.")
+private fun drawingReading(raw: Any?): PropReading<StackedDrawing> {
+    if (raw == null) return PropReading(StackedDrawing.PLAN)
+    val drawing = stackedDrawingOf(raw) ?: return PropReading(StackedDrawing.PLAN, "view '$raw' is not plan, iso, south or west; the plan is drawn.")
     return PropReading(drawing)
 }
 
@@ -1137,7 +1137,7 @@ private fun colourScaleReading(raw: Any?): PropReading<ColourScale?> {
     return PropReading(scale, notes)
 }
 
-fun resolveStructureProps(resolved: Map<String, Any?>): StructureProps {
+fun resolveStackedSceneProps(resolved: Map<String, Any?>): StackedSceneProps {
     val drawing = drawingReading(resolved["view"])
     val focus = focusReading(resolved["focus"])
     val showLower = showLowerReading(resolved["show_lower"])
@@ -1145,7 +1145,7 @@ fun resolveStructureProps(resolved: Map<String, Any?>): StructureProps {
     val highlight = highlightReading(resolved["highlight"])
     val onPartTap = onPartTapReading(resolved["on_part_tap"])
     val colourScale = colourScaleReading(resolved["color_by"])
-    return StructureProps(
+    return StackedSceneProps(
         drawing = drawing.value,
         focus = focus.value,
         showLower = showLower.value,

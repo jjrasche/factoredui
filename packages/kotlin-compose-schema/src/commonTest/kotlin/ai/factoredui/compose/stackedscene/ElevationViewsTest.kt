@@ -1,4 +1,4 @@
-package ai.factoredui.compose.structure
+package ai.factoredui.compose.stackedscene
 
 import ai.factoredui.compose.scene.SceneType
 import ai.factoredui.compose.scene.SceneView
@@ -25,16 +25,16 @@ private fun piersOf(scene: SceneView) = scene.footprints!!.items.filter { it.sta
 class ElevationViewsTest {
     @Test
     fun there_are_three_views_plan_from_the_south_and_from_the_west() {
-        assertEquals(listOf(StructureView.PLAN, StructureView.SOUTH, StructureView.WEST), StructureView.entries)
-        assertEquals(listOf("Plan", "From the south", "From the west"), StructureView.entries.map { it.label })
+        assertEquals(listOf(FlatView.PLAN, FlatView.SOUTH, FlatView.WEST), FlatView.entries)
+        assertEquals(listOf("Plan", "From the south", "From the west"), FlatView.entries.map { it.label })
     }
 
     @Test
-    fun the_plan_window_is_the_scene_window() = assertEquals(RectMm(0.0, 0.0, 9760.0, 8540.0), viewWindow(elevationHouse(), StructureView.PLAN))
+    fun the_plan_window_is_the_scene_window() = assertEquals(RectMm(0.0, 0.0, 9760.0, 8540.0), viewWindow(elevationHouse(), FlatView.PLAN))
 
     @Test
     fun an_elevation_window_runs_from_the_datum_to_a_little_above_the_highest_top() {
-        val south = viewWindow(elevationHouse(), StructureView.SOUTH)
+        val south = viewWindow(elevationHouse(), FlatView.SOUTH)
         assertEquals(0.0, south.x0)
         assertEquals(9760.0, south.x1)
         assertEquals(0.0, south.y0)
@@ -43,7 +43,7 @@ class ElevationViewsTest {
 
     @Test
     fun the_west_window_runs_along_the_scenes_south_north_extent() {
-        val west = viewWindow(elevationHouse(), StructureView.WEST)
+        val west = viewWindow(elevationHouse(), FlatView.WEST)
         assertEquals(0.0 to 8540.0, west.x0 to west.x1)
     }
 
@@ -52,12 +52,12 @@ class ElevationViewsTest {
         val house = elevationHouse()
         val layer = house.footprints!!
         val scene = house.copy(footprints = layer.copy(items = layer.items + part("footing", "pier", col = 5, row = 5, zMm = -300, heightMm = 300)))
-        assertEquals(-300.0, viewWindow(scene, StructureView.SOUTH).y0)
+        assertEquals(-300.0, viewWindow(scene, FlatView.SOUTH).y0)
     }
 
     @Test
     fun from_the_south_a_part_spans_its_x_range_and_rises_from_its_own_z_for_its_height() =
-        assertEquals(RectMm(1220.0, 352.0, 9150.0, 654.0), partRectInView(elevationHouse(), elevationHouse().footprint("beam"), StructureView.SOUTH))
+        assertEquals(RectMm(1220.0, 352.0, 9150.0, 654.0), partRectInView(elevationHouse(), elevationHouse().footprint("beam"), FlatView.SOUTH))
 
     @Test
     fun a_part_with_no_height_of_its_own_takes_its_types_height() {
@@ -77,81 +77,81 @@ class ElevationViewsTest {
         val scene = stackScene(types = listOf(SceneType("pier", "Pier")), items = listOf(part("p", "pier", zMm = 352)))
         assertNull(partHeightMm(scene, scene.footprint("p")))
         assertEquals(ElevationRange(352, 352), elevationRange(scene, scene.footprint("p")))
-        assertEquals(RectMm(0.0, 352.0, 610.0, 352.0), partRectInView(scene, scene.footprint("p"), StructureView.SOUTH))
+        assertEquals(RectMm(0.0, 352.0, 610.0, 352.0), partRectInView(scene, scene.footprint("p"), FlatView.SOUTH))
     }
 
     @Test
     fun from_the_west_north_is_on_the_left_and_south_on_the_right() {
         val scene = elevationHouse()
-        val north = partRectInView(scene, scene.footprint("pier-back"), StructureView.WEST)
-        val south = partRectInView(scene, scene.footprint("pier-front"), StructureView.WEST)
+        val north = partRectInView(scene, scene.footprint("pier-back"), FlatView.WEST)
+        val south = partRectInView(scene, scene.footprint("pier-front"), FlatView.WEST)
         assertTrue(north.x1 <= south.x0, "the northern pier sits left of the southern one")
     }
 
     @Test
     fun the_plan_rectangle_is_the_tile_rectangle() =
-        assertEquals(RectMm(1220.0, 1220.0, 1830.0, 1830.0), partRectInView(elevationHouse(), elevationHouse().footprint("pier-front"), StructureView.PLAN))
+        assertEquals(RectMm(1220.0, 1220.0, 1830.0, 1830.0), partRectInView(elevationHouse(), elevationHouse().footprint("pier-front"), FlatView.PLAN))
 
     @Test
     fun from_the_south_the_far_parts_are_drawn_first_so_a_near_one_covers_it() {
         val scene = elevationHouse()
-        assertEquals(listOf("pier-back", "pier-front"), orderForView(scene, piersOf(scene), StructureView.SOUTH).map { it.footprint.id })
+        assertEquals(listOf("pier-back", "pier-front"), orderForView(scene, piersOf(scene), FlatView.SOUTH).map { it.footprint.id })
     }
 
     @Test
     fun within_one_depth_the_lower_level_is_drawn_before_the_higher() {
         val scene = elevationHouse()
         val parts = listOf("beam", "pier-front").map { shown(scene.footprint(it)) }
-        assertEquals(listOf("pier-front", "beam"), orderForView(scene, parts, StructureView.SOUTH).map { it.footprint.id })
+        assertEquals(listOf("pier-front", "beam"), orderForView(scene, parts, FlatView.SOUTH).map { it.footprint.id })
     }
 
     @Test
     fun the_plan_keeps_the_order_it_was_given() {
         val scene = elevationHouse()
         val parts = listOf("panel", "pier-back").map { shown(scene.footprint(it)) }
-        assertEquals(parts, orderForView(scene, parts, StructureView.PLAN))
+        assertEquals(parts, orderForView(scene, parts, FlatView.PLAN))
     }
 
     @Test
     fun a_part_whose_centre_lies_under_a_later_part_is_flagged_covered() {
         val scene = elevationHouse()
         val parts = listOf("pier-front", "beam").map { shown(scene.footprint(it)) }
-        assertEquals(listOf(true, false), coveredFlags(scene, parts, StructureView.PLAN))
+        assertEquals(listOf(true, false), coveredFlags(scene, parts, FlatView.PLAN))
     }
 
     @Test
     fun from_the_south_a_pier_behind_another_in_the_same_column_is_covered_by_it() {
         val scene = elevationHouse()
-        val ordered = orderForView(scene, piersOf(scene), StructureView.SOUTH)
+        val ordered = orderForView(scene, piersOf(scene), FlatView.SOUTH)
         assertEquals(listOf("pier-back", "pier-front"), ordered.map { it.footprint.id })
-        assertEquals(listOf(true, false), coveredFlags(scene, ordered, StructureView.SOUTH))
+        assertEquals(listOf(true, false), coveredFlags(scene, ordered, FlatView.SOUTH))
     }
 
     @Test
     fun from_the_west_the_same_two_piers_are_side_by_side_and_neither_covers_the_other() {
         val scene = elevationHouse()
-        assertEquals(listOf(false, false), coveredFlags(scene, orderForView(scene, piersOf(scene), StructureView.WEST), StructureView.WEST))
+        assertEquals(listOf(false, false), coveredFlags(scene, orderForView(scene, piersOf(scene), FlatView.WEST), FlatView.WEST))
     }
 
     @Test
     fun from_the_south_the_nearer_of_two_stacked_parts_is_hit() {
         val scene = elevationHouse()
-        val ordered = orderForView(scene, piersOf(scene), StructureView.SOUTH)
-        assertEquals("pier-front", hitPartInView(scene, ordered, 1500.0, 100.0, StructureView.SOUTH)?.footprint?.id)
+        val ordered = orderForView(scene, piersOf(scene), FlatView.SOUTH)
+        assertEquals("pier-front", hitPartInView(scene, ordered, 1500.0, 100.0, FlatView.SOUTH)?.footprint?.id)
     }
 
     @Test
     fun the_plan_is_not_exaggerated_and_an_elevation_is_stretched_so_its_height_can_be_read() {
         val scene = elevationHouse()
-        assertEquals(1, exaggerationFor(scene, StructureView.PLAN, 800.0, 600.0, 20.0))
-        val stretch = exaggerationFor(scene, StructureView.SOUTH, 800.0, 600.0, 20.0)
+        assertEquals(1, exaggerationFor(scene, FlatView.PLAN, 800.0, 600.0, 20.0))
+        val stretch = exaggerationFor(scene, FlatView.SOUTH, 800.0, 600.0, 20.0)
         assertTrue(stretch in 3..10, "stretch $stretch")
     }
 
     @Test
     fun a_scene_of_flat_parts_is_stretched_to_the_most_allowed_rather_than_dividing_by_zero() {
         val scene = stackScene(items = listOf(part("flat")))
-        assertEquals(10, exaggerationFor(scene, StructureView.SOUTH, 800.0, 600.0, 20.0))
+        assertEquals(10, exaggerationFor(scene, FlatView.SOUTH, 800.0, 600.0, 20.0))
     }
 
     @Test

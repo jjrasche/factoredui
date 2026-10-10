@@ -8,7 +8,7 @@
         "id": "house", "type": "scene",
         "props": {
           "flex": 3,
-          "view_state": { "renderer": "structure" },
+          "view_state": { "renderer": "stacked_scene" },
           "scene_view": "{house.scene}",
           "view": "{house.view}",
           "highlight": "{bom.picked}",

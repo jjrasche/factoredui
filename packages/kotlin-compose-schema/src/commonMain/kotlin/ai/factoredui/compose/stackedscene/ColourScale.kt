@@ -1,4 +1,4 @@
-package ai.factoredui.compose.structure
+package ai.factoredui.compose.stackedscene
 
 import ai.factoredui.compose.pixel.rgbOfHex
 

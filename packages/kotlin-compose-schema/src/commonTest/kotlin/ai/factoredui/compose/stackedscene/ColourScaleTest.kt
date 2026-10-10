@@ -1,4 +1,4 @@
-package ai.factoredui.compose.structure
+package ai.factoredui.compose.stackedscene
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

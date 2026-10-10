@@ -2,20 +2,20 @@ package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.scene.SceneFootprint
 import ai.factoredui.compose.scene.SceneView
-import ai.factoredui.compose.structure.CanvasFit
-import ai.factoredui.compose.structure.ColourScale
-import ai.factoredui.compose.structure.LegendEntry
-import ai.factoredui.compose.structure.PartValue
-import ai.factoredui.compose.structure.StructureDrawing
-import ai.factoredui.compose.structure.VisiblePart
-import ai.factoredui.compose.structure.colourFor
-import ai.factoredui.compose.structure.faceShades
-import ai.factoredui.compose.structure.flatViewOf
-import ai.factoredui.compose.structure.isoProject
-import ai.factoredui.compose.structure.mmToCanvas
-import ai.factoredui.compose.structure.partBox
-import ai.factoredui.compose.structure.partRectInView
-import ai.factoredui.compose.structure.projectFaces
+import ai.factoredui.compose.stackedscene.CanvasFit
+import ai.factoredui.compose.stackedscene.ColourScale
+import ai.factoredui.compose.stackedscene.LegendEntry
+import ai.factoredui.compose.stackedscene.PartValue
+import ai.factoredui.compose.stackedscene.StackedDrawing
+import ai.factoredui.compose.stackedscene.VisiblePart
+import ai.factoredui.compose.stackedscene.colourFor
+import ai.factoredui.compose.stackedscene.faceShades
+import ai.factoredui.compose.stackedscene.flatViewOf
+import ai.factoredui.compose.stackedscene.isoProject
+import ai.factoredui.compose.stackedscene.mmToCanvas
+import ai.factoredui.compose.stackedscene.partBox
+import ai.factoredui.compose.stackedscene.partRectInView
+import ai.factoredui.compose.stackedscene.projectFaces
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -42,19 +42,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 
-internal class StructurePicture(
+internal class StackedPicture(
     val scene: SceneView,
     val parts: List<VisiblePart>,
-    val drawing: StructureDrawing,
+    val drawing: StackedDrawing,
     val fit: CanvasFit,
     val values: Map<String, PartValue>,
     val colourScale: ColourScale?,
     val outlinedIds: Set<String>,
 )
 
-private fun StructurePicture.colourOf(part: VisiblePart): Long = colourFor(colourScale, values[part.footprint.id]?.value)
+private fun StackedPicture.colourOf(part: VisiblePart): Long = colourFor(colourScale, values[part.footprint.id]?.value)
 
-internal class StructurePalette(val edge: Color, val outline: Color, val groundFill: Color, val groundEdge: Color)
+internal class StackedPalette(val edge: Color, val outline: Color, val groundFill: Color, val groundEdge: Color)
 
 private val SELECTED_OUTLINE = Color(0xFF1E90FF)
 private const val DIMMED_ALPHA = 0.3f
@@ -70,7 +70,7 @@ private const val DATUM_PX = 2f
 /** A part the scene gives no height still has to be seen and found in an elevation, so it is drawn at least this thick. */
 private const val MIN_PART_PX = 3f
 
-internal fun structurePalette(theme: SpecTheme) = StructurePalette(
+internal fun stackedPalette(theme: SpecTheme) = StackedPalette(
     edge = theme.ground.copy(alpha = 0.85f),
     outline = SELECTED_OUTLINE,
     groundFill = theme.muted.copy(alpha = 0.10f),
@@ -87,19 +87,19 @@ private fun pathThrough(points: List<Offset>): Path = Path().apply {
     close()
 }
 
-internal fun DrawScope.drawStructure(picture: StructurePicture, palette: StructurePalette) {
-    if (picture.drawing == StructureDrawing.ISO) drawIsoStructure(picture, palette) else drawFlatStructure(picture, palette)
+internal fun DrawScope.drawStackedScene(picture: StackedPicture, palette: StackedPalette) {
+    if (picture.drawing == StackedDrawing.ISO) drawIsoParts(picture, palette) else drawFlatParts(picture, palette)
 }
 
-private fun partCanvasRect(picture: StructurePicture, footprint: SceneFootprint): Rect {
+private fun partCanvasRect(picture: StackedPicture, footprint: SceneFootprint): Rect {
     val rect = partRectInView(picture.scene, footprint, flatViewOf(picture.drawing))
     val topLeft = canvasPoint(picture.fit, rect.x0, rect.y1)
     val bottomRight = canvasPoint(picture.fit, rect.x1, rect.y0)
     return Rect(topLeft.x, minOf(topLeft.y, bottomRight.y - MIN_PART_PX), bottomRight.x, bottomRight.y)
 }
 
-private fun DrawScope.drawFlatStructure(picture: StructurePicture, palette: StructurePalette) {
-    if (picture.drawing != StructureDrawing.PLAN) drawDatum(picture, palette)
+private fun DrawScope.drawFlatParts(picture: StackedPicture, palette: StackedPalette) {
+    if (picture.drawing != StackedDrawing.PLAN) drawDatum(picture, palette)
     picture.parts.forEach { part ->
         val rect = partCanvasRect(picture, part.footprint)
         val fill = Color(picture.colourOf(part))
@@ -112,14 +112,14 @@ private fun DrawScope.drawFlatStructure(picture: StructurePicture, palette: Stru
     }
 }
 
-private fun DrawScope.drawDatum(picture: StructurePicture, palette: StructurePalette) {
+private fun DrawScope.drawDatum(picture: StackedPicture, palette: StackedPalette) {
     val datumY = canvasPoint(picture.fit, 0.0, 0.0).y
     drawLine(palette.groundEdge, Offset(0f, datumY), Offset(size.width, datumY), strokeWidth = DATUM_PX)
 }
 
 private fun isoPolygon(fit: CanvasFit, polygon: List<Pair<Double, Double>>): Path = pathThrough(polygon.map { (u, v) -> canvasPoint(fit, u, v) })
 
-private fun DrawScope.drawIsoGround(picture: StructurePicture, palette: StructurePalette) {
+private fun DrawScope.drawIsoGround(picture: StackedPicture, palette: StackedPalette) {
     val window = picture.scene.window
     val corners = listOf(window.x0 to window.y0, window.x1 to window.y0, window.x1 to window.y1, window.x0 to window.y1)
         .map { (x, y) -> isoProject(x.toDouble(), y.toDouble(), 0.0).let { canvasPoint(picture.fit, it.u, it.v) } }
@@ -128,7 +128,7 @@ private fun DrawScope.drawIsoGround(picture: StructurePicture, palette: Structur
     drawPath(ground, palette.groundEdge, style = Stroke(1f))
 }
 
-private fun DrawScope.drawIsoStructure(picture: StructurePicture, palette: StructurePalette) {
+private fun DrawScope.drawIsoParts(picture: StackedPicture, palette: StackedPalette) {
     drawIsoGround(picture, palette)
     picture.parts.forEach { part ->
         val faces = projectFaces(partBox(picture.scene, part.footprint))

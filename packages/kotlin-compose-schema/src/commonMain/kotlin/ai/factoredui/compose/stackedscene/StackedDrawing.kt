@@ -1,46 +1,46 @@
-package ai.factoredui.compose.structure
+package ai.factoredui.compose.stackedscene
 
 import ai.factoredui.compose.scene.SceneFootprint
 import ai.factoredui.compose.scene.SceneView
 
-enum class StructureDrawing(val wire: String) { PLAN("plan"), ISO("iso"), SOUTH("south"), WEST("west") }
+enum class StackedDrawing(val wire: String) { PLAN("plan"), ISO("iso"), SOUTH("south"), WEST("west") }
 
-const val STRUCTURE_MARGIN_PX = 24.0
+const val DRAWING_MARGIN_PX = 24.0
 
-fun structureDrawingOf(raw: Any?): StructureDrawing? = StructureDrawing.entries.firstOrNull { it.wire == raw }
+fun stackedDrawingOf(raw: Any?): StackedDrawing? = StackedDrawing.entries.firstOrNull { it.wire == raw }
 
-fun flatViewOf(drawing: StructureDrawing): StructureView = when (drawing) {
-    StructureDrawing.PLAN, StructureDrawing.ISO -> StructureView.PLAN
-    StructureDrawing.SOUTH -> StructureView.SOUTH
-    StructureDrawing.WEST -> StructureView.WEST
+fun flatViewOf(drawing: StackedDrawing): FlatView = when (drawing) {
+    StackedDrawing.PLAN, StackedDrawing.ISO -> FlatView.PLAN
+    StackedDrawing.SOUTH -> FlatView.SOUTH
+    StackedDrawing.WEST -> FlatView.WEST
 }
 
 fun partsToDraw(
     scene: SceneView,
-    drawing: StructureDrawing,
+    drawing: StackedDrawing,
     focus: LevelFocus,
     showLower: Boolean,
     hideTopCount: Int,
     highlightIds: Set<String>,
 ): List<VisiblePart> {
     val shown = fadeUnhighlighted(visibleParts(scene, focus, showLower, hideTopCount), highlightIds)
-    return if (drawing == StructureDrawing.ISO) orderForIso(scene, shown) else orderForView(scene, shown, flatViewOf(drawing))
+    return if (drawing == StackedDrawing.ISO) orderForIso(scene, shown) else orderForView(scene, shown, flatViewOf(drawing))
 }
 
-fun fitDrawing(scene: SceneView, drawing: StructureDrawing, widthPx: Double, heightPx: Double): CanvasFit {
-    if (drawing == StructureDrawing.ISO) return fitWindow(isoWindow(scene), widthPx, heightPx, STRUCTURE_MARGIN_PX)
+fun fitDrawing(scene: SceneView, drawing: StackedDrawing, widthPx: Double, heightPx: Double): CanvasFit {
+    if (drawing == StackedDrawing.ISO) return fitWindow(isoWindow(scene), widthPx, heightPx, DRAWING_MARGIN_PX)
     val view = flatViewOf(drawing)
-    val exaggeration = exaggerationFor(scene, view, widthPx, heightPx, STRUCTURE_MARGIN_PX).toDouble()
-    return fitWindow(viewWindow(scene, view), widthPx, heightPx, STRUCTURE_MARGIN_PX, exaggeration)
+    val exaggeration = exaggerationFor(scene, view, widthPx, heightPx, DRAWING_MARGIN_PX).toDouble()
+    return fitWindow(viewWindow(scene, view), widthPx, heightPx, DRAWING_MARGIN_PX, exaggeration)
 }
 
-fun hitDrawnPart(scene: SceneView, parts: List<VisiblePart>, drawing: StructureDrawing, fit: CanvasFit, xPx: Double, yPx: Double): VisiblePart? {
+fun hitDrawnPart(scene: SceneView, parts: List<VisiblePart>, drawing: StackedDrawing, fit: CanvasFit, xPx: Double, yPx: Double): VisiblePart? {
     val (u, v) = canvasToMm(fit, xPx, yPx)
-    return if (drawing == StructureDrawing.ISO) hitIso(scene, parts, u, v) else hitPartInView(scene, parts, u, v, flatViewOf(drawing))
+    return if (drawing == StackedDrawing.ISO) hitIso(scene, parts, u, v) else hitPartInView(scene, parts, u, v, flatViewOf(drawing))
 }
 
-fun popupAnchor(scene: SceneView, footprint: SceneFootprint, drawing: StructureDrawing, fit: CanvasFit): Pair<Double, Double> {
-    if (drawing == StructureDrawing.ISO) {
+fun popupAnchor(scene: SceneView, footprint: SceneFootprint, drawing: StackedDrawing, fit: CanvasFit): Pair<Double, Double> {
+    if (drawing == StackedDrawing.ISO) {
         val top = projectFaces(partBox(scene, footprint)).top.map { (u, v) -> mmToCanvas(fit, u, v) }
         return top.sumOf { it.first } / top.size to top.minOf { it.second }
     }

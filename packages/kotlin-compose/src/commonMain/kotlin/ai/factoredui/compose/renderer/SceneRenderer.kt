@@ -64,4 +64,4 @@ internal fun flattenedUses(uses: List<TilemapUse>): List<TilemapUse> =
 
 internal val LocalDeviceProfile = staticCompositionLocalOf { DeviceProfile.DESKTOP }
 
-internal val LocalSceneRenderers = staticCompositionLocalOf { SceneRenderers(listOf(PixelMapRenderer, VectorMapRenderer, StructureRenderer)) }
+internal val LocalSceneRenderers = staticCompositionLocalOf { SceneRenderers(listOf(PixelMapRenderer, VectorMapRenderer, StackedSceneRenderer)) }

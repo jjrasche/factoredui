@@ -1,31 +1,31 @@
 package ai.factoredui.compose.renderer
 
-import ai.factoredui.compose.scene.STRUCTURE_CAPABILITY
+import ai.factoredui.compose.scene.STACKED_SCENE_CAPABILITY
 import ai.factoredui.compose.scene.SceneView
 import ai.factoredui.compose.scene.readSceneViewValue
 import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecValue
-import ai.factoredui.compose.schema.StructureProps
+import ai.factoredui.compose.schema.StackedSceneProps
 import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.displayedText
 import ai.factoredui.compose.schema.resolveGeomapSelection
-import ai.factoredui.compose.schema.resolveStructureProps
+import ai.factoredui.compose.schema.resolveStackedSceneProps
 import ai.factoredui.compose.schema.selectionAfterTap
-import ai.factoredui.compose.structure.CanvasFit
-import ai.factoredui.compose.structure.PartValue
-import ai.factoredui.compose.structure.StructureDrawing
-import ai.factoredui.compose.structure.VisiblePart
-import ai.factoredui.compose.structure.drawnPartsSummary
-import ai.factoredui.compose.structure.exaggerationNote
-import ai.factoredui.compose.structure.fitDrawing
-import ai.factoredui.compose.structure.hitDrawnPart
-import ai.factoredui.compose.structure.isEveryPartFlat
-import ai.factoredui.compose.structure.legendEntries
-import ai.factoredui.compose.structure.partPopupLines
-import ai.factoredui.compose.structure.partValues
-import ai.factoredui.compose.structure.partsToDraw
-import ai.factoredui.compose.structure.popupAnchor
+import ai.factoredui.compose.stackedscene.CanvasFit
+import ai.factoredui.compose.stackedscene.PartValue
+import ai.factoredui.compose.stackedscene.StackedDrawing
+import ai.factoredui.compose.stackedscene.VisiblePart
+import ai.factoredui.compose.stackedscene.drawnPartsSummary
+import ai.factoredui.compose.stackedscene.exaggerationNote
+import ai.factoredui.compose.stackedscene.fitDrawing
+import ai.factoredui.compose.stackedscene.hitDrawnPart
+import ai.factoredui.compose.stackedscene.isEveryPartFlat
+import ai.factoredui.compose.stackedscene.legendEntries
+import ai.factoredui.compose.stackedscene.partPopupLines
+import ai.factoredui.compose.stackedscene.partValues
+import ai.factoredui.compose.stackedscene.partsToDraw
+import ai.factoredui.compose.stackedscene.popupAnchor
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -53,11 +53,11 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-internal object StructureRenderer : SceneRenderer {
-    override val capability = STRUCTURE_CAPABILITY
+internal object StackedSceneRenderer : SceneRenderer {
+    override val capability = STACKED_SCENE_CAPABILITY
 
     @Composable
-    override fun Draw(frame: SceneFrame) = RenderStructure(frame.node, frame.resolvedProps, frame.context)
+    override fun Draw(frame: SceneFrame) = RenderStackedScene(frame.node, frame.resolvedProps, frame.context)
 }
 
 internal fun partsTag(nodeId: String) = "$nodeId:parts"
@@ -69,19 +69,19 @@ internal fun legendTag(nodeId: String) = "$nodeId:legend"
 private val NOTICE_INK = Color(0xFFB3261E)
 
 @Composable
-internal fun RenderStructure(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+internal fun RenderStackedScene(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val payload = resolvedProps["scene_view"]
     val reading = remember(payload) { runCatching { readSceneViewValue(payload) } }
     val scene = reading.getOrNull()
     if (scene == null) {
-        StructureNotice(node.id, "The structure cannot be drawn: ${reading.exceptionOrNull()?.message}")
+        StackedSceneNotice(node.id, "The stacked scene cannot be drawn: ${reading.exceptionOrNull()?.message}")
     } else {
-        RenderReadStructure(node, scene, resolveStructureProps(resolvedProps), resolvedProps["selected"], context)
+        RenderReadStackedScene(node, scene, resolveStackedSceneProps(resolvedProps), resolvedProps["selected"], context)
     }
 }
 
 @Composable
-private fun StructureNotice(nodeId: String, message: String) {
+private fun StackedSceneNotice(nodeId: String, message: String) {
     Box(modifier = Modifier.fillMaxSize().nodeTag(nodeId)) {
         Text(message, modifier = Modifier.padding(16.dp), color = NOTICE_INK)
     }
@@ -89,11 +89,11 @@ private fun StructureNotice(nodeId: String, message: String) {
 
 private fun partTapAction(action: String, partId: String) = ActionRef(action = action, params = mapOf("id" to SpecValue.StringValue(partId)))
 
-private class StructureTapTarget(
+private class PartTapTarget(
     val nodeId: String,
     val scene: SceneView,
     val parts: List<VisiblePart>,
-    val drawing: StructureDrawing,
+    val drawing: StackedDrawing,
     val fit: CanvasFit,
     val selection: Set<String>,
     val selectedPath: String?,
@@ -103,29 +103,29 @@ private class StructureTapTarget(
     val keepLocalSelection: (Set<String>) -> Unit,
 )
 
-private fun applyPartTap(target: StructureTapTarget, xPx: Double, yPx: Double) {
+private fun applyPartTap(target: PartTapTarget, xPx: Double, yPx: Double) {
     val hit = findTappedPart(target, xPx, yPx)
     val nextSelection = selectionAfterTap(target.selection, hit?.footprint?.id)
     writeSelection(target, nextSelection)
     dispatchPartTap(target, hit)
 }
 
-private fun findTappedPart(target: StructureTapTarget, xPx: Double, yPx: Double): VisiblePart? =
+private fun findTappedPart(target: PartTapTarget, xPx: Double, yPx: Double): VisiblePart? =
     hitDrawnPart(target.scene, target.parts, target.drawing, target.fit, xPx, yPx)
 
-private fun writeSelection(target: StructureTapTarget, nextSelection: List<String>) {
+private fun writeSelection(target: PartTapTarget, nextSelection: List<String>) {
     val path = target.selectedPath
     if (path != null) target.context.setBinding(path, nextSelection) else target.keepLocalSelection(nextSelection.toSet())
 }
 
-private fun dispatchPartTap(target: StructureTapTarget, hit: VisiblePart?) {
+private fun dispatchPartTap(target: PartTapTarget, hit: VisiblePart?) {
     val action = target.onPartTap ?: return
     val partId = hit?.footprint?.id ?: return
     target.scope.launch { target.context.dispatch(target.nodeId, partTapAction(action, partId)) }
 }
 
 @Composable
-private fun RenderReadStructure(node: SpecNode, scene: SceneView, props: StructureProps, resolvedSelected: Any?, context: RenderContext) {
+private fun RenderReadStackedScene(node: SpecNode, scene: SceneView, props: StackedSceneProps, resolvedSelected: Any?, context: RenderContext) {
     val selectedPath = node.props["selected"]?.bindingPath()
     var localSelection by remember { mutableStateOf(resolveGeomapSelection(resolvedSelected)) }
     val selection = if (selectedPath != null) resolveGeomapSelection(resolvedSelected) else localSelection
@@ -134,7 +134,7 @@ private fun RenderReadStructure(node: SpecNode, scene: SceneView, props: Structu
     }
     val values = remember(scene, props.colourScale) { props.colourScale?.let { partValues(scene, it.channel) }.orEmpty() }
     val scope = rememberCoroutineScope()
-    val palette = structurePalette(LocalSpecTheme.current)
+    val palette = stackedPalette(LocalSpecTheme.current)
     BoxWithConstraints(modifier = Modifier.fillMaxSize().nodeTag(node.id).clipToBounds()) {
         val widthPx = constraints.maxWidth.toDouble()
         val heightPx = constraints.maxHeight.toDouble()
@@ -145,25 +145,25 @@ private fun RenderReadStructure(node: SpecNode, scene: SceneView, props: Structu
                 .testTag(partsTag(node.id))
                 .semantics { stateDescription = drawnPartsSummary(parts, props.highlightIds, selection) }
                 .pointerInput(parts, fit, selection, selectedPath, props.onPartTap) {
-                    val target = StructureTapTarget(node.id, scene, parts, props.drawing, fit, selection, selectedPath, props.onPartTap, context, scope) {
+                    val target = PartTapTarget(node.id, scene, parts, props.drawing, fit, selection, selectedPath, props.onPartTap, context, scope) {
                         localSelection = it
                     }
                     detectTapGestures(onTap = { offset -> applyPartTap(target, offset.x.toDouble(), offset.y.toDouble()) })
                 },
         ) {
-            drawStructure(StructurePicture(scene, parts, props.drawing, fit, values, props.colourScale, outlined), palette)
+            drawStackedScene(StackedPicture(scene, parts, props.drawing, fit, values, props.colourScale, outlined), palette)
         }
-        StructureNotes(scene, parts, props, fit, Modifier.align(Alignment.TopStart))
+        StackedSceneNotes(scene, parts, props, fit, Modifier.align(Alignment.TopStart))
         ColourLegend(legendTag(node.id), legendEntries(props.colourScale), Modifier.align(Alignment.BottomStart))
         SelectedPartPopup(node.id, scene, parts, selection, props, fit, values)
     }
 }
 
 @Composable
-private fun StructureNotes(scene: SceneView, parts: List<VisiblePart>, props: StructureProps, fit: CanvasFit, modifier: Modifier) {
+private fun StackedSceneNotes(scene: SceneView, parts: List<VisiblePart>, props: StackedSceneProps, fit: CanvasFit, modifier: Modifier) {
     val notes = buildList {
         addAll(props.notes)
-        if (props.drawing != StructureDrawing.PLAN && isEveryPartFlat(scene, parts)) add("The scene states no part heights, so every part is drawn flat at its base.")
+        if (props.drawing != StackedDrawing.PLAN && isEveryPartFlat(scene, parts)) add("The scene states no part heights, so every part is drawn flat at its base.")
         if (parts.isEmpty()) add("No part of the scene is shown at this focus.")
         exaggerationNote(fit)?.let(::add)
     }
@@ -179,7 +179,7 @@ private fun SelectedPartPopup(
     scene: SceneView,
     parts: List<VisiblePart>,
     selection: Set<String>,
-    props: StructureProps,
+    props: StackedSceneProps,
     fit: CanvasFit,
     values: Map<String, PartValue>,
 ) {

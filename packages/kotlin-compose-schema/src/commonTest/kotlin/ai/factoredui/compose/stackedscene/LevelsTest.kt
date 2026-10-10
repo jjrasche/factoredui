@@ -1,4 +1,4 @@
-package ai.factoredui.compose.structure
+package ai.factoredui.compose.stackedscene
 
 import ai.factoredui.compose.scene.SceneType
 import ai.factoredui.compose.scene.StackLevel

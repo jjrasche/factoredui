@@ -2,11 +2,11 @@ package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.crawl.driveScreen
 import ai.factoredui.compose.scene.readSceneView
-import ai.factoredui.compose.structure.StructureDrawing
-import ai.factoredui.compose.structure.fitDrawing
-import ai.factoredui.compose.structure.mmToCanvas
-import ai.factoredui.compose.structure.partBox
-import ai.factoredui.compose.structure.projectFaces
+import ai.factoredui.compose.stackedscene.StackedDrawing
+import ai.factoredui.compose.stackedscene.fitDrawing
+import ai.factoredui.compose.stackedscene.mmToCanvas
+import ai.factoredui.compose.stackedscene.partBox
+import ai.factoredui.compose.stackedscene.projectFaces
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -55,7 +55,7 @@ class EngineHousePicturesTest {
         val beam = scene.footprints!!.items.first { it.id == "e14" }
         driveScreen(engineHouseSpec(), engineHouseStore("iso", house = mapOf("hide_top" to "1")), HOUSE_SCREEN_WIDTH, HOUSE_SCREEN_HEIGHT).use { screen ->
             val area = assertNotNull(screen.boundsOf("house"))
-            val fit = fitDrawing(scene, StructureDrawing.ISO, (area.right - area.left).value.toDouble(), (area.bottom - area.top).value.toDouble())
+            val fit = fitDrawing(scene, StackedDrawing.ISO, (area.right - area.left).value.toDouble(), (area.bottom - area.top).value.toDouble())
             val top = projectFaces(partBox(scene, beam)).top.map { (u, v) -> mmToCanvas(fit, u, v) }
             screen.tapAt(area.left.value + (top.sumOf { it.first } / top.size).toFloat(), area.top.value + (top.sumOf { it.second } / top.size).toFloat())
             assertEquals(listOf("Interior 2-ply LVL beam", "e14 · 32%"), screen.textsUnder(popupTag("house")))

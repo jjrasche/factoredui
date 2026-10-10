@@ -33,11 +33,11 @@ class SceneRenderingTest {
     }
 
     @Test
-    fun theStructureRendererServesEveryRungWhenAskedForAndIsNeverTheDefault() {
-        val withStructure = STANDARD_RENDERER_CAPABILITIES + STRUCTURE_CAPABILITY
+    fun theStackedSceneRendererServesEveryRungWhenAskedForAndIsNeverTheDefault() {
+        val withStackedScene = STANDARD_RENDERER_CAPABILITIES + STACKED_SCENE_CAPABILITY
         ZOOM_LADDER_FEET.forEach { level ->
-            assertEquals("structure", selectRenderer(withStructure, DeviceProfile.PHONE, level, "structure")?.id)
-            assertEquals(selectRenderer(STANDARD_RENDERER_CAPABILITIES, DeviceProfile.PHONE, level, null)?.id, selectRenderer(withStructure, DeviceProfile.PHONE, level, null)?.id)
+            assertEquals("stacked_scene", selectRenderer(withStackedScene, DeviceProfile.PHONE, level, "stacked_scene")?.id)
+            assertEquals(selectRenderer(STANDARD_RENDERER_CAPABILITIES, DeviceProfile.PHONE, level, null)?.id, selectRenderer(withStackedScene, DeviceProfile.PHONE, level, null)?.id)
         }
     }
 

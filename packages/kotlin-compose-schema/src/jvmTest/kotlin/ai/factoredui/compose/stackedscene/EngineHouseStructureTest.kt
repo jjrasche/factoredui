@@ -1,4 +1,4 @@
-package ai.factoredui.compose.structure
+package ai.factoredui.compose.stackedscene
 
 import ai.factoredui.compose.scene.SceneView
 import ai.factoredui.compose.scene.readSceneView

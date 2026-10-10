@@ -4,15 +4,15 @@ import ai.factoredui.compose.crawl.driveScreen
 import ai.factoredui.compose.scene.SceneView
 import ai.factoredui.compose.scene.readSceneView
 import ai.factoredui.compose.schema.Spec
-import ai.factoredui.compose.structure.STRUCTURE_MARGIN_PX
-import ai.factoredui.compose.structure.StructureDrawing
-import ai.factoredui.compose.structure.StructureView
-import ai.factoredui.compose.structure.exaggerationFor
-import ai.factoredui.compose.structure.fitDrawing
-import ai.factoredui.compose.structure.mmToCanvas
-import ai.factoredui.compose.structure.partBox
-import ai.factoredui.compose.structure.partRectMm
-import ai.factoredui.compose.structure.projectFaces
+import ai.factoredui.compose.stackedscene.DRAWING_MARGIN_PX
+import ai.factoredui.compose.stackedscene.StackedDrawing
+import ai.factoredui.compose.stackedscene.FlatView
+import ai.factoredui.compose.stackedscene.exaggerationFor
+import ai.factoredui.compose.stackedscene.fitDrawing
+import ai.factoredui.compose.stackedscene.mmToCanvas
+import ai.factoredui.compose.stackedscene.partBox
+import ai.factoredui.compose.stackedscene.partRectMm
+import ai.factoredui.compose.stackedscene.projectFaces
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -22,16 +22,16 @@ import kotlin.test.assertTrue
 private val json = Json { ignoreUnknownKeys = true }
 
 internal fun engineHouseText(): String =
-    checkNotNull(StructureSceneTest::class.java.getResource("/house-floor.scene.json")) { "house-floor.scene.json is not on the test classpath" }.readText()
+    checkNotNull(StackedSceneTest::class.java.getResource("/house-floor.scene.json")) { "house-floor.scene.json is not on the test classpath" }.readText()
 
 private const val WIDTH = 800
 private const val HEIGHT = 600
 
-private fun structureSpec(selected: String) = json.decodeFromString(
+private fun stackedSceneSpec(selected: String) = json.decodeFromString(
     Spec.serializer(),
     """
     {"spec_version":1,"renderer_min":1,"root":{"id":"house","type":"scene","props":{
-      "view_state": {"renderer": "structure"},
+      "view_state": {"renderer": "stacked_scene"},
       "scene_view": "{house.scene}",
       "view": "{house.view}",
       "highlight": "{bom.picked}",
@@ -41,7 +41,7 @@ private fun structureSpec(selected: String) = json.decodeFromString(
     """.trimIndent(),
 )
 
-private val BOUND = structureSpec("\"{house.selected}\"")
+private val BOUND = stackedSceneSpec("\"{house.selected}\"")
 
 private fun storeFor(view: String, picked: List<String> = emptyList(), scene: Any? = engineHouseText()) = mapOf(
     "house" to mapOf("scene" to scene, "view" to view),
@@ -50,10 +50,10 @@ private fun storeFor(view: String, picked: List<String> = emptyList(), scene: An
 
 private fun selectedIn(store: Map<String, Any?>): Any? = (store["house"] as? Map<*, *>)?.get("selected")
 
-private fun centreOf(scene: SceneView, partId: String, drawing: StructureDrawing): Pair<Float, Float> {
+private fun centreOf(scene: SceneView, partId: String, drawing: StackedDrawing): Pair<Float, Float> {
     val fit = fitDrawing(scene, drawing, WIDTH.toDouble(), HEIGHT.toDouble())
     val part = scene.footprints!!.items.first { it.id == partId }
-    val centre = if (drawing == StructureDrawing.ISO) {
+    val centre = if (drawing == StackedDrawing.ISO) {
         val top = projectFaces(partBox(scene, part)).top.map { (u, v) -> mmToCanvas(fit, u, v) }
         top.sumOf { it.first } / top.size to top.sumOf { it.second } / top.size
     } else {
@@ -63,7 +63,7 @@ private fun centreOf(scene: SceneView, partId: String, drawing: StructureDrawing
     return centre.first.toFloat() to centre.second.toFloat()
 }
 
-class StructureSceneTest {
+class StackedSceneTest {
 
     private val house = readSceneView(engineHouseText())
     private val piers = house.footprints!!.items.filter { it.type == "cast_pier" }.map { it.id }
@@ -89,7 +89,7 @@ class StructureSceneTest {
     @Test
     fun tapping_a_panel_in_plan_selects_it_names_it_in_a_popup_and_tells_the_host() {
         driveScreen(BOUND, storeFor("plan"), WIDTH, HEIGHT).use { screen ->
-            val (x, y) = centreOf(house, "e21", StructureDrawing.PLAN)
+            val (x, y) = centreOf(house, "e21", StackedDrawing.PLAN)
             val intents = screen.tapAt(x, y)
             assertEquals(listOf("e21"), selectedIn(screen.store()))
             assertEquals(listOf("part_tapped"), intents.map { it.action })
@@ -102,7 +102,7 @@ class StructureSceneTest {
     @Test
     fun tapping_the_selected_part_again_clears_the_selection_and_the_popup() {
         driveScreen(BOUND, storeFor("plan"), WIDTH, HEIGHT).use { screen ->
-            val (x, y) = centreOf(house, "e21", StructureDrawing.PLAN)
+            val (x, y) = centreOf(house, "e21", StackedDrawing.PLAN)
             screen.tapAt(x, y)
             screen.tapAt(x, y)
             assertEquals(emptyList<String>(), selectedIn(screen.store()))
@@ -121,16 +121,16 @@ class StructureSceneTest {
     @Test
     fun tapping_a_panel_top_in_iso_selects_that_panel() {
         driveScreen(BOUND, storeFor("iso"), WIDTH, HEIGHT).use { screen ->
-            val (x, y) = centreOf(house, "e28", StructureDrawing.ISO)
+            val (x, y) = centreOf(house, "e28", StackedDrawing.ISO)
             screen.tapAt(x, y)
             assertEquals(listOf("e28"), selectedIn(screen.store()))
         }
     }
 
     @Test
-    fun a_structure_with_no_bound_selection_still_selects_on_tap() {
-        driveScreen(structureSpec("[]"), storeFor("plan"), WIDTH, HEIGHT).use { screen ->
-            val (x, y) = centreOf(house, "e21", StructureDrawing.PLAN)
+    fun a_stacked_scene_with_no_bound_selection_still_selects_on_tap() {
+        driveScreen(stackedSceneSpec("[]"), storeFor("plan"), WIDTH, HEIGHT).use { screen ->
+            val (x, y) = centreOf(house, "e21", StackedDrawing.PLAN)
             screen.tapAt(x, y)
             assertTrue(screen.stateDescriptionOf(partsTag("house"))!!.endsWith("selected=e21"))
         }
@@ -139,7 +139,7 @@ class StructureSceneTest {
     @Test
     fun a_payload_that_is_not_a_scene_says_why_on_screen() {
         driveScreen(BOUND, storeFor("plan", scene = "{not json"), WIDTH, HEIGHT).use { screen ->
-            assertEquals(listOf("The structure cannot be drawn: the scene is not valid JSON"), screen.textsUnder("house"))
+            assertEquals(listOf("The stacked scene cannot be drawn: the scene is not valid JSON"), screen.textsUnder("house"))
         }
     }
 
@@ -149,7 +149,7 @@ class StructureSceneTest {
             Spec.serializer(),
             """
             {"spec_version":1,"renderer_min":1,"root":{"id":"house","type":"scene","props":{
-              "view_state": {"renderer": "structure"},
+              "view_state": {"renderer": "stacked_scene"},
               "scene_view": "{house.scene}",
               "view": "isometric", "focus": "top", "highlight": "e1", "show_lower": "yes", "hide_top": 1.5
             }}}
@@ -186,8 +186,8 @@ class StructureSceneTest {
 
     @Test
     fun the_south_and_west_elevations_say_how_much_the_heights_are_stretched_and_the_iso_says_nothing() {
-        listOf("south" to StructureView.SOUTH, "west" to StructureView.WEST).forEach { (view, flat) ->
-            val times = exaggerationFor(house, flat, WIDTH.toDouble(), HEIGHT.toDouble(), STRUCTURE_MARGIN_PX)
+        listOf("south" to FlatView.SOUTH, "west" to FlatView.WEST).forEach { (view, flat) ->
+            val times = exaggerationFor(house, flat, WIDTH.toDouble(), HEIGHT.toDouble(), DRAWING_MARGIN_PX)
             driveScreen(BOUND, storeFor(view), WIDTH, HEIGHT).use { screen ->
                 assertTrue("Heights are drawn $times times their true scale." in screen.textsUnder("house"), view)
             }
