@@ -60,15 +60,15 @@ class EngineHouseSpecTest {
     @Test
     fun tapping_a_bom_row_highlights_exactly_that_lines_parts_and_tapping_another_moves_the_highlight() {
         driveScreen(engineHouseSpec(), engineHouseStore("plan"), HOUSE_SCREEN_WIDTH, HOUSE_SCREEN_HEIGHT).use { screen ->
-            assertEquals("drawn=35 highlighted=0 faded=0 selected=", screen.stateDescriptionOf(partsTag("house")))
+            assertEquals("drawn=31 highlighted=0 faded=0 selected=", screen.stateDescriptionOf(partsTag("house")))
 
             screen.tapText(titleOf(piers))
             assertEquals(piers.ids, pickedIn(screen.store()))
-            assertEquals("drawn=35 highlighted=${piers.quantity} faded=${35 - piers.quantity} selected=", screen.stateDescriptionOf(partsTag("house")))
+            assertEquals("drawn=31 highlighted=${piers.quantity} faded=${31 - piers.quantity} selected=", screen.stateDescriptionOf(partsTag("house")))
 
             screen.tapText(titleOf(edgeBeams))
             assertEquals(edgeBeams.ids, pickedIn(screen.store()))
-            assertEquals("drawn=35 highlighted=${edgeBeams.quantity} faded=${35 - edgeBeams.quantity} selected=", screen.stateDescriptionOf(partsTag("house")))
+            assertEquals("drawn=31 highlighted=${edgeBeams.quantity} faded=${31 - edgeBeams.quantity} selected=", screen.stateDescriptionOf(partsTag("house")))
         }
     }
 
@@ -77,7 +77,7 @@ class EngineHouseSpecTest {
         driveScreen(engineHouseSpec(), engineHouseStore("plan"), HOUSE_SCREEN_WIDTH, HOUSE_SCREEN_HEIGHT).use { screen ->
             val shown = screen.textsUnder("engine-house")
             assertTrue(listOf("12 × Cast pier in a form tube", "$92.37", "$1,108.44").all { it in shown }, "$shown")
-            assertTrue(listOf("4 × Edge LVL beam segment", "$62", "$248").all { it in shown }, "$shown")
+            assertTrue(listOf("2 × Edge LVL beam", "$124", "$248").all { it in shown }, "$shown")
             assertEquals(lines.size, shown.count { it == "weight not known" })
             assertTrue("–" !in shown, "a row drew the bare dash: $shown")
         }

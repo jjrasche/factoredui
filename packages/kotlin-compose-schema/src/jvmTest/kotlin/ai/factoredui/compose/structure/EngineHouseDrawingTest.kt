@@ -56,7 +56,7 @@ class EngineHouseDrawingTest {
     @Test
     fun a_store_that_holds_a_64_bit_layer_version_as_a_double_is_refused_naming_the_version() {
         val failure = assertFailsWith<SceneViewFormatException> { readSceneViewValue(storeValueOf(Json.parseToJsonElement(houseText())) { it.doubleOrNull }) }
-        assertEquals("version must be a whole number, not 8.421684800706511E18", failure.message)
+        assertEquals("version must be a whole number, not 7.179409882978187E18", failure.message)
     }
 
     @Test
@@ -75,16 +75,16 @@ class EngineHouseDrawingTest {
     }
 
     @Test
-    fun highlighting_the_twelve_piers_fades_the_other_twenty_three_parts_in_every_drawing() {
+    fun highlighting_the_twelve_piers_fades_the_other_nineteen_parts_in_every_drawing() {
         val scene = engineHouse()
         val piers = idsOfType(scene, "cast_pier")
         StructureDrawing.entries.forEach { drawing ->
             val parts = drawn(scene, drawing, piers)
-            assertEquals(35, parts.size)
+            assertEquals(31, parts.size)
             assertEquals(piers, parts.filter { !it.isDimmed }.map { it.footprint.id }.toSet(), "$drawing")
-            assertEquals("drawn=35 highlighted=12 faded=23 selected=e1", drawnPartsSummary(parts, piers, setOf("e1")))
+            assertEquals("drawn=31 highlighted=12 faded=19 selected=e1", drawnPartsSummary(parts, piers, setOf("e1")))
         }
-        assertEquals("drawn=35 highlighted=0 faded=0 selected=", drawnPartsSummary(drawn(scene, StructureDrawing.PLAN), emptySet(), emptySet()))
+        assertEquals("drawn=31 highlighted=0 faded=0 selected=", drawnPartsSummary(drawn(scene, StructureDrawing.PLAN), emptySet(), emptySet()))
     }
 
     @Test
@@ -117,11 +117,21 @@ class EngineHouseDrawingTest {
     }
 
     @Test
-    fun the_engine_house_states_no_heights_so_its_elevations_are_flat() {
+    fun the_south_elevation_stacks_a_pier_a_beam_and_a_panel_one_on_another() {
         val scene = engineHouse()
-        assertTrue(isEveryPartFlat(scene, drawn(scene, StructureDrawing.SOUTH)))
-        val fit = fitDrawing(scene, StructureDrawing.SOUTH, CANVAS_WIDTH, CANVAS_HEIGHT)
-        assertTrue(fit.scale.isFinite() && fit.vScale.isFinite() && fit.offsetY.isFinite(), "$fit")
+        assertTrue(!isEveryPartFlat(scene, drawn(scene, StructureDrawing.SOUTH)))
+        val inView = listOf("e1", "e13", "e17").map { id -> partRectInView(scene, scene.footprints!!.items.first { it.id == id }, StructureView.SOUTH) }
+        assertEquals(listOf(0.0 to 361.0, 361.0 to 663.0, 663.0 to 914.0), inView.map { it.y0 to it.y1 })
+        assertEquals(listOf(0.0 to 305.0, 0.0 to 6405.0, 0.0 to 1220.0), inView.map { it.x0 to it.x1 })
+    }
+
+    @Test
+    fun the_west_elevation_mirrors_north_to_the_left_and_stacks_the_same_three_levels() {
+        val scene = engineHouse()
+        val pierAtNorth = partRectInView(scene, scene.footprints!!.items.first { it.id == "e10" }, StructureView.WEST)
+        val beamAtNorth = partRectInView(scene, scene.footprints!!.items.first { it.id == "e16" }, StructureView.WEST)
+        assertEquals(RectMm(0.0, 0.0, 610.0, 361.0), pierAtNorth)
+        assertEquals(RectMm(0.0, 361.0, 305.0, 663.0), beamAtNorth)
     }
 
     @Test

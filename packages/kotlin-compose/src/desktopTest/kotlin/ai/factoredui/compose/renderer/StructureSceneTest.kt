@@ -13,6 +13,7 @@ import ai.factoredui.compose.structure.projectFaces
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 private val json = Json { ignoreUnknownKeys = true }
@@ -65,19 +66,19 @@ class StructureSceneTest {
     private val piers = house.footprints!!.items.filter { it.type == "cast_pier" }.map { it.id }
 
     @Test
-    fun the_engine_house_draws_all_thirty_five_parts_in_each_of_the_four_views() {
+    fun the_engine_house_draws_all_thirty_one_parts_in_each_of_the_four_views() {
         listOf("plan", "iso", "south", "west").forEach { view ->
             driveScreen(BOUND, storeFor(view), WIDTH, HEIGHT).use { screen ->
-                assertEquals("drawn=35 highlighted=0 faded=0 selected=", screen.stateDescriptionOf(partsTag("house")), view)
+                assertEquals("drawn=31 highlighted=0 faded=0 selected=", screen.stateDescriptionOf(partsTag("house")), view)
             }
         }
     }
 
     @Test
-    fun highlighting_the_piers_outlines_twelve_parts_and_fades_the_other_twenty_three() {
+    fun highlighting_the_piers_outlines_twelve_parts_and_fades_the_other_nineteen() {
         listOf("plan", "iso").forEach { view ->
             driveScreen(BOUND, storeFor(view, picked = piers), WIDTH, HEIGHT).use { screen ->
-                assertEquals("drawn=35 highlighted=12 faded=23 selected=", screen.stateDescriptionOf(partsTag("house")), view)
+                assertEquals("drawn=31 highlighted=12 faded=19 selected=", screen.stateDescriptionOf(partsTag("house")), view)
             }
         }
     }
@@ -160,14 +161,31 @@ class StructureSceneTest {
                 "show_lower must be true or false, not 'yes'; lower levels are hidden.",
                 "hide_top must be a whole number of levels, not '1.5'; no level is hidden.",
             ).forEach { note -> assertTrue(note in texts, "missing on screen: $note; drawn: $texts") }
-            assertEquals("drawn=35 highlighted=0 faded=0 selected=", screen.stateDescriptionOf(partsTag("house")))
+            assertEquals("drawn=31 highlighted=0 faded=0 selected=", screen.stateDescriptionOf(partsTag("house")))
         }
     }
 
     @Test
     fun an_elevation_of_a_scene_with_no_heights_says_its_parts_are_drawn_flat() {
-        driveScreen(BOUND, storeFor("south"), WIDTH, HEIGHT).use { screen ->
-            assertTrue("The scene states no part heights, so every part is drawn flat at its base." in screen.textsUnder("house"))
+        driveScreen(BOUND, storeFor("south", scene = FLAT_SCENE), WIDTH, HEIGHT).use { screen ->
+            assertTrue(FLAT_NOTICE in screen.textsUnder("house"))
+        }
+    }
+
+    @Test
+    fun the_engine_house_states_its_heights_so_no_drawing_says_its_parts_are_flat() {
+        listOf("iso", "south", "west").forEach { view ->
+            driveScreen(BOUND, storeFor(view), WIDTH, HEIGHT).use { screen ->
+                assertFalse(FLAT_NOTICE in screen.textsUnder("house"), view)
+            }
         }
     }
 }
+
+private const val FLAT_NOTICE = "The scene states no part heights, so every part is drawn flat at its base."
+
+private val FLAT_SCENE = """
+    {"units":"mm","level_feet":1,"tile_feet":1.0,"cols":2,"rows":2,"window":{"x0":0,"y0":0,"x1":610,"y1":610},
+     "types":[{"id":"slab","label":"Slab"}],
+     "footprints":{"items":[{"id":"s1","type":"slab","col":0,"row":0,"width":2,"height":2}]}}
+""".trimIndent()

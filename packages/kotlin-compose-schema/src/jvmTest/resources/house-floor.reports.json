@@ -1,0 +1,468 @@
+{
+ "reports": [
+  {
+   "id": "bom",
+   "label": "Bill of materials",
+   "columns": [
+    {
+     "id": "quantity",
+     "label": "Quantity",
+     "unit": "count"
+    },
+    {
+     "id": "unit_cost_usd",
+     "label": "Unit cost",
+     "unit": "usd/count"
+    },
+    {
+     "id": "line_usd",
+     "label": "Line total",
+     "unit": "usd"
+    }
+   ],
+   "rows": [
+    {
+     "id": "pier",
+     "label": "Cast pier",
+     "object_ids": [
+      "e1",
+      "e2",
+      "e3",
+      "e4",
+      "e5",
+      "e6",
+      "e7",
+      "e8",
+      "e9",
+      "e10",
+      "e11",
+      "e12"
+     ],
+     "values": {
+      "quantity": 12,
+      "unit_cost_usd": 92.37,
+      "line_usd": 1108.44
+     }
+    },
+    {
+     "id": "edge_beam",
+     "label": "Edge LVL beam, 20 ft",
+     "object_ids": [
+      "e13",
+      "e16"
+     ],
+     "values": {
+      "quantity": 2,
+      "unit_cost_usd": 124,
+      "line_usd": 248
+     }
+    },
+    {
+     "id": "interior_beam",
+     "label": "Interior 2-ply LVL beam, 20 ft",
+     "object_ids": [
+      "e14",
+      "e15"
+     ],
+     "values": {
+      "quantity": 2,
+      "unit_cost_usd": 248,
+      "line_usd": 496
+     }
+    },
+    {
+     "id": "panel",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e17",
+      "e18",
+      "e19",
+      "e20",
+      "e21",
+      "e22",
+      "e23",
+      "e24",
+      "e25",
+      "e26",
+      "e27",
+      "e28",
+      "e29",
+      "e30",
+      "e31"
+     ],
+     "values": {
+      "quantity": 15,
+      "unit_cost_usd": 251.87,
+      "line_usd": 3778.05
+     }
+    },
+    {
+     "id": "post_sticks",
+     "label": "6x6x12 post stick",
+     "object_ids": [],
+     "values": {
+      "quantity": 1,
+      "unit_cost_usd": 60.48,
+      "line_usd": 60.48
+     }
+    },
+    {
+     "id": "hardware",
+     "label": "Bracing, bolts and ground cover",
+     "object_ids": [],
+     "values": {
+      "quantity": 1,
+      "unit_cost_usd": 800,
+      "line_usd": 800
+     }
+    },
+    {
+     "id": "total",
+     "label": "Total",
+     "object_ids": [
+      "e1",
+      "e2",
+      "e3",
+      "e4",
+      "e5",
+      "e6",
+      "e7",
+      "e8",
+      "e9",
+      "e10",
+      "e11",
+      "e12",
+      "e13",
+      "e14",
+      "e15",
+      "e16",
+      "e17",
+      "e18",
+      "e19",
+      "e20",
+      "e21",
+      "e22",
+      "e23",
+      "e24",
+      "e25",
+      "e26",
+      "e27",
+      "e28",
+      "e29",
+      "e30",
+      "e31"
+     ],
+     "values": {
+      "quantity": 31,
+      "unit_cost_usd": null,
+      "line_usd": 6490.969999999999
+     }
+    }
+   ],
+   "version": 747094991416479379
+  },
+  {
+   "id": "beam_capacity",
+   "label": "Beam capacity",
+   "columns": [
+    {
+     "id": "supports",
+     "label": "Supports",
+     "unit": "count"
+    },
+    {
+     "id": "span_mm",
+     "label": "Longest span",
+     "unit": "mm"
+    },
+    {
+     "id": "bending_use",
+     "label": "Bending use",
+     "unit": "1"
+    },
+    {
+     "id": "shear_use",
+     "label": "Shear use",
+     "unit": "1"
+    },
+    {
+     "id": "live_deflection_use",
+     "label": "Live deflection use",
+     "unit": "1"
+    },
+    {
+     "id": "total_deflection_use",
+     "label": "Total deflection use",
+     "unit": "1"
+    }
+   ],
+   "rows": [
+    {
+     "id": "e13",
+     "label": "Edge LVL beam",
+     "object_ids": [
+      "e13"
+     ],
+     "values": {
+      "supports": 3,
+      "span_mm": 3050,
+      "bending_use": 0.28302986088702453,
+      "shear_use": 0.3195917111358116,
+      "live_deflection_use": 0.22295626770574584,
+      "total_deflection_use": 0.18579692855928268
+     }
+    },
+    {
+     "id": "e14",
+     "label": "Interior 2-ply LVL beam",
+     "object_ids": [
+      "e14"
+     ],
+     "values": {
+      "supports": 3,
+      "span_mm": 3050,
+      "bending_use": 0.2798497500905411,
+      "shear_use": 0.31600079303316203,
+      "live_deflection_use": 0.22045114110231048,
+      "total_deflection_use": 0.18370932262041434
+     }
+    },
+    {
+     "id": "e15",
+     "label": "Interior 2-ply LVL beam",
+     "object_ids": [
+      "e15"
+     ],
+     "values": {
+      "supports": 3,
+      "span_mm": 3050,
+      "bending_use": 0.2798497500905411,
+      "shear_use": 0.31600079303316203,
+      "live_deflection_use": 0.22045114110231048,
+      "total_deflection_use": 0.18370932262041434
+     }
+    },
+    {
+     "id": "e16",
+     "label": "Edge LVL beam",
+     "object_ids": [
+      "e16"
+     ],
+     "values": {
+      "supports": 3,
+      "span_mm": 3050,
+      "bending_use": 0.28302986088702453,
+      "shear_use": 0.3195917111358116,
+      "live_deflection_use": 0.22295626770574584,
+      "total_deflection_use": 0.18579692855928268
+     }
+    }
+   ],
+   "version": 5083416139612736902
+  },
+  {
+   "id": "panel_capacity",
+   "label": "Panel capacity",
+   "columns": [
+    {
+     "id": "supports",
+     "label": "Supports",
+     "unit": "count"
+    },
+    {
+     "id": "span_mm",
+     "label": "Span",
+     "unit": "mm"
+    },
+    {
+     "id": "use",
+     "label": "Use of the table value",
+     "unit": "1"
+    }
+   ],
+   "rows": [
+    {
+     "id": "e17",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e17"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2287.5,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e18",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e18"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2287.5,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e19",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e19"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2287.5,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e20",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e20"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2287.5,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e21",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e21"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2287.5,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e22",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e22"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2440,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e23",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e23"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2440,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e24",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e24"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2440,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e25",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e25"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2440,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e26",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e26"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2440,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e27",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e27"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2287.5,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e28",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e28"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2287.5,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e29",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e29"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2287.5,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e30",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e30"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2287.5,
+      "use": 0.7576350143203
+     }
+    },
+    {
+     "id": "e31",
+     "label": "Site-built SIP floor panel",
+     "object_ids": [
+      "e31"
+     ],
+     "values": {
+      "supports": 2,
+      "span_mm": 2287.5,
+      "use": 0.7576350143203
+     }
+    }
+   ],
+   "version": 803982923155395837
+  }
+ ]
+}
