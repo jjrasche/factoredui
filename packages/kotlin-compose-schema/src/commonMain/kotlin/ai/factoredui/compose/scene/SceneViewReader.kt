@@ -73,11 +73,11 @@ private fun sceneViewOf(root: JsonObject): SceneView {
 
 private fun wrongType(key: String, expected: String, found: JsonElement) = SceneViewFormatException("$key must be $expected, not $found")
 
-private fun textOf(element: JsonElement): String? = (element as? JsonPrimitive)?.takeIf { it.isString }?.content
+internal fun textOf(element: JsonElement): String? = (element as? JsonPrimitive)?.takeIf { it.isString }?.content
 
 private fun wholeOf(element: JsonElement): Long? = (element as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull
 
-private fun numberOf(element: JsonElement): Double? = (element as? JsonPrimitive)?.takeUnless { it.isString }?.doubleOrNull
+internal fun numberOf(element: JsonElement): Double? = (element as? JsonPrimitive)?.takeUnless { it.isString }?.doubleOrNull
 
 private fun intOf(key: String, whole: Long): Int =
     whole.takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }?.toInt() ?: throw SceneViewFormatException("$key must be a whole number that fits an int, not $whole")
