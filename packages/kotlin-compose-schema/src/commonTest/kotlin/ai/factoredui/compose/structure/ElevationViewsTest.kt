@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 
 private val LEVELS = listOf(StackLevel(0, 0, "piers"), StackLevel(1, 352, "beams"), StackLevel(2, 654, "panels"))
 
-private fun elevationHouse() = houseScene(
+private fun elevationHouse() = stackScene(
     stackLevels = LEVELS,
     items = listOf(
         part("pier-front", "pier", col = 2, row = 2, level = 0, zMm = 0, heightMm = 276),
@@ -61,20 +61,20 @@ class ElevationViewsTest {
 
     @Test
     fun a_part_with_no_height_of_its_own_takes_its_types_height() {
-        val scene = houseScene(types = listOf(SceneType("pier", "Pier", heightMm = 400)), items = listOf(part("p", "pier", zMm = 100)))
+        val scene = stackScene(types = listOf(SceneType("pier", "Pier", heightMm = 400)), items = listOf(part("p", "pier", zMm = 100)))
         assertEquals(400L, partHeightMm(scene, scene.footprint("p")))
         assertEquals(ElevationRange(100, 500), elevationRange(scene, scene.footprint("p")))
     }
 
     @Test
     fun a_parts_own_height_wins_over_its_types_height() {
-        val scene = houseScene(types = listOf(SceneType("pier", "Pier", heightMm = 400)), items = listOf(part("p", "pier", heightMm = 276)))
+        val scene = stackScene(types = listOf(SceneType("pier", "Pier", heightMm = 400)), items = listOf(part("p", "pier", heightMm = 276)))
         assertEquals(276L, partHeightMm(scene, scene.footprint("p")))
     }
 
     @Test
     fun a_part_with_no_height_anywhere_is_flat_at_its_base_rather_than_given_an_invented_height() {
-        val scene = houseScene(types = listOf(SceneType("pier", "Pier")), items = listOf(part("p", "pier", zMm = 352)))
+        val scene = stackScene(types = listOf(SceneType("pier", "Pier")), items = listOf(part("p", "pier", zMm = 352)))
         assertNull(partHeightMm(scene, scene.footprint("p")))
         assertEquals(ElevationRange(352, 352), elevationRange(scene, scene.footprint("p")))
         assertEquals(RectMm(0.0, 352.0, 610.0, 352.0), partRectInView(scene, scene.footprint("p"), StructureView.SOUTH))
@@ -150,7 +150,7 @@ class ElevationViewsTest {
 
     @Test
     fun a_scene_of_flat_parts_is_stretched_to_the_most_allowed_rather_than_dividing_by_zero() {
-        val scene = houseScene(items = listOf(part("flat")))
+        val scene = stackScene(items = listOf(part("flat")))
         assertEquals(10, exaggerationFor(scene, StructureView.SOUTH, 800.0, 600.0, 20.0))
     }
 
@@ -159,5 +159,5 @@ class ElevationViewsTest {
         assertEquals(listOf(FloorLevel(0, "piers", 0), FloorLevel(1, "beams", 352), FloorLevel(2, "panels", 654)), floorLevels(elevationHouse()))
 
     @Test
-    fun a_scene_with_no_stack_levels_has_no_floor_lines() = assertEquals(emptyList(), floorLevels(houseScene()))
+    fun a_scene_with_no_stack_levels_has_no_floor_lines() = assertEquals(emptyList(), floorLevels(stackScene()))
 }

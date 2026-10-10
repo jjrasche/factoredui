@@ -3,21 +3,28 @@ package ai.factoredui.compose.renderer
 import ai.factoredui.compose.scene.SceneFootprint
 import ai.factoredui.compose.scene.SceneView
 import ai.factoredui.compose.structure.CanvasFit
+import ai.factoredui.compose.structure.ColourScale
+import ai.factoredui.compose.structure.LegendEntry
+import ai.factoredui.compose.structure.PartValue
 import ai.factoredui.compose.structure.StructureDrawing
-import ai.factoredui.compose.structure.UtilisationFigure
 import ai.factoredui.compose.structure.VisiblePart
+import ai.factoredui.compose.structure.colourFor
+import ai.factoredui.compose.structure.faceShades
 import ai.factoredui.compose.structure.flatViewOf
 import ai.factoredui.compose.structure.isoProject
 import ai.factoredui.compose.structure.mmToCanvas
 import ai.factoredui.compose.structure.partBox
 import ai.factoredui.compose.structure.partRectInView
 import ai.factoredui.compose.structure.projectFaces
-import ai.factoredui.compose.structure.utilisationColour
-import ai.factoredui.compose.structure.utilisationShades
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,9 +47,12 @@ internal class StructurePicture(
     val parts: List<VisiblePart>,
     val drawing: StructureDrawing,
     val fit: CanvasFit,
-    val figures: Map<String, UtilisationFigure>,
+    val values: Map<String, PartValue>,
+    val colourScale: ColourScale?,
     val outlinedIds: Set<String>,
 )
+
+private fun StructurePicture.colourOf(part: VisiblePart): Long = colourFor(colourScale, values[part.footprint.id]?.value)
 
 internal class StructurePalette(val edge: Color, val outline: Color, val groundFill: Color, val groundEdge: Color)
 
@@ -92,7 +102,7 @@ private fun DrawScope.drawFlatStructure(picture: StructurePicture, palette: Stru
     if (picture.drawing != StructureDrawing.PLAN) drawDatum(picture, palette)
     picture.parts.forEach { part ->
         val rect = partCanvasRect(picture, part.footprint)
-        val fill = Color(utilisationColour(picture.figures[part.footprint.id]?.value))
+        val fill = Color(picture.colourOf(part))
         drawRect(fill.copy(alpha = solidity(part, FLAT_SOLID_ALPHA)), rect.topLeft, rect.size)
         drawRect(palette.edge, rect.topLeft, rect.size, style = Stroke(FLAT_EDGE_PX))
     }
@@ -122,7 +132,7 @@ private fun DrawScope.drawIsoStructure(picture: StructurePicture, palette: Struc
     drawIsoGround(picture, palette)
     picture.parts.forEach { part ->
         val faces = projectFaces(partBox(picture.scene, part.footprint))
-        val shades = utilisationShades(picture.figures[part.footprint.id]?.value)
+        val shades = faceShades(picture.colourOf(part))
         val alpha = solidity(part, ISO_SOLID_ALPHA)
         listOf(faces.top to shades.top, faces.west to shades.west, faces.south to shades.south).forEach { (polygon, shade) ->
             val face = isoPolygon(picture.fit, polygon)
@@ -171,6 +181,22 @@ internal fun PartPopup(tag: String, lines: List<String>, anchorX: Float, anchorY
                 fontSize = if (isTitle) 14.sp else 13.sp,
                 fontWeight = if (isTitle) FontWeight.Bold else null,
             )
+        }
+    }
+}
+
+@Composable
+internal fun ColourLegend(tag: String, entries: List<LegendEntry>, modifier: Modifier) {
+    if (entries.isEmpty()) return
+    Column(
+        modifier = modifier.padding(8.dp).testTag(tag).background(POPUP_BACKGROUND, RoundedCornerShape(5.dp)).padding(6.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        entries.forEach { entry ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(modifier = Modifier.size(12.dp).background(Color(entry.colour)))
+                Text(entry.label, color = POPUP_INK, fontSize = 12.sp)
+            }
         }
     }
 }

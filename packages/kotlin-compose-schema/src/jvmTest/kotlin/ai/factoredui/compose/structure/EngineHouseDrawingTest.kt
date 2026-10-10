@@ -64,7 +64,7 @@ class EngineHouseDrawingTest {
         val fromDoubles = readSceneViewValue(storeValueOf(withoutLayerVersions(Json.parseToJsonElement(houseText()))) { it.doubleOrNull })
         assertEquals(engineHouse().footprints!!.items, fromDoubles.footprints!!.items)
         assertEquals(engineHouse().types, fromDoubles.types)
-        assertEquals(utilisationByPart(engineHouse()), utilisationByPart(fromDoubles))
+        assertEquals(partValues(engineHouse(), "utilisation"), partValues(fromDoubles, "utilisation"))
     }
 
     @Test
@@ -109,11 +109,11 @@ class EngineHouseDrawingTest {
     @Test
     fun the_popup_names_the_type_the_id_and_the_share_of_capacity_or_just_the_id_without_a_figure() {
         val scene = engineHouse()
-        val figures = utilisationByPart(scene)
+        val figures = partValues(scene, "utilisation")
         val panel = scene.footprints!!.items.first { it.id == "e21" }
         val pier = scene.footprints!!.items.first { it.id == "e1" }
-        assertEquals(listOf("Site-built SIP floor panel", "e21 · 76% of capacity"), partPopupLines(scene, panel, figures[panel.id]))
-        assertEquals(listOf("Cast pier in a form tube", "e1"), partPopupLines(scene, pier, figures[pier.id]))
+        assertEquals(listOf("Site-built SIP floor panel", "e21 · 76%"), partPopupLines(scene, panel, figures[panel.id]?.let { "${kotlin.math.round(it.value * 100).toInt()}%" }))
+        assertEquals(listOf("Cast pier in a form tube", "e1"), partPopupLines(scene, pier, figures[pier.id]?.let { "x" }))
     }
 
     @Test

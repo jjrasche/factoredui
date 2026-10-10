@@ -58,7 +58,7 @@ class EngineHousePicturesTest {
             val fit = fitDrawing(scene, StructureDrawing.ISO, (area.right - area.left).value.toDouble(), (area.bottom - area.top).value.toDouble())
             val top = projectFaces(partBox(scene, beam)).top.map { (u, v) -> mmToCanvas(fit, u, v) }
             screen.tapAt(area.left.value + (top.sumOf { it.first } / top.size).toFloat(), area.top.value + (top.sumOf { it.second } / top.size).toFloat())
-            assertEquals(listOf("Interior 2-ply LVL beam", "e14 · 32% of capacity"), screen.textsUnder(popupTag("house")))
+            assertEquals(listOf("Interior 2-ply LVL beam", "e14 · 32%"), screen.textsUnder(popupTag("house")))
             savePicture("07-iso-beam-popup.png", screen.frame().png)
         }
     }

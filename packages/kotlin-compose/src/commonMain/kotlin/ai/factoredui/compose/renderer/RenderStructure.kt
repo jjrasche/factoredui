@@ -8,22 +8,24 @@ import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.schema.StructureProps
 import ai.factoredui.compose.schema.bindingPath
+import ai.factoredui.compose.schema.displayedText
 import ai.factoredui.compose.schema.resolveGeomapSelection
 import ai.factoredui.compose.schema.resolveStructureProps
 import ai.factoredui.compose.schema.selectionAfterTap
 import ai.factoredui.compose.structure.CanvasFit
+import ai.factoredui.compose.structure.PartValue
 import ai.factoredui.compose.structure.StructureDrawing
-import ai.factoredui.compose.structure.UtilisationFigure
 import ai.factoredui.compose.structure.VisiblePart
 import ai.factoredui.compose.structure.drawnPartsSummary
 import ai.factoredui.compose.structure.exaggerationNote
 import ai.factoredui.compose.structure.fitDrawing
 import ai.factoredui.compose.structure.hitDrawnPart
 import ai.factoredui.compose.structure.isEveryPartFlat
+import ai.factoredui.compose.structure.legendEntries
 import ai.factoredui.compose.structure.partPopupLines
+import ai.factoredui.compose.structure.partValues
 import ai.factoredui.compose.structure.partsToDraw
 import ai.factoredui.compose.structure.popupAnchor
-import ai.factoredui.compose.structure.utilisationByPart
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -61,6 +63,8 @@ internal object StructureRenderer : SceneRenderer {
 internal fun partsTag(nodeId: String) = "$nodeId:parts"
 
 internal fun popupTag(nodeId: String) = "$nodeId:popup"
+
+internal fun legendTag(nodeId: String) = "$nodeId:legend"
 
 private val NOTICE_INK = Color(0xFFB3261E)
 
@@ -128,7 +132,7 @@ private fun RenderReadStructure(node: SpecNode, scene: SceneView, props: Structu
     val parts = remember(scene, props) {
         partsToDraw(scene, props.drawing, props.focus, props.showLower, props.hideTopCount, props.highlightIds)
     }
-    val figures = remember(scene) { utilisationByPart(scene) }
+    val values = remember(scene, props.colourScale) { props.colourScale?.let { partValues(scene, it.channel) }.orEmpty() }
     val scope = rememberCoroutineScope()
     val palette = structurePalette(LocalSpecTheme.current)
     BoxWithConstraints(modifier = Modifier.fillMaxSize().nodeTag(node.id).clipToBounds()) {
@@ -147,10 +151,11 @@ private fun RenderReadStructure(node: SpecNode, scene: SceneView, props: Structu
                     detectTapGestures(onTap = { offset -> applyPartTap(target, offset.x.toDouble(), offset.y.toDouble()) })
                 },
         ) {
-            drawStructure(StructurePicture(scene, parts, props.drawing, fit, figures, outlined), palette)
+            drawStructure(StructurePicture(scene, parts, props.drawing, fit, values, props.colourScale, outlined), palette)
         }
         StructureNotes(scene, parts, props, fit, Modifier.align(Alignment.TopStart))
-        SelectedPartPopup(node.id, scene, parts, selection, props.drawing, fit, figures)
+        ColourLegend(legendTag(node.id), legendEntries(props.colourScale), Modifier.align(Alignment.BottomStart))
+        SelectedPartPopup(node.id, scene, parts, selection, props, fit, values)
     }
 }
 
@@ -174,12 +179,13 @@ private fun SelectedPartPopup(
     scene: SceneView,
     parts: List<VisiblePart>,
     selection: Set<String>,
-    drawing: StructureDrawing,
+    props: StructureProps,
     fit: CanvasFit,
-    figures: Map<String, UtilisationFigure>,
+    values: Map<String, PartValue>,
 ) {
     val selectedId = selection.singleOrNull() ?: return
     val part = parts.firstOrNull { it.footprint.id == selectedId } ?: return
-    val anchor = popupAnchor(scene, part.footprint, drawing, fit)
-    PartPopup(popupTag(nodeId), partPopupLines(scene, part.footprint, figures[selectedId]), anchor.first.toFloat(), anchor.second.toFloat())
+    val anchor = popupAnchor(scene, part.footprint, props.drawing, fit)
+    val valueText = values[selectedId]?.let { displayedText(it.value, props.colourScale?.format, null) }
+    PartPopup(popupTag(nodeId), partPopupLines(scene, part.footprint, valueText), anchor.first.toFloat(), anchor.second.toFloat())
 }

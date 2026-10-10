@@ -18,7 +18,7 @@ private fun assertClose(expected: Double, actual: Double, label: String, toleran
     assertTrue(abs(actual - expected) < tolerance, "$label: $actual vs $expected")
 
 private fun isoOrderOf(vararg items: SceneFootprint): List<String> =
-    orderForIso(houseScene(items = items.toList()), items.map { shown(it) }).map { it.footprint.id }
+    orderForIso(stackScene(items = items.toList()), items.map { shown(it) }).map { it.footprint.id }
 
 private fun isBehind(a: PartBox, b: PartBox) = a.x0 >= b.x1 || a.y0 >= b.y1 || a.z1 <= b.z0
 
@@ -54,10 +54,10 @@ class IsoTest {
 
     @Test
     fun a_parts_box_is_its_tile_rectangle_from_its_own_base_to_its_own_top() =
-        assertEquals(PartBox(1220.0, 1220.0, 1830.0, 1830.0, 0.0, 276.0), partBox(houseScene(), part("p", col = 2, row = 2, heightMm = 276)))
+        assertEquals(PartBox(1220.0, 1220.0, 1830.0, 1830.0, 0.0, 276.0), partBox(stackScene(), part("p", col = 2, row = 2, heightMm = 276)))
 
     @Test
-    fun a_part_with_no_height_has_a_flat_box() = assertEquals(PartBox(0.0, 0.0, 610.0, 610.0, 352.0, 352.0), partBox(houseScene(), part("p", zMm = 352)))
+    fun a_part_with_no_height_has_a_flat_box() = assertEquals(PartBox(0.0, 0.0, 610.0, 610.0, 352.0, 352.0), partBox(stackScene(), part("p", zMm = 352)))
 
     @Test
     fun a_box_nearer_the_viewer_with_smaller_x_is_drawn_after_one_farther_away() =
@@ -81,7 +81,7 @@ class IsoTest {
         listOf(2, 7).forEachIndexed { bay, row ->
             listOf(2, 6, 10).forEachIndexed { column, col -> items += part("panel-$bay-$column", col = col, row = row, width = 4, height = 5, level = 2, zMm = 654, heightMm = 260) }
         }
-        val scene = houseScene(items = items)
+        val scene = stackScene(items = items)
         val position = orderForIso(scene, items.reversed().map { shown(it) }).mapIndexed { index, part -> part.footprint.id to index }.toMap()
         assertEquals(items.size, position.size)
         items.forEach { a ->
@@ -132,7 +132,7 @@ class IsoTest {
     @Test
     fun the_window_covers_every_corner_of_every_part_whatever_is_currently_shown() {
         val items = listOf(part("a", heightMm = 100), part("b", col = 10, row = 10, width = 2, height = 2, level = 1, zMm = 400, heightMm = 300))
-        val scene = houseScene(items = items)
+        val scene = stackScene(items = items)
         val bounds = isoWindow(scene)
         items.map { partBox(scene, it) }.forEach { box ->
             listOf(box.x0, box.x1).forEach { x ->
@@ -148,7 +148,7 @@ class IsoTest {
 
     @Test
     fun a_scene_with_no_parts_frames_its_own_window() {
-        val bounds = isoWindow(houseScene())
+        val bounds = isoWindow(stackScene())
         val farCorner = isoProject(9760.0, 0.0, 0.0)
         assertTrue(bounds.x1 > farCorner.u)
     }
@@ -165,7 +165,7 @@ class IsoTest {
     fun tapping_where_two_boxes_overlap_on_the_screen_picks_the_one_drawn_last_the_nearer() {
         val near = part("near", width = 2, height = 2, heightMm = 1000)
         val far = part("far", col = 1, row = 1, width = 2, height = 2, heightMm = 1000)
-        val scene = houseScene(items = listOf(near, far))
+        val scene = stackScene(items = listOf(near, far))
         val ordered = orderForIso(scene, listOf(shown(near), shown(far)))
         val nearTop = projectFaces(partBox(scene, near)).top
         val centre = nearTop.sumOf { it.first } / 4 to nearTop.sumOf { it.second } / 4
@@ -175,6 +175,6 @@ class IsoTest {
     @Test
     fun tapping_empty_screen_picks_nothing() {
         val only = part("only", heightMm = 100)
-        assertNull(hitIso(houseScene(items = listOf(only)), listOf(shown(only)), 99999.0, 99999.0))
+        assertNull(hitIso(stackScene(items = listOf(only)), listOf(shown(only)), 99999.0, 99999.0))
     }
 }

@@ -1,18 +1,86 @@
 package ai.factoredui.compose.schema
 
+import ai.factoredui.compose.structure.ColourScale
+import ai.factoredui.compose.structure.ColourStop
 import ai.factoredui.compose.structure.LevelFocus
+import ai.factoredui.compose.structure.NEUTRAL_PART_COLOUR
 import ai.factoredui.compose.structure.StructureDrawing
 import kotlin.test.Test
 import kotlin.test.assertEquals
+
+private val COLOR_BY = mapOf(
+    "channel" to "load",
+    "stops" to listOf(mapOf("up_to" to 0.25, "color" to "#2e7d32", "label" to "light"), mapOf("up_to" to 1, "color" to "#f9a825"), mapOf("color" to "#7b1fa2", "label" to "over")),
+    "unknown_color" to "#8899aa",
+    "unknown_label" to "no figure",
+    "format" to "percent",
+)
+
+private val SCALE = ColourScale(
+    channel = "load",
+    stops = listOf(ColourStop(0.25, 0xFF2E7D32, "light"), ColourStop(1.0, 0xFFF9A825), ColourStop(null, 0xFF7B1FA2, "over")),
+    unknownColour = 0xFF8899AA,
+    unknownLabel = "no figure",
+    format = "percent",
+)
 
 class StructurePropsTest {
 
     @Test
     fun well_formed_props_read_with_no_notes() {
         val props = resolveStructureProps(
-            mapOf("view" to "west", "focus" to 1.0, "show_lower" to false, "hide_top" to 2.0, "highlight" to listOf("e1"), "on_part_tap" to "tapped", "color_by" to "utilisation"),
+            mapOf("view" to "west", "focus" to 1.0, "show_lower" to false, "hide_top" to 2.0, "highlight" to listOf("e1"), "on_part_tap" to "tapped", "color_by" to COLOR_BY),
         )
-        assertEquals(StructureProps(StructureDrawing.WEST, LevelFocus.OneLevel(1), false, 2, setOf("e1"), "tapped"), props)
+        assertEquals(StructureProps(StructureDrawing.WEST, LevelFocus.OneLevel(1), false, 2, setOf("e1"), "tapped", SCALE), props)
+    }
+
+    @Test
+    fun color_by_reads_the_channel_the_stops_in_order_the_unknown_colour_the_labels_and_the_format() {
+        val scale = resolveStructureProps(mapOf("color_by" to COLOR_BY)).colourScale
+        assertEquals(SCALE, scale)
+    }
+
+    @Test
+    fun with_no_color_by_there_is_no_scale_and_no_note() {
+        val props = resolveStructureProps(emptyMap())
+        assertEquals(null, props.colourScale)
+        assertEquals(emptyList(), props.notes)
+    }
+
+    @Test
+    fun a_color_by_that_is_not_an_object_draws_one_colour_and_says_so() {
+        val props = resolveStructureProps(mapOf("color_by" to "load"))
+        assertEquals(null, props.colourScale)
+        assertEquals(listOf("color_by must be an object naming a channel and its stops, not 'load'; parts are drawn in one colour."), props.notes)
+    }
+
+    @Test
+    fun a_color_by_with_no_channel_or_no_stop_list_draws_one_colour_and_says_which() {
+        assertEquals(listOf("color_by names no channel; parts are drawn in one colour."), resolveStructureProps(mapOf("color_by" to mapOf("stops" to emptyList<Any>()))).notes)
+        assertEquals(listOf("color_by stops must be a list, not 'null'; parts are drawn in one colour."), resolveStructureProps(mapOf("color_by" to mapOf("channel" to "load"))).notes)
+    }
+
+    @Test
+    fun a_stop_the_renderer_cannot_read_is_left_out_by_number_and_the_rest_still_colour() {
+        val props = resolveStructureProps(
+            mapOf("color_by" to mapOf("channel" to "load", "stops" to listOf(mapOf("up_to" to "half", "color" to "#2e7d32"), mapOf("color" to "red"), "x", mapOf("color" to "#7b1fa2")))),
+        )
+        assertEquals(listOf(ColourStop(null, 0xFF7B1FA2)), props.colourScale!!.stops)
+        assertEquals(
+            listOf(
+                "color_by stop 0 up_to must be a number, not 'half'; it is left out. " +
+                    "color_by stop 1 color must be #rrggbb, not 'red'; it is left out. " +
+                    "color_by stop 2 must be an object with a color, not 'x'; it is left out.",
+            ),
+            props.notes,
+        )
+    }
+
+    @Test
+    fun an_unreadable_unknown_colour_falls_back_to_the_neutral_grey_and_says_so() {
+        val props = resolveStructureProps(mapOf("color_by" to mapOf("channel" to "load", "stops" to emptyList<Any>(), "unknown_color" to "grey")))
+        assertEquals(NEUTRAL_PART_COLOUR, props.colourScale!!.unknownColour)
+        assertEquals(listOf("color_by unknown_color must be #rrggbb, not 'grey'; the neutral grey is used."), props.notes)
     }
 
     @Test
@@ -78,10 +146,5 @@ class StructurePropsTest {
         val props = resolveStructureProps(mapOf("on_part_tap" to 3))
         assertEquals(null, props.onPartTap)
         assertEquals(listOf("on_part_tap must be an action name, not '3'; a tap dispatches nothing."), props.notes)
-    }
-
-    @Test
-    fun an_unknown_color_by_colours_by_utilisation_and_says_so() {
-        assertEquals(listOf("color_by 'weight' is not a colouring this renderer knows; parts are coloured by utilisation."), resolveStructureProps(mapOf("color_by" to "weight")).notes)
     }
 }

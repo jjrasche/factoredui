@@ -11,9 +11,9 @@ import ai.factoredui.compose.scene.SceneView
 import ai.factoredui.compose.scene.StackLevel
 import ai.factoredui.compose.scene.WindowMm
 
-internal val HOUSE_WINDOW = WindowMm(0, 0, 9760, 8540)
+internal val STACK_WINDOW = WindowMm(0, 0, 9760, 8540)
 
-internal fun houseScene(
+internal fun stackScene(
     items: List<SceneFootprint> = emptyList(),
     types: List<SceneType> = emptyList(),
     stackLevels: List<StackLevel> = emptyList(),
@@ -23,7 +23,7 @@ internal fun houseScene(
     tileFeet = 2.0,
     cols = 16,
     rows = 14,
-    window = HOUSE_WINDOW,
+    window = STACK_WINDOW,
     types = types,
     footprints = FootprintLayer(1, items, Provenance(ProvenanceKind.DERIVED)),
     annotations = annotations?.let { AnnotationLayer(1, it) },

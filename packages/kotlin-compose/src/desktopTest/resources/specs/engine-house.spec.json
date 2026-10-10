@@ -16,7 +16,17 @@
           "focus": "{house.focus}",
           "show_lower": "{house.show_lower}",
           "hide_top": "{house.hide_top}",
-          "color_by": "utilisation"
+          "color_by": {
+            "channel": "utilisation",
+            "stops": [
+              { "up_to": 0.25, "color": "#20b620", "label": "under 25%" },
+              { "up_to": 1, "color": "#b6b620", "label": "up to 100%" },
+              { "color": "#7b1d72", "label": "over 100%" }
+            ],
+            "unknown_color": "#8b949c",
+            "unknown_label": "no figure",
+            "format": "percent"
+          }
         }
       },
       {

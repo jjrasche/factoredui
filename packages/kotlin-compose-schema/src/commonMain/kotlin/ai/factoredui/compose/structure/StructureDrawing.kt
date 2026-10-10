@@ -1,6 +1,5 @@
 package ai.factoredui.compose.structure
 
-import ai.factoredui.compose.format.percentText
 import ai.factoredui.compose.scene.SceneFootprint
 import ai.factoredui.compose.scene.SceneView
 
@@ -51,9 +50,9 @@ fun popupAnchor(scene: SceneView, footprint: SceneFootprint, drawing: StructureD
     return (left + right) / 2 to top
 }
 
-fun partPopupLines(scene: SceneView, footprint: SceneFootprint, figure: UtilisationFigure?): List<String> {
+fun partPopupLines(scene: SceneView, footprint: SceneFootprint, valueText: String?): List<String> {
     val label = scene.types.firstOrNull { it.id == footprint.type }?.label ?: footprint.type
-    val second = figure?.let { "${footprint.id} · ${percentText(it.value)} of capacity" } ?: footprint.id
+    val second = valueText?.let { "${footprint.id} · $it" } ?: footprint.id
     return listOf(label, second)
 }
 

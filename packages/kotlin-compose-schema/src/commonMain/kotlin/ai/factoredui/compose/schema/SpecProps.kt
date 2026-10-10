@@ -10,8 +10,12 @@ import ai.factoredui.compose.layout.TileFootprint
 import ai.factoredui.compose.layout.TileInstance
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
+import ai.factoredui.compose.structure.ColourScale
+import ai.factoredui.compose.structure.ColourStop
 import ai.factoredui.compose.structure.LevelFocus
+import ai.factoredui.compose.structure.NEUTRAL_PART_COLOUR
 import ai.factoredui.compose.structure.StructureDrawing
+import ai.factoredui.compose.structure.colourOfHex
 import ai.factoredui.compose.structure.structureDrawingOf
 
 /**
@@ -1046,8 +1050,6 @@ fun resolveTileArea(resolvedArea: Any?): Double =
 
 // --- Structure scene props (scene node, view_state.renderer == "structure") ---
 
-const val STRUCTURE_COLOR_BY_UTILISATION = "utilisation"
-
 private const val ALL_LEVELS = "all"
 
 /** [notes] name every prop the renderer could not read, so the screen says what it fell back to. */
@@ -1058,6 +1060,7 @@ data class StructureProps(
     val hideTopCount: Int = 0,
     val highlightIds: Set<String> = emptySet(),
     val onPartTap: String? = null,
+    val colourScale: ColourScale? = null,
     val notes: List<String> = emptyList(),
 )
 
@@ -1105,8 +1108,34 @@ private fun onPartTapReading(raw: Any?): PropReading<String?> = when (raw) {
     else -> PropReading(null, "on_part_tap must be an action name, not '$raw'; a tap dispatches nothing.")
 }
 
-private fun colorByNote(raw: Any?): String? =
-    raw?.takeIf { it != STRUCTURE_COLOR_BY_UTILISATION }?.let { "color_by '$it' is not a colouring this renderer knows; parts are coloured by utilisation." }
+private const val ONE_COLOUR = "parts are drawn in one colour."
+
+private fun stopReading(index: Int, raw: Any?): PropReading<ColourStop?> {
+    val fields = raw as? Map<*, *> ?: return PropReading(null, "color_by stop $index must be an object with a color, not '$raw'; it is left out.")
+    val colour = colourOfHex(fields["color"]) ?: return PropReading(null, "color_by stop $index color must be #rrggbb, not '${fields["color"]}'; it is left out.")
+    val rawUpTo = fields["up_to"]
+    val upTo = (rawUpTo as? Number)?.toDouble()
+    if (rawUpTo != null && upTo == null) return PropReading(null, "color_by stop $index up_to must be a number, not '$rawUpTo'; it is left out.")
+    return PropReading(ColourStop(upTo, colour, fields["label"] as? String))
+}
+
+private fun unknownColourReading(raw: Any?): PropReading<Long> {
+    if (raw == null) return PropReading(NEUTRAL_PART_COLOUR)
+    val colour = colourOfHex(raw) ?: return PropReading(NEUTRAL_PART_COLOUR, "color_by unknown_color must be #rrggbb, not '$raw'; the neutral grey is used.")
+    return PropReading(colour)
+}
+
+private fun colourScaleReading(raw: Any?): PropReading<ColourScale?> {
+    if (raw == null) return PropReading(null)
+    val fields = raw as? Map<*, *> ?: return PropReading(null, "color_by must be an object naming a channel and its stops, not '$raw'; $ONE_COLOUR")
+    val channel = fields["channel"] as? String ?: return PropReading(null, "color_by names no channel; $ONE_COLOUR")
+    val rawStops = fields["stops"] as? List<*> ?: return PropReading(null, "color_by stops must be a list, not '${fields["stops"]}'; $ONE_COLOUR")
+    val stops = rawStops.mapIndexed(::stopReading)
+    val unknown = unknownColourReading(fields["unknown_color"])
+    val scale = ColourScale(channel, stops.mapNotNull { it.value }, unknown.value, fields["unknown_label"] as? String, fields["format"] as? String)
+    val notes = (stops.mapNotNull { it.note } + listOfNotNull(unknown.note)).joinToString(" ").ifEmpty { null }
+    return PropReading(scale, notes)
+}
 
 fun resolveStructureProps(resolved: Map<String, Any?>): StructureProps {
     val drawing = drawingReading(resolved["view"])
@@ -1115,6 +1144,7 @@ fun resolveStructureProps(resolved: Map<String, Any?>): StructureProps {
     val hideTop = hideTopReading(resolved["hide_top"])
     val highlight = highlightReading(resolved["highlight"])
     val onPartTap = onPartTapReading(resolved["on_part_tap"])
+    val colourScale = colourScaleReading(resolved["color_by"])
     return StructureProps(
         drawing = drawing.value,
         focus = focus.value,
@@ -1122,6 +1152,7 @@ fun resolveStructureProps(resolved: Map<String, Any?>): StructureProps {
         hideTopCount = hideTop.value,
         highlightIds = highlight.value,
         onPartTap = onPartTap.value,
-        notes = listOfNotNull(drawing.note, focus.note, showLower.note, hideTop.note, highlight.note, onPartTap.note, colorByNote(resolved["color_by"])),
+        colourScale = colourScale.value,
+        notes = listOfNotNull(drawing.note, focus.note, showLower.note, hideTop.note, highlight.note, onPartTap.note, colourScale.note),
     )
 }

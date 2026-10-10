@@ -94,7 +94,7 @@ class StructureSceneTest {
             assertEquals(listOf("e21"), selectedIn(screen.store()))
             assertEquals(listOf("part_tapped"), intents.map { it.action })
             assertEquals("e21", intents.single().params["id"])
-            assertEquals(listOf("Site-built SIP floor panel", "e21 · 76% of capacity"), screen.textsUnder(popupTag("house")))
+            assertEquals(listOf("Site-built SIP floor panel", "e21"), screen.textsUnder(popupTag("house")))
             assertTrue(screen.stateDescriptionOf(partsTag("house"))!!.endsWith("selected=e21"))
         }
     }

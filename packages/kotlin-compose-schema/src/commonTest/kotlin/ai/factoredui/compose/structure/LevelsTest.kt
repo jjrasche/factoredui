@@ -7,7 +7,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-private fun stackedHouse() = houseScene(
+private fun stackedHouse() = stackScene(
     types = listOf(SceneType("pier", "Helical pier"), SceneType("beam", "Floor beam"), SceneType("panel", "SIP panel")),
     items = listOf(part("panel-1", "panel", level = 2), part("pier-1", "pier", level = 0), part("pier-2", "pier", level = 0), part("beam-1", "beam", level = 1), part("panel-2", "panel", level = 2)),
 )
@@ -19,7 +19,7 @@ class LevelsTest {
     fun the_stack_levels_present_are_listed_once_each_lowest_first() = assertEquals(listOf(0, 1, 2), levelsPresent(stackedHouse()))
 
     @Test
-    fun a_scene_with_no_footprints_has_no_levels() = assertEquals(emptyList(), levelsPresent(houseScene().copy(footprints = null)))
+    fun a_scene_with_no_footprints_has_no_levels() = assertEquals(emptyList(), levelsPresent(stackScene().copy(footprints = null)))
 
     @Test
     fun a_level_is_named_for_the_type_that_is_most_of_it() {
@@ -30,7 +30,7 @@ class LevelsTest {
 
     @Test
     fun a_level_two_types_share_equally_is_named_for_both_in_the_order_they_first_appear() {
-        val tied = houseScene(
+        val tied = stackScene(
             types = listOf(SceneType("edge", "Edge beam"), SceneType("inner", "Interior beam")),
             items = listOf(part("b1", "edge", level = 1), part("b2", "inner", level = 1), part("b3", "inner", level = 1), part("b4", "edge", level = 1)),
         )
@@ -93,20 +93,20 @@ class LevelsTest {
 
     @Test
     fun hiding_the_top_levels_counts_levels_that_have_parts_not_stack_level_numbers() {
-        val gappy = houseScene(items = listOf(part("a", "pier", level = 0), part("b", "beam", level = 5), part("c", "panel", level = 9)))
+        val gappy = stackScene(items = listOf(part("a", "pier", level = 0), part("b", "beam", level = 5), part("c", "panel", level = 9)))
         assertEquals(listOf("a", "b"), visibleParts(gappy, LevelFocus.AllLevels, showLower = true, hideTopCount = 1).ids())
     }
 
     @Test
     fun hiding_the_top_level_of_a_single_level_scene_hides_it_all() {
-        val flat = houseScene(items = listOf(part("a", "pier"), part("b", "pier")))
+        val flat = stackScene(items = listOf(part("a", "pier"), part("b", "pier")))
         assertEquals(0, visibleParts(flat, LevelFocus.AllLevels, showLower = true, hideTopCount = 1).size)
     }
 
     @Test
     fun the_top_level_is_named_by_its_highest_stack_level() {
         assertEquals(2, topLevel(stackedHouse()))
-        assertNull(topLevel(houseScene()))
+        assertNull(topLevel(stackScene()))
     }
 
     @Test

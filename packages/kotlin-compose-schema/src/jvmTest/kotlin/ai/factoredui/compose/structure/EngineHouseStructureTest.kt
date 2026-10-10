@@ -16,7 +16,7 @@ class EngineHouseStructureTest {
     @Test
     fun nineteen_engine_house_parts_carry_a_utilisation_figure_and_no_pier_does() {
         val scene = engineHouse()
-        val figures = utilisationByPart(scene)
+        val figures = partValues(scene, "utilisation")
         assertEquals(19, figures.size)
         val typeOf = scene.footprints!!.items.associate { it.id to it.type }
         assertTrue(figures.keys.none { typeOf[it] == "cast_pier" })

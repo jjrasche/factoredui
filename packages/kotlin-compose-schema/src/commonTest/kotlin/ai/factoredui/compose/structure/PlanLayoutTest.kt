@@ -13,11 +13,11 @@ private fun assertClose(expected: Double, actual: Double, label: String) = asser
 class PlanLayoutTest {
     @Test
     fun a_tile_is_the_window_width_over_the_column_count() =
-        assertEquals(RectMm(1220.0, 1220.0, 1830.0, 1830.0), partRectMm(houseScene(), part("p", col = 2, row = 2)))
+        assertEquals(RectMm(1220.0, 1220.0, 1830.0, 1830.0), partRectMm(stackScene(), part("p", col = 2, row = 2)))
 
     @Test
     fun a_parts_rectangle_spans_its_width_and_height_in_tiles() =
-        assertEquals(RectMm(1220.0, 4270.0, 9150.0, 4880.0), partRectMm(houseScene(), part("p", col = 2, row = 7, width = 13, height = 1)))
+        assertEquals(RectMm(1220.0, 4270.0, 9150.0, 4880.0), partRectMm(stackScene(), part("p", col = 2, row = 7, width = 13, height = 1)))
 
     @Test
     fun the_window_fits_the_canvas_with_equal_scale_on_both_axes_and_the_margin_kept() {
@@ -73,25 +73,25 @@ class PlanLayoutTest {
     @Test
     fun where_parts_overlap_on_the_plan_the_top_one_is_hit() {
         val parts = listOf(shown(part("beam", level = 1, col = 2, row = 2, width = 13)), shown(part("panel", level = 2, col = 2, row = 2, width = 4, height = 5)))
-        assertEquals("panel", hitPartInView(houseScene(), parts, 1500.0, 1500.0, StructureView.PLAN)?.footprint?.id)
+        assertEquals("panel", hitPartInView(stackScene(), parts, 1500.0, 1500.0, StructureView.PLAN)?.footprint?.id)
     }
 
     @Test
     fun a_point_on_a_lower_part_that_no_upper_part_covers_hits_the_lower_part() {
         val parts = listOf(shown(part("beam", level = 1, col = 2, row = 2, width = 13)), shown(part("panel", level = 2, col = 2, row = 2, width = 4, height = 5)))
-        assertEquals("beam", hitPartInView(houseScene(), parts, 5000.0, 1500.0, StructureView.PLAN)?.footprint?.id)
+        assertEquals("beam", hitPartInView(stackScene(), parts, 5000.0, 1500.0, StructureView.PLAN)?.footprint?.id)
     }
 
     @Test
     fun a_point_on_nothing_hits_nothing() =
-        assertNull(hitPartInView(houseScene(), listOf(shown(part("panel", col = 2, row = 2, width = 4, height = 5))), 100.0, 100.0, StructureView.PLAN))
+        assertNull(hitPartInView(stackScene(), listOf(shown(part("panel", col = 2, row = 2, width = 4, height = 5))), 100.0, 100.0, StructureView.PLAN))
 
     @Test
-    fun a_part_not_in_the_visible_list_cannot_be_hit() = assertNull(hitPartInView(houseScene(), emptyList(), 1500.0, 1500.0, StructureView.PLAN))
+    fun a_part_not_in_the_visible_list_cannot_be_hit() = assertNull(hitPartInView(stackScene(), emptyList(), 1500.0, 1500.0, StructureView.PLAN))
 
     @Test
     fun a_point_exactly_on_a_shared_edge_hits_only_one_part_the_later_in_draw_order() {
         val parts = listOf(shown(part("left", col = 0)), shown(part("right", col = 1)))
-        assertEquals("right", hitPartInView(houseScene(), parts, 610.0, 300.0, StructureView.PLAN)?.footprint?.id)
+        assertEquals("right", hitPartInView(stackScene(), parts, 610.0, 300.0, StructureView.PLAN)?.footprint?.id)
     }
 }
