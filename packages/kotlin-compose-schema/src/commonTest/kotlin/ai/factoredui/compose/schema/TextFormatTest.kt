@@ -1,6 +1,6 @@
 package ai.factoredui.compose.schema
 
-import ai.factoredui.compose.structure.MISSING_FIGURE
+import ai.factoredui.compose.format.MISSING_FIGURE
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

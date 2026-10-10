@@ -1,5 +1,6 @@
 package ai.factoredui.compose.structure
 
+import ai.factoredui.compose.format.percentText
 import ai.factoredui.compose.scene.SceneFootprint
 import ai.factoredui.compose.scene.SceneView
 

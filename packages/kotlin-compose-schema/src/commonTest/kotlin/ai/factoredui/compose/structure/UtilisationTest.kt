@@ -97,22 +97,6 @@ class UtilisationTest {
     }
 
     @Test
-    fun the_percentage_is_the_value_rounded_to_a_whole_percent() {
-        assertEquals("8%", percentText(0.0794))
-        assertEquals("16%", percentText(0.1588))
-        assertEquals("17%", percentText(0.1726))
-        assertEquals("76%", percentText(0.7576))
-        assertEquals("123%", percentText(1.234))
-        assertEquals("3%", percentText(0.025))
-    }
-
-    @Test
-    fun a_doubled_percent_sign_left_by_a_format_string_reads_as_one() {
-        assertEquals("glulam beam: 17%; LVL 25%", plainText("glulam beam: 17%%; LVL 25%%"))
-        assertEquals("panel uses 76% of the table", plainText("panel uses 76% of the table"))
-    }
-
-    @Test
     fun the_top_face_is_the_lightest_shade_and_the_south_face_the_darkest() {
         val shades = utilisationShades(0.5)
         assertTrue(lightness(shades.top) > lightness(shades.west))

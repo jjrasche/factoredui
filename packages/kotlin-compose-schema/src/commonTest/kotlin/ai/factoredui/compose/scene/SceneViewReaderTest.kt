@@ -7,22 +7,21 @@ import kotlin.test.assertNull
 
 private val RECORDED = Provenance(ProvenanceKind.MEASURED, source = "survey", asOf = "2026-05-01", sourceSha256 = "ab12", observedAt = "2026-05-01T10:00:00Z", registrationErrorMm = 0)
 
-private fun structureScene(): SceneView = SceneView(
+private fun everyLayerScene(): SceneView = SceneView(
     levelFeet = 1,
     tileFeet = 1.0,
     cols = 2,
     rows = 2,
     window = WindowMm(0, 0, 610, 610),
     types = listOf(
-        SceneType("pier", "Pier", tags = listOf("support"), footprintMm = 305L to 305L, heightMm = 375, unitCostUsd = 92.37, unitWeightKg = null, unitWeightNullReason = "no weight is banked"),
-        SceneType("beam", "Beam"),
-        SceneType("bolt", "Bolt", unitCostUsd = 0.0, unitWeightKg = 0.25),
+        SceneType("block", "Block", tags = listOf("support"), footprintMm = 305L to 305L, heightMm = 375),
+        SceneType("bar", "Bar"),
     ),
     ground = GroundLayer(7, 2, 2, List(9) { it * 10L }, cutFillMm = null, datum = "site", provenance = RECORDED),
-    surface = SurfaceLayer(3, 2, 2, listOf(SurfaceClass(0, "empty"), SurfaceClass(1, "pier")), listOf(0, 1, 1, 0), RECORDED),
+    surface = SurfaceLayer(3, 2, 2, listOf(SurfaceClass(0, "empty"), SurfaceClass(1, "block")), listOf(0, 1, 1, 0), RECORDED),
     footprints = FootprintLayer(
         4,
-        listOf(SceneFootprint("p1", "pier", 0, 0, 1, 1, stackLevel = 0, zMm = 0), SceneFootprint("b1", "beam", 0, 1, 2, 1, heightMm = 286, stackLevel = 1, zMm = 375)),
+        listOf(SceneFootprint("p1", "block", 0, 0, 1, 1, stackLevel = 0, zMm = 0), SceneFootprint("b1", "bar", 0, 1, 2, 1, heightMm = 286, stackLevel = 1, zMm = 375)),
         RECORDED,
     ),
     instances = InstanceLayer(
@@ -36,7 +35,7 @@ private fun structureScene(): SceneView = SceneView(
     water = WaterLayer(6, listOf(Pond("w", 100, listOf(PondTile(1, 1, 300)))), listOf(FlowLine("f", listOf(0L to 0L, 10L to 20L), 1.5, "L/s", "swale")), RECORDED),
     boundaries = BoundaryLayer(8, listOf(BoundaryPolygon("b", "parcel", listOf(0L to 0L, 610L to 0L, 610L to 610L))), RECORDED),
     grid = GridSpec("square", 1.0, 2, 2),
-    annotations = AnnotationLayer(9, listOf(Annotation("FOOTPRINT", "b1", "utilisation", "carries 32%", "engine equations", 0.32), Annotation("INSTANCE", null, "note", "leaning", null))),
+    annotations = AnnotationLayer(9, listOf(Annotation("FOOTPRINT", "b1", "share", "32% of its limit", "the host", 0.32), Annotation("INSTANCE", null, "note", "leaning", null))),
     stackLevels = listOf(StackLevel(0, 0, "on the ground"), StackLevel(1, 375, null)),
     dropped = listOf("a part with no footprint"),
 )
@@ -44,16 +43,21 @@ private fun structureScene(): SceneView = SceneView(
 class SceneViewReaderTest {
     @Test
     fun a_scene_written_and_read_back_is_the_same_scene() {
-        val scene = structureScene()
+        val scene = everyLayerScene()
         assertEquals(scene, readSceneView(sceneViewJson(scene)))
     }
 
     @Test
-    fun a_part_type_with_no_price_reads_back_with_no_price_never_zero() {
-        val read = readSceneView(sceneViewJson(structureScene()))
-        assertNull(read.types.first { it.id == "beam" }.unitCostUsd)
-        assertNull(read.types.first { it.id == "pier" }.unitWeightKg)
-        assertEquals("no weight is banked", read.types.first { it.id == "pier" }.unitWeightNullReason)
+    fun an_annotation_with_no_value_reads_back_with_no_value_never_zero() {
+        val read = readSceneView(sceneViewJson(everyLayerScene()))
+        assertNull(read.annotations!!.items.first { it.kind == "note" }.value)
+        assertNull(read.types.first { it.id == "bar" }.heightMm)
+    }
+
+    @Test
+    fun keys_a_type_does_not_declare_are_ignored_rather_than_carried() {
+        val scene = readSceneView(sceneWith(""""types":[{"id":"block","unit_cost_usd":92.37,"unit_weight_kg":null}]"""))
+        assertEquals(SceneType("block", "block"), scene.types.single())
     }
 
     @Test
@@ -107,7 +111,7 @@ class SceneViewReaderTest {
 
     @Test
     fun a_fractional_height_mm_is_refused_not_rounded() {
-        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""types":[{"id":"pier","height_mm":2438.4}]""")) }
+        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""types":[{"id":"block","height_mm":2438.4}]""")) }
         assertEquals("height_mm must be a whole number, not 2438.4", failure.message)
     }
 
@@ -121,8 +125,10 @@ class SceneViewReaderTest {
 
     @Test
     fun a_number_given_as_text_is_refused() {
-        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""types":[{"id":"pier","unit_cost_usd":"92.37"}]""")) }
-        assertEquals("unit_cost_usd must be a number, not \"92.37\"", failure.message)
+        val failure = assertFailsWith<SceneViewFormatException> {
+            readSceneView(sceneWith(""""annotations":{"items":[{"ref_kind":"FOOTPRINT","ref_id":"a","kind":"share","value":"0.32"}]}"""))
+        }
+        assertEquals("value must be a number, not \"0.32\"", failure.message)
     }
 
     @Test
@@ -135,14 +141,14 @@ class SceneViewReaderTest {
 
     @Test
     fun a_non_array_where_an_array_is_read_is_refused() {
-        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""types":"pier"""")) }
-        assertEquals("types must be an array, not \"pier\"", failure.message)
+        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""types":"block"""")) }
+        assertEquals("types must be an array, not \"block\"", failure.message)
     }
 
     @Test
     fun a_non_object_entry_in_an_object_list_is_refused() {
-        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""types":[{"id":"pier"},"beam"]""")) }
-        assertEquals("types[1] must be an object, not \"beam\"", failure.message)
+        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""types":[{"id":"block"},"bar"]""")) }
+        assertEquals("types[1] must be an object, not \"bar\"", failure.message)
     }
 
     @Test
@@ -169,25 +175,25 @@ class SceneViewReaderTest {
 
     @Test
     fun a_footprint_mm_that_is_not_a_pair_is_refused() {
-        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""types":[{"id":"pier","footprint_mm":[305]}]""")) }
+        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""types":[{"id":"block","footprint_mm":[305]}]""")) }
         assertEquals("footprint_mm must be a pair of whole millimetres, not [305]", failure.message)
     }
 
     @Test
     fun a_non_string_entry_in_a_string_list_is_refused() {
-        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""types":[{"id":"pier","tags":["support",3]}]""")) }
+        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""types":[{"id":"block","tags":["support",3]}]""")) }
         assertEquals("tags[1] must be text, not 3", failure.message)
     }
 
     @Test
     fun absent_or_null_keys_read_as_their_documented_defaults() {
         val text = sceneWith(
-            """"types":[{"id":"pier","label":null,"tags":null,"height_mm":null,"unit_cost_usd":null}],
-               "footprints":{"version":null,"items":[{"id":"a","type":"pier","col":0,"row":0,"width":null,"z_mm":null}]}""",
+            """"types":[{"id":"block","label":null,"tags":null,"height_mm":null}],
+               "footprints":{"version":null,"items":[{"id":"a","type":"block","col":0,"row":0,"width":null,"z_mm":null}]}""",
         )
         val scene = readSceneView(text)
-        assertEquals(SceneType("pier", "pier"), scene.types.single())
-        assertEquals(SceneFootprint("a", "pier", 0, 0, 1, 1), scene.footprints!!.items.single())
+        assertEquals(SceneType("block", "block"), scene.types.single())
+        assertEquals(SceneFootprint("a", "block", 0, 0, 1, 1), scene.footprints!!.items.single())
         assertEquals(0L, scene.footprints!!.version)
     }
 

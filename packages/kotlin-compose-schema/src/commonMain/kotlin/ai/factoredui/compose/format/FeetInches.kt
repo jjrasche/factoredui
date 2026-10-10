@@ -1,4 +1,4 @@
-package ai.factoredui.compose.structure
+package ai.factoredui.compose.format
 
 import kotlin.math.abs
 import kotlin.math.floor

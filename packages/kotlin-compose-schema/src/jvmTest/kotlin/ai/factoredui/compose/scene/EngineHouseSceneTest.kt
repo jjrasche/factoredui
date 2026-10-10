@@ -36,13 +36,6 @@ class EngineHouseSceneTest {
     }
 
     @Test
-    fun every_part_type_carries_a_price_and_none_carries_a_weight() {
-        val types = engineHouse().types
-        assertEquals(listOf(92.37, 124.0, 248.0, 251.87), listOf("cast_pier", "edge_beam", "interior_beam", "sip_floor_panel").map { id -> types.first { it.id == id }.unitCostUsd })
-        assertTrue(types.all { it.unitWeightKg == null && it.unitWeightNullReason != null })
-    }
-
-    @Test
     fun nineteen_utilisation_figures_sit_on_the_four_beams_and_fifteen_panels_and_none_on_piers() {
         val scene = engineHouse()
         val figures = scene.annotations!!.items.filter { it.kind == "utilisation" }

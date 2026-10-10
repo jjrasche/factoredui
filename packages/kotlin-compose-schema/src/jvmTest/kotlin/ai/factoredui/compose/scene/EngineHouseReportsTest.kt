@@ -1,8 +1,5 @@
 package ai.factoredui.compose.scene
 
-import ai.factoredui.compose.structure.LevelFocus
-import ai.factoredui.compose.structure.bomLines
-import ai.factoredui.compose.structure.visibleParts
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,17 +46,6 @@ class EngineHouseReportsTest {
         assertEquals(emptyList(), rows.getValue("post_sticks").objectIds)
         assertEquals(emptyList(), rows.getValue("hardware").objectIds)
         assertEquals(800.0, rows.getValue("hardware").values["line_usd"])
-    }
-
-    @Test
-    fun the_engine_part_rows_agree_with_the_scene_parts_and_their_type_prices() {
-        val scene = readSceneView(resourceText("/house-floor.scene.json"))
-        val lines = bomLines(scene, visibleParts(scene, LevelFocus.AllLevels, showLower = true))
-        val partRows = engineReports().named("bom").rows.filter { it.id != "total" && it.objectIds.isNotEmpty() }
-        assertEquals(lines.map { it.ids }, partRows.map { it.objectIds })
-        lines.zip(partRows).forEach { (line, row) -> assertTrue(abs(line.costUsd!! - row.values.getValue("line_usd")!!) < 1e-6, "${line.typeId}: ${line.costUsd} against ${row.values}") }
-        val sceneIds = scene.footprints!!.items.map { it.id }.toSet()
-        assertTrue(engineReports().flatMap { report -> report.rows.flatMap { it.objectIds } }.all { it in sceneIds })
     }
 
     @Test

@@ -1,6 +1,8 @@
 package ai.factoredui.compose.structure
 
+import ai.factoredui.compose.format.percentText
 import ai.factoredui.compose.scene.SceneView
+import ai.factoredui.compose.scene.roundHalfUp
 import kotlin.math.abs
 
 data class UtilisationFigure(val value: Double, val text: String, val source: String?)
@@ -18,7 +20,6 @@ private const val AT_CAPACITY = 1.0
 private const val GREEN_HUE = 120.0
 private const val FAIL_HUE = 300.0
 private const val NO_FIGURE_HUE = 210.0
-private const val PERCENT = 100
 private val LEGEND_VALUES = listOf(0.0, 0.25, 0.5, 0.75, 1.0)
 
 private const val TOP_LIGHTNESS = 52.0
@@ -42,10 +43,6 @@ fun classifyUtilisation(value: Double): UtilisationClass = when {
     value < LITTLE_BELOW -> UtilisationClass.LITTLE
     else -> UtilisationClass.CARRYING
 }
-
-fun percentText(value: Double): String = "${roundHalfUp(value * PERCENT)}%"
-
-fun plainText(text: String): String = text.replace("%%", "%")
 
 /** utilisation.js rounds the hue to a tenth of a degree before colouring; kept so the two pages agree channel for channel. */
 private fun rampHue(value: Double): Double = roundHalfUp(GREEN_HUE * (1 - value.coerceAtLeast(0.0) / AT_CAPACITY) * 10) / 10.0

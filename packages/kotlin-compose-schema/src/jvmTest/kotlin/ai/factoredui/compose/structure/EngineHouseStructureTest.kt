@@ -2,7 +2,6 @@ package ai.factoredui.compose.structure
 
 import ai.factoredui.compose.scene.SceneView
 import ai.factoredui.compose.scene.readSceneView
-import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -14,30 +13,6 @@ private fun engineHouse(): SceneView =
 private fun everyPart(scene: SceneView) = visibleParts(scene, LevelFocus.AllLevels, showLower = true)
 
 class EngineHouseStructureTest {
-    @Test
-    fun the_part_types_alone_cost_5630_dollars_49_which_leaves_out_the_post_sticks_and_hardware() {
-        val scene = engineHouse()
-        val totals = bomTotals(bomLines(scene, everyPart(scene)))
-        assertTrue(abs(totals.costUsd!! - 5630.49) < 1e-6, "total ${totals.costUsd}")
-        assertEquals(31, totals.quantity)
-        assertEquals(0, totals.unpricedLines)
-    }
-
-    @Test
-    fun the_engine_house_lines_are_twelve_piers_two_edge_beams_two_interior_beams_and_fifteen_panels() {
-        val scene = engineHouse()
-        val lines = bomLines(scene, everyPart(scene)).associate { it.typeId to it.quantity }
-        assertEquals(mapOf("cast_pier" to 12, "edge_beam" to 2, "interior_beam" to 2, "sip_floor_panel" to 15), lines)
-    }
-
-    @Test
-    fun no_engine_house_part_is_weighed_so_every_line_and_the_total_say_the_weight_is_not_known() {
-        val scene = engineHouse()
-        val lines = bomLines(scene, everyPart(scene))
-        lines.forEach { assertEquals("weight not known: no weight for this part is banked in the world or the structural rows", bomLineText(it).weightLine) }
-        assertEquals("weight not known", bomTotalsText(bomTotals(lines)).weight)
-    }
-
     @Test
     fun nineteen_engine_house_parts_carry_a_utilisation_figure_and_no_pier_does() {
         val scene = engineHouse()

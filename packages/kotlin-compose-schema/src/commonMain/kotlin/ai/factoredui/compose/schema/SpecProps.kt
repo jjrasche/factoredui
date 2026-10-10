@@ -1,18 +1,18 @@
 package ai.factoredui.compose.schema
 
+import ai.factoredui.compose.format.MISSING_FIGURE
+import ai.factoredui.compose.format.dollarsText
+import ai.factoredui.compose.format.feetInches
+import ai.factoredui.compose.format.percentText
+import ai.factoredui.compose.format.poundsText
 import ai.factoredui.compose.layout.TileCell
 import ai.factoredui.compose.layout.TileFootprint
 import ai.factoredui.compose.layout.TileInstance
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
 import ai.factoredui.compose.structure.LevelFocus
-import ai.factoredui.compose.structure.MISSING_FIGURE
 import ai.factoredui.compose.structure.StructureDrawing
 import ai.factoredui.compose.structure.structureDrawingOf
-import ai.factoredui.compose.structure.dollarsText
-import ai.factoredui.compose.structure.feetInches
-import ai.factoredui.compose.structure.percentText
-import ai.factoredui.compose.structure.poundsText
 
 /**
  * Typed prop accessors for each SpecNodeType.

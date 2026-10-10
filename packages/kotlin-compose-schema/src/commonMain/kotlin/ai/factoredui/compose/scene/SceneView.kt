@@ -20,9 +20,6 @@ data class SceneType(
     val tags: List<String> = emptyList(),
     val footprintMm: Pair<Long, Long>? = null,
     val heightMm: Long? = null,
-    val unitCostUsd: Double? = null,
-    val unitWeightKg: Double? = null,
-    val unitWeightNullReason: String? = null,
 )
 
 data class GroundLayer(

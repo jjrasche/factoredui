@@ -75,9 +75,6 @@ private fun typeJson(type: SceneType): JsonObject = JsonObject(
         "tags" to strings(type.tags),
         "footprint_mm" to (type.footprintMm?.let { longs(listOf(it.first, it.second)) } ?: JsonNull),
         "height_mm" to optional(type.heightMm),
-        "unit_cost_usd" to optional(type.unitCostUsd),
-        "unit_weight_kg" to optional(type.unitWeightKg),
-        "unit_weight_null_reason" to optional(type.unitWeightNullReason),
     ),
 )
 

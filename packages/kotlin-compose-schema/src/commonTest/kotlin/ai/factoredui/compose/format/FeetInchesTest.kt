@@ -1,4 +1,4 @@
-package ai.factoredui.compose.structure
+package ai.factoredui.compose.format
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,7 +34,7 @@ class FeetInchesTest {
     fun an_8_ft_span_reads_as_8_ft() = assertEquals("8$FT 0$IN", feetInches(2438.0))
 
     @Test
-    fun the_house_is_32_feet_and_a_quarter_inch_wide() = assertEquals("32$FT 0 1/4$IN", feetInches(9760.0))
+    fun a_9760_mm_width_reads_as_32_feet_and_a_quarter_inch() = assertEquals("32$FT 0 1/4$IN", feetInches(9760.0))
 
     @Test
     fun rounding_up_to_twelve_inches_carries_into_the_next_foot() = assertEquals("1$FT 0$IN", feetInches(304.8 - 0.4))

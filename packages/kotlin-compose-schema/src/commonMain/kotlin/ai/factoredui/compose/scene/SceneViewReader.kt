@@ -133,9 +133,6 @@ private fun typeOf(type: JsonObject): SceneType = SceneType(
     tags = type.strings("tags"),
     footprintMm = type.value("footprint_mm")?.let { pairOf("footprint_mm", it) },
     heightMm = type.long("height_mm"),
-    unitCostUsd = type.double("unit_cost_usd"),
-    unitWeightKg = type.double("unit_weight_kg"),
-    unitWeightNullReason = type.string("unit_weight_null_reason"),
 )
 
 private fun kindByTag(word: String?): ProvenanceKind? = ProvenanceKind.entries.firstOrNull { it.tag == word }
