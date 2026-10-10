@@ -138,6 +138,12 @@ class DrivenScreen internal constructor(
 
     private fun regionOf(nodeId: String): DpRect? = regionsNow()[nodeId]
 
+    /** Where the first node drawn with this tag sits; a list template's node is its first row's. */
+    fun boundsOf(tag: String): DpRect? {
+        settle()
+        return regionOf(tag)
+    }
+
     private fun shadowNodes(): List<SpecShadowNode> {
         val regions = regionsNow()
         val nodes = mutableListOf<SpecShadowNode>()

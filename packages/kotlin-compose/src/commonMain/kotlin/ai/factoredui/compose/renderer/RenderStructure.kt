@@ -16,6 +16,7 @@ import ai.factoredui.compose.structure.StructureDrawing
 import ai.factoredui.compose.structure.UtilisationFigure
 import ai.factoredui.compose.structure.VisiblePart
 import ai.factoredui.compose.structure.drawnPartsSummary
+import ai.factoredui.compose.structure.exaggerationNote
 import ai.factoredui.compose.structure.fitDrawing
 import ai.factoredui.compose.structure.hitDrawnPart
 import ai.factoredui.compose.structure.isEveryPartFlat
@@ -148,17 +149,18 @@ private fun RenderReadStructure(node: SpecNode, scene: SceneView, props: Structu
         ) {
             drawStructure(StructurePicture(scene, parts, props.drawing, fit, figures, outlined), palette)
         }
-        StructureNotes(scene, parts, props, Modifier.align(Alignment.TopStart))
+        StructureNotes(scene, parts, props, fit, Modifier.align(Alignment.TopStart))
         SelectedPartPopup(node.id, scene, parts, selection, props.drawing, fit, figures)
     }
 }
 
 @Composable
-private fun StructureNotes(scene: SceneView, parts: List<VisiblePart>, props: StructureProps, modifier: Modifier) {
+private fun StructureNotes(scene: SceneView, parts: List<VisiblePart>, props: StructureProps, fit: CanvasFit, modifier: Modifier) {
     val notes = buildList {
         addAll(props.notes)
         if (props.drawing != StructureDrawing.PLAN && isEveryPartFlat(scene, parts)) add("The scene states no part heights, so every part is drawn flat at its base.")
         if (parts.isEmpty()) add("No part of the scene is shown at this focus.")
+        exaggerationNote(fit)?.let(::add)
     }
     if (notes.isEmpty()) return
     Column(modifier = modifier.padding(8.dp)) {

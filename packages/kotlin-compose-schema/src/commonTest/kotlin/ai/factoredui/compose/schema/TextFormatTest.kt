@@ -59,4 +59,17 @@ class TextFormatTest {
         assertEquals("unknown format 'usdd'", displayedText(92.37, rawFormat = "usdd", missingText = null))
         assertEquals("$92.37", displayedText(92.37, rawFormat = "usd", missingText = null))
     }
+
+    @Test
+    fun a_number_bound_with_no_format_prints_as_a_plain_figure_and_a_whole_one_without_a_decimal() {
+        assertEquals("12", displayedText(12.0, rawFormat = null, missingText = null))
+        assertEquals("12", displayedText(12, rawFormat = null, missingText = null))
+        assertEquals("2440.5", displayedText(2440.5, rawFormat = null, missingText = null))
+    }
+
+    @Test
+    fun a_missing_value_with_no_format_draws_its_missing_text_or_nothing() {
+        assertEquals("", displayedText(null, rawFormat = null, missingText = null))
+        assertEquals("not counted", displayedText(null, rawFormat = null, missingText = "not counted"))
+    }
 }

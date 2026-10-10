@@ -53,6 +53,27 @@ class EngineHouseStructureTest {
     }
 
     @Test
+    fun the_beam_level_holds_two_edge_and_two_interior_beams_so_it_is_named_for_both() {
+        val scene = engineHouse()
+        assertEquals(
+            listOf("Cast pier in a form tube", "Edge LVL beam and Interior 2-ply LVL beam", "Site-built SIP floor panel"),
+            listOf(0, 1, 2).map { levelName(scene, it) },
+        )
+    }
+
+    @Test
+    fun hiding_top_levels_peels_the_panels_then_the_beams_and_a_focus_shows_one_level_or_it_and_those_below() {
+        val scene = engineHouse()
+        fun count(focus: LevelFocus, showLower: Boolean, hideTop: Int) = visibleParts(scene, focus, showLower, hideTop).size
+        assertEquals(31, count(LevelFocus.AllLevels, true, 0))
+        assertEquals(16, count(LevelFocus.AllLevels, true, 1))
+        assertEquals(12, count(LevelFocus.AllLevels, true, 2))
+        assertEquals(4, count(LevelFocus.OneLevel(1), false, 0))
+        assertEquals(16, count(LevelFocus.OneLevel(1), true, 0))
+        assertEquals(12, visibleParts(scene, LevelFocus.OneLevel(1), true, 0).count { it.isDimmed })
+    }
+
+    @Test
     fun every_part_stands_at_its_own_z_with_its_own_height_and_the_floor_tops_out_at_914_mm() {
         val scene = engineHouse()
         val boxes = scene.footprints!!.items.associate { it.id to partBox(scene, it) }

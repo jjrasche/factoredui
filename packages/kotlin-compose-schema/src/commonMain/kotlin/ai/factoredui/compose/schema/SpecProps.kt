@@ -87,8 +87,20 @@ private fun unknownFormatNotice(rawFormat: Any) = "unknown format '$rawFormat'"
 
 private fun notANumberNotice(value: Any, format: TextFormat) = "${format.wire} needs a number, not '$value'"
 
+private const val MAX_EXACT_WHOLE = 9.0e15
+
+internal fun plainFigureText(figure: Double): String =
+    if (figure % 1.0 == 0.0 && kotlin.math.abs(figure) < MAX_EXACT_WHOLE) figure.toLong().toString() else figure.toString()
+
+private fun unformattedText(value: Any?, missingText: String?): String = when (value) {
+    null -> missingText ?: ""
+    is String -> value
+    is Number -> figureOf(value)?.let(::plainFigureText) ?: value.toString()
+    else -> ""
+}
+
 fun displayedText(value: Any?, rawFormat: Any?, missingText: String?): String {
-    if (rawFormat == null) return value as? String ?: ""
+    if (rawFormat == null) return unformattedText(value, missingText)
     val format = textFormatOf(rawFormat) ?: return unknownFormatNotice(rawFormat)
     return formattedFigure(value, format, missingText)
 }
@@ -1075,7 +1087,7 @@ private fun showLowerReading(raw: Any?): PropReading<Boolean> = when (raw) {
 
 private fun hideTopReading(raw: Any?): PropReading<Int> {
     if (raw == null) return PropReading(0)
-    val count = wholeNumberOf(raw)?.takeIf { it >= 0 } ?: return PropReading(0, "hide_top must be a whole number of levels, not '$raw'; no level is hidden.")
+    val count = (wholeNumberOf(raw) ?: (raw as? String)?.toIntOrNull())?.takeIf { it >= 0 } ?: return PropReading(0, "hide_top must be a whole number of levels, not '$raw'; no level is hidden.")
     return PropReading(count)
 }
 

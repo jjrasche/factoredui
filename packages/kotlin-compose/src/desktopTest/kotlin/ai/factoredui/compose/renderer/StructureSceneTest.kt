@@ -4,7 +4,10 @@ import ai.factoredui.compose.crawl.driveScreen
 import ai.factoredui.compose.scene.SceneView
 import ai.factoredui.compose.scene.readSceneView
 import ai.factoredui.compose.schema.Spec
+import ai.factoredui.compose.structure.STRUCTURE_MARGIN_PX
 import ai.factoredui.compose.structure.StructureDrawing
+import ai.factoredui.compose.structure.StructureView
+import ai.factoredui.compose.structure.exaggerationFor
 import ai.factoredui.compose.structure.fitDrawing
 import ai.factoredui.compose.structure.mmToCanvas
 import ai.factoredui.compose.structure.partBox
@@ -178,6 +181,19 @@ class StructureSceneTest {
             driveScreen(BOUND, storeFor(view), WIDTH, HEIGHT).use { screen ->
                 assertFalse(FLAT_NOTICE in screen.textsUnder("house"), view)
             }
+        }
+    }
+
+    @Test
+    fun the_south_and_west_elevations_say_how_much_the_heights_are_stretched_and_the_iso_says_nothing() {
+        listOf("south" to StructureView.SOUTH, "west" to StructureView.WEST).forEach { (view, flat) ->
+            val times = exaggerationFor(house, flat, WIDTH.toDouble(), HEIGHT.toDouble(), STRUCTURE_MARGIN_PX)
+            driveScreen(BOUND, storeFor(view), WIDTH, HEIGHT).use { screen ->
+                assertTrue("Heights are drawn $times times their true scale." in screen.textsUnder("house"), view)
+            }
+        }
+        driveScreen(BOUND, storeFor("iso"), WIDTH, HEIGHT).use { screen ->
+            assertFalse(screen.textsUnder("house").any { it.startsWith("Heights are drawn") })
         }
     }
 }

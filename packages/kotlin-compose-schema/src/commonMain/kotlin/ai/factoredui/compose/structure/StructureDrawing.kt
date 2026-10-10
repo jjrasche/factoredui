@@ -56,6 +56,11 @@ fun partPopupLines(scene: SceneView, footprint: SceneFootprint, figure: Utilisat
     return listOf(label, second)
 }
 
+fun exaggerationNote(fit: CanvasFit): String? {
+    val times = kotlin.math.round(fit.vScale / fit.scale).toInt()
+    return if (times > 1) "Heights are drawn $times times their true scale." else null
+}
+
 fun isEveryPartFlat(scene: SceneView, parts: List<VisiblePart>): Boolean =
     parts.isNotEmpty() && parts.all { elevationRange(scene, it.footprint).let { range -> range.topMm == range.baseMm } }
 

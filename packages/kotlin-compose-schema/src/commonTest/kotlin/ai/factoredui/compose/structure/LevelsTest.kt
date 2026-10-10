@@ -29,6 +29,15 @@ class LevelsTest {
     }
 
     @Test
+    fun a_level_two_types_share_equally_is_named_for_both_in_the_order_they_first_appear() {
+        val tied = houseScene(
+            types = listOf(SceneType("edge", "Edge beam"), SceneType("inner", "Interior beam")),
+            items = listOf(part("b1", "edge", level = 1), part("b2", "inner", level = 1), part("b3", "inner", level = 1), part("b4", "edge", level = 1)),
+        )
+        assertEquals("Edge beam and Interior beam", levelName(tied, 1))
+    }
+
+    @Test
     fun a_level_the_file_labels_is_named_by_that_label_not_guessed_from_its_parts() {
         val labelled = stackedHouse().copy(stackLevels = listOf(StackLevel(1, 352, "beams (on the 76 mm pier caps)")))
         assertEquals("beams (on the 76 mm pier caps)", levelName(labelled, 1))

@@ -12,62 +12,76 @@
           "scene_view": "{house.scene}",
           "view": "{house.view}",
           "highlight": "{bom.picked}",
-          "selected": "{house.selected}"
+          "selected": "{house.selected}",
+          "focus": "{house.focus}",
+          "show_lower": "{house.show_lower}",
+          "hide_top": "{house.hide_top}",
+          "color_by": "utilisation"
         }
+      },
+      {
+        "id": "levels", "type": "row", "props": { "gap": 8, "align": "center" },
+        "children": [
+          {
+            "id": "level-focus", "type": "select",
+            "props": {
+              "flex": 1, "value": "{house.focus}", "placeholder": "All levels",
+              "options": [
+                { "label": "All levels", "value": "all" },
+                { "label": "Piers (level 0)", "value": "0" },
+                { "label": "Beams (level 1)", "value": "1" },
+                { "label": "Panels (level 2)", "value": "2" }
+              ]
+            }
+          },
+          {
+            "id": "level-hide", "type": "select",
+            "props": {
+              "flex": 1, "value": "{house.hide_top}", "placeholder": "Hide nothing",
+              "options": [
+                { "label": "Hide nothing", "value": "0" },
+                { "label": "Hide the panels", "value": "1" },
+                { "label": "Hide the panels and beams", "value": "2" }
+              ]
+            }
+          },
+          { "id": "level-lower", "type": "toggle", "props": { "flex": 1, "label": "Show levels below", "value": "{house.show_lower}" } }
+        ]
       },
       {
         "id": "bom-head", "type": "row", "props": { "gap": 8, "padding": 8 },
         "children": [
-          { "id": "bom-head-part", "type": "text", "props": { "value": "Part", "flex": 4 } },
-          { "id": "bom-head-each", "type": "text", "props": { "value": "Each", "flex": 2 } },
-          { "id": "bom-head-total", "type": "text", "props": { "value": "Total", "flex": 2 } },
-          { "id": "bom-head-weight", "type": "text", "props": { "value": "Weight", "flex": 3 } }
+          { "id": "bom-head-part", "type": "text", "props": { "value": "Part", "bold": true, "flex": 4 } },
+          { "id": "bom-head-quantity", "type": "text", "props": { "value": "Qty", "bold": true, "flex": 1 } },
+          { "id": "bom-head-each", "type": "text", "props": { "value": "Each", "bold": true, "flex": 2 } },
+          { "id": "bom-head-total", "type": "text", "props": { "value": "Total", "bold": true, "flex": 2 } },
+          { "id": "bom-head-weight", "type": "text", "props": { "value": "Weight", "bold": true, "flex": 3 } }
         ]
       },
       {
         "id": "bom", "type": "list",
         "props": {
           "flex": 2,
-          "data": "{bom.rows}",
-          "emptyText": "The scene lists no parts.",
+          "data": "{reports.bom.rows}",
+          "emptyText": "The engine sent no bill of materials.",
           "itemTemplate": {
             "id": "bom-row", "type": "card",
             "props": { "padding": 8 },
-            "action": { "action": "set_binding", "params": { "path": "bom.picked", "value": "{row.ids}" } },
+            "action": { "action": "set_binding", "params": { "path": "bom.picked", "value": "{row.object_ids}" } },
             "children": [
               {
                 "id": "bom-row-line", "type": "row", "props": { "align": "center", "gap": 8 },
                 "children": [
-                  { "id": "bom-row-title", "type": "text", "props": { "value": "{row.quantity} × {row.label}", "bold": true, "flex": 4 } },
-                  { "id": "bom-row-unit", "type": "text", "props": { "value": "{row.unit_cost_usd}", "format": "usd", "flex": 2 } },
-                  { "id": "bom-row-cost", "type": "text", "props": { "value": "{row.cost_usd}", "format": "usd", "flex": 2 } },
-                  { "id": "bom-row-weight", "type": "text", "props": { "value": "{row.weight_kg}", "format": "pounds", "missing": "weight not known", "flex": 3 } }
+                  { "id": "bom-row-part", "type": "text", "props": { "value": "{row.label}", "flex": 4 } },
+                  { "id": "bom-row-quantity", "type": "text", "props": { "value": "{row.values.quantity}", "flex": 1 } },
+                  { "id": "bom-row-each", "type": "text", "props": { "value": "{row.values.unit_cost_usd}", "format": "usd", "flex": 2 } },
+                  { "id": "bom-row-total", "type": "text", "props": { "value": "{row.values.line_usd}", "format": "usd", "flex": 2 } },
+                  { "id": "bom-row-weight", "type": "text", "props": { "value": "{row.values.weight_kg}", "format": "pounds", "missing": "weight not known", "flex": 3 } }
                 ]
               }
             ]
           }
         }
-      },
-      {
-        "id": "parts-total", "type": "row", "props": { "justify": "between" },
-        "children": [
-          { "id": "parts-total-label", "type": "text", "props": { "value": "Parts total (sum of the part types)", "bold": true } },
-          { "id": "parts-total-value", "type": "text", "props": { "value": "{bom.parts_total_usd}", "format": "usd", "bold": true } }
-        ]
-      },
-      {
-        "id": "hardware", "type": "row", "props": { "justify": "between" }, "visible": "{house.report.hardware_usd}",
-        "children": [
-          { "id": "hardware-label", "type": "text", "props": { "value": "Hardware" } },
-          { "id": "hardware-value", "type": "text", "props": { "value": "{house.report.hardware_usd}", "format": "usd" } }
-        ]
-      },
-      {
-        "id": "engine-total", "type": "row", "props": { "justify": "between" }, "visible": "{house.report.bom_usd}",
-        "children": [
-          { "id": "engine-total-label", "type": "text", "props": { "value": "Engine total", "bold": true } },
-          { "id": "engine-total-value", "type": "text", "props": { "value": "{house.report.bom_usd}", "format": "usd", "bold": true } }
-        ]
       }
     ]
   }

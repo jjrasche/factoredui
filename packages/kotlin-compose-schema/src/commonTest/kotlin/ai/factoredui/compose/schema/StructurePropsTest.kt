@@ -62,6 +62,15 @@ class StructurePropsTest {
         assertEquals(listOf("hide_top must be a whole number of levels, not '1.5'; no level is hidden."), resolveStructureProps(mapOf("hide_top" to 1.5)).notes)
         assertEquals(listOf("hide_top must be a whole number of levels, not '-1'; no level is hidden."), resolveStructureProps(mapOf("hide_top" to -1)).notes)
         assertEquals(0, resolveStructureProps(mapOf("hide_top" to "two")).hideTopCount)
+        assertEquals(listOf("hide_top must be a whole number of levels, not '1.5'; no level is hidden."), resolveStructureProps(mapOf("hide_top" to "1.5")).notes)
+    }
+
+    @Test
+    fun a_hide_top_written_as_whole_number_text_by_a_select_hides_that_many_levels_as_focus_already_reads_it() {
+        val fromSelect = resolveStructureProps(mapOf("hide_top" to "1", "focus" to "2"))
+        assertEquals(1, fromSelect.hideTopCount)
+        assertEquals(LevelFocus.OneLevel(2), fromSelect.focus)
+        assertEquals(emptyList(), fromSelect.notes)
     }
 
     @Test

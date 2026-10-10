@@ -17,14 +17,20 @@ fun levelsPresent(scene: SceneView): List<Int> = partsOf(scene).map { it.stackLe
 
 fun topLevel(scene: SceneView): Int? = levelsPresent(scene).lastOrNull()
 
-private fun mostCommonTypeId(parts: List<SceneFootprint>): String? =
-    parts.groupingBy { it.type }.eachCount().entries.sortedByDescending { it.value }.firstOrNull()?.key
+private fun mostCommonTypeIds(parts: List<SceneFootprint>): List<String> {
+    val counts = parts.groupingBy { it.type }.eachCount()
+    val most = counts.values.maxOrNull() ?: return emptyList()
+    return counts.filterValues { it == most }.keys.toList()
+}
+
+private fun typeLabel(scene: SceneView, typeId: String): String = scene.types.firstOrNull { it.id == typeId }?.label ?: typeId
 
 fun levelName(scene: SceneView, level: Int): String {
     val declared = scene.stackLevels.firstOrNull { it.stackLevel == level }?.label
     if (!declared.isNullOrEmpty()) return declared
-    val typeId = mostCommonTypeId(partsOf(scene).filter { it.stackLevel == level })
-    return scene.types.firstOrNull { it.id == typeId }?.label ?: "Level $level"
+    val typeIds = mostCommonTypeIds(partsOf(scene).filter { it.stackLevel == level })
+    if (typeIds.isEmpty()) return "Level $level"
+    return typeIds.joinToString(" and ") { typeLabel(scene, it) }
 }
 
 private fun isShown(level: Int, focus: LevelFocus, showLower: Boolean): Boolean = when (focus) {

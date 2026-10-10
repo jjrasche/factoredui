@@ -26,13 +26,11 @@ object BindingResolver {
             displayText(resolvePath(match.groupValues[1], context))
         }
 
-    private fun displayText(value: Any?): String = when {
-        value == null -> ""
-        value is Double && value % 1.0 == 0.0 && kotlin.math.abs(value) < MAX_EXACT_WHOLE -> value.toLong().toString()
+    private fun displayText(value: Any?): String = when (value) {
+        null -> ""
+        is Double -> plainFigureText(value)
         else -> value.toString()
     }
-
-    private const val MAX_EXACT_WHOLE = 9.0e15
 
     /** Resolve a SpecValue against context, replacing binding refs with live values. */
     fun resolveValue(value: SpecValue, context: Map<String, Any?>): Any? = when (value) {

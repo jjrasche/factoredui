@@ -126,6 +126,17 @@ class EngineHouseDrawingTest {
     }
 
     @Test
+    fun an_elevation_stretches_the_heights_and_says_by_how_much_and_the_plan_and_iso_are_true_to_scale() {
+        val scene = engineHouse()
+        val south = fitDrawing(scene, StructureDrawing.SOUTH, CANVAS_WIDTH, CANVAS_HEIGHT)
+        val times = exaggerationFor(scene, StructureView.SOUTH, CANVAS_WIDTH, CANVAS_HEIGHT, STRUCTURE_MARGIN_PX)
+        assertTrue(times > 1, "the 914 mm floor on a 6405 mm width should be stretched, got $times")
+        assertEquals("Heights are drawn $times times their true scale.", exaggerationNote(south))
+        assertEquals(null, exaggerationNote(fitDrawing(scene, StructureDrawing.ISO, CANVAS_WIDTH, CANVAS_HEIGHT)))
+        assertEquals(null, exaggerationNote(fitDrawing(scene, StructureDrawing.PLAN, CANVAS_WIDTH, CANVAS_HEIGHT)))
+    }
+
+    @Test
     fun the_west_elevation_mirrors_north_to_the_left_and_stacks_the_same_three_levels() {
         val scene = engineHouse()
         val pierAtNorth = partRectInView(scene, scene.footprints!!.items.first { it.id == "e10" }, StructureView.WEST)
