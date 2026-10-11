@@ -12,6 +12,7 @@ import ai.factoredui.compose.renderer.RenderSpec
 import ai.factoredui.compose.renderer.SpecTheme
 import ai.factoredui.compose.renderer.themeNamed
 import ai.factoredui.compose.schema.Spec
+import ai.factoredui.compose.schema.decodeSpecFile
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import java.io.File
@@ -26,7 +27,8 @@ private const val THEME_FLAG = "--theme"
 private const val STATE_FLAG = "--state"
 private const val CONTROL_FLAG = "--control"
 private const val TITLE_FLAG = "--title"
-private val WINDOW_FLAGS = setOf(DATA_FLAG, THEME_FLAG, STATE_FLAG, CONTROL_FLAG, TITLE_FLAG)
+private const val SECTION_FLAG = "--section"
+private val WINDOW_FLAGS = setOf(DATA_FLAG, THEME_FLAG, STATE_FLAG, CONTROL_FLAG, TITLE_FLAG, SECTION_FLAG)
 
 data class WindowArgs(
     val source: String,
@@ -37,6 +39,7 @@ data class WindowArgs(
     val stateFiles: List<StateFile> = emptyList(),
     val controlPort: Int? = null,
     val title: String? = null,
+    val section: String? = null,
 )
 
 fun windowTitle(titleFlag: String?, rootId: String): String = titleFlag ?: "factoredui — $rootId"
@@ -60,6 +63,7 @@ fun parseWindowArgs(args: Array<String>): WindowArgs? {
         stateFiles = stateFiles,
         controlPort = controlPort,
         title = flags.lastOrNull { it.first == TITLE_FLAG }?.second,
+        section = flags.lastOrNull { it.first == SECTION_FLAG }?.second,
     )
 }
 
@@ -68,7 +72,7 @@ fun parseWindowArgs(args: Array<String>): WindowArgs? {
 fun main(args: Array<String>) {
     val parsed = parseWindowArgs(args)
     if (parsed == null) {
-        System.err.println("usage: spec-window <spec.json | world.json — path or http URL> [width=1280] [height=800] [--data data.json] [--state a.b=text|json|reports:file ...] [--control port] [--theme light|dark] [--title text]")
+        System.err.println("usage: spec-window <spec.json | world.json — path or http URL> [width=1280] [height=800] [--data data.json] [--state a.b=text|json|reports:file ...] [--control port] [--theme light|dark] [--title text] [--section key]")
         kotlin.system.exitProcess(2)
     }
     val source = parsed.source
@@ -77,8 +81,9 @@ fun main(args: Array<String>) {
         System.err.println("spec-window: cannot read $source — ${failure.message ?: failure::class.simpleName}")
         kotlin.system.exitProcess(3)
     }
-    val spec = runCatching { specOf(sourceJson, source) }.getOrElse { failure ->
-        System.err.println("spec-window: $source is neither a spec nor a world state — ${failure.message ?: failure::class.simpleName}")
+    val spec = runCatching { windowSpecOf(sourceJson, source, parsed.section) }.getOrElse { failure ->
+        val reason = failure.message ?: failure::class.simpleName
+        System.err.println(if (parsed.section != null) "spec-window: $source: $reason" else "spec-window: $source is neither a spec nor a world state — $reason")
         kotlin.system.exitProcess(4)
     }
     val data = parsed.dataPath?.let { path ->
@@ -112,7 +117,8 @@ fun main(args: Array<String>) {
 private fun readSource(source: String): String =
     if (source.startsWith("http")) URI(source).toURL().readText() else File(source).readText()
 
-private fun specOf(sourceJson: String, source: String): Spec {
+fun windowSpecOf(sourceJson: String, source: String, section: String?): Spec {
+    if (section != null) return decodeSpecFile(sourceJson, section)
     val fields = specDecoder.parseToJsonElement(sourceJson) as JsonObject
     val specJson = if (fields.containsKey("root")) sourceJson else sceneSpecAround(source)
     return specDecoder.decodeFromString(Spec.serializer(), specJson)

@@ -102,6 +102,23 @@ class SpecWindowArgsTest {
     }
 
     @Test
+    fun aSectionFlagNamesTheTopLevelKeyWhoseSpecIsDrawn() {
+        assertEquals("screen", parseWindowArgs(arrayOf("ui.json", "--section", "screen"))?.section)
+        assertNull(parseWindowArgs(arrayOf("ui.json"))?.section)
+        assertNull(parseWindowArgs(arrayOf("ui.json", "--section")))
+    }
+
+    @Test
+    fun theWindowReadsTheSpecFromTheNamedSectionAndRefusesAMissingOneNamingTheKeys() {
+        val file = """{"screen":{"spec_version":1,"renderer_min":1,"root":{"id":"page","type":"column"}},"types":{}}"""
+        assertEquals("page", windowSpecOf(file, "ui.json", "screen").root.id)
+        assertEquals(
+            "the file has no section 'scene'; its top-level keys are screen, types",
+            kotlin.test.assertFailsWith<ai.factoredui.compose.schema.SpecSectionException> { windowSpecOf(file, "ui.json", "scene") }.message,
+        )
+    }
+
+    @Test
     fun theWindowTitleIsTheTitleFlagOrNamesTheSpecRoot() {
         assertEquals("Board review", windowTitle("Board review", "root"))
         assertEquals("factoredui — root", windowTitle(null, "root"))

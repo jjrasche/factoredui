@@ -7,7 +7,8 @@ Build or verify a screen (a world, a table, anything) by driving the window a pe
 Launch:
 
 - Build once: `./gradlew :kotlin-compose:installSpecWindow`.
-- Then run `java -cp "packages/kotlin-compose/build/spec-window/lib/*" ai.factoredui.compose.render.SpecWindowKt <spec.json> [width] [height] [--data seeds.json] [--state a.b=text|json|reports:file ...] [--theme light|dark] [--title "name"] [--control <port>]`.
+- Then run `java -cp "packages/kotlin-compose/build/spec-window/lib/*" ai.factoredui.compose.render.SpecWindowKt <spec.json> [width] [height] [--data seeds.json] [--state a.b=text|json|reports:file ...] [--theme light|dark] [--title "name"] [--section <key>] [--control <port>]`.
+- `--section <key>` draws the spec (`{spec_version, renderer_min, root}`) found at that top-level key of the file, so one file can hold a `screen` beside other sections, which are ignored. A key the file lacks is refused with the keys it holds: "the file has no section 'scene'; its top-level keys are projection, screen, sprites, types". Without `--section` the whole file is the spec.
 - `--state` repeats. `text` binds the file's text, `json` its decoded object, and `reports` its reports keyed by id.
 - `--control <port>` serves the control port on 127.0.0.1 only. Each route is a GET with these query parameters (the test `ControlPortDocTest` keeps this block equal to the routes `WindowControl` serves):
 
