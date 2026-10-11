@@ -77,6 +77,44 @@ class ColourScaleTest {
     }
 
     @Test
+    fun a_value_is_named_by_the_label_of_the_stop_it_falls_in() {
+        assertEquals("low", bandLabelFor(BANDED, 0.1))
+        assertEquals("over", bandLabelFor(BANDED, 40.0))
+    }
+
+    @Test
+    fun a_value_in_an_unlabelled_stop_has_no_band_label() = assertNull(bandLabelFor(BANDED, 0.5))
+
+    @Test
+    fun a_missing_value_or_one_no_stop_covers_is_named_by_the_unknown_label() {
+        assertEquals("no figure", bandLabelFor(BANDED, null))
+        assertEquals("no figure", bandLabelFor(BANDED.copy(stops = listOf(ColourStop(0.5, GREEN, "low"))), 0.9))
+        assertNull(bandLabelFor(BANDED.copy(unknownLabel = null), null))
+    }
+
+    @Test
+    fun with_no_scale_there_is_no_band_label() = assertNull(bandLabelFor(null, 0.1))
+
+    @Test
+    fun the_popup_value_is_the_formatted_figure_followed_by_its_band_label() {
+        val percent = BANDED.copy(format = "percent")
+        assertEquals("10% · low", partValueText(PartValue(0.1, "1 of 10", null), percent))
+        assertEquals("4 · over", partValueText(PartValue(4.0, "4", null), BANDED))
+    }
+
+    @Test
+    fun an_unlabelled_band_adds_nothing_to_the_popup_value() = assertEquals("50%", partValueText(PartValue(0.5, "5 of 10", null), BANDED.copy(format = "percent")))
+
+    @Test
+    fun a_part_with_no_value_shows_the_unknown_label_or_nothing() {
+        assertEquals("no figure", partValueText(null, BANDED))
+        assertNull(partValueText(null, BANDED.copy(unknownLabel = null)))
+    }
+
+    @Test
+    fun with_no_scale_the_popup_shows_no_value() = assertNull(partValueText(PartValue(0.1, "1 of 10", null), null))
+
+    @Test
     fun a_hex_colour_reads_as_opaque_argb_and_anything_else_reads_as_nothing() {
         assertEquals(GREEN, colourOfHex("#2e7d32"))
         assertEquals(GREEN, colourOfHex("2E7D32"))

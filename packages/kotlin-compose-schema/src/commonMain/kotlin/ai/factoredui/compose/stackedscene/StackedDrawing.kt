@@ -2,6 +2,7 @@ package ai.factoredui.compose.stackedscene
 
 import ai.factoredui.compose.scene.SceneFootprint
 import ai.factoredui.compose.scene.SceneView
+import ai.factoredui.compose.schema.displayedText
 
 enum class StackedDrawing(val wire: String) { PLAN("plan"), ISO("iso"), SOUTH("south"), WEST("west") }
 
@@ -54,6 +55,12 @@ fun partPopupLines(scene: SceneView, footprint: SceneFootprint, valueText: Strin
     val label = scene.types.firstOrNull { it.id == footprint.type }?.label ?: footprint.type
     val second = valueText?.let { "${footprint.id} · $it" } ?: footprint.id
     return listOf(label, second)
+}
+
+fun partValueText(value: PartValue?, scale: ColourScale?): String? {
+    if (scale == null) return null
+    val figure = value?.let { displayedText(it.value, scale.format, null) }
+    return listOfNotNull(figure, bandLabelFor(scale, value?.value)).joinToString(" · ").ifEmpty { null }
 }
 
 fun exaggerationNote(fit: CanvasFit): String? {

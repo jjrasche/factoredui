@@ -33,6 +33,13 @@ fun colourFor(scale: ColourScale?, value: Double?): Long {
     return stopFor(scale.stops, value)?.colour ?: scale.unknownColour
 }
 
+fun bandLabelFor(scale: ColourScale?, value: Double?): String? {
+    if (scale == null) return null
+    if (value == null) return scale.unknownLabel
+    val stop = stopFor(scale.stops, value) ?: return scale.unknownLabel
+    return stop.label
+}
+
 private fun channelsOf(colour: Long): List<Long> = listOf((colour shr 16) and 0xFF, (colour shr 8) and 0xFF, colour and 0xFF)
 
 private fun colourOf(channels: List<Long>): Long = OPAQUE or (channels[0] shl 16) or (channels[1] shl 8) or channels[2]
