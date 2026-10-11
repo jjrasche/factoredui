@@ -79,6 +79,17 @@ A `scene` node with `"view_state": { "renderer": "stacked_scene" }` draws parts 
 - `selected`: a binding path to a list of part ids. A tap selects the part and opens a popup naming its type, its id and, under `color_by`, its value in the scale's `format`. Tapping it again or tapping empty space clears it. Unbound, the selection is kept locally.
 - `on_part_tap`: an action name, dispatched with params `{ "id": "<part id>" }`.
 - `color_by`: `{ "channel", "stops": [ { "up_to", "color", "label" } ], "unknown_color", "unknown_label", "format" }`. A part's value is the annotation on its footprint whose `kind` is the channel. It takes the first stop whose `up_to` it does not pass; a stop with no `up_to` takes everything above. No value, or a value no stop covers, takes `unknown_color`. Labelled stops draw a legend. Without `color_by` every part is one neutral grey: the renderer holds no bands of its own.
+- `color_by` as schemes: `{ "scheme": "<name>", "schemes": { "<name>": <scale>, ... } }`, where each scale is the object above with its own channel, stops, legend and format. The scene is coloured by `schemes[scheme]`, and `scheme` is usually a binding, so a `select` can switch the colouring live; the parts and the legend redraw. An absent or unbound `scheme` takes the first scheme as written. A name the schemes do not hold, or a scheme that is not text, draws every part grey and names the schemes on screen. For example:
+
+```json
+"color_by": {
+  "scheme": "{board.scheme}",
+  "schemes": {
+    "threat": { "channel": "threat", "stops": [ { "up_to": 0.5, "color": "#2e7d32", "label": "calm" }, { "color": "#c62828", "label": "danger" } ] },
+    "hp": { "channel": "hp", "stops": [ { "up_to": 0.25, "color": "#c62828", "label": "low" }, { "color": "#1565c0", "label": "healthy" } ], "format": "percent" }
+  }
+}
+```
 
 Notices drawn over the scene:
 
