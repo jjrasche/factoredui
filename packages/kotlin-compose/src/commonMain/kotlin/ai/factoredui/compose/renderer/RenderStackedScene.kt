@@ -19,6 +19,7 @@ import ai.factoredui.compose.stackedscene.drawnPartsSummary
 import ai.factoredui.compose.stackedscene.exaggerationNote
 import ai.factoredui.compose.stackedscene.fitDrawing
 import ai.factoredui.compose.stackedscene.hitDrawnPart
+import ai.factoredui.compose.stackedscene.intrinsicSceneHeight
 import ai.factoredui.compose.stackedscene.isEveryPartFlat
 import ai.factoredui.compose.stackedscene.legendEntries
 import ai.factoredui.compose.stackedscene.partPopupLines
@@ -30,9 +31,12 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -128,6 +132,20 @@ private fun dispatchPartTap(target: PartTapTarget, hit: VisiblePart?) {
 
 @Composable
 private fun RenderReadStackedScene(node: SpecNode, scene: SceneView, props: StackedSceneProps, resolvedSelected: Any?, context: RenderContext) {
+    BoxWithConstraints {
+        RenderSizedStackedScene(node, scene, props, resolvedSelected, context, sceneSize(scene, props.drawing))
+    }
+}
+
+@Composable
+private fun RenderSizedStackedScene(
+    node: SpecNode,
+    scene: SceneView,
+    props: StackedSceneProps,
+    resolvedSelected: Any?,
+    context: RenderContext,
+    sizeModifier: Modifier,
+) {
     val selectedPath = node.props["selected"]?.bindingPath()
     var localSelection by remember { mutableStateOf(resolveGeomapSelection(resolvedSelected)) }
     val selection = if (selectedPath != null) resolveGeomapSelection(resolvedSelected) else localSelection
@@ -137,7 +155,7 @@ private fun RenderReadStackedScene(node: SpecNode, scene: SceneView, props: Stac
     val values = remember(scene, props.colourScale) { props.colourScale?.let { partValues(scene, it.channel) }.orEmpty() }
     val scope = rememberCoroutineScope()
     val palette = stackedPalette(LocalSpecTheme.current)
-    BoxWithConstraints(modifier = Modifier.fillMaxSize().nodeTag(node.id).clipToBounds()) {
+    BoxWithConstraints(modifier = sizeModifier.nodeTag(node.id).clipToBounds()) {
         val widthPx = constraints.maxWidth.toDouble()
         val heightPx = constraints.maxHeight.toDouble()
         val fit = remember(scene, props.drawing, widthPx, heightPx) { fitDrawing(scene, props.drawing, widthPx, heightPx) }
@@ -159,6 +177,15 @@ private fun RenderReadStackedScene(node: SpecNode, scene: SceneView, props: Stac
         ColourLegend(node.id, legendEntries(props.colourScale), Modifier.align(Alignment.BottomStart))
         SelectedPartPopup(node.id, scene, parts, selection, props, fit, values)
     }
+}
+
+private val UNBOUNDED_SCENE_WIDTH = 480.dp
+
+/** A scroll offers unbounded height; the scene then takes its window's shape rather than collapsing to nothing. */
+private fun BoxWithConstraintsScope.sceneSize(scene: SceneView, drawing: StackedDrawing): Modifier {
+    if (constraints.hasBoundedHeight) return Modifier.fillMaxSize()
+    val width = if (constraints.hasBoundedWidth) maxWidth else UNBOUNDED_SCENE_WIDTH
+    return Modifier.width(width).height(intrinsicSceneHeight(scene, drawing, width.value.toDouble()).dp)
 }
 
 @Composable

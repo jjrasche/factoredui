@@ -35,6 +35,17 @@ fun fitDrawing(scene: SceneView, drawing: StackedDrawing, widthPx: Double, heigh
     return fitWindow(viewWindow(scene, view), widthPx, heightPx, DRAWING_MARGIN_PX, exaggeration)
 }
 
+const val MIN_INTRINSIC_SCENE_HEIGHT = 200.0
+private const val MOST_HEIGHT_PER_WIDTH = 1.5
+
+/** The height a scene takes when its container sets none, as in a scroll: its window's shape at [width], held between bounds. */
+fun intrinsicSceneHeight(scene: SceneView, drawing: StackedDrawing, width: Double): Double {
+    val window = if (drawing == StackedDrawing.ISO) isoWindow(scene) else viewWindow(scene, flatViewOf(drawing))
+    val shape = (window.y1 - window.y0) / (window.x1 - window.x0)
+    val natural = (width - 2 * DRAWING_MARGIN_PX) * shape + 2 * DRAWING_MARGIN_PX
+    return natural.coerceIn(MIN_INTRINSIC_SCENE_HEIGHT, maxOf(MIN_INTRINSIC_SCENE_HEIGHT, width * MOST_HEIGHT_PER_WIDTH))
+}
+
 fun hitDrawnPart(scene: SceneView, parts: List<VisiblePart>, drawing: StackedDrawing, fit: CanvasFit, xPx: Double, yPx: Double): VisiblePart? {
     val (u, v) = canvasToMm(fit, xPx, yPx)
     return if (drawing == StackedDrawing.ISO) hitIso(scene, parts, u, v) else hitPartInView(scene, parts, u, v, flatViewOf(drawing))

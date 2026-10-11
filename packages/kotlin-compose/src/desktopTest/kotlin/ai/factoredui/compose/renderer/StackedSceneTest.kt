@@ -58,7 +58,16 @@ private val BOUND = stackedSceneSpec("\"{board.selected}\"")
 
 private val COLOURED = stackedSceneSpec("\"{board.selected}\"", SCALE)
 
-private val SCHEMED = stackedSceneSpec("\"{board.selected}\"", SCHEMES)
+private val SCROLLED = json.decodeFromString(
+    Spec.serializer(),
+    """
+    {"spec_version":1,"renderer_min":1,"root":{"id":"page","type":"scrollview","children":[
+      {"id":"board","type":"scene","props":{"view_state":{"renderer":"stacked_scene"},"scene_view":"{board.scene}","view":"{board.view}"}}
+    ]}}
+    """.trimIndent(),
+)
+
+private val SCHEMED =stackedSceneSpec("\"{board.selected}\"", SCHEMES)
 
 private val WEAR_ONLY = stackedSceneSpec("\"{board.selected}\"", WEAR_SCALE)
 
@@ -153,6 +162,23 @@ class StackedSceneTest {
             val (x, y) = centreOf(board, "p2", StackedDrawing.PLAN)
             screen.tapAt(x, y)
             assertEquals(listOf("Plate", "p2 · 50%"), screen.textsUnder(popupTag("board")))
+        }
+    }
+
+    @Test
+    fun a_scene_directly_inside_a_scrollview_takes_a_height_and_draws_its_parts() {
+        listOf("plan", "south").forEach { view ->
+            driveScreen(SCROLLED, storeFor(view), WIDTH, HEIGHT).use { screen ->
+                val box = checkNotNull(screen.boundsOf("board")) { "the scene drew no region" }
+                assertTrue(box.bottom.value - box.top.value >= 200f, "$view height ${box.bottom.value - box.top.value}")
+                assertEquals("drawn=12 highlighted=0 faded=0 selected=", screen.stateDescriptionOf(partsTag("board")), view)
+                val image = ImageIO.read(ByteArrayInputStream(screen.frame().png))
+                val ground = SpecTheme.LIGHT.ground.toRgbInt()
+                val inked = (box.top.value.toInt() until minOf(box.bottom.value.toInt(), image.height)).sumOf { y ->
+                    (0 until WIDTH).count { x -> image.getRGB(x, y) and 0xFFFFFF != ground }
+                }
+                assertTrue(inked > 1000, "$view drew $inked non-page pixels")
+            }
         }
     }
 

@@ -190,6 +190,30 @@ class StackedBoardTest {
     }
 
     @Test
+    fun with_no_height_given_the_plan_takes_the_height_its_window_shape_asks_for_at_that_width() {
+        val expected = (400.0 - 2 * DRAWING_MARGIN_PX) * 4800.0 / 6000.0 + 2 * DRAWING_MARGIN_PX
+        assertEquals(expected, intrinsicSceneHeight(board(), StackedDrawing.PLAN, 400.0), 1e-9)
+    }
+
+    @Test
+    fun with_no_height_given_a_flat_elevation_takes_the_least_scene_height() {
+        assertEquals(MIN_INTRINSIC_SCENE_HEIGHT, intrinsicSceneHeight(board(), StackedDrawing.SOUTH, 400.0), 1e-9)
+    }
+
+    @Test
+    fun with_no_height_given_a_tall_plan_is_held_to_one_and_a_half_times_its_width() {
+        val tall = board().copy(window = board().window.copy(x1 = 1000L, y1 = 20000L))
+        assertEquals(600.0, intrinsicSceneHeight(tall, StackedDrawing.PLAN, 400.0), 1e-9)
+    }
+
+    @Test
+    fun with_no_height_given_the_iso_takes_the_height_its_projected_window_asks_for() {
+        val window = isoWindow(board())
+        val expected = (400.0 - 2 * DRAWING_MARGIN_PX) * (window.y1 - window.y0) / (window.x1 - window.x0) + 2 * DRAWING_MARGIN_PX
+        assertEquals(expected.coerceIn(MIN_INTRINSIC_SCENE_HEIGHT, 600.0), intrinsicSceneHeight(board(), StackedDrawing.ISO, 400.0), 1e-9)
+    }
+
+    @Test
     fun the_south_elevation_stacks_a_block_a_bar_and_a_plate_one_on_another() {
         val scene = board()
         assertFalse(isEveryPartFlat(scene, drawn(scene, StackedDrawing.SOUTH)))
