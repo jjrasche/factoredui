@@ -1,6 +1,5 @@
 package ai.factoredui.compose.scene
 
-import ai.factoredui.compose.layout.MM_PER_FOOT
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -13,6 +12,8 @@ import kotlinx.serialization.json.longOrNull
 class SceneViewFormatException(message: String) : IllegalArgumentException(message)
 
 private const val MILLIMETRES = "mm"
+
+private const val MM_PER_FOOT = 304.8
 
 fun readSceneView(text: String): SceneView {
     val root = try {

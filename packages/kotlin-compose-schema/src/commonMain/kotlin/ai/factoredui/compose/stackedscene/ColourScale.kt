@@ -1,6 +1,5 @@
 package ai.factoredui.compose.stackedscene
 
-import ai.factoredui.compose.pixel.rgbOfHex
 import ai.factoredui.compose.ramp.ColourRamp
 import ai.factoredui.compose.ramp.rampColourFor
 import ai.factoredui.compose.ramp.rampLabelFor
@@ -26,6 +25,12 @@ const val NEUTRAL_PART_COLOUR: Long = 0xFF9AA4AD
 private const val OPAQUE: Long = 0xFF000000L
 private const val TOP_TOWARD_WHITE = 0.22
 private const val SOUTH_DARKENING = 0.72
+
+private fun rgbOfHex(hex: String?): Int? {
+    val digits = hex?.removePrefix("#") ?: return null
+    if (digits.length != 6) return null
+    return digits.toIntOrNull(16)
+}
 
 fun colourOfHex(raw: Any?): Long? = rgbOfHex(raw as? String)?.let { OPAQUE or it.toLong() }
 

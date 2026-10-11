@@ -2,11 +2,8 @@ package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.scene.DeviceProfile
 import ai.factoredui.compose.scene.LANDING_LEVEL_FEET
-import ai.factoredui.compose.scene.nearestLadderLevel
 import ai.factoredui.compose.scene.resolveViewState
 import ai.factoredui.compose.schema.SpecNode
-import ai.factoredui.compose.schema.SpecNodeType
-import ai.factoredui.compose.schema.resolveTileArea
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,14 +13,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlin.math.sqrt
 
 private val PHONE_WIDTH_LIMIT = 600.dp
 
 @Composable
 internal fun RenderScene(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val view = resolveViewState(resolvedProps["view_state"])
-    val levelFeet = view.levelFeet ?: defaultLevelFeet(node.type, resolveTileArea(resolvedProps["tile_area"]))
+    val levelFeet = view.levelFeet ?: LANDING_LEVEL_FEET
     val renderers = LocalSceneRenderers.current
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val profile = if (maxWidth < PHONE_WIDTH_LIMIT) DeviceProfile.PHONE else DeviceProfile.DESKTOP
@@ -42,6 +38,3 @@ internal fun RenderScene(node: SpecNode, resolvedProps: Map<String, Any?>, conte
         }
     }
 }
-
-private fun defaultLevelFeet(type: SpecNodeType, tileArea: Double): Int =
-    if (type == SpecNodeType.TILEMAP) nearestLadderLevel(sqrt(tileArea)) else LANDING_LEVEL_FEET

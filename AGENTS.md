@@ -97,7 +97,7 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, tilemap, scene.
+column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene.
 
 - There is no table and no ratio-against-a-limit widget.
 - A table is a `list` with an `itemTemplate`.
@@ -156,8 +156,7 @@ A string `"{path.to.value}"` is resolved at render time from one state map. Insi
 - Controls (`toggle`, `select`, `slider`, `textinput`) write their new value back to the bound path.
 - Dense primitives take typed data, not children.
 - `geomap` shows a selection from a `selected` binding (list of ids), writes it on tap, and dispatches `on_feature_tap`.
-- `tilemap` dispatches `on_tile_tap` and `on_instance_tap`.
-- `scene` and `tilemap` pick a renderer from `view_state` (`level_feet`, `quarter_turns`, `centre_mm`, `renderer`).
+- `scene` picks a renderer from `view_state` (`level_feet`, `quarter_turns`, `centre_mm`, `renderer`).
 
 ## Actions
 
