@@ -79,7 +79,8 @@ A string `"{path.to.value}"` is resolved at render time from one state map. Insi
 A `scene` node with `"view_state": { "renderer": "stacked_scene" }` draws parts stacked in levels from a scene payload. Props:
 
 - `scene_view`: the payload, bound to an object or its JSON text. A bad payload prints the reason on screen.
-- `view`: `plan` (default), `iso`, `south` or `west`. The plan draws a part's x toward the right and its y toward the top of the screen: the smallest y is the bottom edge, the largest y is the top. A world whose rows count downward from the top must say so in its own words, or send y negated.
+- `view`: `plan` (default), `iso`, `south` or `west`. The plan draws a part's x toward the right. Its y runs as `y_axis` says. The south elevation looks along +y with x to the right. The west elevation looks along +x, so the y that is drawn at the top of the plan is on its left.
+- `y_axis`: `up` (default) draws the largest y at the top of the plan, so the smallest y is the bottom edge. `down` draws the smallest y at the top, for a world whose rows count downward from its top edge. Under `down` the plan, the iso (which side is seen and which parts are in front) and the west elevation all turn together: the scene is drawn as if each part's y were mirrored across the window. The south elevation's left-to-right order is unchanged. Any other value draws a notice naming `up` and `down` and draws `up`. For example, a tile world with row 0 at its top edge: `"y_axis": "down"`.
 - `focus`: `all` (default) or a whole stack level number, as a number or as text ("1"), so a `select` can write it.
 - `show_lower` (bool): also shows the levels below the focus, faded. A `toggle` can write it.
 - `hide_top` (whole number, as a number or as text): hides that many top levels. A `select` can write it.
