@@ -72,26 +72,40 @@ class AwtWindowSurface : ControlSurface {
     }
 }
 
+/** A handler reads only the parameters its route declares, so the declared set is the route's real interface. */
+class RouteQuery(private val route: String, private val parameters: Set<String>, private val raw: Map<String, String>) {
+    fun optional(name: String): String? {
+        check(name in parameters) { "route /$route does not declare the parameter '$name'" }
+        return raw[name]
+    }
+
+    fun required(name: String): String = requireNotNull(optional(name)) { "route /$route needs the parameter '$name'" }
+}
+
+class ControlRoute(val name: String, val parameters: Set<String>, val handle: (RouteQuery) -> String)
+
 class WindowControl(private val context: RenderContext, private val surface: ControlSurface = AwtWindowSurface()) {
 
+    val routes: List<ControlRoute> = listOf(
+        ControlRoute("tree", setOf("id", "text", "visible")) { query -> surface.onScreenThread { treeText(query) } },
+        ControlRoute("get", setOf("path")) { query -> readBinding(query.required("path")) },
+        ControlRoute("set", setOf("path", "value")) { query -> setBinding(query.required("path"), query.required("value")) },
+        ControlRoute("click", setOf("id", "x", "y")) { query -> click(query) },
+        ControlRoute("wheel", setOf("x", "y", "notches")) { query -> surface.wheel(pointOf(query), query.required("notches").toInt()) },
+        ControlRoute("shot", setOf("file")) { query -> surface.shot(File(query.required("file"))) },
+    )
+
     fun start(port: Int): HttpServer = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0).apply {
-        createContext("/set") { exchange -> answer(exchange) { query -> setBinding(query) } }
-        createContext("/get") { exchange -> answer(exchange) { query -> readBinding(query) } }
-        createContext("/click") { exchange -> answer(exchange) { query -> click(query) } }
-        createContext("/wheel") { exchange -> answer(exchange) { query -> surface.wheel(pointOf(query), query.getValue("notches").toInt()) } }
-        createContext("/shot") { exchange -> answer(exchange) { query -> surface.shot(File(query.getValue("file"))) } }
-        createContext("/tree") { exchange -> answer(exchange) { query -> surface.onScreenThread { treeText(query) } } }
+        routes.forEach { route -> createContext("/${route.name}") { exchange -> answer(exchange) { raw -> route.handle(RouteQuery(route.name, route.parameters, raw)) } } }
         start()
     }
 
-    private fun setBinding(query: Map<String, String>): String {
-        val path = query.getValue("path")
-        context.setBinding(path, jsonToAny(Json.parseToJsonElement(query.getValue("value"))))
+    private fun setBinding(path: String, value: String): String {
+        context.setBinding(path, jsonToAny(Json.parseToJsonElement(value)))
         return "set $path"
     }
 
-    private fun readBinding(query: Map<String, String>): String {
-        val path = query.getValue("path")
+    private fun readBinding(path: String): String {
         var current: Any? = context.data
         path.split(".").forEach { segment ->
             val parent = current as? Map<*, *>
@@ -101,19 +115,19 @@ class WindowControl(private val context: RenderContext, private val surface: Con
         return anyToJson(current).toString()
     }
 
-    private fun click(query: Map<String, String>): String {
-        val id = query["id"] ?: return surface.click(pointOf(query))
+    private fun click(query: RouteQuery): String {
+        val id = query.optional("id") ?: return surface.click(pointOf(query))
         return when (val target = surface.onScreenThread { clickTargetFor(context.screen, id) }) {
             is ClickTarget.AtPoint -> surface.click(target.point)
             is ClickTarget.ScenePart -> surface.onScreenThread { tapScenePart(context.screen, target) }
         }
     }
 
-    private fun treeText(query: Map<String, String>): String {
+    private fun treeText(query: RouteQuery): String {
         val drawn = screenNodes(context.screen) ?: error("nothing has been drawn yet")
-        val shown = if (query["visible"] == "1") visibleOnly(drawn) ?: error("the root is not visible") else drawn
-        query["text"]?.let { substring -> return JsonArray(idsShowing(shown, substring).map(::JsonPrimitive)).toString() }
-        val subtree = query["id"]?.let { id -> findNode(shown, id) ?: error("no drawn node has id '$id'") } ?: shown
+        val shown = if (query.optional("visible") == "1") visibleOnly(drawn) ?: error("the root is not visible") else drawn
+        query.optional("text")?.let { substring -> return JsonArray(idsShowing(shown, substring).map(::JsonPrimitive)).toString() }
+        val subtree = query.optional("id")?.let { id -> findNode(shown, id) ?: error("no drawn node has id '$id'") } ?: shown
         return screenJson(subtree).toString()
     }
 }
@@ -127,7 +141,7 @@ private fun skiaLayerIn(component: Component): SkiaLayer? {
     return children.firstNotNullOfOrNull { skiaLayerIn(it) }
 }
 
-private fun pointOf(query: Map<String, String>) = Point(query.getValue("x").toInt(), query.getValue("y").toInt())
+private fun pointOf(query: RouteQuery) = Point(query.required("x").toInt(), query.required("y").toInt())
 
 private fun queryOf(exchange: HttpExchange): Map<String, String> =
     exchange.requestURI.rawQuery.orEmpty().split("&").filter { it.contains("=") }.associate { pair ->

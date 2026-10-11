@@ -47,7 +47,10 @@ class SceneSurface(spec: Spec, context: RenderContext, width: Int, height: Int) 
         "clicked ${point.x},${point.y}"
     }
 
-    override fun wheel(point: Point, notches: Int): String = error("this surface does not scroll")
+    override fun wheel(point: Point, notches: Int): String = onScreenThread {
+        scene.sendPointerEvent(PointerEventType.Scroll, Offset(point.x.toFloat(), point.y.toFloat()), scrollDelta = Offset(0f, notches.toFloat()))
+        "wheel $notches at ${point.x},${point.y}"
+    }
 
     override fun shot(file: File): String = onScreenThread {
         clock += FRAME_NANOS
