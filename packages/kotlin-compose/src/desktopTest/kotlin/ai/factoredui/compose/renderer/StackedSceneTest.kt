@@ -32,6 +32,12 @@ private const val HEIGHT = 600
 
 private const val SCALE = """{"channel":"crowding","stops":[{"up_to":0.25,"color":"#3a7ca5"},{"up_to":1,"color":"#e0a030"},{"color":"#b03a2e"}],"unknown_color":"#9aa4ad","format":"percent"}"""
 
+private const val CROWDING_SCALE = """{"channel":"crowding","stops":[{"up_to":0.25,"color":"#3a7ca5","label":"quiet"},{"up_to":1,"color":"#e0a030","label":"busy"},{"color":"#b03a2e","label":"over full"}],"unknown_color":"#9aa4ad","unknown_label":"no count","format":"percent"}"""
+
+private const val WEAR_SCALE = """{"channel":"wear","stops":[{"up_to":0.5,"color":"#2a9d8f","label":"fresh"},{"color":"#6a4c93","label":"worn"}],"unknown_label":"no wear figure"}"""
+
+private const val SCHEMES = """{"scheme":"{board.scheme}","schemes":{"crowding":$CROWDING_SCALE,"wear":$WEAR_SCALE}}"""
+
 private fun stackedSceneSpec(selected: String, colorBy: String = "null") = json.decodeFromString(
     Spec.serializer(),
     """
@@ -51,8 +57,16 @@ private val BOUND = stackedSceneSpec("\"{board.selected}\"")
 
 private val COLOURED = stackedSceneSpec("\"{board.selected}\"", SCALE)
 
+private val SCHEMED = stackedSceneSpec("\"{board.selected}\"", SCHEMES)
+
+private val WEAR_ONLY = stackedSceneSpec("\"{board.selected}\"", WEAR_SCALE)
+
 private fun storeFor(view: String, picked: List<String> = emptyList(), scene: Any? = stackedBoardText()) = mapOf(
     "board" to mapOf("scene" to scene, "view" to view, "picked" to picked),
+)
+
+private fun storeWithScheme(scheme: Any?) = mapOf(
+    "board" to mapOf("scene" to stackedBoardText(), "view" to "plan", "picked" to emptyList<String>(), "scheme" to scheme),
 )
 
 private fun selectedIn(store: Map<String, Any?>): Any? = (store["board"] as? Map<*, *>)?.get("selected")
@@ -134,6 +148,39 @@ class StackedSceneTest {
         val unscaled = driveScreen(BOUND, storeFor("plan"), WIDTH, HEIGHT).use { it.frame().png }
         assertEquals(pixelAt(unscaled, centreOf(board, "p4", StackedDrawing.PLAN)), noValue, "a part with no value takes the unknown colour, here the neutral grey")
         assertNotEquals(pixelAt(unscaled, centreOf(board, "p2", StackedDrawing.PLAN)), busy)
+    }
+
+    @Test
+    fun switching_the_bound_scheme_repaints_the_part_in_the_second_scales_colour_and_swaps_the_legend() {
+        val wearPixel = driveScreen(WEAR_ONLY, storeFor("plan"), WIDTH, HEIGHT).use { pixelAt(it.frame().png, centreOf(board, "p2", StackedDrawing.PLAN)) }
+        driveScreen(SCHEMED, storeWithScheme("crowding"), WIDTH, HEIGHT).use { screen ->
+            val p2 = centreOf(board, "p2", StackedDrawing.PLAN)
+            val crowdingPixel = pixelAt(screen.frame().png, p2)
+            assertEquals(listOf("quiet", "busy", "over full", "no count"), screen.textsUnder(legendTag("board")))
+            screen.type("board.scheme", "wear")
+            val switchedPixel = pixelAt(screen.frame().png, p2)
+            assertNotEquals(crowdingPixel, switchedPixel)
+            assertEquals(wearPixel, switchedPixel, "the wear scheme paints p2 as the single wear scale does")
+            assertEquals(listOf("fresh", "worn", "no wear figure"), screen.textsUnder(legendTag("board")))
+        }
+    }
+
+    @Test
+    fun an_unbound_scheme_colours_by_the_first_scheme_and_says_nothing() {
+        driveScreen(SCHEMED, storeWithScheme(null), WIDTH, HEIGHT).use { screen ->
+            assertEquals(listOf("quiet", "busy", "over full", "no count"), screen.textsUnder(legendTag("board")))
+            assertFalse(screen.textsUnder("board").any { it.startsWith("color_by") })
+        }
+    }
+
+    @Test
+    fun a_scheme_the_spec_does_not_hold_paints_one_colour_and_names_the_schemes_on_screen() {
+        val uncoloured = driveScreen(BOUND, storeFor("plan"), WIDTH, HEIGHT).use { pixelAt(it.frame().png, centreOf(board, "p2", StackedDrawing.PLAN)) }
+        driveScreen(SCHEMED, storeWithScheme("heat"), WIDTH, HEIGHT).use { screen ->
+            assertTrue("color_by scheme 'heat' is not one of the schemes crowding, wear; parts are drawn in one colour." in screen.textsUnder("board"))
+            assertEquals(uncoloured, pixelAt(screen.frame().png, centreOf(board, "p2", StackedDrawing.PLAN)))
+            assertEquals(emptyList(), screen.textsUnder(legendTag("board")))
+        }
     }
 
     @Test
