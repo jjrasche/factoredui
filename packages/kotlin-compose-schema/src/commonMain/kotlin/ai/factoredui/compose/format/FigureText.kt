@@ -1,6 +1,7 @@
 package ai.factoredui.compose.format
 
 import kotlin.math.abs
+import kotlin.math.pow
 
 private const val POUNDS_PER_KILOGRAM = 2.2046226218
 private const val WHOLE_POUNDS_FROM = 100.0
@@ -20,6 +21,12 @@ private fun localeNumber(value: Double, fractionDigits: Int): String {
     val fraction = (scaled % divisor).toString().padStart(fractionDigits, '0')
     return "$sign$whole.$fraction"
 }
+
+private const val LARGEST_EXACT_SCALED = 9.0e15
+
+fun canDrawExactly(value: Double, fractionDigits: Int): Boolean = abs(value) * 10.0.pow(fractionDigits) < LARGEST_EXACT_SCALED
+
+fun groupedFigureText(value: Double, fractionDigits: Int): String = localeNumber(value, fractionDigits)
 
 fun dollarsText(dollars: Double?): String {
     val figure = dollars.finiteOrNull() ?: return MISSING_FIGURE

@@ -85,7 +85,7 @@ enum class TextFormat(val wire: String) { USD("usd"), FEET_INCHES("feet_inches")
 
 fun textFormatOf(raw: Any?): TextFormat? = TextFormat.entries.firstOrNull { it.wire == raw }
 
-private fun figureOf(value: Any?): Double? = (value as? Number)?.toDouble()?.takeIf { it.isFinite() }
+internal fun figureOf(value: Any?): Double? = (value as? Number)?.toDouble()?.takeIf { it.isFinite() }
 
 private fun unknownFormatNotice(rawFormat: Any) = "unknown format '$rawFormat'"
 
@@ -105,6 +105,7 @@ private fun unformattedText(value: Any?, missingText: String?): String = when (v
 
 fun displayedText(value: Any?, rawFormat: Any?, missingText: String?): String {
     if (rawFormat == null) return unformattedText(value, missingText)
+    if (rawFormat is Map<*, *>) return objectFormattedText(value, rawFormat, missingText)
     val format = textFormatOf(rawFormat) ?: return unknownFormatNotice(rawFormat)
     return formattedFigure(value, format, missingText)
 }
