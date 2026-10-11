@@ -58,7 +58,7 @@ class StackedBoardPicturesTest {
             val fit = fitDrawing(scene, StackedDrawing.ISO, (area.right - area.left).value.toDouble(), (area.bottom - area.top).value.toDouble())
             val top = projectFaces(partBox(scene, bar)).top.map { (u, v) -> mmToCanvas(fit, u, v) }
             screen.tapAt(area.left.value + (top.sumOf { it.first } / top.size).toFloat(), area.top.value + (top.sumOf { it.second } / top.size).toFloat())
-            assertEquals(listOf("Wide bar", "r2 · 90%"), screen.textsUnder(popupTag("board")))
+            assertEquals(listOf("Wide bar", "r2 · 90% · busy"), screen.textsUnder(popupTag("board")))
             savePicture("07-iso-bar-popup.png", screen.frame().png)
         }
     }

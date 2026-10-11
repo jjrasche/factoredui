@@ -132,6 +132,43 @@ class StackedSceneTest {
     }
 
     @Test
+    fun the_popup_follows_the_formatted_value_with_the_label_of_its_stop() {
+        driveScreen(SCHEMED, storeWithScheme("crowding"), WIDTH, HEIGHT).use { screen ->
+            val (x, y) = centreOf(board, "p2", StackedDrawing.PLAN)
+            screen.tapAt(x, y)
+            assertEquals(listOf("Plate", "p2 · 50% · busy"), screen.textsUnder(popupTag("board")))
+        }
+    }
+
+    @Test
+    fun a_part_with_no_value_in_the_channel_shows_the_unknown_label_in_its_popup() {
+        driveScreen(SCHEMED, storeWithScheme("crowding"), WIDTH, HEIGHT).use { screen ->
+            val (x, y) = centreOf(board, "p4", StackedDrawing.PLAN)
+            screen.tapAt(x, y)
+            assertEquals(listOf("Plate", "p4 · no count"), screen.textsUnder(popupTag("board")))
+        }
+    }
+
+    @Test
+    fun a_part_with_no_value_and_a_scale_with_no_unknown_label_shows_only_its_id() {
+        driveScreen(COLOURED, storeFor("plan"), WIDTH, HEIGHT).use { screen ->
+            val (x, y) = centreOf(board, "p4", StackedDrawing.PLAN)
+            screen.tapAt(x, y)
+            assertEquals(listOf("Plate", "p4"), screen.textsUnder(popupTag("board")))
+        }
+    }
+
+    @Test
+    fun the_open_popup_follows_the_scheme_when_the_bound_scheme_changes() {
+        driveScreen(SCHEMED, storeWithScheme("crowding"), WIDTH, HEIGHT).use { screen ->
+            val (x, y) = centreOf(board, "p2", StackedDrawing.PLAN)
+            screen.tapAt(x, y)
+            screen.type("board.scheme", "wear")
+            assertEquals(listOf("Plate", "p2 · 0.9 · worn"), screen.textsUnder(popupTag("board")))
+        }
+    }
+
+    @Test
     fun with_no_colour_scale_two_parts_holding_different_values_are_painted_alike() {
         val png = driveScreen(BOUND, storeFor("plan"), WIDTH, HEIGHT).use { it.frame().png }
         assertEquals(pixelAt(png, centreOf(board, "p1", StackedDrawing.PLAN)), pixelAt(png, centreOf(board, "p3", StackedDrawing.PLAN)))

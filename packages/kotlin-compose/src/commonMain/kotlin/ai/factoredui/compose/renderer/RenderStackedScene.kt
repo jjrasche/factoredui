@@ -8,7 +8,6 @@ import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.schema.StackedSceneProps
 import ai.factoredui.compose.schema.bindingPath
-import ai.factoredui.compose.schema.displayedText
 import ai.factoredui.compose.schema.resolveGeomapSelection
 import ai.factoredui.compose.schema.resolveStackedSceneProps
 import ai.factoredui.compose.schema.selectionAfterTap
@@ -23,6 +22,7 @@ import ai.factoredui.compose.stackedscene.hitDrawnPart
 import ai.factoredui.compose.stackedscene.isEveryPartFlat
 import ai.factoredui.compose.stackedscene.legendEntries
 import ai.factoredui.compose.stackedscene.partPopupLines
+import ai.factoredui.compose.stackedscene.partValueText
 import ai.factoredui.compose.stackedscene.partValues
 import ai.factoredui.compose.stackedscene.partsToDraw
 import ai.factoredui.compose.stackedscene.popupAnchor
@@ -186,6 +186,6 @@ private fun SelectedPartPopup(
     val selectedId = selection.singleOrNull() ?: return
     val part = parts.firstOrNull { it.footprint.id == selectedId } ?: return
     val anchor = popupAnchor(scene, part.footprint, props.drawing, fit)
-    val valueText = values[selectedId]?.let { displayedText(it.value, props.colourScale?.format, null) }
+    val valueText = partValueText(values[selectedId], props.colourScale)
     PartPopup(popupTag(nodeId), partPopupLines(scene, part.footprint, valueText), anchor.first.toFloat(), anchor.second.toFloat())
 }
