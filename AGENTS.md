@@ -1,4 +1,77 @@
-# Authoring a factored-ui spec (for agents)
+# factored-ui for agents
+
+## Driving a window: the control port
+
+Build or verify a screen (a world, a table, anything) by driving the window a person uses through its control port, and read it as text. The control port has two halves: eyes (`/tree`, `/get`) to read what is drawn and the live state, and hands (`/click`, `/set`, `/wheel`) to act. Pictures (`/shot`) are a receipt, never the check.
+
+Launch:
+
+- Build once: `./gradlew :kotlin-compose:installSpecWindow`.
+- Then run `java -cp "packages/kotlin-compose/build/spec-window/lib/*" ai.factoredui.compose.render.SpecWindowKt <spec.json> [width] [height] [--data seeds.json] [--state a.b=text|json|reports:file ...] [--theme light|dark] [--title "name"] [--control <port>]`.
+- `--state` repeats. `text` binds the file's text, `json` its decoded object, and `reports` its reports keyed by id.
+- `--control <port>` serves the control port on 127.0.0.1 only. Each route is a GET with these query parameters (the test `ControlPortDocTest` keeps this block equal to the routes `WindowControl` serves):
+
+<!-- control-port-routes -->
+```
+/tree   id text visible
+/get    path
+/set    path value
+/click  id x y
+/wheel  x y notches
+/shot   file
+```
+<!-- /control-port-routes -->
+
+Eyes:
+
+- `/tree` returns what is drawn now, as JSON. Each node has `{id, type, text, props, visible, enabled, action, bounds {x,y,w,h}, children}`.
+  - A list's rows appear once each, with ids such as `rows/0/row-label`.
+  - `props` holds the resolved values of the props that were bindings. A bulky value appears as its shape, e.g. `"<list: 3 items>"`.
+  - The same screen gives the same bytes.
+- `/tree?id=<id>` returns that subtree, and `/tree?visible=1` leaves out hidden nodes. `/tree?text=<words>` returns the ids whose drawn text contains the words.
+- A node that paints colour says which, in the values the drawing used. A `text` gives its `ink`, and its `fill` when it has a `background_ramp`. A `card`, `column` or `row` with a background gives its `fill`. Colours are `#rrggbb`, or `#rrggbbaa` when translucent.
+- A `select` gives `options` (`value` and `label`) and its current `value` in `props`. While its menu is open, the items are its children, with ids `<select id>/option/<value>`, `text`, `selected` and `bounds`. A `modal`'s children are ordinary nodes.
+- A `stacked_scene` adds `scene: {view, focus, hide_top, show_lower, y_axis, active_scheme, legend, notices, parts, popup}`.
+  - Each part has `{id, type_id, level, fill, outline, value, bounds, centre, covered_by}`. `outline` is `normal`, `highlight`, `selected` or `faded`.
+  - `fill` is the colour painted at the part's centre (the top face in the iso).
+  - `covered_by` lists the parts drawn over that centre. When it is not empty, a pixel click there reaches the top part, not this one.
+- `/get?path=a.b.c` takes a dotted path and answers its live value as JSON. A path that names no key is refused.
+- Scrolled rows:
+  - A row below the fold of a `scrollview` (or of a list inside one) is in `/tree` with its text, but its bounds have no size (`w` and `h` 0) until it is scrolled into view.
+  - A lazy list (one with a bounded height, such as a `flex` list outside a scroll) draws only the rows in view. A row beyond them is not in `/tree` at all.
+  - In both cases `/wheel` is the hand that brings the row into view.
+
+Hands:
+
+- `/click?id=<id>` clicks the centre of a node. A node with no size answers HTTP 400 "refused: '<id>' is drawn with no size".
+- `/click?id=<scene id>/<part id>` (e.g. `board/e21`) taps that part by id, even when another part covers it. The selection (and the scene's `selected` binding when it has one), highlight, popup and `on_part_tap` are the same as a real tap. `/tree` then shows the part's `outline` as `selected`, and the scene's `popup` names it.
+- `/click?id=<select id>/option/<value>` picks that item, writing the binding and closing the menu. It works only while the menu is open, so click the select by id first. On a closed select it answers 400 "refused: select '<id>' is not open".
+- `/click?x=&y=` is a plain pixel click. Bounds and centres are in these same units.
+- An unknown id or part, or a missing parameter, is refused with HTTP 400 "refused: ...".
+- `/set?path=a.b&value=<json>` writes a JSON value into the live state at a dotted path.
+- `/wheel?x=&y=&notches=` scrolls whatever is under the point.
+- `/shot?file=<png>` saves what the window shows.
+- `/set` and `/click` change the running screen's state, as a person's input would.
+
+The loop that works:
+
+1. Read `/tree` (or `/tree?id=`) and assert each node's `text` and `fill` against the engine's own numbers.
+2. Act by id with `/click?id=` (or `/set`).
+3. Read the binding back with `/get` and the screen back with `/tree`.
+4. Restore what you changed with `/set`, so the next check starts from the state the window was launched with.
+
+Example excerpt of `/tree?id=board` on the board fixture:
+
+```json
+{"id":"board","type":"scene","text":null,"props":{"hide_top":0,"scene_view":"<text: 3437 chars>","view":"plan"},"visible":true,"enabled":true,"action":null,
+ "bounds":{"x":0,"y":128,"w":800,"h":772},
+ "scene":{"view":"plan","focus":"all","hide_top":0,"show_lower":false,"y_axis":"up","active_scheme":null,
+  "legend":[{"text":"quiet","color":"#3a7ca5"},{"text":"busy","color":"#e0a030"}, ...],"notices":[],
+  "parts":[{"id":"r1","type_id":"bar","level":1,"fill":"#3a7ca5","outline":"normal","value":0.2,"bounds":{"x":24,"y":646,"w":752,"h":75},"centre":{"x":400,"y":684}}, ...],
+  "popup":"Plate / p2 · 50% · busy"}}
+```
+
+## Authoring a spec
 
 Write JSON; never HTML or canvas code.
 
@@ -129,32 +202,6 @@ Notices drawn over the scene:
 - A focus that shows no part says so.
 
 `packages/kotlin-compose/src/desktopTest/resources/specs/stacked-board.spec.json` is a working example: the scene, level selects, a colour scale, and report rows that each highlight their parts.
-
-## Driving a window
-
-An agent checks a screen through the same window a person uses, and reads it as text. Pictures are a receipt.
-
-- Build once: `./gradlew :kotlin-compose:installSpecWindow`. Then launch with `java -cp "packages/kotlin-compose/build/spec-window/lib/*" ai.factoredui.compose.render.SpecWindowKt <spec.json> [width] [height] [--data seeds.json] [--state a.b=text|json|reports:file ...] [--theme light|dark] [--title "name"] [--control <port>]`. `--state` repeats; `text` binds the file's text, `json` its decoded object, `reports` its reports keyed by id.
-- `--control <port>` serves these routes on 127.0.0.1 only:
-  - `GET /tree` returns what is drawn now, as JSON. Each node has `{id, type, text, props, visible, enabled, action, bounds {x,y,w,h}, children}`. A list's rows appear once each, with ids such as `rows/0/row-label`. `props` holds the resolved values of the props that were bindings; a bulky value appears as its shape, e.g. `"<list: 3 items>"`. A `stacked_scene` adds `scene: {view, focus, hide_top, show_lower, y_axis, active_scheme, legend, notices, parts, popup}`. Each part has `{id, type_id, level, fill, outline (normal, highlight, selected or faded), value, bounds, centre}`; `fill` is the colour painted at the part's centre (the top face in the iso). `covered_by` lists the parts drawn over that centre; when it is not empty, a click at the centre's pixel would reach the top part, not this one. The same screen gives the same bytes.
-  - A node that paints colour says which, in the values the drawing used. A `text` gives its `ink`, and its `fill` when it has a `background_ramp`. A `card`, `column` or `row` with a background gives its `fill`. Colours are `#rrggbb`, or `#rrggbbaa` when translucent.
-  - A `select` gives `options` (`value` and `label`) and its current `value` in `props`. While its menu is open, the menu's items are its children, with ids `<select id>/option/<value>`, `text`, `selected` and `bounds`. A `modal`'s children are ordinary nodes.
-  - `/tree?id=<id>` returns that subtree, `/tree?visible=1` leaves out hidden nodes, and `/tree?text=<words>` returns the ids whose drawn text contains the words.
-  - `/click?id=<id>` clicks the centre of a node, and `/click?id=<select id>/option/<value>` picks that item from an open menu, writing the binding. `/click?id=<scene id>/<part id>` taps that part by id, even when another part lies over it: the selection, highlight, popup and `on_part_tap` are the same as a real tap on it. `/click?x=&y=` is a plain pixel click; bounds are in these same units. An unknown id, an unknown part or a node with no size is refused with HTTP 400 "refused: ...".
-  - `/set?path=a.b&value=<json>` writes the live state, and `/get?path=a.b` reads it back.
-  - `/wheel?x=&y=&notches=` scrolls, and `/shot?file=<png>` saves what the window shows.
-- `/set` and `/click` change the running screen's state, as a person's input would. Read `/tree` after them to see the result.
-
-Example excerpt of `/tree?id=board` on the board fixture:
-
-```json
-{"id":"board","type":"scene","text":null,"props":{"hide_top":0,"scene_view":"<text: 3437 chars>","view":"plan"},"visible":true,"enabled":true,"action":null,
- "bounds":{"x":0,"y":128,"w":800,"h":772},
- "scene":{"view":"plan","focus":"all","hide_top":0,"show_lower":false,"y_axis":"up","active_scheme":null,
-  "legend":[{"text":"quiet","color":"#3a7ca5"},{"text":"busy","color":"#e0a030"}, ...],"notices":[],
-  "parts":[{"id":"r1","type_id":"bar","level":1,"fill":"#3a7ca5","outline":"normal","value":0.2,"bounds":{"x":24,"y":646,"w":752,"h":75},"centre":{"x":400,"y":684}}, ...],
-  "popup":"Plate / p2 · 50% · busy"}}
-```
 
 ## Checking a spec
 
