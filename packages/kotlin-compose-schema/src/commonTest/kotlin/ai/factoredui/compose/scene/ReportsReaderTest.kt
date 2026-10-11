@@ -38,11 +38,40 @@ class ReportsReaderTest {
     }
 
     @Test
-    fun a_value_given_as_text_is_refused_naming_where_it_sits() {
+    fun a_value_given_as_text_is_kept_as_text_because_a_text_column_states_a_string() {
+        val row = readReports(reportsWith("""[{"id":"blocks","label":"Blocks","values":{"species":"pine","quantity":2}}]""")).single().rows.single()
+        assertEquals(mapOf("species" to "pine", "quantity" to 2.0), row.values)
+    }
+
+    @Test
+    fun a_value_that_is_neither_a_number_nor_text_is_refused_naming_where_it_sits() {
         assertEquals(
-            "reports[0].rows[0].values.quantity must be a number or null, not \"12\"",
-            refusal(reportsWith("""[{"id":"blocks","label":"Blocks","values":{"quantity":"12"}}]""")),
+            "reports[0].rows[0].values.ok must be a number, text or null, not true",
+            refusal(reportsWith("""[{"id":"blocks","label":"Blocks","values":{"ok":true}}]""")),
         )
+    }
+
+    @Test
+    fun the_engines_views_response_reads_as_reports_do_and_views_win_over_a_legacy_reports_key() {
+        val rows = """[{"id":"r","label":"R","object_ids":["e1"],"values":{"a":12,"kind":"pine"},"limits":{"a":10,"b":null},"flags":{"a":"over"},"fractions":{"a":1.2}}]"""
+        val views = readReports("""{"views":[{"id":"loads","label":"Loads","columns":[{"id":"kind","label":"Kind","type":"text"}],"rows":$rows}]}""")
+        val row = views.single().rows.single()
+        assertEquals("loads", views.single().id)
+        assertEquals(mapOf("a" to 12.0, "kind" to "pine"), row.values)
+        assertEquals(mapOf("a" to 10.0, "b" to null), row.limits)
+        assertEquals(mapOf("a" to "over"), row.flags)
+        assertEquals(mapOf("a" to 1.2), row.fractions)
+        assertEquals(listOf(ReportColumn("kind", "Kind", null)), views.single().columns)
+        val both = readReports("""{"views":[{"id":"new","label":"New","columns":[],"rows":[]}],"reports":[{"id":"old","label":"Old","columns":[],"rows":[]}]}""")
+        assertEquals(listOf("new"), both.map { it.id })
+        val stateRow = (reportsState(views).getValue("loads")["rows"] as List<*>).single() as Map<*, *>
+        assertEquals(mapOf("a" to 10.0, "b" to null), stateRow["limits"])
+    }
+
+    @Test
+    fun a_fault_in_the_views_response_is_named_under_views() {
+        assertEquals("views[0].rows[0].values.ok must be a number, text or null, not true", refusal("""{"views":[{"id":"v","rows":[{"id":"r","values":{"ok":true}}]}]}"""))
+        assertEquals("views[0].rows[0].limits.a must be a number or null, not \"high\"", refusal("""{"views":[{"id":"v","rows":[{"id":"r","limits":{"a":"high"}}]}]}"""))
     }
 
     @Test
@@ -66,7 +95,7 @@ class ReportsReaderTest {
     fun text_that_is_not_a_reports_object_is_refused() {
         assertEquals("the reports are not valid JSON", refusal("{not json"))
         assertEquals("the reports must be a JSON object", refusal("[]"))
-        assertEquals("the reports object lacks a reports array", refusal("{}"))
+        assertEquals("the reports object lacks a views or reports array", refusal("{}"))
     }
 
     @Test
