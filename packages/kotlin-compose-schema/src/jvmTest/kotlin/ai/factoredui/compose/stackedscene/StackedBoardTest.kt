@@ -189,6 +189,59 @@ class StackedBoardTest {
         assertEquals(listOf("Block", "b1"), partPopupLines(scene, scene.part("b1"), null))
     }
 
+    private fun planCentreY(scene: SceneView, id: String): Double {
+        val fit = fitDrawing(scene, StackedDrawing.PLAN, CANVAS_WIDTH, CANVAS_HEIGHT)
+        val rect = partRectMm(scene, scene.part(id))
+        return mmToCanvas(fit, (rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2).second
+    }
+
+    @Test
+    fun under_y_up_the_part_at_the_smallest_y_is_drawn_at_the_bottom_of_the_plan() {
+        val scene = sceneForYAxis(board(), YAxis.UP)
+        assertEquals(board(), scene)
+        assertTrue(planCentreY(scene, "r1") > CANVAS_HEIGHT / 2, "r1 sits at y 600 to 1200 of 4800")
+        assertTrue(planCentreY(scene, "r2") < CANVAS_HEIGHT / 2)
+    }
+
+    @Test
+    fun under_y_down_the_part_at_the_smallest_y_is_drawn_at_the_top_of_the_plan() {
+        val scene = sceneForYAxis(board(), YAxis.DOWN)
+        assertTrue(planCentreY(scene, "r1") < CANVAS_HEIGHT / 2)
+        assertTrue(planCentreY(scene, "r2") > CANVAS_HEIGHT / 2)
+    }
+
+    @Test
+    fun y_down_mirrors_each_part_across_the_window_and_keeps_its_size() {
+        val up = board()
+        val down = sceneForYAxis(up, YAxis.DOWN)
+        listOf("r1", "r2", "b2", "p3").forEach { id ->
+            val before = partRectMm(up, up.part(id))
+            val after = partRectMm(down, down.part(id))
+            assertEquals(RectMm(before.x0, 4800.0 - before.y1, before.x1, 4800.0 - before.y0), after, id)
+        }
+    }
+
+    @Test
+    fun the_west_elevation_puts_the_smallest_y_on_the_right_under_up_and_on_the_left_under_down() {
+        val upR1 = partRectInView(board(), board().part("r1"), FlatView.WEST)
+        val upR2 = partRectInView(board(), board().part("r2"), FlatView.WEST)
+        assertTrue(upR1.x0 > upR2.x0, "under up the larger y is to the viewer's left looking along +x")
+        val down = sceneForYAxis(board(), YAxis.DOWN)
+        val downR1 = partRectInView(down, down.part("r1"), FlatView.WEST)
+        val downR2 = partRectInView(down, down.part("r2"), FlatView.WEST)
+        assertTrue(downR1.x0 < downR2.x0)
+    }
+
+    @Test
+    fun the_south_elevation_keeps_every_part_where_it_was_because_its_axis_is_x() {
+        val down = sceneForYAxis(board(), YAxis.DOWN)
+        board().footprints!!.items.forEach { part ->
+            val up = partRectInView(board(), part, FlatView.SOUTH)
+            val flipped = partRectInView(down, down.part(part.id), FlatView.SOUTH)
+            assertEquals(up, flipped, part.id)
+        }
+    }
+
     @Test
     fun with_no_height_given_the_plan_takes_the_height_its_window_shape_asks_for_at_that_width() {
         val expected = (400.0 - 2 * DRAWING_MARGIN_PX) * 4800.0 / 6000.0 + 2 * DRAWING_MARGIN_PX

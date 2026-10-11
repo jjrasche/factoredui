@@ -15,6 +15,13 @@ import ai.factoredui.compose.stackedscene.partRectMm
 import ai.factoredui.compose.stackedscene.projectFaces
 import androidx.compose.ui.unit.DpRect
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
 import kotlin.test.Test
@@ -58,7 +65,31 @@ private val BOUND = stackedSceneSpec("\"{board.selected}\"")
 
 private val COLOURED = stackedSceneSpec("\"{board.selected}\"", SCALE)
 
-private val SCROLLED = json.decodeFromString(
+private fun orientedSpec(yAxis: String, view: String, hideTop: Int = 0) = json.decodeFromString(
+    Spec.serializer(),
+    """
+    {"spec_version":1,"renderer_min":1,"root":{"id":"board","type":"scene","props":{
+      "view_state":{"renderer":"stacked_scene"},"scene_view":"{board.scene}","view":"$view","hide_top":$hideTop,
+      "selected":"{board.selected}","highlight":"{board.picked}","y_axis":"$yAxis"
+    }}}
+    """.trimIndent(),
+)
+
+/** The board with every part's rows counted from the other edge: y negated and re-based into the same window. */
+private fun mirroredBoardText(): String {
+    val scene = json.parseToJsonElement(stackedBoardText()).jsonObject
+    val rows = scene.getValue("rows").jsonPrimitive.int
+    val footprints = scene.getValue("footprints").jsonObject
+    val items = footprints.getValue("items").jsonArray.map { item ->
+        val part = item.jsonObject
+        val row = part.getValue("row").jsonPrimitive.int
+        val height = part.getValue("height").jsonPrimitive.int
+        JsonObject(part + ("row" to JsonPrimitive(rows - row - height)))
+    }
+    return JsonObject(scene + ("footprints" to JsonObject(footprints + ("items" to JsonArray(items))))).toString()
+}
+
+private val SCROLLED =json.decodeFromString(
     Spec.serializer(),
     """
     {"spec_version":1,"renderer_min":1,"root":{"id":"page","type":"scrollview","children":[
@@ -162,6 +193,46 @@ class StackedSceneTest {
             val (x, y) = centreOf(board, "p2", StackedDrawing.PLAN)
             screen.tapAt(x, y)
             assertEquals(listOf("Plate", "p2 · 50%"), screen.textsUnder(popupTag("board")))
+        }
+    }
+
+    @Test
+    fun a_plan_tap_low_on_the_canvas_picks_the_smallest_y_bar_under_up_and_the_largest_under_down() {
+        val fit = fitDrawing(board, StackedDrawing.PLAN, WIDTH.toDouble(), HEIGHT.toDouble())
+        val (x, y) = mmToCanvas(fit, 3000.0, 750.0)
+        mapOf("up" to "r1", "down" to "r2").forEach { (yAxis, expected) ->
+            driveScreen(orientedSpec(yAxis, "plan", hideTop = 1), storeFor("plan"), WIDTH, HEIGHT).use { screen ->
+                screen.tapAt(x.toFloat(), y.toFloat())
+                assertEquals(listOf(expected), selectedIn(screen.store()), yAxis)
+            }
+        }
+    }
+
+    @Test
+    fun the_iso_under_y_down_is_the_iso_of_the_rows_counted_from_the_other_edge_under_up() {
+        val mirrored = mapOf("board" to mapOf("scene" to mirroredBoardText(), "view" to "iso", "picked" to blocks))
+        val flippedPng = driveScreen(orientedSpec("down", "iso"), storeFor("iso", picked = blocks), WIDTH, HEIGHT).use { it.frame().png }
+        val mirroredPng = driveScreen(orientedSpec("up", "iso"), mirrored, WIDTH, HEIGHT).use { it.frame().png }
+        val unflippedPng = driveScreen(orientedSpec("up", "iso"), storeFor("iso", picked = blocks), WIDTH, HEIGHT).use { it.frame().png }
+        assertTrue(flippedPng.contentEquals(mirroredPng), "y_axis down draws the mirrored scene's picture")
+        assertFalse(flippedPng.contentEquals(unflippedPng), "and that picture differs from the board drawn with y up")
+    }
+
+    @Test
+    fun under_y_down_an_iso_tap_and_the_highlight_land_on_the_part_drawn_there() {
+        val mirroredScene = readSceneView(mirroredBoardText())
+        driveScreen(orientedSpec("down", "iso", hideTop = 1), storeFor("iso", picked = blocks), WIDTH, HEIGHT).use { screen ->
+            assertEquals("drawn=8 highlighted=6 faded=2 selected=", screen.stateDescriptionOf(partsTag("board")))
+            val (x, y) = centreOf(mirroredScene, "r1", StackedDrawing.ISO)
+            screen.tapAt(x, y)
+            assertEquals(listOf("r1"), selectedIn(screen.store()))
+        }
+    }
+
+    @Test
+    fun a_y_axis_that_is_neither_up_nor_down_is_named_on_screen_and_draws_up() {
+        driveScreen(orientedSpec("sideways", "plan"), storeFor("plan"), WIDTH, HEIGHT).use { screen ->
+            assertTrue("y_axis 'sideways' is not up or down; y is drawn up." in screen.textsUnder("board"))
         }
     }
 

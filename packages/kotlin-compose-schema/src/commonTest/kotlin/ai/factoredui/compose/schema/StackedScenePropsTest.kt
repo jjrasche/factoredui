@@ -5,6 +5,7 @@ import ai.factoredui.compose.stackedscene.ColourStop
 import ai.factoredui.compose.stackedscene.LevelFocus
 import ai.factoredui.compose.stackedscene.NEUTRAL_PART_COLOUR
 import ai.factoredui.compose.stackedscene.StackedDrawing
+import ai.factoredui.compose.stackedscene.YAxis
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -37,6 +38,22 @@ private val HP = ColourScale("hp", listOf(ColourStop(null, 0xFF1565C0, "alive"))
 private fun schemeProps(scheme: Any?, schemes: Any? = SCHEMES) = resolveStackedSceneProps(mapOf("color_by" to mapOf("scheme" to scheme, "schemes" to schemes)))
 
 class StackedScenePropsTest {
+
+    @Test
+    fun y_axis_reads_up_by_default_and_down_when_named() {
+        assertEquals(YAxis.UP, resolveStackedSceneProps(emptyMap()).yAxis)
+        assertEquals(YAxis.UP, resolveStackedSceneProps(mapOf("y_axis" to "up")).yAxis)
+        val down = resolveStackedSceneProps(mapOf("y_axis" to "down"))
+        assertEquals(YAxis.DOWN, down.yAxis)
+        assertEquals(emptyList(), down.notes)
+    }
+
+    @Test
+    fun a_y_axis_that_is_neither_up_nor_down_draws_up_and_says_so() {
+        val props = resolveStackedSceneProps(mapOf("y_axis" to "south"))
+        assertEquals(YAxis.UP, props.yAxis)
+        assertEquals(listOf("y_axis 'south' is not up or down; y is drawn up."), props.notes)
+    }
 
     @Test
     fun a_color_by_with_schemes_colours_by_the_scheme_it_names() {

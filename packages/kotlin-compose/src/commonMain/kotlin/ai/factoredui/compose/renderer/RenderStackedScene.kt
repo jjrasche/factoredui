@@ -27,6 +27,7 @@ import ai.factoredui.compose.stackedscene.partValueText
 import ai.factoredui.compose.stackedscene.partValues
 import ai.factoredui.compose.stackedscene.partsToDraw
 import ai.factoredui.compose.stackedscene.popupAnchor
+import ai.factoredui.compose.stackedscene.sceneForYAxis
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -82,7 +83,9 @@ internal fun RenderStackedScene(node: SpecNode, resolvedProps: Map<String, Any?>
     if (scene == null) {
         StackedSceneNotice(node.id, "The stacked scene cannot be drawn: ${reading.exceptionOrNull()?.message}")
     } else {
-        RenderReadStackedScene(node, scene, resolveStackedSceneProps(resolvedProps), resolvedProps["selected"], context)
+        val props = resolveStackedSceneProps(resolvedProps)
+        val oriented = remember(scene, props.yAxis) { sceneForYAxis(scene, props.yAxis) }
+        RenderReadStackedScene(node, oriented, props, resolvedProps["selected"], context)
     }
 }
 

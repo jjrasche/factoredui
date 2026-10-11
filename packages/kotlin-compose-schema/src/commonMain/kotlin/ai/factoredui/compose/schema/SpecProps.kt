@@ -15,8 +15,10 @@ import ai.factoredui.compose.stackedscene.ColourStop
 import ai.factoredui.compose.stackedscene.LevelFocus
 import ai.factoredui.compose.stackedscene.NEUTRAL_PART_COLOUR
 import ai.factoredui.compose.stackedscene.StackedDrawing
+import ai.factoredui.compose.stackedscene.YAxis
 import ai.factoredui.compose.stackedscene.colourOfHex
 import ai.factoredui.compose.stackedscene.stackedDrawingOf
+import ai.factoredui.compose.stackedscene.yAxisOf
 
 /**
  * Typed prop accessors for each SpecNodeType.
@@ -1063,6 +1065,7 @@ data class StackedSceneProps(
     val onPartTap: String? = null,
     val colourScale: ColourScale? = null,
     val notes: List<String> = emptyList(),
+    val yAxis: YAxis = YAxis.UP,
 )
 
 private data class PropReading<T>(val value: T, val note: String? = null)
@@ -1074,6 +1077,12 @@ private fun drawingReading(raw: Any?): PropReading<StackedDrawing> {
     if (raw == null) return PropReading(StackedDrawing.PLAN)
     val drawing = stackedDrawingOf(raw) ?: return PropReading(StackedDrawing.PLAN, "view '$raw' is not plan, iso, south or west; the plan is drawn.")
     return PropReading(drawing)
+}
+
+private fun yAxisReading(raw: Any?): PropReading<YAxis> {
+    if (raw == null) return PropReading(YAxis.UP)
+    val yAxis = yAxisOf(raw) ?: return PropReading(YAxis.UP, "y_axis '$raw' is not up or down; y is drawn up.")
+    return PropReading(yAxis)
 }
 
 private fun focusReading(raw: Any?): PropReading<LevelFocus> {
@@ -1174,6 +1183,7 @@ fun resolveStackedSceneProps(resolved: Map<String, Any?>): StackedSceneProps {
     val highlight = highlightReading(resolved["highlight"])
     val onPartTap = onPartTapReading(resolved["on_part_tap"])
     val colourScale = colourByReading(resolved[COLOR_BY])
+    val yAxis = yAxisReading(resolved["y_axis"])
     return StackedSceneProps(
         drawing = drawing.value,
         focus = focus.value,
@@ -1182,6 +1192,7 @@ fun resolveStackedSceneProps(resolved: Map<String, Any?>): StackedSceneProps {
         highlightIds = highlight.value,
         onPartTap = onPartTap.value,
         colourScale = colourScale.value,
-        notes = listOfNotNull(drawing.note, focus.note, showLower.note, hideTop.note, highlight.note, onPartTap.note, colourScale.note),
+        notes = listOfNotNull(drawing.note, yAxis.note, focus.note, showLower.note, hideTop.note, highlight.note, onPartTap.note, colourScale.note),
+        yAxis = yAxis.value,
     )
 }
