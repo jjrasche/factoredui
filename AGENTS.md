@@ -15,16 +15,16 @@ Launch:
 ```
 /tree   id text visible
 /get    path
-/set    path value
-/click  id x y
-/wheel  x y notches
+/set    path value settle_ms
+/click  id x y settle_ms
+/wheel  x y notches settle_ms
 /shot   file
 ```
 <!-- /control-port-routes -->
 
 Eyes:
 
-- `/tree` returns what is drawn now, as JSON. Each node has `{id, type, text, props, visible, enabled, action, bounds {x,y,w,h}, children}`.
+- `/tree` returns what is drawn now, as JSON. Each node has `{id, type, text, props, visible, enabled, action, bounds {x,y,w,h}, children}`. The object returned also carries a top-level `frame`: the count of frames the screen has drawn while the control port waited for it to settle.
   - A list's rows appear once each, with ids such as `rows/0/row-label`.
   - `props` holds the resolved values of the props that were bindings. A bulky value appears as its shape, e.g. `"<list: 3 items>"`.
   - The same screen gives the same bytes.
@@ -52,6 +52,7 @@ Hands:
 - `/wheel?x=&y=&notches=` scrolls whatever is under the point.
 - `/shot?file=<png>` saves what the window shows.
 - `/set` and `/click` change the running screen's state, as a person's input would.
+- `/click`, `/set` and `/wheel` return only once the screen has settled: it has drawn a frame after the write, then a frame that changed nothing in the tree. A `/tree` read straight after shows the result, with no polling; a chosen select option's menu is already gone, and a second tap acts on the first tap's result. The body ends `settled frame=<n>`. The wait is bounded, 2000 ms by default; `settle_ms=<n>` changes it and `settle_ms=0` returns at once. When the bound is hit (for example a minimised window drawing no frames), the answer is still HTTP 200, since the write happened, and ends `unsettled after <n> ms frame=<n>`.
 
 The loop that works:
 

@@ -102,6 +102,7 @@ fun RenderSpec(root: SpecNode, context: RenderContext) {
     context.screen.root = root
     ThemeScope(context.theme) {
         CompositionLocalProvider(LocalScreenRegistry provides context.screen) {
+            ScreenFrameCounter(context.screen)
             RenderNode(node = root, context = context)
         }
     }
@@ -117,6 +118,7 @@ fun RenderSpec(spec: Spec, context: RenderContext) {
     context.screen.root = spec.root
     ThemeScope(context.theme) {
         CompositionLocalProvider(LocalScreenRegistry provides context.screen) {
+            ScreenFrameCounter(context.screen)
             Box(modifier = Modifier.fillMaxSize().background(context.theme.ground)) {
                 if (spec.keybindings.isEmpty()) {
                     RenderNode(node = spec.root, context = context)

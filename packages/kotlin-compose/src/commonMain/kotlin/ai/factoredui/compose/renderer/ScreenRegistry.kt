@@ -2,6 +2,11 @@ package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.schema.SpecNode
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlin.concurrent.Volatile
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -81,24 +86,66 @@ class NodeRecord(
     var partTap: ((String) -> Boolean)? = null
 }
 
+private fun NodeRecord.fingerprint(): List<Any?> =
+    listOf(visible, boundProps, enabled, action, text, bounds, rowCount, notices, scene, canvas, fill, ink, shownProps, menu, menuBounds.toMap())
+
+/** Written on the screen's thread as it draws; [frame] and [changes] are read by a driver waiting on another thread for the screen to settle. */
 class ScreenRegistry {
     private val records = LinkedHashMap<String, NodeRecord>()
     var root: SpecNode? = null
+
+    @Volatile var frame: Long = 0L
+        private set
+
+    @Volatile var changes: Long = 0L
+        private set
+
+    @Volatile var isCountingFrames: Boolean = false
+
+    val waiters = MutableStateFlow(0)
+
+    fun countFrame() {
+        frame += 1
+    }
 
     fun recordOf(path: String): NodeRecord? = records[path]
 
     fun paths(): List<String> = records.keys.toList()
 
+    private fun changeOf(record: NodeRecord, change: NodeRecord.() -> Unit) {
+        val before = record.fingerprint()
+        record.change()
+        if (record.fingerprint() != before) changes += 1
+    }
+
     fun record(path: String, nodeId: String, type: String, update: NodeRecord.() -> Unit) {
-        records.getOrPut(path) { NodeRecord(path, nodeId, type) }.update()
+        val existing = records[path]
+        if (existing != null) return changeOf(existing, update)
+        records[path] = NodeRecord(path, nodeId, type).apply(update)
+        changes += 1
     }
 
     fun forget(path: String) {
-        records.remove(path)
+        if (records.remove(path) != null) changes += 1
     }
 
     fun update(path: String, change: NodeRecord.() -> Unit) {
-        records[path]?.change()
+        records[path]?.let { changeOf(it, change) }
+    }
+}
+
+/** Counts drawn frames on the screen's own frame clock, but only while a driver waits, so an idle screen is never redrawn for it. */
+@Composable
+internal fun ScreenFrameCounter(registry: ScreenRegistry) {
+    LaunchedEffect(registry) {
+        registry.isCountingFrames = true
+        try {
+            registry.waiters.collectLatest { count ->
+                while (count > 0) withFrameNanos { registry.countFrame() }
+            }
+        } finally {
+            registry.isCountingFrames = false
+        }
     }
 }
 

@@ -16,29 +16,45 @@ import androidx.compose.ui.unit.Density
 import org.jetbrains.skia.EncodedImageFormat
 import java.awt.Point
 import java.io.File
+import kotlin.concurrent.thread
 
 private const val FRAME_NANOS = 16_666_667L
+private const val TICK_MS = 8L
+private const val CLOSE_WAIT_MS = 2000L
 
-/** A headless screen a control port can drive, one window unit to one pixel, settled before and after every act. */
+/** A headless screen a control port can drive, one window unit to one pixel, drawing frames on its own like a live window. */
 @OptIn(ExperimentalComposeUiApi::class)
-class SceneSurface(spec: Spec, context: RenderContext, width: Int, height: Int) : ControlSurface, AutoCloseable {
+class SceneSurface(spec: Spec, context: RenderContext, width: Int, height: Int, ticking: Boolean = true) : ControlSurface, AutoCloseable {
     private val lock = Any()
     private var clock = 0L
+    @Volatile private var isOpen = true
+    @Volatile private var isFrozen = false
     private val scene = ImageComposeScene(width = width, height = height, density = Density(1f)) {
         CompositionLocalProvider(LocalDensity provides Density(1f)) {
             Box(Modifier.fillMaxSize()) { RenderSpec(spec = spec, context = context) }
         }
     }
+    private val ticker = if (ticking) thread(isDaemon = true, name = "scene-surface-frames") { drawFrames() } else null
 
     init {
-        settle()
+        synchronized(lock) { repeat(3) { drawFrame() } }
     }
 
-    private fun settle() {
-        repeat(3) {
-            clock += FRAME_NANOS
-            scene.render(clock).close()
+    private fun drawFrame() {
+        clock += FRAME_NANOS
+        scene.render(clock).close()
+    }
+
+    private fun drawFrames() {
+        while (isOpen) {
+            if (!isFrozen) synchronized(lock) { if (isOpen) drawFrame() }
+            Thread.sleep(TICK_MS)
         }
+    }
+
+    /** Stops drawing frames, as a minimised window does. */
+    fun freeze() {
+        isFrozen = true
     }
 
     override fun click(point: Point): String = onScreenThread {
@@ -60,9 +76,13 @@ class SceneSurface(spec: Spec, context: RenderContext, width: Int, height: Int) 
     }
 
     override fun <T> onScreenThread(work: () -> T): T = synchronized(lock) {
-        settle()
-        work().also { settle() }
+        if (ticker == null) repeat(3) { drawFrame() }
+        work()
     }
 
-    override fun close() = scene.close()
+    override fun close() {
+        isOpen = false
+        ticker?.join(CLOSE_WAIT_MS)
+        synchronized(lock) { scene.close() }
+    }
 }

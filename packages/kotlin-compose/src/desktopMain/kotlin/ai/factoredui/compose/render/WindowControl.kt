@@ -4,7 +4,9 @@ import ai.factoredui.compose.renderer.RenderContext
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
@@ -89,15 +91,55 @@ class WindowControl(private val context: RenderContext, private val surface: Con
     val routes: List<ControlRoute> = listOf(
         ControlRoute("tree", setOf("id", "text", "visible")) { query -> surface.onScreenThread { treeText(query) } },
         ControlRoute("get", setOf("path")) { query -> readBinding(query.required("path")) },
-        ControlRoute("set", setOf("path", "value")) { query -> setBinding(query.required("path"), query.required("value")) },
-        ControlRoute("click", setOf("id", "x", "y")) { query -> click(query) },
-        ControlRoute("wheel", setOf("x", "y", "notches")) { query -> surface.wheel(pointOf(query), query.required("notches").toInt()) },
+        ControlRoute("set", setOf("path", "value", SETTLE_MS)) { query -> settled(query) { setBinding(query.required("path"), query.required("value")) } },
+        ControlRoute("click", setOf("id", "x", "y", SETTLE_MS)) { query -> settled(query) { click(query) } },
+        ControlRoute("wheel", setOf("x", "y", "notches", SETTLE_MS)) { query -> settled(query) { surface.wheel(pointOf(query), query.required("notches").toInt()) } },
         ControlRoute("shot", setOf("file")) { query -> surface.shot(File(query.required("file"))) },
     )
 
     fun start(port: Int): HttpServer = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0).apply {
         routes.forEach { route -> createContext("/${route.name}") { exchange -> answer(exchange) { raw -> route.handle(RouteQuery(route.name, route.parameters, raw)) } } }
         start()
+    }
+
+    private val writes = Any()
+
+    /**
+     * A write returns once the screen has drawn it: a frame after it, then a frame that changed nothing in the tree, or the bound.
+     * The waiter count is changed on the screen's thread: the frame counter's coroutine resumes on whichever thread changes it.
+     */
+    private fun settled(query: RouteQuery, write: () -> String): String {
+        val boundMs = query.optional(SETTLE_MS)?.let { requireNotNull(it.toLongOrNull()?.takeIf { ms -> ms >= 0 }) { "$SETTLE_MS must be a whole number of milliseconds, not '$it'" } } ?: DEFAULT_SETTLE_MS
+        synchronized(writes) {
+            if (boundMs == 0L) return write()
+            val screen = context.screen
+            surface.onScreenThread { screen.waiters.update { it + 1 } }
+            try {
+                val startFrame = screen.frame
+                val result = write()
+                return "$result; ${quietAfter(startFrame, boundMs)}"
+            } finally {
+                surface.onScreenThread { screen.waiters.update { it - 1 } }
+            }
+        }
+    }
+
+    private fun quietAfter(startFrame: Long, boundMs: Long): String {
+        val screen = context.screen
+        val deadline = System.nanoTime() + boundMs * NANOS_PER_MS
+        var seenFrame = screen.frame
+        var seenChanges = screen.changes
+        while (screen.isCountingFrames && System.nanoTime() < deadline) {
+            Thread.sleep(SETTLE_POLL_MS)
+            val frame = screen.frame
+            if (frame == seenFrame) continue
+            val changes = screen.changes
+            if (frame >= startFrame + 2 && changes == seenChanges) return "settled frame=$frame"
+            seenFrame = frame
+            seenChanges = changes
+        }
+        val waited = if (screen.isCountingFrames) boundMs else 0L
+        return "unsettled after $waited ms frame=${screen.frame}"
     }
 
     private fun setBinding(path: String, value: String): String {
@@ -128,9 +170,14 @@ class WindowControl(private val context: RenderContext, private val surface: Con
         val shown = if (query.optional("visible") == "1") visibleOnly(drawn) ?: error("the root is not visible") else drawn
         query.optional("text")?.let { substring -> return JsonArray(idsShowing(shown, substring).map(::JsonPrimitive)).toString() }
         val subtree = query.optional("id")?.let { id -> findNode(shown, id) ?: error("no drawn node has id '$id'") } ?: shown
-        return screenJson(subtree).toString()
+        return JsonObject(mapOf("frame" to JsonPrimitive(context.screen.frame)) + screenJson(subtree)).toString()
     }
 }
+
+private const val SETTLE_MS = "settle_ms"
+private const val DEFAULT_SETTLE_MS = 2000L
+private const val SETTLE_POLL_MS = 2L
+private const val NANOS_PER_MS = 1_000_000L
 
 private fun mouseEvent(target: Component, id: Int, at: Point, modifiers: Int, clicks: Int) =
     MouseEvent(target, id, System.currentTimeMillis(), modifiers, at.x, at.y, clicks, false, if (id == MouseEvent.MOUSE_MOVED) MouseEvent.NOBUTTON else MouseEvent.BUTTON1)
