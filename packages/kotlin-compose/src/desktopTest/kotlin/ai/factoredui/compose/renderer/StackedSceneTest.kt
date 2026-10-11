@@ -13,7 +13,12 @@ import ai.factoredui.compose.stackedscene.mmToCanvas
 import ai.factoredui.compose.stackedscene.partBox
 import ai.factoredui.compose.stackedscene.partRectMm
 import ai.factoredui.compose.stackedscene.projectFaces
+import ai.factoredui.compose.stackedscene.flatViewOf
+import ai.factoredui.compose.stackedscene.partRectInView
 import androidx.compose.ui.unit.DpRect
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -106,9 +111,21 @@ private fun storeFor(view: String, picked: List<String> = emptyList(), scene: An
     "board" to mapOf("scene" to scene, "view" to view, "picked" to picked),
 )
 
-private fun storeWithScheme(scheme: Any?) = mapOf(
-    "board" to mapOf("scene" to stackedBoardText(), "view" to "plan", "picked" to emptyList<String>(), "scheme" to scheme),
+private fun storeWithScheme(scheme: Any?, view: String = "plan") = mapOf(
+    "board" to mapOf("scene" to stackedBoardText(), "view" to view, "picked" to emptyList<String>(), "scheme" to scheme),
 )
+
+private fun overlaps(first: DpRect, second: DpRect): Boolean =
+    first.left < second.right && second.left < first.right && first.top < second.bottom && second.top < first.bottom
+
+/** Where a flat view draws a part on screen, fitted to the drawing's own region as the renderer fits it. */
+private fun drawnRect(drawing: DpRect, scene: SceneView, partId: String, view: StackedDrawing): DpRect {
+    val fit = fitDrawing(scene, view, drawing.width.value.toDouble(), drawing.height.value.toDouble())
+    val rect = partRectInView(scene, scene.footprints!!.items.first { it.id == partId }, flatViewOf(view))
+    val (left, top) = mmToCanvas(fit, rect.x0, rect.y1)
+    val (right, bottom) = mmToCanvas(fit, rect.x1, rect.y0)
+    return DpRect((drawing.left.value + left).dp, (drawing.top.value + top).dp, (drawing.left.value + right).dp, (drawing.top.value + bottom).dp)
+}
 
 private fun selectedIn(store: Map<String, Any?>): Any? = (store["board"] as? Map<*, *>)?.get("selected")
 
@@ -258,6 +275,37 @@ class StackedSceneTest {
 
     @Test
     fun a_white_legend_swatch_on_a_dark_page_is_outlined_and_keeps_its_white_fill() = assertWhiteSwatchIsOutlined(SpecTheme.DARK)
+
+    @Test
+    fun the_legend_is_laid_out_beside_the_drawing_and_never_over_it_in_any_view_on_either_theme() {
+        listOf(SpecTheme.LIGHT, SpecTheme.DARK).forEach { theme ->
+            listOf("plan", "iso", "south", "west").forEach { view ->
+                driveScreen(SCHEMED, storeWithScheme("crowding", view), WIDTH, HEIGHT, theme).use { screen ->
+                    val legend = checkNotNull(screen.boundsOf(legendTag("board"))) { "$view drew no legend" }
+                    val drawing = checkNotNull(screen.boundsOf(partsTag("board"))) { "$view drew no drawing" }
+                    assertFalse(overlaps(legend, drawing), "$view dark=${theme.isDark}: legend $legend overlaps drawing $drawing")
+                    assertEquals("drawn=12 highlighted=0 faded=0 selected=", screen.stateDescriptionOf(partsTag("board")), view)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun in_the_west_elevation_the_far_left_pier_is_drawn_whole_and_clear_of_the_legend_on_either_theme() {
+        listOf(SpecTheme.LIGHT, SpecTheme.DARK).forEach { theme ->
+            driveScreen(SCHEMED, storeWithScheme("crowding", "west"), 640, 420, theme).use { screen ->
+                val legend = checkNotNull(screen.boundsOf(legendTag("board")))
+                val drawing = checkNotNull(screen.boundsOf(partsTag("board")))
+                val pier = drawnRect(drawing, board, "b4", StackedDrawing.WEST)
+                assertTrue(pier.left >= drawing.left && pier.right <= drawing.right && pier.top >= drawing.top && pier.bottom <= drawing.bottom, "the pier $pier lies inside the drawing $drawing")
+                assertFalse(overlaps(legend, pier), "dark=${theme.isDark}: the legend $legend covers the pier $pier")
+                val png = screen.frame().png
+                val pierPixel = pixelAt(png, pier.centreX() to pier.centreY()) and 0xFFFFFF
+                assertNotEquals(theme.ground.toRgbInt(), pierPixel, "the pier's centre is painted")
+                assertTrue(pier.left.value < drawing.left.value + drawing.width.value / 4, "b4 is the far-left pier: ${pier.left} in $drawing")
+            }
+        }
+    }
 
     @Test
     fun the_legend_panel_follows_the_light_theme_with_readable_labels_and_findable_swatches() = assertLegendFollowsTheme(SpecTheme.LIGHT)

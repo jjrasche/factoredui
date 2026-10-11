@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -158,27 +159,30 @@ private fun RenderSizedStackedScene(
     val values = remember(scene, props.colourScale) { props.colourScale?.let { partValues(scene, it.channel) }.orEmpty() }
     val scope = rememberCoroutineScope()
     val palette = stackedPalette(LocalSpecTheme.current)
-    BoxWithConstraints(modifier = sizeModifier.nodeTag(node.id).clipToBounds()) {
-        val widthPx = constraints.maxWidth.toDouble()
-        val heightPx = constraints.maxHeight.toDouble()
-        val fit = remember(scene, props.drawing, widthPx, heightPx) { fitDrawing(scene, props.drawing, widthPx, heightPx) }
-        val outlined = props.highlightIds + selection
-        Canvas(
-            modifier = Modifier.fillMaxSize()
-                .testTag(partsTag(node.id))
-                .semantics { stateDescription = drawnPartsSummary(parts, props.highlightIds, selection) }
-                .pointerInput(parts, fit, selection, selectedPath, props.onPartTap) {
-                    val target = PartTapTarget(node.id, scene, parts, props.drawing, fit, selection, selectedPath, props.onPartTap, context, scope) {
-                        localSelection = it
-                    }
-                    detectTapGestures(onTap = { offset -> applyPartTap(target, offset.x.toDouble(), offset.y.toDouble()) })
-                },
-        ) {
-            drawStackedScene(StackedPicture(scene, parts, props.drawing, fit, values, props.colourScale, outlined), palette)
+    Column(modifier = sizeModifier.nodeTag(node.id).clipToBounds()) {
+        BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
+            val widthPx = constraints.maxWidth.toDouble()
+            val heightPx = constraints.maxHeight.toDouble()
+            val fit = remember(scene, props.drawing, widthPx, heightPx) { fitDrawing(scene, props.drawing, widthPx, heightPx) }
+            val outlined = props.highlightIds + selection
+            Canvas(
+                modifier = Modifier.fillMaxSize()
+                    .clipToBounds()
+                    .testTag(partsTag(node.id))
+                    .semantics { stateDescription = drawnPartsSummary(parts, props.highlightIds, selection) }
+                    .pointerInput(parts, fit, selection, selectedPath, props.onPartTap) {
+                        val target = PartTapTarget(node.id, scene, parts, props.drawing, fit, selection, selectedPath, props.onPartTap, context, scope) {
+                            localSelection = it
+                        }
+                        detectTapGestures(onTap = { offset -> applyPartTap(target, offset.x.toDouble(), offset.y.toDouble()) })
+                    },
+            ) {
+                drawStackedScene(StackedPicture(scene, parts, props.drawing, fit, values, props.colourScale, outlined), palette)
+            }
+            StackedSceneNotes(scene, parts, props, fit, Modifier.align(Alignment.TopStart))
+            SelectedPartPopup(node.id, scene, parts, selection, props, fit, values)
         }
-        StackedSceneNotes(scene, parts, props, fit, Modifier.align(Alignment.TopStart))
-        ColourLegend(node.id, legendEntries(props.colourScale), Modifier.align(Alignment.BottomStart))
-        SelectedPartPopup(node.id, scene, parts, selection, props, fit, values)
+        ColourLegend(node.id, legendEntries(props.colourScale), Modifier.fillMaxWidth())
     }
 }
 

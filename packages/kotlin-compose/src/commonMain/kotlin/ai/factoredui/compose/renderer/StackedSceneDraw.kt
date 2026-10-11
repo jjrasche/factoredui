@@ -21,6 +21,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -192,9 +193,10 @@ internal fun ColourLegend(nodeId: String, entries: List<LegendEntry>, modifier: 
     if (entries.isEmpty()) return
     val theme = LocalSpecTheme.current
     val swatchEdge = theme.hairline
-    Column(
-        modifier = modifier.padding(8.dp).testTag(legendTag(nodeId)).background(theme.ground.copy(alpha = LEGEND_PANEL_ALPHA), RoundedCornerShape(5.dp)).padding(6.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+    FlowRow(
+        modifier = modifier.testTag(legendTag(nodeId)).background(theme.ground.copy(alpha = LEGEND_PANEL_ALPHA)).padding(horizontal = 8.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         entries.forEachIndexed { index, entry ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
