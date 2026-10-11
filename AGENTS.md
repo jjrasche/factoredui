@@ -35,6 +35,7 @@ column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer,
 - `feet_inches`: the value is millimetres ("9′ 0 1/16″").
 - `percent`: the value is a fraction (0.76 draws "76%").
 - `pounds`: the value is kilograms ("22.0 lb"; whole pounds from 100 lb).
+- An object carrying its own conversion: `"format": { "scale": 0.5, "decimals": 2, "suffix": " pts" }` draws the value times `scale`, rounded to `decimals` places, grouped in thousands as `usd` is, then `suffix` as written. 2469 draws "1,234.50 pts". `scale` is required. `decimals` is a whole number from 0 to 12 (default 0) and `suffix` defaults to nothing. Halves round away from zero, as the named formats round.
 
 A number bound with no format prints as a plain figure: 12.0 draws "12", 2440.5 draws "2440.5".
 
@@ -43,6 +44,7 @@ What a bad or missing value draws:
 - A null or absent value draws the dash "–", or the node's `missing` text (`"missing": "not measured"`, or a binding to a reason). With no format it draws the `missing` text or nothing.
 - A value that is not a number draws a notice: "usd needs a number, not '92.37'". Text that looks like a number is still text.
 - An unknown format name draws "unknown format 'usdd'".
+- An object format that cannot be read draws a notice and no figure, even when the value is missing: "format scale needs a number, not '0.0002'" (a scale written as text, or null, NaN, infinity or a bool), "format decimals needs a whole number from 0 to 12, not '1.5'", "format suffix needs text, not '3'", "format has no key 'decimal'; it reads scale, decimals and suffix". Under an object format a non-number value draws "format needs a number, not 'abc'". A figure too large to hold its decimals exactly draws "format cannot draw 10000000000 to 12 decimals exactly".
 - Never pre-format a number in the data when a format exists for it.
 
 ## Bindings
