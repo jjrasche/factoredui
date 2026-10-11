@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -312,9 +313,11 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
         node.children.forEach { child ->
             val childFlex = child.props.asLayoutProps().flex
             if (childFlex > 0f) {
-                Box(modifier = Modifier.weight(childFlex)) { RenderNode(node = child, context = context) }
+                Box(modifier = Modifier.weight(childFlex)) {
+                    CompositionLocalProvider(LocalWidthIsShared provides false) { RenderNode(node = child, context = context) }
+                }
             } else {
-                RenderNode(node = child, context = context)
+                CompositionLocalProvider(LocalWidthIsShared provides true) { RenderNode(node = child, context = context) }
             }
         }
     }
@@ -650,9 +653,13 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
             else -> TextAlign.Start
         },
         maxLines = props.numberOfLines ?: Int.MAX_VALUE,
-        modifier = Modifier.nodeTag(node.id),
+        modifier = Modifier.nodeTag(node.id).let { if (fillsItsSlot(props.align, LocalWidthIsShared.current)) it.fillMaxWidth() else it },
     )
 }
+
+internal val LocalWidthIsShared = staticCompositionLocalOf { false }
+
+private fun fillsItsSlot(align: String, isWidthShared: Boolean): Boolean = (align == "center" || align == "right") && !isWidthShared
 
 @Composable
 private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {

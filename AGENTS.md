@@ -29,6 +29,8 @@ column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer,
 
 ## Formatted figures
 
+`text` props: `value`, `variant` (`heading`, `subheading`, `body` (default), `caption`, `label`), `bold` (bool), `color`, `numberOfLines`, `align` (`left` (default), `center`, `right`), `format` and `missing`. A `center` or `right` text fills the width of its slot (its flex cell in a row, or the width its parent gives), so a column of figures lines up. In a row slot with no `flex` it keeps the width of its words, leaving the rest of the row to its flex siblings. Give a table's figure cells a `flex`.
+
 `text` prints its value as given unless it names a `format`. With a format, bind the raw number. The renderer draws the display string:
 
 - `usd`: dollars, cents only when there are cents ("$92.37", "$248", "$5,630.49").
