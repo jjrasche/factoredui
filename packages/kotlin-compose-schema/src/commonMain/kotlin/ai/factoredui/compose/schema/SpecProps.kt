@@ -10,6 +10,8 @@ import ai.factoredui.compose.layout.TileFootprint
 import ai.factoredui.compose.layout.TileInstance
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
+import ai.factoredui.compose.ramp.RampReading
+import ai.factoredui.compose.ramp.readColourRamp
 import ai.factoredui.compose.stackedscene.ColourScale
 import ai.factoredui.compose.stackedscene.ColourStop
 import ai.factoredui.compose.stackedscene.LevelFocus
@@ -1138,9 +1140,20 @@ private fun unknownColourReading(owner: String, raw: Any?): PropReading<Long> {
 }
 
 /** [owner] is how a note names the scale: the bare prop, or the scheme it was picked from. */
+private fun rampScaleReading(owner: String, channel: String, fields: Map<*, *>): PropReading<ColourScale?> {
+    val ramp = when (val reading = readColourRamp("$owner ramp", fields["ramp"])) {
+        is RampReading.Refused -> return PropReading(null, "${reading.notice}; $ONE_COLOUR")
+        is RampReading.Readable -> reading.ramp
+    }
+    val scale = ColourScale(channel, emptyList(), ramp.noFigure, ramp.noFigureText, fields["format"] as? String, ramp)
+    val bothNote = if ("stops" in fields) "$owner has both stops and a ramp; the ramp is used." else null
+    return PropReading(scale, bothNote)
+}
+
 private fun colourScaleReading(owner: String, raw: Any?): PropReading<ColourScale?> {
     val fields = raw as? Map<*, *> ?: return PropReading(null, "$owner must be an object naming a channel and its stops, not '$raw'; $ONE_COLOUR")
     val channel = fields["channel"] as? String ?: return PropReading(null, "$owner names no channel; $ONE_COLOUR")
+    if ("ramp" in fields) return rampScaleReading(owner, channel, fields)
     val rawStops = fields["stops"] as? List<*> ?: return PropReading(null, "$owner stops must be a list, not '${fields["stops"]}'; $ONE_COLOUR")
     val stops = rawStops.mapIndexed { index, stop -> stopReading(owner, index, stop) }
     val unknown = unknownColourReading(owner, fields["unknown_color"])

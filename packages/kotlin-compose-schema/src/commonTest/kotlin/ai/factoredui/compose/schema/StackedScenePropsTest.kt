@@ -1,5 +1,6 @@
 package ai.factoredui.compose.schema
 
+import ai.factoredui.compose.ramp.RampStop
 import ai.factoredui.compose.stackedscene.ColourScale
 import ai.factoredui.compose.stackedscene.ColourStop
 import ai.factoredui.compose.stackedscene.LevelFocus
@@ -38,6 +39,40 @@ private val HP = ColourScale("hp", listOf(ColourStop(null, 0xFF1565C0, "alive"))
 private fun schemeProps(scheme: Any?, schemes: Any? = SCHEMES) = resolveStackedSceneProps(mapOf("color_by" to mapOf("scheme" to scheme, "schemes" to schemes)))
 
 class StackedScenePropsTest {
+
+    @Test
+    fun a_color_by_with_a_ramp_instead_of_stops_reads_as_a_continuous_scale() {
+        val ramp = mapOf("stops" to listOf(listOf(0, "#000000"), listOf(1, "#ffffff")), "no_figure_text" to "none")
+        val scale = resolveStackedSceneProps(mapOf("color_by" to mapOf("channel" to "hp", "ramp" to ramp, "format" to "percent"))).colourScale!!
+        assertEquals("hp", scale.channel)
+        assertEquals(listOf(RampStop(0.0, 0xFF000000), RampStop(1.0, 0xFFFFFFFF)), scale.ramp!!.stops)
+        assertEquals("percent", scale.format)
+        assertEquals("none", scale.unknownLabel)
+    }
+
+    @Test
+    fun a_ramp_the_renderer_cannot_read_draws_one_colour_and_names_the_fault() {
+        val props = resolveStackedSceneProps(mapOf("color_by" to mapOf("channel" to "hp", "ramp" to mapOf("stops" to listOf(listOf(0, "#000000"))))))
+        assertEquals(null, props.colourScale)
+        assertEquals(listOf("color_by ramp needs at least 2 stops, not 1; parts are drawn in one colour."), props.notes)
+    }
+
+    @Test
+    fun a_scale_with_both_stops_and_a_ramp_uses_the_ramp_and_says_so() {
+        val ramp = mapOf("stops" to listOf(listOf(0, "#000000"), listOf(1, "#ffffff")))
+        val props = resolveStackedSceneProps(mapOf("color_by" to mapOf("channel" to "hp", "ramp" to ramp, "stops" to emptyList<Any>())))
+        assertEquals(2, props.colourScale!!.ramp!!.stops.size)
+        assertEquals(listOf("color_by has both stops and a ramp; the ramp is used."), props.notes)
+    }
+
+    @Test
+    fun a_scheme_may_carry_a_ramp_beside_a_scheme_of_stops() {
+        val ramp = mapOf("stops" to listOf(listOf(0, "#000000"), listOf(1, "#ffffff")))
+        val schemes = mapOf("threat" to THREAT_SCALE, "hp" to mapOf("channel" to "hp", "ramp" to ramp))
+        assertEquals(THREAT, schemeProps("threat", schemes).colourScale)
+        assertEquals("hp", schemeProps("hp", schemes).colourScale!!.channel)
+        assertEquals(emptyList(), schemeProps("hp", schemes).notes)
+    }
 
     @Test
     fun y_axis_reads_up_by_default_and_down_when_named() {

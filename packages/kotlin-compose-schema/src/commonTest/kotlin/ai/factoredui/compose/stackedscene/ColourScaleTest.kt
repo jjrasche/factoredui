@@ -1,5 +1,8 @@
 package ai.factoredui.compose.stackedscene
 
+import ai.factoredui.compose.ramp.ColourRamp
+import ai.factoredui.compose.ramp.RampLabel
+import ai.factoredui.compose.ramp.RampStop
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -113,6 +116,27 @@ class ColourScaleTest {
 
     @Test
     fun with_no_scale_the_popup_shows_no_value() = assertNull(partValueText(PartValue(0.1, "1 of 10", null), null))
+
+    @Test
+    fun a_ramp_scale_colours_a_part_by_interpolating_and_names_only_an_exact_legend_value() {
+        val ramp = ColourRamp(
+            stops = listOf(RampStop(0.0, 0xFF000000), RampStop(1.0, 0xFFFFFFFF)),
+            over = PURPLE,
+            noFigure = GREY,
+            labels = listOf(RampLabel(1.0, "full")),
+            overText = "over",
+            noFigureText = "no figure",
+        )
+        val scale = ColourScale("reach", emptyList(), GREY, "no figure", ramp = ramp)
+        assertEquals(0xFF000000, colourFor(scale, 0.0))
+        assertEquals(PURPLE, colourFor(scale, 1.3))
+        assertEquals(GREY, colourFor(scale, null))
+        assertEquals("full", bandLabelFor(scale, 1.0))
+        assertNull(bandLabelFor(scale, 0.5))
+        assertEquals("over", bandLabelFor(scale, 1.3))
+        assertEquals("no figure", bandLabelFor(scale, null))
+        assertEquals("100% · full", partValueText(PartValue(1.0, "1", null), scale.copy(format = "percent")))
+    }
 
     @Test
     fun a_hex_colour_reads_as_opaque_argb_and_anything_else_reads_as_nothing() {
