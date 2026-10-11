@@ -1,10 +1,26 @@
 package ai.factoredui.compose.schema
 
+import ai.factoredui.compose.format.MISSING_FIGURE
+import ai.factoredui.compose.format.dollarsText
+import ai.factoredui.compose.format.feetInches
+import ai.factoredui.compose.format.percentText
+import ai.factoredui.compose.format.poundsText
 import ai.factoredui.compose.layout.TileCell
 import ai.factoredui.compose.layout.TileFootprint
 import ai.factoredui.compose.layout.TileInstance
 import ai.factoredui.compose.layout.TileShape
 import ai.factoredui.compose.layout.TileView
+import ai.factoredui.compose.ramp.RampReading
+import ai.factoredui.compose.ramp.readColourRamp
+import ai.factoredui.compose.stackedscene.ColourScale
+import ai.factoredui.compose.stackedscene.ColourStop
+import ai.factoredui.compose.stackedscene.LevelFocus
+import ai.factoredui.compose.stackedscene.NEUTRAL_PART_COLOUR
+import ai.factoredui.compose.stackedscene.StackedDrawing
+import ai.factoredui.compose.stackedscene.YAxis
+import ai.factoredui.compose.stackedscene.colourOfHex
+import ai.factoredui.compose.stackedscene.stackedDrawingOf
+import ai.factoredui.compose.stackedscene.yAxisOf
 
 /**
  * Typed prop accessors for each SpecNodeType.
@@ -40,6 +56,8 @@ data class TextProps(
     val color: String? = null,
     val bold: Boolean = false,
     val numberOfLines: Int? = null,
+    val formatName: String? = null,
+    val missingText: String? = null,
 )
 
 enum class TextVariant { HEADING, SUBHEADING, BODY, CAPTION, LABEL }
@@ -63,7 +81,49 @@ fun Map<String, SpecValue>.asTextProps(): TextProps = TextProps(
     color = string("color"),
     bold = boolean("bold") ?: false,
     numberOfLines = int("numberOfLines"),
+    formatName = string("format"),
+    missingText = string("missing"),
 )
+
+enum class TextFormat(val wire: String) { USD("usd"), FEET_INCHES("feet_inches"), PERCENT("percent"), POUNDS("pounds") }
+
+fun textFormatOf(raw: Any?): TextFormat? = TextFormat.entries.firstOrNull { it.wire == raw }
+
+internal fun figureOf(value: Any?): Double? = (value as? Number)?.toDouble()?.takeIf { it.isFinite() }
+
+private fun unknownFormatNotice(rawFormat: Any) = "unknown format '$rawFormat'"
+
+private fun notANumberNotice(value: Any, format: TextFormat) = "${format.wire} needs a number, not '$value'"
+
+private const val MAX_EXACT_WHOLE = 9.0e15
+
+internal fun plainFigureText(figure: Double): String =
+    if (figure % 1.0 == 0.0 && kotlin.math.abs(figure) < MAX_EXACT_WHOLE) figure.toLong().toString() else figure.toString()
+
+private fun unformattedText(value: Any?, missingText: String?): String = when (value) {
+    null -> missingText ?: ""
+    is String -> value
+    is Number -> figureOf(value)?.let(::plainFigureText) ?: value.toString()
+    else -> ""
+}
+
+fun displayedText(value: Any?, rawFormat: Any?, missingText: String?): String {
+    if (rawFormat == null) return unformattedText(value, missingText)
+    if (rawFormat is Map<*, *>) return objectFormattedText(value, rawFormat, missingText)
+    val format = textFormatOf(rawFormat) ?: return unknownFormatNotice(rawFormat)
+    return formattedFigure(value, format, missingText)
+}
+
+fun formattedFigure(value: Any?, format: TextFormat, missingText: String? = null): String {
+    if (value == null) return missingText ?: MISSING_FIGURE
+    val figure = figureOf(value) ?: return notANumberNotice(value, format)
+    return when (format) {
+        TextFormat.USD -> dollarsText(figure)
+        TextFormat.FEET_INCHES -> feetInches(figure)
+        TextFormat.PERCENT -> percentText(figure)
+        TextFormat.POUNDS -> poundsText(figure)
+    }
+}
 
 // --- ButtonProps ---
 
@@ -470,6 +530,12 @@ fun Map<String, SpecValue>.asGeomapProps(): GeomapProps = GeomapProps(
 
 fun resolveGeomapSelection(resolvedSelected: Any?): Set<String> =
     (resolvedSelected as? List<*>).orEmpty().filterIsInstance<String>().toSet()
+
+fun selectionAfterTap(selection: Set<String>, tappedId: String?): List<String> = when {
+    tappedId == null -> emptyList()
+    selection == setOf(tappedId) -> emptyList()
+    else -> listOf(tappedId)
+}
 
 fun resolveGeomapGeometries(resolvedGeometries: Any?): Map<String, List<List<GeoPoint>>> =
     (resolvedGeometries as? Map<*, *>).orEmpty().mapNotNull { (key, rings) ->
@@ -986,3 +1052,169 @@ fun resolveTilemapSize(resolvedSize: Any?, fallback: Int): Int =
 
 fun resolveTileArea(resolvedArea: Any?): Double =
     (resolvedArea as? Number)?.toDouble()?.takeIf { it > 0.0 } ?: 1.0
+
+// --- Stacked scene props (scene node, view_state.renderer == "stacked_scene") ---
+
+private const val ALL_LEVELS = "all"
+
+/** [notes] name every prop the renderer could not read, so the screen says what it fell back to. */
+data class StackedSceneProps(
+    val drawing: StackedDrawing = StackedDrawing.PLAN,
+    val focus: LevelFocus = LevelFocus.AllLevels,
+    val showLower: Boolean = false,
+    val hideTopCount: Int = 0,
+    val highlightIds: Set<String> = emptySet(),
+    val onPartTap: String? = null,
+    val colourScale: ColourScale? = null,
+    val notes: List<String> = emptyList(),
+    val yAxis: YAxis? = null,
+    val activeScheme: String? = null,
+)
+
+private data class PropReading<T>(val value: T, val note: String? = null)
+
+private fun wholeNumberOf(raw: Any?): Int? =
+    (raw as? Number)?.toDouble()?.takeIf { it % 1.0 == 0.0 && it >= Int.MIN_VALUE && it <= Int.MAX_VALUE }?.toInt()
+
+private fun drawingReading(raw: Any?): PropReading<StackedDrawing> {
+    if (raw == null) return PropReading(StackedDrawing.PLAN)
+    val drawing = stackedDrawingOf(raw) ?: return PropReading(StackedDrawing.PLAN, "view '$raw' is not plan, iso, south or west; the plan is drawn.")
+    return PropReading(drawing)
+}
+
+private fun yAxisReading(raw: Any?): PropReading<YAxis?> {
+    if (raw == null) return PropReading(null)
+    val yAxis = yAxisOf(raw) ?: return PropReading(YAxis.UP, "y_axis '$raw' is not up or down; y is drawn up.")
+    return PropReading(yAxis)
+}
+
+private fun focusReading(raw: Any?): PropReading<LevelFocus> {
+    if (raw == null || raw == ALL_LEVELS) return PropReading(LevelFocus.AllLevels)
+    val level = wholeNumberOf(raw) ?: (raw as? String)?.toIntOrNull()
+        ?: return PropReading(LevelFocus.AllLevels, "focus '$raw' is not all or a stack level number; every level is shown.")
+    return PropReading(LevelFocus.OneLevel(level))
+}
+
+private fun showLowerReading(raw: Any?): PropReading<Boolean> = when (raw) {
+    null -> PropReading(false)
+    is Boolean -> PropReading(raw)
+    else -> PropReading(false, "show_lower must be true or false, not '$raw'; lower levels are hidden.")
+}
+
+private fun hideTopReading(raw: Any?): PropReading<Int> {
+    if (raw == null) return PropReading(0)
+    val count = (wholeNumberOf(raw) ?: (raw as? String)?.toIntOrNull())?.takeIf { it >= 0 } ?: return PropReading(0, "hide_top must be a whole number of levels, not '$raw'; no level is hidden.")
+    return PropReading(count)
+}
+
+private fun highlightReading(raw: Any?): PropReading<Set<String>> {
+    if (raw == null) return PropReading(emptySet())
+    val entries = raw as? List<*> ?: return PropReading(emptySet(), "highlight must be a list of part ids, not '$raw'; nothing is highlighted.")
+    val strays = entries.filterNot { it is String }
+    val strayNote = strays.takeIf { it.isNotEmpty() }?.let { "highlight entries that are not part ids are not drawn: ${it.joinToString()}" }
+    return PropReading(entries.filterIsInstance<String>().toSet(), strayNote)
+}
+
+private fun onPartTapReading(raw: Any?): PropReading<String?> = when (raw) {
+    null -> PropReading(null)
+    is String -> PropReading(raw)
+    else -> PropReading(null, "on_part_tap must be an action name, not '$raw'; a tap dispatches nothing.")
+}
+
+private const val ONE_COLOUR = "parts are drawn in one colour."
+
+private const val COLOR_BY = "color_by"
+
+private fun stopReading(owner: String, index: Int, raw: Any?): PropReading<ColourStop?> {
+    val fields = raw as? Map<*, *> ?: return PropReading(null, "$owner stop $index must be an object with a color, not '$raw'; it is left out.")
+    val colour = colourOfHex(fields["color"]) ?: return PropReading(null, "$owner stop $index color must be #rrggbb, not '${fields["color"]}'; it is left out.")
+    val rawUpTo = fields["up_to"]
+    val upTo = (rawUpTo as? Number)?.toDouble()
+    if (rawUpTo != null && upTo == null) return PropReading(null, "$owner stop $index up_to must be a number, not '$rawUpTo'; it is left out.")
+    return PropReading(ColourStop(upTo, colour, fields["label"] as? String))
+}
+
+private fun unknownColourReading(owner: String, raw: Any?): PropReading<Long> {
+    if (raw == null) return PropReading(NEUTRAL_PART_COLOUR)
+    val colour = colourOfHex(raw) ?: return PropReading(NEUTRAL_PART_COLOUR, "$owner unknown_color must be #rrggbb, not '$raw'; the neutral grey is used.")
+    return PropReading(colour)
+}
+
+/** [owner] is how a note names the scale: the bare prop, or the scheme it was picked from. */
+private fun rampScaleReading(owner: String, channel: String, fields: Map<*, *>): PropReading<ColourScale?> {
+    val ramp = when (val reading = readColourRamp("$owner ramp", fields["ramp"])) {
+        is RampReading.Refused -> return PropReading(null, "${reading.notice}; $ONE_COLOUR")
+        is RampReading.Readable -> reading.ramp
+    }
+    val scale = ColourScale(channel, emptyList(), ramp.noFigure, ramp.noFigureText, fields["format"] as? String, ramp)
+    val bothNote = if ("stops" in fields) "$owner has both stops and a ramp; the ramp is used." else null
+    return PropReading(scale, bothNote)
+}
+
+private fun colourScaleReading(owner: String, raw: Any?): PropReading<ColourScale?> {
+    val fields = raw as? Map<*, *> ?: return PropReading(null, "$owner must be an object naming a channel and its stops, not '$raw'; $ONE_COLOUR")
+    val channel = fields["channel"] as? String ?: return PropReading(null, "$owner names no channel; $ONE_COLOUR")
+    if ("ramp" in fields) return rampScaleReading(owner, channel, fields)
+    val rawStops = fields["stops"] as? List<*> ?: return PropReading(null, "$owner stops must be a list, not '${fields["stops"]}'; $ONE_COLOUR")
+    val stops = rawStops.mapIndexed { index, stop -> stopReading(owner, index, stop) }
+    val unknown = unknownColourReading(owner, fields["unknown_color"])
+    val scale = ColourScale(channel, stops.mapNotNull { it.value }, unknown.value, fields["unknown_label"] as? String, fields["format"] as? String)
+    val notes = (stops.mapNotNull { it.note } + listOfNotNull(unknown.note)).joinToString(" ").ifEmpty { null }
+    return PropReading(scale, notes)
+}
+
+/** An unbound or absent scheme picks the first scheme in the order the spec declares them. */
+private fun chosenSchemeReading(rawScheme: Any?, names: List<String>): PropReading<String?> {
+    val listed = names.joinToString()
+    return when {
+        rawScheme == null -> PropReading(names.first())
+        rawScheme !is String -> PropReading(null, "$COLOR_BY scheme must be one of the schemes $listed, not '$rawScheme'; $ONE_COLOUR")
+        rawScheme !in names -> PropReading(null, "$COLOR_BY scheme '$rawScheme' is not one of the schemes $listed; $ONE_COLOUR")
+        else -> PropReading(rawScheme)
+    }
+}
+
+private fun schemedScaleReading(fields: Map<*, *>): PropReading<ColourScale?> {
+    val schemes = fields["schemes"] as? Map<*, *> ?: return PropReading(null, "$COLOR_BY schemes must be an object of named scales, not '${fields["schemes"]}'; $ONE_COLOUR")
+    if (schemes.isEmpty()) return PropReading(null, "$COLOR_BY schemes holds no scheme; $ONE_COLOUR")
+    val chosen = chosenSchemeReading(fields["scheme"], schemes.keys.map { it.toString() })
+    val name = chosen.value ?: return PropReading(null, chosen.note)
+    return colourScaleReading("$COLOR_BY scheme '$name'", schemes[name])
+}
+
+private fun activeSchemeOf(raw: Any?): String? {
+    val fields = raw as? Map<*, *> ?: return null
+    val schemes = fields["schemes"] as? Map<*, *> ?: return null
+    if (schemes.isEmpty()) return null
+    return chosenSchemeReading(fields["scheme"], schemes.keys.map { it.toString() }).value
+}
+
+private fun colourByReading(raw: Any?): PropReading<ColourScale?> {
+    if (raw == null) return PropReading(null)
+    val fields = raw as? Map<*, *>
+    if (fields != null && "schemes" in fields) return schemedScaleReading(fields)
+    return colourScaleReading(COLOR_BY, raw)
+}
+
+fun resolveStackedSceneProps(resolved: Map<String, Any?>): StackedSceneProps {
+    val drawing = drawingReading(resolved["view"])
+    val focus = focusReading(resolved["focus"])
+    val showLower = showLowerReading(resolved["show_lower"])
+    val hideTop = hideTopReading(resolved["hide_top"])
+    val highlight = highlightReading(resolved["highlight"])
+    val onPartTap = onPartTapReading(resolved["on_part_tap"])
+    val colourScale = colourByReading(resolved[COLOR_BY])
+    val yAxis = yAxisReading(resolved["y_axis"])
+    return StackedSceneProps(
+        drawing = drawing.value,
+        focus = focus.value,
+        showLower = showLower.value,
+        hideTopCount = hideTop.value,
+        highlightIds = highlight.value,
+        onPartTap = onPartTap.value,
+        colourScale = colourScale.value,
+        notes = listOfNotNull(drawing.note, yAxis.note, focus.note, showLower.note, hideTop.note, highlight.note, onPartTap.note, colourScale.note),
+        yAxis = yAxis.value,
+        activeScheme = activeSchemeOf(resolved[COLOR_BY]),
+    )
+}

@@ -39,6 +39,7 @@ class RenderContext private constructor(
     val theme: SpecTheme,
     private val store: MutableStateFlow<Map<String, Any?>>,
     private val overlay: Map<String, Any?>,
+    val screen: ScreenRegistry,
 ) {
     constructor(
         actions: ActionRegistry = emptyMap(),
@@ -55,6 +56,7 @@ class RenderContext private constructor(
         theme = theme,
         store = MutableStateFlow(initialData),
         overlay = emptyMap(),
+        screen = ScreenRegistry(),
     )
 
     /** Reactive flow of the merged (overlay + store) data map. */
@@ -94,6 +96,7 @@ class RenderContext private constructor(
         theme = theme,
         store = store,
         overlay = overlay + extra,
+        screen = screen,
     )
 
     /** Recursively rebuild a nested map structure with [value] placed at [segments]. */
@@ -153,12 +156,34 @@ suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
     val resolvedParams = ai.factoredui.compose.schema.BindingResolver
         .resolveProps(actionRef.params, data)
     observability.onInteraction(nodeId, actionRef, resolvedParams)
+    if (actionRef.action == SET_BINDING_ACTION) {
+        writeBindingFrom(nodeId, resolvedParams)
+        return
+    }
     val handler = actions[actionRef.action]
     if (handler == null) {
         println("[factoredui] unknown action '${actionRef.action}' on node '$nodeId'")
         return
     }
     handler(resolvedParams)
+}
+
+const val SET_BINDING_ACTION = "set_binding"
+
+const val RENDERER_ERROR_PATH = "renderer.error"
+
+private fun setBindingRefusal(nodeId: String, params: Map<String, Any?>): String? {
+    val path = params["path"]
+    if (path !is String || path.isEmpty()) return "set_binding on '$nodeId' was refused: 'path' must be non-empty text, not '$path'"
+    if (SET_BINDING_VALUE !in params) return "set_binding on '$nodeId' was refused: it names no 'value' to write to '$path'"
+    return null
+}
+
+private const val SET_BINDING_VALUE = "value"
+
+private fun RenderContext.writeBindingFrom(nodeId: String, params: Map<String, Any?>) {
+    val refusal = setBindingRefusal(nodeId, params)
+    if (refusal != null) setBinding(RENDERER_ERROR_PATH, refusal) else setBinding(params["path"] as String, params[SET_BINDING_VALUE])
 }
 
 fun sceneIntentDispatcher(

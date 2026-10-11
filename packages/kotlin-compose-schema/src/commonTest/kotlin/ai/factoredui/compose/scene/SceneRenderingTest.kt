@@ -33,6 +33,15 @@ class SceneRenderingTest {
     }
 
     @Test
+    fun theStackedSceneRendererServesEveryRungWhenAskedForAndIsNeverTheDefault() {
+        val withStackedScene = STANDARD_RENDERER_CAPABILITIES + STACKED_SCENE_CAPABILITY
+        ZOOM_LADDER_FEET.forEach { level ->
+            assertEquals("stacked_scene", selectRenderer(withStackedScene, DeviceProfile.PHONE, level, "stacked_scene")?.id)
+            assertEquals(selectRenderer(STANDARD_RENDERER_CAPABILITIES, DeviceProfile.PHONE, level, null)?.id, selectRenderer(withStackedScene, DeviceProfile.PHONE, level, null)?.id)
+        }
+    }
+
+    @Test
     fun noRendererIsSelectedWhereNoneSupportsTheLevel() {
         assertNull(selectRenderer(registry, DeviceProfile.DESKTOP, 3, null))
         assertNull(selectRenderer(emptyList(), DeviceProfile.DESKTOP, 25, null))

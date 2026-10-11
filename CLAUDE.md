@@ -52,5 +52,6 @@ The rendering half of agent-platform. Kotlin Multiplatform + Compose Multiplatfo
 
 ## Project-Specific Notes
 
+- AGENTS.md — how to author a spec (read before building any screen)
 - CONCEPT.md — the thesis (5-piece autonomy loop, three-tier factor model, novelty)
 - packages/kotlin-compose/README.md — detailed setup / publish / consumer integration

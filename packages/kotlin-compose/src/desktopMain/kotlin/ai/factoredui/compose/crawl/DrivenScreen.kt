@@ -3,6 +3,7 @@ package ai.factoredui.compose.crawl
 import ai.factoredui.compose.observability.Observability
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
+import ai.factoredui.compose.renderer.SpecTheme
 import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.compose.testing.SpecShadowNode
@@ -32,10 +33,11 @@ class DrivenScreen internal constructor(
     store: Map<String, Any?>,
     private val widthDp: Int,
     private val heightDp: Int,
+    theme: SpecTheme,
 ) : AutoCloseable {
 
     private val recorded = mutableListOf<DrivenIntent>()
-    private val context = RenderContext(initialData = store, observability = IntentRecorder(recorded))
+    private val context = RenderContext(initialData = store, observability = IntentRecorder(recorded), theme = theme)
     private var clock = 0L
 
     private val scene = ImageComposeScene(width = widthDp, height = heightDp, density = Density(1f)) {
@@ -94,7 +96,66 @@ class DrivenScreen internal constructor(
         }
     }
 
+    fun tapText(text: String): List<DrivenIntent> {
+        settle()
+        val target = nodeShowing(text) ?: throw AssertionError("cannot tap '$text': no drawn node shows that text")
+        val centre = target.boundsInRoot.center
+        return tapAt(centre.x, centre.y)
+    }
+
+    /** Where the first drawn node showing [text], as a label or as the contents of a field, sits. */
+    fun boundsOfText(text: String): DpRect? {
+        settle()
+        val bounds = nodeShowing(text)?.boundsInRoot ?: return null
+        return DpRect(bounds.left.dp, bounds.top.dp, bounds.right.dp, bounds.bottom.dp)
+    }
+
+    private fun isShowing(node: androidx.compose.ui.semantics.SemanticsNode, text: String): Boolean =
+        node.config.getOrNull(SemanticsProperties.Text)?.any { it.text == text } == true ||
+            node.config.getOrNull(SemanticsProperties.EditableText)?.text == text
+
+    private fun nodeShowing(text: String): androidx.compose.ui.semantics.SemanticsNode? {
+        fun find(node: androidx.compose.ui.semantics.SemanticsNode): androidx.compose.ui.semantics.SemanticsNode? {
+            if (isShowing(node, text)) return node
+            return node.children.firstNotNullOfOrNull(::find)
+        }
+        return scene.semanticsOwners.firstNotNullOfOrNull { find(it.unmergedRootSemanticsNode) }
+    }
+
+    fun stateDescriptionOf(tag: String): String? {
+        settle()
+        return taggedNode(tag)?.config?.getOrNull(SemanticsProperties.StateDescription)
+    }
+
+    fun textsUnder(tag: String): List<String> {
+        settle()
+        val texts = mutableListOf<String>()
+        fun walk(node: androidx.compose.ui.semantics.SemanticsNode) {
+            node.config.getOrNull(SemanticsProperties.Text)?.forEach { texts += it.text }
+            node.children.forEach(::walk)
+        }
+        taggedNode(tag)?.let(::walk)
+        return texts
+    }
+
+    private fun taggedNode(tag: String): androidx.compose.ui.semantics.SemanticsNode? {
+        scene.semanticsOwners.forEach { owner ->
+            fun find(node: androidx.compose.ui.semantics.SemanticsNode): androidx.compose.ui.semantics.SemanticsNode? {
+                if (node.config.getOrNull(SemanticsProperties.TestTag) == tag) return node
+                return node.children.firstNotNullOfOrNull(::find)
+            }
+            find(owner.unmergedRootSemanticsNode)?.let { return it }
+        }
+        return null
+    }
+
     private fun regionOf(nodeId: String): DpRect? = regionsNow()[nodeId]
+
+    /** Where the first node drawn with this tag sits; a list template's node is its first row's. */
+    fun boundsOf(tag: String): DpRect? {
+        settle()
+        return regionOf(tag)
+    }
 
     private fun shadowNodes(): List<SpecShadowNode> {
         val regions = regionsNow()
@@ -140,7 +201,8 @@ fun driveScreen(
     store: Map<String, Any?> = emptyMap(),
     widthDp: Int = 400,
     heightDp: Int = 800,
-): DrivenScreen = DrivenScreen(spec, store, widthDp, heightDp)
+    theme: SpecTheme = SpecTheme.LIGHT,
+): DrivenScreen = DrivenScreen(spec, store, widthDp, heightDp, theme)
 
 private class IntentRecorder(private val into: MutableList<DrivenIntent>) : Observability {
     override fun onRender(nodeId: String) = Unit

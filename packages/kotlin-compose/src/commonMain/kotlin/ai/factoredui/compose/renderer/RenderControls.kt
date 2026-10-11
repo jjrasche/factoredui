@@ -52,6 +52,7 @@ internal fun RenderToggle(
     val writePath = node.props["value"]?.bindingPath()
     val current = (resolvedProps["value"] as? Boolean) ?: false
     val scope = rememberCoroutineScope()
+    RecordDrawn { text = props.label.ifEmpty { null } }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -120,8 +121,13 @@ internal fun RenderSelect(
     val currentLabel = props.options.firstOrNull { it.value == currentValue }?.label
         ?: props.placeholder.ifEmpty { "Select…" }
     val scope = rememberCoroutineScope()
-
     var expanded by remember { mutableStateOf(false) }
+    RecordDrawn {
+        text = currentLabel
+        shownProps = mapOf("options" to props.options.map { mapOf("value" to it.value, "label" to it.label) }, "value" to currentValue)
+        menu = if (expanded) props.options.map { MenuItemRecord(it.value, it.label, it.value == currentValue) } else null
+        if (!expanded) menuBounds.clear()
+    }
 
     Box(
         modifier = Modifier
@@ -139,6 +145,7 @@ internal fun RenderSelect(
         ) {
             props.options.forEach { option ->
                 DropdownMenuItem(
+                    modifier = Modifier.menuItemPlacement(option.value),
                     text = { Text(option.label) },
                     onClick = {
                         expanded = false

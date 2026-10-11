@@ -1,0 +1,94 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "stacked-board", "type": "column", "props": { "gap": 8, "padding": 8 },
+    "children": [
+      {
+        "id": "board", "type": "scene",
+        "props": {
+          "flex": 3,
+          "view_state": { "renderer": "stacked_scene" },
+          "scene_view": "{board.scene}",
+          "view": "{board.view}",
+          "highlight": "{board.picked}",
+          "selected": "{board.selected}",
+          "focus": "{board.focus}",
+          "show_lower": "{board.show_lower}",
+          "hide_top": "{board.hide_top}",
+          "color_by": {
+            "channel": "crowding",
+            "stops": [
+              { "up_to": 0.25, "color": "#3a7ca5", "label": "quiet" },
+              { "up_to": 1, "color": "#e0a030", "label": "busy" },
+              { "color": "#b03a2e", "label": "over full" }
+            ],
+            "unknown_color": "#9aa4ad",
+            "unknown_label": "no count",
+            "format": "percent"
+          }
+        }
+      },
+      {
+        "id": "levels", "type": "row", "props": { "gap": 8, "align": "center" },
+        "children": [
+          {
+            "id": "level-focus", "type": "select",
+            "props": {
+              "flex": 1, "value": "{board.focus}", "placeholder": "All levels",
+              "options": [
+                { "label": "All levels", "value": "all" },
+                { "label": "Blocks (level 0)", "value": "0" },
+                { "label": "Bars (level 1)", "value": "1" },
+                { "label": "Plates (level 2)", "value": "2" }
+              ]
+            }
+          },
+          {
+            "id": "level-hide", "type": "select",
+            "props": {
+              "flex": 1, "value": "{board.hide_top}", "placeholder": "Hide nothing",
+              "options": [
+                { "label": "Hide nothing", "value": "0" },
+                { "label": "Hide the plates", "value": "1" },
+                { "label": "Hide the plates and bars", "value": "2" }
+              ]
+            }
+          },
+          { "id": "level-lower", "type": "toggle", "props": { "flex": 1, "label": "Show levels below", "value": "{board.show_lower}" } }
+        ]
+      },
+      {
+        "id": "groups-head", "type": "row", "props": { "gap": 8, "padding": 8 },
+        "children": [
+          { "id": "groups-head-label", "type": "text", "props": { "value": "Group", "bold": true, "flex": 4 } },
+          { "id": "groups-head-count", "type": "text", "props": { "value": "Count", "bold": true, "flex": 1 } },
+          { "id": "groups-head-worth", "type": "text", "props": { "value": "Worth", "bold": true, "flex": 3 } }
+        ]
+      },
+      {
+        "id": "groups", "type": "list",
+        "props": {
+          "flex": 2,
+          "data": "{reports.groups.rows}",
+          "emptyText": "The host sent no groups.",
+          "itemTemplate": {
+            "id": "groups-row", "type": "card",
+            "props": { "padding": 8 },
+            "action": { "action": "set_binding", "params": { "path": "board.picked", "value": "{row.object_ids}" } },
+            "children": [
+              {
+                "id": "groups-row-line", "type": "row", "props": { "align": "center", "gap": 8 },
+                "children": [
+                  { "id": "groups-row-label", "type": "text", "props": { "value": "{row.label}", "flex": 4 } },
+                  { "id": "groups-row-count", "type": "text", "props": { "value": "{row.values.count}", "flex": 1 } },
+                  { "id": "groups-row-worth", "type": "text", "props": { "value": "{row.values.worth}", "missing": "{board.unknown_reason}", "flex": 3 } }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

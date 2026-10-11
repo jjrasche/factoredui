@@ -124,6 +124,8 @@ kotlin {
         }
 
         val desktopTest by getting {
+            // The engine's real scene payloads live once, beside the schema tests that read them.
+            resources.srcDir(file("../kotlin-compose-schema/src/jvmTest/resources"))
             dependencies {
                 implementation(compose.desktop.currentOs)
             }
@@ -249,6 +251,18 @@ tasks.register<JavaExec>("specWindow") {
         desktopNativeRuntime,
     )
     mainClass.set("ai.factoredui.compose.render.SpecWindowKt")
+}
+
+// A window launched from this folder holds only these copies, so a rebuild never fights a live window
+// over the build outputs. Launch: java -cp "build/spec-window/lib/*" ai.factoredui.compose.render.SpecWindowKt
+tasks.register<Sync>("installSpecWindow") {
+    group = "render"
+    description = "Copy the spec window and its runtime into build/spec-window/lib, to launch with plain java."
+    val desktopCompilation = kotlin.jvm("desktop").compilations.getByName("main")
+    from(tasks.named("desktopJar"))
+    from(desktopCompilation.runtimeDependencyFiles)
+    from(desktopNativeRuntime)
+    into(layout.buildDirectory.dir("spec-window/lib"))
 }
 
 tasks.register<JavaExec>("servedSceneReceipt") {
