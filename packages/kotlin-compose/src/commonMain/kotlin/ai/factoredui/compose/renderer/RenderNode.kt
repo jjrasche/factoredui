@@ -51,6 +51,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.toArgb
+import ai.factoredui.compose.ramp.ValueColourReading
+import ai.factoredui.compose.ramp.legibleInk
+import ai.factoredui.compose.ramp.readValueColour
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import ai.factoredui.compose.adapter.HostDataSource
@@ -641,11 +645,13 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
         "label" -> MaterialTheme.typography.labelMedium
         else -> MaterialTheme.typography.bodyMedium
     }
+    val paint = textPaint(props, LocalSpecTheme.current.ink)
+    val fills = fillsItsSlot(props.align, paint.background != null, LocalWidthIsShared.current)
     Text(
-        text = props.value,
+        text = paint.notice ?: props.value,
         style = style.copy(
             fontWeight = if (props.bold) FontWeight.Bold else null,
-            color = props.colorValue ?: LocalSpecTheme.current.ink,
+            color = paint.ink,
         ),
         textAlign = when (props.align) {
             "center" -> TextAlign.Center
@@ -653,13 +659,34 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
             else -> TextAlign.Start
         },
         maxLines = props.numberOfLines ?: Int.MAX_VALUE,
-        modifier = Modifier.nodeTag(node.id).let { if (fillsItsSlot(props.align, LocalWidthIsShared.current)) it.fillMaxWidth() else it },
+        modifier = Modifier.nodeTag(node.id)
+            .let { if (fills) it.fillMaxWidth() else it }
+            .let { modifier -> paint.background?.let { modifier.background(it).padding(horizontal = 6.dp, vertical = 2.dp) } ?: modifier },
     )
 }
 
 internal val LocalWidthIsShared = staticCompositionLocalOf { false }
 
-private fun fillsItsSlot(align: String, isWidthShared: Boolean): Boolean = (align == "center" || align == "right") && !isWidthShared
+private fun fillsItsSlot(align: String, hasBackground: Boolean, isWidthShared: Boolean): Boolean =
+    (align == "center" || align == "right" || hasBackground) && !isWidthShared
+
+private class TextPaint(val ink: Color, val background: Color?, val notice: String?)
+
+private fun argbOf(colour: Color): Long = colour.toArgb().toLong() and 0xFFFFFFFFL
+
+private fun textPaint(props: ResolvedTextProps, themeInk: Color): TextPaint {
+    val inkRamp = readValueColour("color_ramp", props.colorRamp)
+    val groundRamp = readValueColour("background_ramp", props.backgroundRamp)
+    val notice = listOfNotNull(inkRamp, groundRamp).filterIsInstance<ValueColourReading.Refused>().firstOrNull()?.notice
+    val preferred = (inkRamp as? ValueColourReading.Coloured)?.colour ?: props.colorValue?.let(::argbOf)
+    val background = (groundRamp as? ValueColourReading.Coloured)?.colour
+    val ink = when {
+        background != null -> Color(legibleInk(preferred, background))
+        preferred != null -> Color(preferred)
+        else -> themeInk
+    }
+    return TextPaint(ink, background?.let { Color(it) }, notice)
+}
 
 @Composable
 private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
@@ -873,6 +900,8 @@ private data class ResolvedTextProps(
     val colorValue: Color?,
     val bold: Boolean,
     val numberOfLines: Int?,
+    val colorRamp: Any?,
+    val backgroundRamp: Any?,
 )
 
 private fun Map<String, Any?>.displayedTextValue(): String = displayedText(get("value"), get("format"), get("missing") as? String)
@@ -884,6 +913,8 @@ private fun Map<String, Any?>.asResolvedTextProps(): ResolvedTextProps = Resolve
     colorValue = (get("color") as? String)?.parseColor(),
     bold = (get("bold") as? Boolean) ?: false,
     numberOfLines = (get("numberOfLines") as? Double)?.toInt(),
+    colorRamp = get("color_ramp"),
+    backgroundRamp = get("background_ramp"),
 )
 
 private data class ResolvedCardProps(

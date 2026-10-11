@@ -21,7 +21,6 @@ import ai.factoredui.compose.stackedscene.fitDrawing
 import ai.factoredui.compose.stackedscene.hitDrawnPart
 import ai.factoredui.compose.stackedscene.intrinsicSceneHeight
 import ai.factoredui.compose.stackedscene.isEveryPartFlat
-import ai.factoredui.compose.stackedscene.legendEntries
 import ai.factoredui.compose.stackedscene.partPopupLines
 import ai.factoredui.compose.stackedscene.partValueText
 import ai.factoredui.compose.stackedscene.partValues
@@ -73,6 +72,8 @@ internal fun popupTag(nodeId: String) = "$nodeId:popup"
 internal fun legendTag(nodeId: String) = "$nodeId:legend"
 
 internal fun legendSwatchTag(nodeId: String, index: Int) = "${legendTag(nodeId)}:swatch:$index"
+
+internal fun rampBarTag(nodeId: String) = "${legendTag(nodeId)}:ramp"
 
 private val NOTICE_INK = Color(0xFFB3261E)
 
@@ -182,7 +183,7 @@ private fun RenderSizedStackedScene(
             StackedSceneNotes(scene, parts, props, fit, Modifier.align(Alignment.TopStart))
             SelectedPartPopup(node.id, scene, parts, selection, props, fit, values)
         }
-        ColourLegend(node.id, legendEntries(props.colourScale), Modifier.fillMaxWidth())
+        ColourLegend(node.id, props.colourScale, Modifier.fillMaxWidth())
     }
 }
 

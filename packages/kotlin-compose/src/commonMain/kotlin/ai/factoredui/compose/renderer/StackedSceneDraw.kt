@@ -4,7 +4,11 @@ import ai.factoredui.compose.scene.SceneFootprint
 import ai.factoredui.compose.scene.SceneView
 import ai.factoredui.compose.stackedscene.CanvasFit
 import ai.factoredui.compose.stackedscene.ColourScale
+import ai.factoredui.compose.ramp.ColourRamp
 import ai.factoredui.compose.stackedscene.LegendEntry
+import ai.factoredui.compose.stackedscene.legendEntries
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.Layout
 import ai.factoredui.compose.stackedscene.PartValue
 import ai.factoredui.compose.stackedscene.StackedDrawing
 import ai.factoredui.compose.stackedscene.VisiblePart
@@ -189,19 +193,70 @@ internal fun PartPopup(tag: String, lines: List<String>, anchorX: Float, anchorY
 }
 
 @Composable
-internal fun ColourLegend(nodeId: String, entries: List<LegendEntry>, modifier: Modifier) {
-    if (entries.isEmpty()) return
+internal fun ColourLegend(nodeId: String, scale: ColourScale?, modifier: Modifier) {
+    val ramp = scale?.ramp
+    val entries = legendEntries(scale)
+    if (ramp == null && entries.isEmpty()) return
     val theme = LocalSpecTheme.current
-    val swatchEdge = theme.hairline
     FlowRow(
         modifier = modifier.testTag(legendTag(nodeId)).background(theme.ground.copy(alpha = LEGEND_PANEL_ALPHA)).padding(horizontal = 8.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        entries.forEachIndexed { index, entry ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(modifier = Modifier.size(12.dp).testTag(legendSwatchTag(nodeId, index)).background(Color(entry.colour)).border(SWATCH_EDGE, swatchEdge))
-                Text(entry.label, color = theme.ink, fontSize = 12.sp)
+        if (ramp != null) {
+            RampBar(nodeId, ramp, theme)
+            rampSwatches(ramp).forEachIndexed { index, entry -> LegendSwatch(legendSwatchTag(nodeId, index), entry, theme) }
+        } else {
+            entries.forEachIndexed { index, entry -> LegendSwatch(legendSwatchTag(nodeId, index), entry, theme) }
+        }
+    }
+}
+
+private fun rampSwatches(ramp: ColourRamp): List<LegendEntry> = listOfNotNull(
+    ramp.overText?.let { LegendEntry(ramp.over, it) },
+    ramp.noFigureText?.let { LegendEntry(ramp.noFigure, it) },
+)
+
+@Composable
+private fun LegendSwatch(tag: String, entry: LegendEntry, theme: SpecTheme) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(modifier = Modifier.size(12.dp).testTag(tag).background(Color(entry.colour)).border(SWATCH_EDGE, theme.hairline))
+        Text(entry.label, color = theme.ink, fontSize = 12.sp)
+    }
+}
+
+private val RAMP_BAR_WIDTH = 160.dp
+private val RAMP_BAR_HEIGHT = 12.dp
+private val RAMP_LABEL_MARGIN = 40.dp
+private val RAMP_LABEL_GAP = 2.dp
+
+private fun shareAlong(ramp: ColourRamp, at: Double): Float {
+    val first = ramp.stops.first().at
+    return ((at - first) / (ramp.stops.last().at - first)).coerceIn(0.0, 1.0).toFloat()
+}
+
+private fun rampBrush(ramp: ColourRamp): Brush =
+    Brush.horizontalGradient(*ramp.stops.map { shareAlong(ramp, it.at) to Color(it.colour) }.toTypedArray())
+
+/** The bar spans the first to the last stop value; each legend text is centred under its own value, so the margins hold the end labels' overhang. */
+@Composable
+private fun RampBar(nodeId: String, ramp: ColourRamp, theme: SpecTheme) {
+    Layout(
+        content = {
+            Box(Modifier.size(RAMP_BAR_WIDTH, RAMP_BAR_HEIGHT).testTag(rampBarTag(nodeId)).background(rampBrush(ramp)).border(SWATCH_EDGE, theme.hairline))
+            ramp.labels.forEach { Text(it.text, color = theme.ink, fontSize = 12.sp) }
+        },
+    ) { measurables, constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val bar = measurables.first().measure(loose)
+        val labels = measurables.drop(1).map { it.measure(loose) }
+        val margin = RAMP_LABEL_MARGIN.roundToPx()
+        val gap = RAMP_LABEL_GAP.roundToPx()
+        layout(bar.width + 2 * margin, bar.height + gap + (labels.maxOfOrNull { it.height } ?: 0)) {
+            bar.place(margin, 0)
+            labels.forEachIndexed { index, label ->
+                val centre = margin + shareAlong(ramp, ramp.labels[index].at) * bar.width
+                label.place((centre - label.width / 2f).roundToInt(), bar.height + gap)
             }
         }
     }
