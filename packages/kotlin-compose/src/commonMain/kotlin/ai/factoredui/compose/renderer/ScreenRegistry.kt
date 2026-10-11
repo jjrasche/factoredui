@@ -2,6 +2,7 @@ package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.schema.SpecNode
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -83,11 +84,12 @@ class NodeRecord(
     var shownProps: Map<String, Any?> = emptyMap()
     var menu: List<MenuItemRecord>? = null
     val menuBounds: MutableMap<String, ScreenBounds> = mutableMapOf()
+    val menuComposed: MutableSet<String> = mutableSetOf()
     var partTap: ((String) -> Boolean)? = null
 }
 
 private fun NodeRecord.fingerprint(): List<Any?> =
-    listOf(visible, boundProps, enabled, action, text, bounds, rowCount, notices, scene, canvas, fill, ink, shownProps, menu, menuBounds.toMap())
+    listOf(visible, boundProps, enabled, action, text, bounds, rowCount, notices, scene, canvas, fill, ink, shownProps, menu, menuBounds.toMap(), menuComposed.toSet())
 
 /** Written on the screen's thread as it draws; [frame] and [changes] are read by a driver waiting on another thread for the screen to settle. */
 class ScreenRegistry {
@@ -199,6 +201,22 @@ internal fun Modifier.canvasPlacement(): Modifier = composed {
         Modifier.onGloballyPositioned { coordinates ->
             val origin = coordinates.positionInWindow()
             registry.update(identity.path) { canvas = CanvasPlacement(origin.x / density.density, origin.y / density.density, density.density) }
+        }
+    }
+}
+
+/** A menu item is on screen from its composition to its disposal, which outlasts the menu's closing while it animates out. */
+@Composable
+internal fun RecordMenuItemLifetime(value: String) {
+    val registry = LocalScreenRegistry.current ?: return
+    val identity = LocalNodeIdentity.current ?: return
+    DisposableEffect(registry, identity.path, value) {
+        registry.update(identity.path) { menuComposed += value }
+        onDispose {
+            registry.update(identity.path) {
+                menuComposed -= value
+                menuBounds -= value
+            }
         }
     }
 }

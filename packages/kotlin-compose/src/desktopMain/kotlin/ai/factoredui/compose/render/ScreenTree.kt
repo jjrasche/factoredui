@@ -183,3 +183,20 @@ fun tapScenePart(registry: ScreenRegistry, target: ClickTarget.ScenePart): Strin
     require(tap(target.partId)) { "scene '${target.scenePath}' draws no part '${target.partId}'" }
     return "tapped ${target.scenePath}/${target.partId}"
 }
+
+private fun isMenuPlaced(record: NodeRecord): Boolean =
+    record.menu.orEmpty().all { item -> item.value in record.menuComposed && record.menuBounds[item.value]?.hasSize == true }
+
+private fun isMenuGone(record: NodeRecord): Boolean = record.menu == null && record.menuComposed.isEmpty()
+
+/** An open menu whose items are not all placed yet is a popup still composing. */
+fun openMenusArePlaced(registry: ScreenRegistry): Boolean = registry.paths().mapNotNull(registry::recordOf).all(::isMenuPlaced)
+
+/** What a click on [id] should leave on screen once drawn: a closed select open with its items placed, an option's menu closed. */
+fun clickOutcomeOf(registry: ScreenRegistry, id: String): (ScreenRegistry) -> Boolean {
+    val select = registry.recordOf(id)?.takeIf { it.type == "select" && it.menu == null }
+    if (select != null) return { screen -> screen.recordOf(id)?.let { it.menu != null && isMenuPlaced(it) } ?: true }
+    val selectPath = id.substringBefore("/option/", missingDelimiterValue = "")
+    if (selectPath.isNotEmpty() && registry.recordOf(selectPath)?.menu != null) return { screen -> screen.recordOf(selectPath)?.let(::isMenuGone) ?: true }
+    return { true }
+}

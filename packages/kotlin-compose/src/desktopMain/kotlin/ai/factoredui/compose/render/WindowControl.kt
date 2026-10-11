@@ -92,7 +92,7 @@ class WindowControl(private val context: RenderContext, private val surface: Con
         ControlRoute("tree", setOf("id", "text", "visible")) { query -> surface.onScreenThread { treeText(query) } },
         ControlRoute("get", setOf("path")) { query -> readBinding(query.required("path")) },
         ControlRoute("set", setOf("path", "value", SETTLE_MS)) { query -> settled(query) { setBinding(query.required("path"), query.required("value")) } },
-        ControlRoute("click", setOf("id", "x", "y", SETTLE_MS)) { query -> settled(query) { click(query) } },
+        ControlRoute("click", setOf("id", "x", "y", SETTLE_MS)) { query -> settled(query, clickExpectation(query)) { click(query) } },
         ControlRoute("wheel", setOf("x", "y", "notches", SETTLE_MS)) { query -> settled(query) { surface.wheel(pointOf(query), query.required("notches").toInt()) } },
         ControlRoute("shot", setOf("file")) { query -> surface.shot(File(query.required("file"))) },
     )
@@ -108,7 +108,7 @@ class WindowControl(private val context: RenderContext, private val surface: Con
      * A write returns once the screen has drawn it: a frame after it, then a frame that changed nothing in the tree, or the bound.
      * The waiter count is changed on the screen's thread: the frame counter's coroutine resumes on whichever thread changes it.
      */
-    private fun settled(query: RouteQuery, write: () -> String): String {
+    private fun settled(query: RouteQuery, expected: () -> Boolean = { true }, write: () -> String): String {
         val boundMs = query.optional(SETTLE_MS)?.let { requireNotNull(it.toLongOrNull()?.takeIf { ms -> ms >= 0 }) { "$SETTLE_MS must be a whole number of milliseconds, not '$it'" } } ?: DEFAULT_SETTLE_MS
         synchronized(writes) {
             if (boundMs == 0L) return write()
@@ -117,24 +117,35 @@ class WindowControl(private val context: RenderContext, private val surface: Con
             try {
                 val startFrame = screen.frame
                 val result = write()
-                return "$result; ${quietAfter(startFrame, boundMs)}"
+                return "$result; ${quietAfter(startFrame, boundMs, expected)}"
             } finally {
                 surface.onScreenThread { screen.waiters.update { it - 1 } }
             }
         }
     }
 
-    private fun quietAfter(startFrame: Long, boundMs: Long): String {
+    /** What a click by id is known to produce, read on the screen's thread: a closed select opens, an option closes its menu. */
+    private fun clickExpectation(query: RouteQuery): () -> Boolean {
+        val id = query.optional("id") ?: return { true }
+        val expectation = surface.onScreenThread { clickOutcomeOf(context.screen, id) }
+        return { surface.onScreenThread { expectation(context.screen) } }
+    }
+
+    private fun isScreenWhole(): Boolean = surface.onScreenThread { openMenusArePlaced(context.screen) }
+
+    private fun quietAfter(startFrame: Long, boundMs: Long, expected: () -> Boolean): String {
         val screen = context.screen
         val deadline = System.nanoTime() + boundMs * NANOS_PER_MS
         var seenFrame = screen.frame
         var seenChanges = screen.changes
+        var quietFrames = 0
         while (screen.isCountingFrames && System.nanoTime() < deadline) {
             Thread.sleep(SETTLE_POLL_MS)
             val frame = screen.frame
             if (frame == seenFrame) continue
             val changes = screen.changes
-            if (frame >= startFrame + 2 && changes == seenChanges) return "settled frame=$frame"
+            quietFrames = if (frame >= startFrame + 2 && changes == seenChanges) quietFrames + 1 else 0
+            if (quietFrames >= QUIET_FRAMES && expected() && isScreenWhole()) return "settled frame=$frame"
             seenFrame = frame
             seenChanges = changes
         }
@@ -177,6 +188,7 @@ class WindowControl(private val context: RenderContext, private val surface: Con
 private const val SETTLE_MS = "settle_ms"
 private const val DEFAULT_SETTLE_MS = 2000L
 private const val SETTLE_POLL_MS = 2L
+private const val QUIET_FRAMES = 2
 private const val NANOS_PER_MS = 1_000_000L
 
 private fun mouseEvent(target: Component, id: Int, at: Point, modifiers: Int, clicks: Int) =

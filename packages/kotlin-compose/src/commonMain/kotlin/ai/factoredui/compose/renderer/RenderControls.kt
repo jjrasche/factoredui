@@ -126,7 +126,6 @@ internal fun RenderSelect(
         text = currentLabel
         shownProps = mapOf("options" to props.options.map { mapOf("value" to it.value, "label" to it.label) }, "value" to currentValue)
         menu = if (expanded) props.options.map { MenuItemRecord(it.value, it.label, it.value == currentValue) } else null
-        if (!expanded) menuBounds.clear()
     }
 
     Box(
@@ -144,6 +143,7 @@ internal fun RenderSelect(
             onDismissRequest = { expanded = false },
         ) {
             props.options.forEach { option ->
+                RecordMenuItemLifetime(option.value)
                 DropdownMenuItem(
                     modifier = Modifier.menuItemPlacement(option.value),
                     text = { Text(option.label) },
