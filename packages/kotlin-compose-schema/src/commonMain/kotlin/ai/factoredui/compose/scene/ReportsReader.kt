@@ -10,8 +10,15 @@ class ReportsFormatException(message: String) : IllegalArgumentException(message
 
 data class ReportColumn(val id: String, val label: String, val unit: String?)
 
-/** A null value is a figure the engine does not know; it is never zero. */
-data class ReportRow(val id: String, val label: String, val objectIds: List<String>, val values: Map<String, Double?>)
+/** A null value is a figure the engine does not know; it is never zero. Absent fractions or flags stay absent, never empty. */
+data class ReportRow(
+    val id: String,
+    val label: String,
+    val objectIds: List<String>,
+    val values: Map<String, Double?>,
+    val fractions: Map<String, Double?>? = null,
+    val flags: Map<String, String?>? = null,
+)
 
 data class Report(val id: String, val label: String, val columns: List<ReportColumn>, val rows: List<ReportRow>)
 
@@ -28,7 +35,8 @@ fun readReports(text: String): List<Report> {
 }
 
 fun reportRowsState(report: Report): List<Map<String, Any?>> = report.rows.map { row ->
-    mapOf("id" to row.id, "label" to row.label, "object_ids" to row.objectIds, "values" to row.values)
+    val base = mapOf("id" to row.id, "label" to row.label, "object_ids" to row.objectIds, "values" to row.values)
+    base + listOfNotNull(row.fractions?.let { "fractions" to it }, row.flags?.let { "flags" to it })
 }
 
 fun reportsState(reports: List<Report>): Map<String, Map<String, Any?>> = reports.associate { report ->
@@ -72,6 +80,20 @@ private fun valuesAt(fields: JsonObject, where: String): Map<String, Double?> {
     return entries.mapValues { (key, figure) -> figureOf("$where.values.$key", figure) }
 }
 
+private fun objectFieldAt(fields: JsonObject, key: String, where: String): JsonObject? {
+    val field = present(fields, key) ?: return null
+    return field as? JsonObject ?: throw wrongType("$where.$key", "an object", field)
+}
+
+private fun fractionsAt(fields: JsonObject, where: String): Map<String, Double?>? =
+    objectFieldAt(fields, "fractions", where)?.mapValues { (key, figure) -> figureOf("$where.fractions.$key", figure) }
+
+private fun flagOf(where: String, element: JsonElement): String? =
+    if (element is JsonNull) null else textOf(element) ?: throw wrongType(where, "text or null", element)
+
+private fun flagsAt(fields: JsonObject, where: String): Map<String, String?>? =
+    objectFieldAt(fields, "flags", where)?.mapValues { (key, flag) -> flagOf("$where.flags.$key", flag) }
+
 private fun columnOf(where: String, column: JsonObject): ReportColumn {
     val id = idAt(column, where)
     return ReportColumn(id, textAt(column, "label", where) ?: id, textAt(column, "unit", where))
@@ -79,7 +101,14 @@ private fun columnOf(where: String, column: JsonObject): ReportColumn {
 
 private fun rowOf(where: String, row: JsonObject): ReportRow {
     val id = idAt(row, where)
-    return ReportRow(id, textAt(row, "label", where) ?: id, textsAt(row, "object_ids", "$where.object_ids"), valuesAt(row, where))
+    return ReportRow(
+        id,
+        textAt(row, "label", where) ?: id,
+        textsAt(row, "object_ids", "$where.object_ids"),
+        valuesAt(row, where),
+        fractionsAt(row, where),
+        flagsAt(row, where),
+    )
 }
 
 private fun reportOf(where: String, report: JsonObject): Report {

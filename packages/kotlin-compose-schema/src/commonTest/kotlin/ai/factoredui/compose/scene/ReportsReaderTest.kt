@@ -1,5 +1,6 @@
 package ai.factoredui.compose.scene
 
+import ai.factoredui.compose.schema.BindingResolver
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -81,6 +82,53 @@ class ReportsReaderTest {
             listOf(mapOf("id" to "total", "label" to "Total", "object_ids" to listOf("e1"), "values" to mapOf("quantity" to 31.0, "worth" to null))),
             reportRowsState(report),
         )
+    }
+
+    @Test
+    fun a_row_keeps_its_fractions_unclamped_and_its_flags_beside_its_values() {
+        val row = readReports(reportsWith("""[{"id":"r","label":"R","values":{"a":12},"fractions":{"a":1.3,"b":null},"flags":{"a":"over"}}]""")).single().rows.single()
+        assertEquals(mapOf("a" to 12.0), row.values)
+        assertEquals(mapOf("a" to 1.3, "b" to null), row.fractions)
+        assertEquals(mapOf("a" to "over"), row.flags)
+    }
+
+    @Test
+    fun fractions_and_flags_bind_from_a_list_row_as_row_fractions_and_row_flags() {
+        val state = reportsState(readReports(reportsWith("""[{"id":"r","label":"R","values":{"a":12},"fractions":{"a":1.3,"b":null},"flags":{"a":"over"}}]""")))
+        val row = (state.getValue("groups")["rows"] as List<*>).single()
+        val scope = mapOf("row" to row)
+        assertEquals(1.3, BindingResolver.resolveBinding("{row.fractions.a}", scope))
+        assertEquals(null, BindingResolver.resolveBinding("{row.fractions.b}", scope))
+        assertEquals("over", BindingResolver.resolveBinding("{row.flags.a}", scope))
+        assertEquals(12.0, BindingResolver.resolveBinding("{row.values.a}", scope))
+    }
+
+    @Test
+    fun a_row_with_no_fractions_or_flags_has_neither_key_and_reads_as_before() {
+        val report = readReports(reportsWith("""[{"id":"total","label":"Total","object_ids":["e1"],"values":{"quantity":31}}]""")).single()
+        assertEquals(null, report.rows.single().fractions)
+        assertEquals(null, report.rows.single().flags)
+        assertEquals(setOf("id", "label", "object_ids", "values"), reportRowsState(report).single().keys)
+    }
+
+    @Test
+    fun fractions_or_flags_that_are_not_an_object_and_entries_of_the_wrong_kind_are_refused_naming_where_they_sit() {
+        assertEquals("reports[0].rows[0].fractions must be an object, not [1]", refusal(reportsWith("""[{"id":"r","fractions":[1]}]""")))
+        assertEquals("reports[0].rows[0].fractions.a must be a number or null, not \"high\"", refusal(reportsWith("""[{"id":"r","fractions":{"a":"high"}}]""")))
+        assertEquals("reports[0].rows[0].flags must be an object, not \"over\"", refusal(reportsWith("""[{"id":"r","flags":"over"}]""")))
+        assertEquals("reports[0].rows[0].flags.a must be text or null, not 3", refusal(reportsWith("""[{"id":"r","flags":{"a":3}}]""")))
+    }
+
+    @Test
+    fun an_engine_row_with_per_column_limits_flags_and_fractions_exposes_its_fractions_and_flags() {
+        val engineRow = """
+            [{"id":"e17","label":"Panel","object_ids":["e17"],"values":{"supports":2,"span_mm":2287.5,"use":0.5695250804362033},
+              "limits":{"use":1},"flags":{"use":"within"},"fractions":{"use":0.5695250804362033}}]
+        """.trimIndent()
+        val columns = """[{"id":"use","label":"Use of the derived limit","unit":"1","kind":"ratio"}]"""
+        val row = (reportsState(readReports(reportsWith(engineRow, columns))).getValue("groups")["rows"] as List<*>).single() as Map<*, *>
+        assertEquals(mapOf("use" to 0.5695250804362033), row["fractions"])
+        assertEquals(mapOf("use" to "within"), row["flags"])
     }
 
     @Test

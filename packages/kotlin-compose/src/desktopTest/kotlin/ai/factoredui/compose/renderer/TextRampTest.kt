@@ -1,6 +1,8 @@
 package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.crawl.driveScreen
+import ai.factoredui.compose.scene.readReports
+import ai.factoredui.compose.scene.reportsState
 import ai.factoredui.compose.schema.Spec
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayInputStream
@@ -50,7 +52,31 @@ private fun inkSpec(colorRamp: String) = spec(
     """{"id":"page","type":"column","children":[{"id":"word","type":"text","props":{"value":"MMMM","variant":"heading","bold":true,"color_ramp":$colorRamp}}]}""",
 )
 
+private const val REPORT_ROWS = """[
+  {"id":"r1","label":"one","values":{"a":12},"fractions":{"a":1.3,"b":null},"flags":{"a":"over"}},
+  {"id":"r2","label":"two","values":{"a":7},"fractions":{"a":null}},
+  {"id":"r3","label":"three","values":{"a":5}}]"""
+
+private val REPORT_CELLS = spec(
+    """
+    {"id":"table","type":"column","children":[{"id":"rows","type":"list","props":{"data":"{reports.groups.rows}","itemTemplate":
+      {"id":"cell","type":"text","props":{"value":"{row.values.a}","background_ramp":{"value":"{row.fractions.a}","ramp":$RAMP}}}}}]}
+    """.trimIndent(),
+)
+
 class TextRampTest {
+
+    @Test
+    fun a_report_rows_fraction_fills_its_cell_through_the_ramp_and_a_null_or_absent_fraction_fills_no_figure() {
+        val reports = reportsState(readReports("""{"reports":[{"id":"groups","label":"Groups","columns":[],"rows":$REPORT_ROWS}]}"""))
+        driveScreen(REPORT_CELLS, mapOf("reports" to reports), 400, 300).use { screen ->
+            val image = ImageIO.read(ByteArrayInputStream(screen.frame().png))
+            listOf("12" to 0x5A1E8C, "7" to 0x9AA3AB, "5" to 0x9AA3AB).forEach { (text, colour) ->
+                val cell = checkNotNull(screen.boundsOfText(text)) { "'$text' was not drawn" }
+                assertWithinOneLevel(colour, image.getRGB(cell.left.value.toInt() + 1, cell.top.value.toInt() + 1) and 0xFFFFFF, text)
+            }
+        }
+    }
 
     @Test
     fun each_cell_fills_with_the_ramp_colour_of_its_number_exactly() {
