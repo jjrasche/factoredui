@@ -260,6 +260,27 @@ class StackedSceneTest {
     fun a_white_legend_swatch_on_a_dark_page_is_outlined_and_keeps_its_white_fill() = assertWhiteSwatchIsOutlined(SpecTheme.DARK)
 
     @Test
+    fun the_legend_panel_follows_the_light_theme_with_readable_labels_and_findable_swatches() = assertLegendFollowsTheme(SpecTheme.LIGHT)
+
+    @Test
+    fun the_legend_panel_follows_the_dark_theme_with_readable_labels_and_findable_swatches() = assertLegendFollowsTheme(SpecTheme.DARK)
+
+    private fun assertLegendFollowsTheme(theme: SpecTheme) {
+        driveScreen(SCHEMED, storeWithScheme("crowding"), WIDTH, HEIGHT, theme).use { screen ->
+            val png = screen.frame().png
+            val swatch = checkNotNull(screen.boundsOf(legendSwatchTag("board", 0))) { "the first swatch drew no region" }
+            val panel = pixelAt(png, swatch.left.value - 2 to swatch.centreY()) and 0xFFFFFF
+            val outline = pixelAt(png, swatch.left.value to swatch.centreY()) and 0xFFFFFF
+            assertTrue(contrastRatio(panel, theme.ground.toRgbInt()) < 1.5, "the panel ${panel.toString(16)} is the page's kind, not a box of the other one")
+            assertTrue(contrastRatio(outline, panel) >= 3.0, "the swatch outline contrasts ${contrastRatio(outline, panel)}:1 with the panel")
+            listOf("quiet", "busy", "over full", "no count").forEach { label ->
+                val ratio = inkContrastIn(png, checkNotNull(screen.boundsOfText(label)) { "'$label' was not drawn" })
+                assertTrue(ratio >= 4.5, "'$label' contrasts $ratio:1 with the panel")
+            }
+        }
+    }
+
+    @Test
     fun the_unknown_swatch_is_outlined_too() {
         driveScreen(WHITE_LEGEND, storeFor("plan"), WIDTH, HEIGHT).use { screen ->
             val png = screen.frame().png

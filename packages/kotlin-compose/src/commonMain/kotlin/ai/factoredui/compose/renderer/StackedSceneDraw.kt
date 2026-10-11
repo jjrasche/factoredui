@@ -152,6 +152,7 @@ private val POPUP_SUBTLE_INK = Color(0xFF44505A)
 private const val POPUP_GAP_PX = 12
 private const val POPUP_EDGE_PX = 4
 private val SWATCH_EDGE = 1.dp
+private const val LEGEND_PANEL_ALPHA = 0.97f
 
 internal fun popupOrigin(anchorX: Float, anchorY: Float, width: Int, height: Int, boundsWidth: Int): Pair<Int, Int> {
     val x = (anchorX - width / 2f).roundToInt().coerceAtMost(boundsWidth - width - POPUP_EDGE_PX).coerceAtLeast(POPUP_EDGE_PX)
@@ -189,15 +190,16 @@ internal fun PartPopup(tag: String, lines: List<String>, anchorX: Float, anchorY
 @Composable
 internal fun ColourLegend(nodeId: String, entries: List<LegendEntry>, modifier: Modifier) {
     if (entries.isEmpty()) return
-    val swatchEdge = LocalSpecTheme.current.hairline
+    val theme = LocalSpecTheme.current
+    val swatchEdge = theme.hairline
     Column(
-        modifier = modifier.padding(8.dp).testTag(legendTag(nodeId)).background(POPUP_BACKGROUND, RoundedCornerShape(5.dp)).padding(6.dp),
+        modifier = modifier.padding(8.dp).testTag(legendTag(nodeId)).background(theme.ground.copy(alpha = LEGEND_PANEL_ALPHA), RoundedCornerShape(5.dp)).padding(6.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         entries.forEachIndexed { index, entry ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Box(modifier = Modifier.size(12.dp).testTag(legendSwatchTag(nodeId, index)).background(Color(entry.colour)).border(SWATCH_EDGE, swatchEdge))
-                Text(entry.label, color = POPUP_INK, fontSize = 12.sp)
+                Text(entry.label, color = theme.ink, fontSize = 12.sp)
             }
         }
     }

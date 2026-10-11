@@ -45,13 +45,13 @@ private fun linear(channel: Int): Double = (channel / 255.0).let { if (it <= 0.0
 
 private fun luminance(rgb: Int): Double = 0.2126 * linear((rgb shr 16) and 0xFF) + 0.7152 * linear((rgb shr 8) and 0xFF) + 0.0722 * linear(rgb and 0xFF)
 
-private fun contrastRatio(first: Int, second: Int): Double {
+internal fun contrastRatio(first: Int, second: Int): Double {
     val (darker, lighter) = listOf(luminance(first), luminance(second)).sorted()
     return (lighter + 0.05) / (darker + 0.05)
 }
 
 /** The background is the commonest colour in the text's middle band; the ink is the pixel that differs from it most. */
-private fun inkContrastIn(png: ByteArray, box: DpRect): Double {
+internal fun inkContrastIn(png: ByteArray, box: DpRect): Double {
     val image = ImageIO.read(ByteArrayInputStream(png))
     val height = box.bottom.value - box.top.value
     val width = box.right.value - box.left.value
