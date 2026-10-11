@@ -24,7 +24,76 @@ private val SCALE = ColourScale(
     format = "percent",
 )
 
+private val THREAT_SCALE = mapOf("channel" to "threat", "stops" to listOf(mapOf("up_to" to 0.5, "color" to "#2e7d32", "label" to "calm"), mapOf("color" to "#c62828", "label" to "danger")))
+
+private val HP_SCALE = mapOf("channel" to "hp", "stops" to listOf(mapOf("color" to "#1565c0", "label" to "alive")), "format" to "percent")
+
+private val SCHEMES = mapOf("threat" to THREAT_SCALE, "hp" to HP_SCALE)
+
+private val THREAT = ColourScale("threat", listOf(ColourStop(0.5, 0xFF2E7D32, "calm"), ColourStop(null, 0xFFC62828, "danger")))
+
+private val HP = ColourScale("hp", listOf(ColourStop(null, 0xFF1565C0, "alive")), format = "percent")
+
+private fun schemeProps(scheme: Any?, schemes: Any? = SCHEMES) = resolveStackedSceneProps(mapOf("color_by" to mapOf("scheme" to scheme, "schemes" to schemes)))
+
 class StackedScenePropsTest {
+
+    @Test
+    fun a_color_by_with_schemes_colours_by_the_scheme_it_names() {
+        val props = schemeProps("hp")
+        assertEquals(HP, props.colourScale)
+        assertEquals(emptyList(), props.notes)
+    }
+
+    @Test
+    fun each_scheme_is_a_whole_scale_with_its_own_channel_stops_legend_and_format() {
+        assertEquals(THREAT, schemeProps("threat").colourScale)
+        assertEquals(HP, schemeProps("hp").colourScale)
+    }
+
+    @Test
+    fun a_missing_scheme_colours_by_the_first_scheme_in_declared_order_with_no_note() {
+        val unnamed = resolveStackedSceneProps(mapOf("color_by" to mapOf("schemes" to SCHEMES)))
+        assertEquals(THREAT, unnamed.colourScale)
+        assertEquals(emptyList(), unnamed.notes)
+        val unbound = schemeProps(null)
+        assertEquals(THREAT, unbound.colourScale)
+        assertEquals(emptyList(), unbound.notes)
+    }
+
+    @Test
+    fun a_scheme_the_schemes_do_not_hold_draws_one_colour_and_names_the_schemes() {
+        val props = schemeProps("mana")
+        assertEquals(null, props.colourScale)
+        assertEquals(listOf("color_by scheme 'mana' is not one of the schemes threat, hp; parts are drawn in one colour."), props.notes)
+    }
+
+    @Test
+    fun a_scheme_that_is_not_a_name_draws_one_colour_and_names_the_schemes() {
+        val props = schemeProps(3)
+        assertEquals(null, props.colourScale)
+        assertEquals(listOf("color_by scheme must be one of the schemes threat, hp, not '3'; parts are drawn in one colour."), props.notes)
+    }
+
+    @Test
+    fun schemes_that_are_not_an_object_of_scales_or_hold_none_draw_one_colour_and_say_so() {
+        assertEquals(listOf("color_by schemes must be an object of named scales, not 'threat'; parts are drawn in one colour."), schemeProps("threat", schemes = "threat").notes)
+        assertEquals(listOf("color_by schemes holds no scheme; parts are drawn in one colour."), schemeProps(null, schemes = emptyMap<String, Any>()).notes)
+    }
+
+    @Test
+    fun a_fault_inside_the_chosen_scheme_is_named_with_that_scheme() {
+        val broken = mapOf("threat" to THREAT_SCALE, "hp" to mapOf("stops" to emptyList<Any>()))
+        assertEquals(listOf("color_by scheme 'hp' names no channel; parts are drawn in one colour."), schemeProps("hp", schemes = broken).notes)
+        val badStop = mapOf("hp" to mapOf("channel" to "hp", "stops" to listOf(mapOf("color" to "blue"))))
+        assertEquals(listOf("color_by scheme 'hp' stop 0 color must be #rrggbb, not 'blue'; it is left out."), schemeProps("hp", schemes = badStop).notes)
+    }
+
+    @Test
+    fun a_fault_inside_a_scheme_not_chosen_is_not_reported() {
+        val broken = mapOf("threat" to THREAT_SCALE, "hp" to mapOf("stops" to emptyList<Any>()))
+        assertEquals(emptyList(), schemeProps("threat", schemes = broken).notes)
+    }
 
     @Test
     fun well_formed_props_read_with_no_notes() {

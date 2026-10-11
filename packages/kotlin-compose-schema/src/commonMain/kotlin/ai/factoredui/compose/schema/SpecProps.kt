@@ -1110,31 +1110,59 @@ private fun onPartTapReading(raw: Any?): PropReading<String?> = when (raw) {
 
 private const val ONE_COLOUR = "parts are drawn in one colour."
 
-private fun stopReading(index: Int, raw: Any?): PropReading<ColourStop?> {
-    val fields = raw as? Map<*, *> ?: return PropReading(null, "color_by stop $index must be an object with a color, not '$raw'; it is left out.")
-    val colour = colourOfHex(fields["color"]) ?: return PropReading(null, "color_by stop $index color must be #rrggbb, not '${fields["color"]}'; it is left out.")
+private const val COLOR_BY = "color_by"
+
+private fun stopReading(owner: String, index: Int, raw: Any?): PropReading<ColourStop?> {
+    val fields = raw as? Map<*, *> ?: return PropReading(null, "$owner stop $index must be an object with a color, not '$raw'; it is left out.")
+    val colour = colourOfHex(fields["color"]) ?: return PropReading(null, "$owner stop $index color must be #rrggbb, not '${fields["color"]}'; it is left out.")
     val rawUpTo = fields["up_to"]
     val upTo = (rawUpTo as? Number)?.toDouble()
-    if (rawUpTo != null && upTo == null) return PropReading(null, "color_by stop $index up_to must be a number, not '$rawUpTo'; it is left out.")
+    if (rawUpTo != null && upTo == null) return PropReading(null, "$owner stop $index up_to must be a number, not '$rawUpTo'; it is left out.")
     return PropReading(ColourStop(upTo, colour, fields["label"] as? String))
 }
 
-private fun unknownColourReading(raw: Any?): PropReading<Long> {
+private fun unknownColourReading(owner: String, raw: Any?): PropReading<Long> {
     if (raw == null) return PropReading(NEUTRAL_PART_COLOUR)
-    val colour = colourOfHex(raw) ?: return PropReading(NEUTRAL_PART_COLOUR, "color_by unknown_color must be #rrggbb, not '$raw'; the neutral grey is used.")
+    val colour = colourOfHex(raw) ?: return PropReading(NEUTRAL_PART_COLOUR, "$owner unknown_color must be #rrggbb, not '$raw'; the neutral grey is used.")
     return PropReading(colour)
 }
 
-private fun colourScaleReading(raw: Any?): PropReading<ColourScale?> {
-    if (raw == null) return PropReading(null)
-    val fields = raw as? Map<*, *> ?: return PropReading(null, "color_by must be an object naming a channel and its stops, not '$raw'; $ONE_COLOUR")
-    val channel = fields["channel"] as? String ?: return PropReading(null, "color_by names no channel; $ONE_COLOUR")
-    val rawStops = fields["stops"] as? List<*> ?: return PropReading(null, "color_by stops must be a list, not '${fields["stops"]}'; $ONE_COLOUR")
-    val stops = rawStops.mapIndexed(::stopReading)
-    val unknown = unknownColourReading(fields["unknown_color"])
+/** [owner] is how a note names the scale: the bare prop, or the scheme it was picked from. */
+private fun colourScaleReading(owner: String, raw: Any?): PropReading<ColourScale?> {
+    val fields = raw as? Map<*, *> ?: return PropReading(null, "$owner must be an object naming a channel and its stops, not '$raw'; $ONE_COLOUR")
+    val channel = fields["channel"] as? String ?: return PropReading(null, "$owner names no channel; $ONE_COLOUR")
+    val rawStops = fields["stops"] as? List<*> ?: return PropReading(null, "$owner stops must be a list, not '${fields["stops"]}'; $ONE_COLOUR")
+    val stops = rawStops.mapIndexed { index, stop -> stopReading(owner, index, stop) }
+    val unknown = unknownColourReading(owner, fields["unknown_color"])
     val scale = ColourScale(channel, stops.mapNotNull { it.value }, unknown.value, fields["unknown_label"] as? String, fields["format"] as? String)
     val notes = (stops.mapNotNull { it.note } + listOfNotNull(unknown.note)).joinToString(" ").ifEmpty { null }
     return PropReading(scale, notes)
+}
+
+/** An unbound or absent scheme picks the first scheme in the order the spec declares them. */
+private fun chosenSchemeReading(rawScheme: Any?, names: List<String>): PropReading<String?> {
+    val listed = names.joinToString()
+    return when {
+        rawScheme == null -> PropReading(names.first())
+        rawScheme !is String -> PropReading(null, "$COLOR_BY scheme must be one of the schemes $listed, not '$rawScheme'; $ONE_COLOUR")
+        rawScheme !in names -> PropReading(null, "$COLOR_BY scheme '$rawScheme' is not one of the schemes $listed; $ONE_COLOUR")
+        else -> PropReading(rawScheme)
+    }
+}
+
+private fun schemedScaleReading(fields: Map<*, *>): PropReading<ColourScale?> {
+    val schemes = fields["schemes"] as? Map<*, *> ?: return PropReading(null, "$COLOR_BY schemes must be an object of named scales, not '${fields["schemes"]}'; $ONE_COLOUR")
+    if (schemes.isEmpty()) return PropReading(null, "$COLOR_BY schemes holds no scheme; $ONE_COLOUR")
+    val chosen = chosenSchemeReading(fields["scheme"], schemes.keys.map { it.toString() })
+    val name = chosen.value ?: return PropReading(null, chosen.note)
+    return colourScaleReading("$COLOR_BY scheme '$name'", schemes[name])
+}
+
+private fun colourByReading(raw: Any?): PropReading<ColourScale?> {
+    if (raw == null) return PropReading(null)
+    val fields = raw as? Map<*, *>
+    if (fields != null && "schemes" in fields) return schemedScaleReading(fields)
+    return colourScaleReading(COLOR_BY, raw)
 }
 
 fun resolveStackedSceneProps(resolved: Map<String, Any?>): StackedSceneProps {
@@ -1144,7 +1172,7 @@ fun resolveStackedSceneProps(resolved: Map<String, Any?>): StackedSceneProps {
     val hideTop = hideTopReading(resolved["hide_top"])
     val highlight = highlightReading(resolved["highlight"])
     val onPartTap = onPartTapReading(resolved["on_part_tap"])
-    val colourScale = colourScaleReading(resolved["color_by"])
+    val colourScale = colourByReading(resolved[COLOR_BY])
     return StackedSceneProps(
         drawing = drawing.value,
         focus = focus.value,
