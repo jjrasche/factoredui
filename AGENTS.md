@@ -55,7 +55,7 @@ A string `"{path.to.value}"` is resolved at render time from one state map. Insi
 - `itemTemplate` is one node drawn once per row, with the row bound as both `{row.x}` and `{item.x}`.
 - `emptyText` (text) is drawn in place of the rows when there are none. With no `emptyText` an empty list draws nothing.
 - `maxItems` (whole number) draws only that many rows.
-- `stacked` (bool, default false) lays the rows out in a plain column instead of a lazy list that scrolls itself. A list inside a `scrollview` must set `"stacked": true`. A lazy list there is measured against unbounded height and the render fails. Without `stacked`, give the list a bounded height: put it in a `column` with a `flex`, outside any scroll.
+- `stacked` (bool, default false) lays the rows out in a plain column instead of a lazy list that scrolls itself. A list whose height is unbounded, as inside a `scrollview`, stacks its rows (or children) whether or not it says so, and takes the height of its content. A list with a bounded height, such as one with a `flex` in a `column` outside any scroll, is lazy and scrolls itself.
 - `flex` (number) on a child of a `column` or `row` gives it that share of the space left over, as a weight. A `column` with a flex child fills its height. Other layout props: `gap` and `padding` (whole numbers), `align` (`start`, `center`, `end`, `stretch`), `justify` (`start`, `center`, `end`, `between`, `around`) and `background` (a theme token `ground`, `surface`, `ink` or `muted`, or a colour).
 - A `scene` inside a `scrollview` takes the shape of its window at the available width (at least 200 tall, at most 1.5 times its width) instead of filling the height.
 - Controls (`toggle`, `select`, `slider`, `textinput`) write their new value back to the bound path.

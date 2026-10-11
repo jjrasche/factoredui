@@ -514,8 +514,16 @@ private fun RenderList(node: SpecNode, context: RenderContext) {
 // template over uniform data is the wrong shape.
 @Composable
 private fun RenderChildList(node: SpecNode, context: RenderContext) {
-    LazyColumn(modifier = Modifier.nodeTag(node.id)) {
-        items(node.children) { child -> RenderNode(node = child, context = context) }
+    BoxWithConstraints(propagateMinConstraints = true) {
+        if (constraints.hasBoundedHeight) {
+            LazyColumn(modifier = Modifier.nodeTag(node.id)) {
+                items(node.children) { child -> RenderNode(node = child, context = context) }
+            }
+        } else {
+            Column(modifier = Modifier.nodeTag(node.id)) {
+                node.children.forEach { child -> RenderNode(node = child, context = context) }
+            }
+        }
     }
 }
 
@@ -584,14 +592,26 @@ private fun RenderRows(rows: List<Any?>, props: ListProps, context: RenderContex
     }
 
     val itemTemplate = props.itemTemplate ?: return
-    if (props.stacked) {
-        Column {
-            visibleRows.forEach { row ->
-                RenderNode(node = itemTemplate, context = context.withAdditionalData(mapOf("row" to row, "item" to row)))
-            }
+    BoxWithConstraints(propagateMinConstraints = true) {
+        if (props.stacked || !constraints.hasBoundedHeight) {
+            StackedRows(visibleRows, itemTemplate, context)
+        } else {
+            LazyRows(visibleRows, itemTemplate, context)
         }
-        return
     }
+}
+
+@Composable
+private fun StackedRows(rows: List<Any>, itemTemplate: SpecNode, context: RenderContext) {
+    Column {
+        rows.forEach { row ->
+            RenderNode(node = itemTemplate, context = context.withAdditionalData(mapOf("row" to row, "item" to row)))
+        }
+    }
+}
+
+@Composable
+private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: RenderContext) {
     LazyColumn {
         items(visibleRows) { row ->
             // Scope the row under "row" (the requested "{row.x}" syntax) and
