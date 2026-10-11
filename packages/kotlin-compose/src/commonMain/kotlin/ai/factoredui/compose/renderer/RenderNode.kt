@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -96,8 +99,11 @@ import coil3.svg.SvgDecoder
  */
 @Composable
 fun RenderSpec(root: SpecNode, context: RenderContext) {
+    context.screen.root = root
     ThemeScope(context.theme) {
-        RenderNode(node = root, context = context)
+        CompositionLocalProvider(LocalScreenRegistry provides context.screen) {
+            RenderNode(node = root, context = context)
+        }
     }
 }
 
@@ -108,13 +114,16 @@ fun RenderSpec(root: SpecNode, context: RenderContext) {
  */
 @Composable
 fun RenderSpec(spec: Spec, context: RenderContext) {
+    context.screen.root = spec.root
     ThemeScope(context.theme) {
-        Box(modifier = Modifier.fillMaxSize().background(context.theme.ground)) {
-            if (spec.keybindings.isEmpty()) {
-                RenderNode(node = spec.root, context = context)
-            } else {
-                KeybindingHost(keybindings = spec.keybindings, context = context) {
+        CompositionLocalProvider(LocalScreenRegistry provides context.screen) {
+            Box(modifier = Modifier.fillMaxSize().background(context.theme.ground)) {
+                if (spec.keybindings.isEmpty()) {
                     RenderNode(node = spec.root, context = context)
+                } else {
+                    KeybindingHost(keybindings = spec.keybindings, context = context) {
+                        RenderNode(node = spec.root, context = context)
+                    }
                 }
             }
         }
@@ -147,7 +156,12 @@ fun RenderNode(node: SpecNode, context: RenderContext) {
     // Subscribe to reactive data so binding updates drive recomposition
     val liveData by context.dataFlow.collectAsState()
     val isVisible = BindingResolver.isVisible(node.visible, liveData)
-    if (!isVisible) return
+    val path = LocalPathPrefix.current + node.id
+    RecordNodeLifetime(path, node)
+    if (!isVisible) {
+        RecordNode(path, node) { visible = false }
+        return
+    }
     PropReads.visit(node.id)
     @Suppress("NAME_SHADOWING") val node = PropReads.instrument(node)
 
@@ -160,13 +174,52 @@ fun RenderNode(node: SpecNode, context: RenderContext) {
         PropReads.watchResolved(node.id, BindingResolver.resolveProps(node.props, liveData))
     }
 
+    RecordNode(path, node) {
+        visible = true
+        boundProps = boundPropsOf(node, resolvedProps)
+        enabled = resolvedProps["disabled"] != true
+        action = node.action?.action
+    }
     val scopedTheme = themeNamed(resolvedProps["theme"] as? String)
-    if (scopedTheme == null) {
-        RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context)
-    } else {
-        ThemeScope(scopedTheme) { RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context) }
+    CompositionLocalProvider(LocalNodeIdentity provides NodeIdentity(node.id, path)) {
+        if (scopedTheme == null) {
+            RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context)
+        } else {
+            ThemeScope(scopedTheme) { RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context) }
+        }
     }
 }
+
+private fun typeWireOf(node: SpecNode): String = node.type.name.lowercase()
+
+@Composable
+private fun RecordNodeLifetime(path: String, node: SpecNode) {
+    val registry = LocalScreenRegistry.current ?: return
+    DisposableEffect(registry, path) {
+        registry.record(path, node.id, typeWireOf(node)) {}
+        onDispose { registry.forget(path) }
+    }
+}
+
+@Composable
+private fun RecordNode(path: String, node: SpecNode, change: NodeRecord.() -> Unit) {
+    val registry = LocalScreenRegistry.current ?: return
+    SideEffect { registry.record(path, node.id, typeWireOf(node), change) }
+}
+
+private const val LONGEST_SHOWN_TEXT = 120
+private const val MOST_SHOWN_ITEMS = 50
+
+private fun compactValue(value: Any?): Any? = when (value) {
+    is String -> if (value.length <= LONGEST_SHOWN_TEXT) value else "<text: ${value.length} chars>"
+    is List<*> -> if (value.size <= MOST_SHOWN_ITEMS && value.none { it is Map<*, *> || it is List<*> }) value else "<list: ${value.size} items>"
+    is Map<*, *> -> "<object: ${value.size} keys>"
+    else -> value
+}
+
+private fun boundPropsOf(node: SpecNode, resolvedProps: Map<String, Any?>): Map<String, Any?> =
+    node.props.filterValues { it is SpecValue.StringValue && BindingResolver.isBindingRef(it.value) }
+        .keys.sorted().associateWith { compactValue(resolvedProps[it]) }
 
 @Composable
 private fun ThemeScope(theme: SpecTheme, content: @Composable () -> Unit) {
@@ -337,7 +390,7 @@ private fun Modifier.groundOf(props: LayoutProps): Modifier {
 }
 
 internal fun Modifier.nodeTag(id: String): Modifier =
-    this.testTag(id).semantics { contentDescription = id }
+    this.testTag(id).semantics { contentDescription = id }.placementOf(id)
 
 private fun columnHorizontalAlignment(align: LayoutAlign): Alignment.Horizontal = when (align) {
     LayoutAlign.CENTER -> Alignment.CenterHorizontally
@@ -517,6 +570,10 @@ private fun RenderList(node: SpecNode, context: RenderContext) {
     if (node.children.isNotEmpty()) IgnoredChildrenNotice(node.children.size)
 }
 
+private fun ignoredChildrenText(count: Int): String =
+    "this list has $count child${if (count == 1) "" else "ren"} the renderer ignores: " +
+        "a list draws either its children or its data template, not both"
+
 // A list whose rows ARE its children: heterogeneous rows, each its own node, where one
 // template over uniform data is the wrong shape.
 @Composable
@@ -538,9 +595,9 @@ private fun RenderChildList(node: SpecNode, context: RenderContext) {
 // renders an empty region that reads as a working screen with nothing in it.
 @Composable
 private fun IgnoredChildrenNotice(count: Int) {
+    RecordDrawn { notices = listOf(ignoredChildrenText(count)) }
     Text(
-        text = "this list has $count child${if (count == 1) "" else "ren"} the renderer ignores: " +
-            "a list draws either its children or its data template, not both",
+        text = ignoredChildrenText(count),
         style = MaterialTheme.typography.bodySmall,
         color = Color(0xFFB3261E),
     )
@@ -599,28 +656,37 @@ private fun RenderRows(rows: List<Any?>, props: ListProps, context: RenderContex
     }
 
     val itemTemplate = props.itemTemplate ?: return
-    BoxWithConstraints(propagateMinConstraints = true) {
+    val list = LocalNodeIdentity.current
+    RecordDrawn { rowCount = visibleRows.size }
+    BoxWithConstraints(modifier = list?.let { Modifier.nodeTag(it.id) } ?: Modifier, propagateMinConstraints = true) {
         if (props.stacked || !constraints.hasBoundedHeight) {
-            StackedRows(visibleRows, itemTemplate, context)
+            StackedRows(visibleRows, itemTemplate, context, list?.path.orEmpty())
         } else {
-            LazyRows(visibleRows, itemTemplate, context)
+            LazyRows(visibleRows, itemTemplate, context, list?.path.orEmpty())
         }
     }
 }
 
 @Composable
-private fun StackedRows(rows: List<Any>, itemTemplate: SpecNode, context: RenderContext) {
+private fun RowScope(listPath: String, index: Int, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalPathPrefix provides "$listPath/$index/", content = content)
+}
+
+@Composable
+private fun StackedRows(rows: List<Any>, itemTemplate: SpecNode, context: RenderContext, listPath: String) {
     Column {
-        rows.forEach { row ->
-            RenderNode(node = itemTemplate, context = context.withAdditionalData(mapOf("row" to row, "item" to row)))
+        rows.forEachIndexed { index, row ->
+            RowScope(listPath, index) {
+                RenderNode(node = itemTemplate, context = context.withAdditionalData(mapOf("row" to row, "item" to row)))
+            }
         }
     }
 }
 
 @Composable
-private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: RenderContext) {
+private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: RenderContext, listPath: String) {
     LazyColumn {
-        items(visibleRows) { row ->
+        itemsIndexed(visibleRows) { index, row ->
             // Scope the row under "row" (the requested "{row.x}" syntax) and
             // "item" (legacy syntax used by existing static specs + nested
             // lists). Both keys point at the same row, so "{row.id}" and
@@ -628,7 +694,7 @@ private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: Re
             // with this scoped context, action param interpolation in dispatch()
             // picks up the same row overlay for free.
             val rowContext = context.withAdditionalData(mapOf("row" to row, "item" to row))
-            RenderNode(node = itemTemplate, context = rowContext)
+            RowScope(listPath, index) { RenderNode(node = itemTemplate, context = rowContext) }
         }
     }
 }
@@ -646,6 +712,7 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
         else -> MaterialTheme.typography.bodyMedium
     }
     val paint = textPaint(props, LocalSpecTheme.current.ink)
+    RecordDrawn { text = paint.notice ?: props.value }
     val fills = fillsItsSlot(props.align, paint.background != null, LocalWidthIsShared.current)
     Text(
         text = paint.notice ?: props.value,
@@ -695,6 +762,10 @@ private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     val icon = (resolvedProps["icon"] as? String) ?: props.icon
     val isDisabled = (resolvedProps["disabled"] as? Boolean) ?: props.disabled
     val scope = rememberCoroutineScope()
+    RecordDrawn {
+        text = label
+        enabled = !isDisabled
+    }
 
     val onClickHandler: () -> Unit = {
         node.action?.let { actionRef ->
@@ -856,6 +927,7 @@ private fun RenderTextInput(
     // and the resolved value for the current display text.
     val writePath = node.props["value"]?.bindingPath()
     val currentValue = (resolvedProps["value"] as? String) ?: ""
+    RecordDrawn { text = currentValue }
 
     androidx.compose.material3.OutlinedTextField(
         value = currentValue,
@@ -879,6 +951,7 @@ private fun RenderChip(
 ) {
     val label = (resolvedProps["label"] as? String) ?: ""
     val scope = rememberCoroutineScope()
+    RecordDrawn { text = label }
     androidx.compose.material3.FilterChip(
         selected = (resolvedProps["selected"] as? Boolean) ?: false,
         onClick = {

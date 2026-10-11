@@ -95,7 +95,8 @@ fun main(args: Array<String>) {
     val seeded = state + ("theme" to theme)
 
     val context = RenderContext(initialData = seeded, theme = themeNamed(theme) ?: SpecTheme.DARK)
-    val control = WindowControl(context)
+    val surface = AwtWindowSurface()
+    val control = WindowControl(context, surface)
     parsed.controlPort?.let { port -> println("spec-window: control on 127.0.0.1:${control.start(port).address.port}") }
 
     println("spec-window: ${spec.root.type} '${spec.root.id}' from $source with ${data.size} data keys and ${parsed.stateFiles.size} state files, $theme theme")
@@ -103,7 +104,7 @@ fun main(args: Array<String>) {
         state = WindowState(size = DpSize(parsed.width.dp, parsed.height.dp), position = WindowPosition.Aligned(Alignment.Center)),
         title = windowTitle(parsed.title, spec.root.id),
     ) {
-        SideEffect { control.window = window }
+        SideEffect { surface.window = window }
         RenderSpec(spec = spec, context = context)
     }
 }

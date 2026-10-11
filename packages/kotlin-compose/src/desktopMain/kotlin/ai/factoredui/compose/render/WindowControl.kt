@@ -4,6 +4,8 @@ import ai.factoredui.compose.renderer.RenderContext
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
 import org.jetbrains.skiko.SkiaLayer
@@ -19,16 +21,66 @@ import java.net.URLDecoder
 import javax.swing.JFrame
 import javax.swing.SwingUtilities
 
+/** What a control port drives: pointer input, a picture of the screen, and the thread the screen is drawn on. */
+interface ControlSurface {
+    fun click(point: Point): String
+    fun wheel(point: Point, notches: Int): String
+    fun shot(file: File): String
+    fun <T> onScreenThread(work: () -> T): T
+}
+
 // Pointer input goes through the window's own AWT listeners, so it reaches the widgets on a locked screen.
-class WindowControl(private val context: RenderContext) {
+class AwtWindowSurface : ControlSurface {
     @Volatile var window: JFrame? = null
+
+    override fun click(point: Point): String = onScreenThread {
+        val (target, local) = listenerAt(point) { it.mouseListeners.isNotEmpty() }
+        val modifiers = MouseEvent.BUTTON1_DOWN_MASK
+        target.dispatchEvent(mouseEvent(target, MouseEvent.MOUSE_MOVED, local, 0, 0))
+        target.dispatchEvent(mouseEvent(target, MouseEvent.MOUSE_PRESSED, local, modifiers, 1))
+        target.dispatchEvent(mouseEvent(target, MouseEvent.MOUSE_RELEASED, local, 0, 1))
+        target.dispatchEvent(mouseEvent(target, MouseEvent.MOUSE_CLICKED, local, 0, 1))
+        "clicked ${point.x},${point.y} on ${target.javaClass.name}"
+    }
+
+    override fun wheel(point: Point, notches: Int): String = onScreenThread {
+        val (target, local) = listenerAt(point) { it.mouseWheelListeners.isNotEmpty() }
+        val event = MouseWheelEvent(target, MouseEvent.MOUSE_WHEEL, System.currentTimeMillis(), 0, local.x, local.y, 0, false, MouseWheelEvent.WHEEL_UNIT_SCROLL, 3, notches)
+        target.dispatchEvent(event)
+        "wheel $notches at ${point.x},${point.y}"
+    }
+
+    override fun shot(file: File): String = onScreenThread {
+        val layer = skiaLayerIn(checkNotNull(window) { "the window is not open yet" }) ?: error("the window holds no SkiaLayer")
+        val bitmap = layer.screenshot() ?: error("the window has drawn no frame yet")
+        val png = Image.makeFromBitmap(bitmap).encodeToData(EncodedImageFormat.PNG) ?: error("the window's pixels could not be encoded")
+        file.writeBytes(png.bytes)
+        "saved ${file.path} ${bitmap.width}x${bitmap.height}"
+    }
+
+    override fun <T> onScreenThread(work: () -> T): T {
+        var outcome: Result<T>? = null
+        SwingUtilities.invokeAndWait { outcome = runCatching(work) }
+        return checkNotNull(outcome).getOrThrow()
+    }
+
+    private fun listenerAt(point: Point, isListener: (Component) -> Boolean): Pair<Component, Point> {
+        val content = checkNotNull(window) { "the window is not open yet" }.contentPane
+        val deepest = SwingUtilities.getDeepestComponentAt(content, point.x, point.y) ?: error("nothing at ${point.x},${point.y}")
+        val target = generateSequence(deepest) { it.parent }.firstOrNull(isListener) ?: error("nothing at ${point.x},${point.y} listens")
+        return target to SwingUtilities.convertPoint(content, point, target)
+    }
+}
+
+class WindowControl(private val context: RenderContext, private val surface: ControlSurface = AwtWindowSurface()) {
 
     fun start(port: Int): HttpServer = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0).apply {
         createContext("/set") { exchange -> answer(exchange) { query -> setBinding(query) } }
         createContext("/get") { exchange -> answer(exchange) { query -> readBinding(query) } }
-        createContext("/click") { exchange -> answer(exchange) { query -> onEdt { clickAt(pointOf(query)) } } }
-        createContext("/wheel") { exchange -> answer(exchange) { query -> onEdt { wheelAt(pointOf(query), query.getValue("notches").toInt()) } } }
-        createContext("/shot") { exchange -> answer(exchange) { query -> onEdt { saveShot(File(query.getValue("file"))) } } }
+        createContext("/click") { exchange -> answer(exchange) { query -> surface.click(clickPoint(query)) } }
+        createContext("/wheel") { exchange -> answer(exchange) { query -> surface.wheel(pointOf(query), query.getValue("notches").toInt()) } }
+        createContext("/shot") { exchange -> answer(exchange) { query -> surface.shot(File(query.getValue("file"))) } }
+        createContext("/tree") { exchange -> answer(exchange) { query -> surface.onScreenThread { treeText(query) } } }
         start()
     }
 
@@ -49,36 +101,17 @@ class WindowControl(private val context: RenderContext) {
         return anyToJson(current).toString()
     }
 
-    private fun clickAt(point: Point): String {
-        val (target, local) = listenerAt(point) { it.mouseListeners.isNotEmpty() }
-        val modifiers = MouseEvent.BUTTON1_DOWN_MASK
-        target.dispatchEvent(mouseEvent(target, MouseEvent.MOUSE_MOVED, local, 0, 0))
-        target.dispatchEvent(mouseEvent(target, MouseEvent.MOUSE_PRESSED, local, modifiers, 1))
-        target.dispatchEvent(mouseEvent(target, MouseEvent.MOUSE_RELEASED, local, 0, 1))
-        target.dispatchEvent(mouseEvent(target, MouseEvent.MOUSE_CLICKED, local, 0, 1))
-        return "clicked ${point.x},${point.y} on ${target.javaClass.name}"
+    private fun clickPoint(query: Map<String, String>): Point {
+        val id = query["id"] ?: return pointOf(query)
+        return surface.onScreenThread { clickPointFor(context.screen, id) }
     }
 
-    private fun wheelAt(point: Point, notches: Int): String {
-        val (target, local) = listenerAt(point) { it.mouseWheelListeners.isNotEmpty() }
-        val event = MouseWheelEvent(target, MouseEvent.MOUSE_WHEEL, System.currentTimeMillis(), 0, local.x, local.y, 0, false, MouseWheelEvent.WHEEL_UNIT_SCROLL, 3, notches)
-        target.dispatchEvent(event)
-        return "wheel $notches at ${point.x},${point.y}"
-    }
-
-    private fun saveShot(file: File): String {
-        val layer = skiaLayerIn(checkNotNull(window) { "the window is not open yet" }) ?: error("the window holds no SkiaLayer")
-        val bitmap = layer.screenshot() ?: error("the window has drawn no frame yet")
-        val png = Image.makeFromBitmap(bitmap).encodeToData(EncodedImageFormat.PNG) ?: error("the window's pixels could not be encoded")
-        file.writeBytes(png.bytes)
-        return "saved ${file.path} ${bitmap.width}x${bitmap.height}"
-    }
-
-    private fun listenerAt(point: Point, isListener: (Component) -> Boolean): Pair<Component, Point> {
-        val content = checkNotNull(window) { "the window is not open yet" }.contentPane
-        val deepest = SwingUtilities.getDeepestComponentAt(content, point.x, point.y) ?: error("nothing at ${point.x},${point.y}")
-        val target = generateSequence(deepest) { it.parent }.firstOrNull(isListener) ?: error("nothing at ${point.x},${point.y} listens")
-        return target to SwingUtilities.convertPoint(content, point, target)
+    private fun treeText(query: Map<String, String>): String {
+        val drawn = screenNodes(context.screen) ?: error("nothing has been drawn yet")
+        val shown = if (query["visible"] == "1") visibleOnly(drawn) ?: error("the root is not visible") else drawn
+        query["text"]?.let { substring -> return JsonArray(idsShowing(shown, substring).map(::JsonPrimitive)).toString() }
+        val subtree = query["id"]?.let { id -> findNode(shown, id) ?: error("no drawn node has id '$id'") } ?: shown
+        return screenJson(subtree).toString()
     }
 }
 
@@ -92,12 +125,6 @@ private fun skiaLayerIn(component: Component): SkiaLayer? {
 }
 
 private fun pointOf(query: Map<String, String>) = Point(query.getValue("x").toInt(), query.getValue("y").toInt())
-
-private fun <T> onEdt(work: () -> T): T {
-    var outcome: Result<T>? = null
-    SwingUtilities.invokeAndWait { outcome = runCatching(work) }
-    return checkNotNull(outcome).getOrThrow()
-}
 
 private fun queryOf(exchange: HttpExchange): Map<String, String> =
     exchange.requestURI.rawQuery.orEmpty().split("&").filter { it.contains("=") }.associate { pair ->

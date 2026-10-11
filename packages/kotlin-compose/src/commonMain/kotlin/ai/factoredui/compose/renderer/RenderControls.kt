@@ -52,6 +52,7 @@ internal fun RenderToggle(
     val writePath = node.props["value"]?.bindingPath()
     val current = (resolvedProps["value"] as? Boolean) ?: false
     val scope = rememberCoroutineScope()
+    RecordDrawn { text = props.label.ifEmpty { null } }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -120,6 +121,7 @@ internal fun RenderSelect(
     val currentLabel = props.options.firstOrNull { it.value == currentValue }?.label
         ?: props.placeholder.ifEmpty { "Select…" }
     val scope = rememberCoroutineScope()
+    RecordDrawn { text = currentLabel }
 
     var expanded by remember { mutableStateOf(false) }
 

@@ -39,6 +39,7 @@ class RenderContext private constructor(
     val theme: SpecTheme,
     private val store: MutableStateFlow<Map<String, Any?>>,
     private val overlay: Map<String, Any?>,
+    val screen: ScreenRegistry,
 ) {
     constructor(
         actions: ActionRegistry = emptyMap(),
@@ -55,6 +56,7 @@ class RenderContext private constructor(
         theme = theme,
         store = MutableStateFlow(initialData),
         overlay = emptyMap(),
+        screen = ScreenRegistry(),
     )
 
     /** Reactive flow of the merged (overlay + store) data map. */
@@ -94,6 +96,7 @@ class RenderContext private constructor(
         theme = theme,
         store = store,
         overlay = overlay + extra,
+        screen = screen,
     )
 
     /** Recursively rebuild a nested map structure with [value] placed at [segments]. */

@@ -12,6 +12,7 @@ import ai.factoredui.compose.schema.resolveGeomapSelection
 import ai.factoredui.compose.schema.resolveStackedSceneProps
 import ai.factoredui.compose.schema.selectionAfterTap
 import ai.factoredui.compose.stackedscene.CanvasFit
+import ai.factoredui.compose.stackedscene.LevelFocus
 import ai.factoredui.compose.stackedscene.PartValue
 import ai.factoredui.compose.stackedscene.StackedDrawing
 import ai.factoredui.compose.stackedscene.VisiblePart
@@ -165,10 +166,14 @@ private fun RenderSizedStackedScene(
             val widthPx = constraints.maxWidth.toDouble()
             val heightPx = constraints.maxHeight.toDouble()
             val fit = remember(scene, props.drawing, widthPx, heightPx) { fitDrawing(scene, props.drawing, widthPx, heightPx) }
-            val outlined = props.highlightIds + selection
+            val picture = StackedPicture(scene, parts, props.drawing, fit, values, props.colourScale, props.highlightIds + selection)
+            val notices = sceneNotices(scene, parts, props, fit)
+            val popup = popupLines(scene, parts, selection, props, values)
+            RecordDrawn { this.scene = sceneRecord(props, notices, partReadings(picture, props.highlightIds, selection), popup) }
             Canvas(
                 modifier = Modifier.fillMaxSize()
                     .clipToBounds()
+                    .canvasPlacement()
                     .testTag(partsTag(node.id))
                     .semantics { stateDescription = drawnPartsSummary(parts, props.highlightIds, selection) }
                     .pointerInput(parts, fit, selection, selectedPath, props.onPartTap) {
@@ -178,10 +183,10 @@ private fun RenderSizedStackedScene(
                         detectTapGestures(onTap = { offset -> applyPartTap(target, offset.x.toDouble(), offset.y.toDouble()) })
                     },
             ) {
-                drawStackedScene(StackedPicture(scene, parts, props.drawing, fit, values, props.colourScale, outlined), palette)
+                drawStackedScene(picture, palette)
             }
-            StackedSceneNotes(scene, parts, props, fit, Modifier.align(Alignment.TopStart))
-            SelectedPartPopup(node.id, scene, parts, selection, props, fit, values)
+            StackedSceneNotes(notices, Modifier.align(Alignment.TopStart))
+            SelectedPartPopup(node.id, scene, parts, selection, props, fit, popup)
         }
         ColourLegend(node.id, props.colourScale, Modifier.fillMaxWidth())
     }
@@ -196,14 +201,43 @@ private fun BoxWithConstraintsScope.sceneSize(scene: SceneView, drawing: Stacked
     return Modifier.width(width).height(intrinsicSceneHeight(scene, drawing, width.value.toDouble()).dp)
 }
 
+private fun sceneNotices(scene: SceneView, parts: List<VisiblePart>, props: StackedSceneProps, fit: CanvasFit): List<String> = buildList {
+    addAll(props.notes)
+    if (props.drawing != StackedDrawing.PLAN && isEveryPartFlat(scene, parts)) add("The scene states no part heights, so every part is drawn flat at its base.")
+    if (parts.isEmpty()) add("No part of the scene is shown at this focus.")
+    exaggerationNote(fit)?.let(::add)
+}
+
+private fun selectedPart(parts: List<VisiblePart>, selection: Set<String>): VisiblePart? {
+    val selectedId = selection.singleOrNull() ?: return null
+    return parts.firstOrNull { it.footprint.id == selectedId }
+}
+
+private fun popupLines(scene: SceneView, parts: List<VisiblePart>, selection: Set<String>, props: StackedSceneProps, values: Map<String, PartValue>): List<String>? {
+    val part = selectedPart(parts, selection) ?: return null
+    return partPopupLines(scene, part.footprint, partValueText(values[part.footprint.id], props.colourScale))
+}
+
+private fun focusText(focus: LevelFocus): String = when (focus) {
+    LevelFocus.AllLevels -> "all"
+    is LevelFocus.OneLevel -> focus.level.toString()
+}
+
+private fun sceneRecord(props: StackedSceneProps, notices: List<String>, parts: List<ScenePartRecord>, popup: List<String>?) = SceneRecord(
+    view = props.drawing.wire,
+    focus = focusText(props.focus),
+    hideTop = props.hideTopCount,
+    showLower = props.showLower,
+    yAxis = props.yAxis.wire,
+    activeScheme = props.activeScheme,
+    legend = legendReadings(props.colourScale),
+    notices = notices,
+    parts = parts,
+    popup = popup?.joinToString(" / "),
+)
+
 @Composable
-private fun StackedSceneNotes(scene: SceneView, parts: List<VisiblePart>, props: StackedSceneProps, fit: CanvasFit, modifier: Modifier) {
-    val notes = buildList {
-        addAll(props.notes)
-        if (props.drawing != StackedDrawing.PLAN && isEveryPartFlat(scene, parts)) add("The scene states no part heights, so every part is drawn flat at its base.")
-        if (parts.isEmpty()) add("No part of the scene is shown at this focus.")
-        exaggerationNote(fit)?.let(::add)
-    }
+private fun StackedSceneNotes(notes: List<String>, modifier: Modifier) {
     if (notes.isEmpty()) return
     Column(modifier = modifier.padding(8.dp)) {
         notes.forEach { Text(it, style = MaterialTheme.typography.bodySmall, color = LocalSpecTheme.current.ink) }
@@ -218,11 +252,9 @@ private fun SelectedPartPopup(
     selection: Set<String>,
     props: StackedSceneProps,
     fit: CanvasFit,
-    values: Map<String, PartValue>,
+    lines: List<String>?,
 ) {
-    val selectedId = selection.singleOrNull() ?: return
-    val part = parts.firstOrNull { it.footprint.id == selectedId } ?: return
+    val part = selectedPart(parts, selection) ?: return
     val anchor = popupAnchor(scene, part.footprint, props.drawing, fit)
-    val valueText = partValueText(values[selectedId], props.colourScale)
-    PartPopup(popupTag(nodeId), partPopupLines(scene, part.footprint, valueText), anchor.first.toFloat(), anchor.second.toFloat())
+    PartPopup(popupTag(nodeId), lines ?: return, anchor.first.toFloat(), anchor.second.toFloat())
 }

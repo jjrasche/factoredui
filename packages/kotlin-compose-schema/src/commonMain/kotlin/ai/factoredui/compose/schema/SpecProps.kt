@@ -1068,6 +1068,7 @@ data class StackedSceneProps(
     val colourScale: ColourScale? = null,
     val notes: List<String> = emptyList(),
     val yAxis: YAxis = YAxis.UP,
+    val activeScheme: String? = null,
 )
 
 private data class PropReading<T>(val value: T, val note: String? = null)
@@ -1181,6 +1182,13 @@ private fun schemedScaleReading(fields: Map<*, *>): PropReading<ColourScale?> {
     return colourScaleReading("$COLOR_BY scheme '$name'", schemes[name])
 }
 
+private fun activeSchemeOf(raw: Any?): String? {
+    val fields = raw as? Map<*, *> ?: return null
+    val schemes = fields["schemes"] as? Map<*, *> ?: return null
+    if (schemes.isEmpty()) return null
+    return chosenSchemeReading(fields["scheme"], schemes.keys.map { it.toString() }).value
+}
+
 private fun colourByReading(raw: Any?): PropReading<ColourScale?> {
     if (raw == null) return PropReading(null)
     val fields = raw as? Map<*, *>
@@ -1207,5 +1215,6 @@ fun resolveStackedSceneProps(resolved: Map<String, Any?>): StackedSceneProps {
         colourScale = colourScale.value,
         notes = listOfNotNull(drawing.note, yAxis.note, focus.note, showLower.note, hideTop.note, highlight.note, onPartTap.note, colourScale.note),
         yAxis = yAxis.value,
+        activeScheme = activeSchemeOf(resolved[COLOR_BY]),
     )
 }

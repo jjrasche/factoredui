@@ -5,6 +5,7 @@ import ai.factoredui.compose.scene.SceneView
 import ai.factoredui.compose.stackedscene.CanvasFit
 import ai.factoredui.compose.stackedscene.ColourScale
 import ai.factoredui.compose.ramp.ColourRamp
+import ai.factoredui.compose.ramp.rampColourFor
 import ai.factoredui.compose.stackedscene.LegendEntry
 import ai.factoredui.compose.stackedscene.legendEntries
 import androidx.compose.ui.graphics.Brush
@@ -63,8 +64,8 @@ internal class StackedPalette(val edge: Color, val outline: Color, val groundFil
 
 private val SELECTED_OUTLINE = Color(0xFF1E90FF)
 private const val DIMMED_ALPHA = 0.3f
-private const val FLAT_SOLID_ALPHA = 0.92f
-private const val ISO_SOLID_ALPHA = 0.97f
+private const val FLAT_SOLID_ALPHA = 1f
+private const val ISO_SOLID_ALPHA = 1f
 private const val FLAT_EDGE_PX = 1.5f
 private const val ISO_EDGE_PX = 1f
 private const val ISO_EDGE_ALPHA = 0.55f
@@ -149,6 +150,44 @@ private fun DrawScope.drawIsoParts(picture: StackedPicture, palette: StackedPale
         val faces = projectFaces(partBox(picture.scene, part.footprint))
         listOf(faces.top, faces.west, faces.south).forEach { drawPath(isoPolygon(picture.fit, it), palette.outline, style = Stroke(ISO_OUTLINE_PX)) }
     }
+}
+
+private fun outlineOf(part: VisiblePart, highlightIds: Set<String>, selection: Set<String>): String = when {
+    part.footprint.id in selection -> "selected"
+    part.footprint.id in highlightIds -> "highlight"
+    part.isDimmed -> "faded"
+    else -> "normal"
+}
+
+private fun flatReading(picture: StackedPicture, part: VisiblePart, outline: String): ScenePartRecord {
+    val rect = partCanvasRect(picture, part.footprint)
+    return ScenePartRecord(
+        part.footprint.id, part.footprint.type, part.level, picture.colourOf(part), outline, picture.values[part.footprint.id]?.value,
+        rect.left, rect.top, rect.right, rect.bottom, rect.center.x, rect.center.y,
+    )
+}
+
+private fun isoReading(picture: StackedPicture, part: VisiblePart, outline: String): ScenePartRecord {
+    val faces = projectFaces(partBox(picture.scene, part.footprint))
+    val points = (faces.top + faces.west + faces.south).map { (u, v) -> canvasPoint(picture.fit, u, v) }
+    val top = faces.top.map { (u, v) -> canvasPoint(picture.fit, u, v) }
+    return ScenePartRecord(
+        part.footprint.id, part.footprint.type, part.level, faceShades(picture.colourOf(part)).top, outline, picture.values[part.footprint.id]?.value,
+        points.minOf { it.x }, points.minOf { it.y }, points.maxOf { it.x }, points.maxOf { it.y },
+        top.sumOf { it.x.toDouble() }.toFloat() / top.size, top.sumOf { it.y.toDouble() }.toFloat() / top.size,
+    )
+}
+
+/** Each part as drawn: its fill is the colour painted at its centre (the top face in the iso), from the same colouring the drawing uses. */
+internal fun partReadings(picture: StackedPicture, highlightIds: Set<String>, selection: Set<String>): List<ScenePartRecord> = picture.parts.map { part ->
+    val outline = outlineOf(part, highlightIds, selection)
+    if (picture.drawing == StackedDrawing.ISO) isoReading(picture, part, outline) else flatReading(picture, part, outline)
+}
+
+internal fun legendReadings(scale: ColourScale?): List<SceneLegendRecord> {
+    val ramp = scale?.ramp ?: return legendEntries(scale).map { SceneLegendRecord(it.label, it.colour) }
+    val labels = ramp.labels.map { SceneLegendRecord(it.text, rampColourFor(ramp, it.at)) }
+    return labels + rampSwatches(ramp).map { SceneLegendRecord(it.label, it.colour) }
 }
 
 private val POPUP_BACKGROUND = Color(0xF7FFFFFF)
