@@ -3,6 +3,7 @@ package ai.factoredui.compose.crawl
 import ai.factoredui.compose.observability.Observability
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
+import ai.factoredui.compose.renderer.SpecTheme
 import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.compose.testing.SpecShadowNode
@@ -32,10 +33,11 @@ class DrivenScreen internal constructor(
     store: Map<String, Any?>,
     private val widthDp: Int,
     private val heightDp: Int,
+    theme: SpecTheme,
 ) : AutoCloseable {
 
     private val recorded = mutableListOf<DrivenIntent>()
-    private val context = RenderContext(initialData = store, observability = IntentRecorder(recorded))
+    private val context = RenderContext(initialData = store, observability = IntentRecorder(recorded), theme = theme)
     private var clock = 0L
 
     private val scene = ImageComposeScene(width = widthDp, height = heightDp, density = Density(1f)) {
@@ -188,7 +190,8 @@ fun driveScreen(
     store: Map<String, Any?> = emptyMap(),
     widthDp: Int = 400,
     heightDp: Int = 800,
-): DrivenScreen = DrivenScreen(spec, store, widthDp, heightDp)
+    theme: SpecTheme = SpecTheme.LIGHT,
+): DrivenScreen = DrivenScreen(spec, store, widthDp, heightDp, theme)
 
 private class IntentRecorder(private val into: MutableList<DrivenIntent>) : Observability {
     override fun onRender(nodeId: String) = Unit

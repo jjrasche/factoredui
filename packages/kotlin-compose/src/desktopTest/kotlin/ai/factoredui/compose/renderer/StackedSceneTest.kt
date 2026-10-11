@@ -13,6 +13,7 @@ import ai.factoredui.compose.stackedscene.mmToCanvas
 import ai.factoredui.compose.stackedscene.partBox
 import ai.factoredui.compose.stackedscene.partRectMm
 import ai.factoredui.compose.stackedscene.projectFaces
+import androidx.compose.ui.unit.DpRect
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
@@ -86,6 +87,30 @@ private fun centreOf(scene: SceneView, partId: String, drawing: StackedDrawing):
 
 private fun pixelAt(png: ByteArray, at: Pair<Float, Float>): Int = ImageIO.read(ByteArrayInputStream(png)).getRGB(at.first.toInt(), at.second.toInt())
 
+private const val WHITE_SCALE = """{"channel":"crowding","stops":[{"color":"#ffffff","label":"white"}],"unknown_color":"#ffffff","unknown_label":"also white"}"""
+
+private val WHITE_LEGEND = stackedSceneSpec("\"{board.selected}\"", WHITE_SCALE)
+
+private const val WHITE_RGB = 0xFFFFFF
+
+private fun DpRect.centreX(): Float = (left.value + right.value) / 2
+
+private fun DpRect.centreY(): Float = (top.value + bottom.value) / 2
+
+private fun assertWhiteSwatchIsOutlined(theme: SpecTheme) {
+    driveScreen(WHITE_LEGEND, storeFor("plan"), WIDTH, HEIGHT, theme).use { screen ->
+        val png = screen.frame().png
+        val swatch = checkNotNull(screen.boundsOf(legendSwatchTag("board", 0))) { "the white swatch drew no region" }
+        val border = pixelAt(png, swatch.left.value to swatch.centreY()) and 0xFFFFFF
+        val beside = pixelAt(png, swatch.left.value - 2 to swatch.centreY()) and 0xFFFFFF
+        val interior = pixelAt(png, swatch.centreX() to swatch.centreY()) and 0xFFFFFF
+        assertEquals(WHITE_RGB, interior, "the swatch keeps the stop's own colour inside its outline")
+        assertNotEquals(WHITE_RGB, border, "the swatch border is not the white fill")
+        assertNotEquals(beside, border, "the swatch border differs from the legend behind it")
+        assertNotEquals(theme.ground.toRgbInt(), border, "the swatch border differs from the page")
+    }
+}
+
 class StackedSceneTest {
 
     private val board = readSceneView(stackedBoardText())
@@ -128,6 +153,21 @@ class StackedSceneTest {
             val (x, y) = centreOf(board, "p2", StackedDrawing.PLAN)
             screen.tapAt(x, y)
             assertEquals(listOf("Plate", "p2 · 50%"), screen.textsUnder(popupTag("board")))
+        }
+    }
+
+    @Test
+    fun a_white_legend_swatch_on_a_light_page_is_outlined_and_keeps_its_white_fill() = assertWhiteSwatchIsOutlined(SpecTheme.LIGHT)
+
+    @Test
+    fun a_white_legend_swatch_on_a_dark_page_is_outlined_and_keeps_its_white_fill() = assertWhiteSwatchIsOutlined(SpecTheme.DARK)
+
+    @Test
+    fun the_unknown_swatch_is_outlined_too() {
+        driveScreen(WHITE_LEGEND, storeFor("plan"), WIDTH, HEIGHT).use { screen ->
+            val png = screen.frame().png
+            val swatch = checkNotNull(screen.boundsOf(legendSwatchTag("board", 1))) { "the unknown swatch drew no region" }
+            assertEquals(SpecTheme.LIGHT.hairline.toRgbInt(), pixelAt(png, swatch.left.value to swatch.centreY()) and 0xFFFFFF)
         }
     }
 

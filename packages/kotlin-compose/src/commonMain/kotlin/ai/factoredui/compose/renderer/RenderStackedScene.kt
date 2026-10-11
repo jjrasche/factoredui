@@ -66,6 +66,8 @@ internal fun popupTag(nodeId: String) = "$nodeId:popup"
 
 internal fun legendTag(nodeId: String) = "$nodeId:legend"
 
+internal fun legendSwatchTag(nodeId: String, index: Int) = "${legendTag(nodeId)}:swatch:$index"
+
 private val NOTICE_INK = Color(0xFFB3261E)
 
 @Composable
@@ -154,7 +156,7 @@ private fun RenderReadStackedScene(node: SpecNode, scene: SceneView, props: Stac
             drawStackedScene(StackedPicture(scene, parts, props.drawing, fit, values, props.colourScale, outlined), palette)
         }
         StackedSceneNotes(scene, parts, props, fit, Modifier.align(Alignment.TopStart))
-        ColourLegend(legendTag(node.id), legendEntries(props.colourScale), Modifier.align(Alignment.BottomStart))
+        ColourLegend(node.id, legendEntries(props.colourScale), Modifier.align(Alignment.BottomStart))
         SelectedPartPopup(node.id, scene, parts, selection, props, fit, values)
     }
 }
