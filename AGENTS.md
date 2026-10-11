@@ -29,7 +29,7 @@ column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer,
 
 ## Formatted figures
 
-`text` props: `value`, `variant` (`heading`, `subheading`, `body` (default), `caption`, `label`), `bold` (bool), `color`, `numberOfLines`, `align` (`left` (default), `center`, `right`), `format` and `missing`. A `center` or `right` text fills the width of its slot (its flex cell in a row, or the width its parent gives), so a column of figures lines up. In a row slot with no `flex` it keeps the width of its words, leaving the rest of the row to its flex siblings. Give a table's figure cells a `flex`.
+`text` props: `value`, `variant` (`heading`, `subheading`, `body` (default), `caption`, `label`), `bold` (bool), `color`, `numberOfLines`, `align` (`left` (default), `center`, `right`), `format`, `missing`, and `color_ramp` and `background_ramp` (see Colour ramps). A `center` or `right` text fills the width of its slot (its flex cell in a row, or the width its parent gives), so a column of figures lines up. In a row slot with no `flex` it keeps the width of its words, leaving the rest of the row to its flex siblings. Give a table's figure cells a `flex`.
 
 `text` prints its value as given unless it names a `format`. With a format, bind the raw number. The renderer draws the display string:
 
@@ -48,6 +48,24 @@ What a bad or missing value draws:
 - An unknown format name draws "unknown format 'usdd'".
 - An object format that cannot be read draws a notice and no figure, even when the value is missing: "format scale needs a number, not '0.0002'" (a scale written as text, or null, NaN, infinity or a bool), "format decimals needs a whole number from 0 to 12, not '1.5'", "format suffix needs text, not '3'", "format has no key 'decimal'; it reads scale, decimals and suffix". Under an object format a non-number value draws "format needs a number, not 'abc'". A figure too large to hold its decimals exactly draws "format cannot draw 10000000000 to 12 decimals exactly".
 - Never pre-format a number in the data when a format exists for it.
+
+## Colour ramps
+
+A ramp turns a number into a colour on a gradient:
+
+```json
+"ramp": { "stops": [[0, "#3b7dd8"], [0.5, "#e6a93a"], [1, "#b5382a"]], "over": "#5a1e8c", "no_figure": "#9aa3ab",
+          "legend": [{ "at": 0, "text": "0" }, { "at": 1, "text": "full" }], "over_text": "over", "no_figure_text": "no figure" }
+```
+
+- At or below the first stop's value a number takes the first colour. Between two stops each channel (alpha too) is interpolated in sRGB. Exactly the last stop's value takes the last colour.
+- Above the last stop's value a number takes `over`, which defaults to the last colour. The ramp never clamps: 1.3 on a 0 to 1 ramp is `over`.
+- A null or absent value takes `no_figure` (default a neutral grey).
+- `stops` needs at least two `[number, colour]` pairs with values rising. Colours are `#rrggbb` or `#rrggbbaa`.
+- A ramp that breaks a rule draws a notice naming it: "ramp needs at least 2 stops, not 1", "stop values must rise: 0.5 is followed by 0.25", "stop 1 must be [value, colour] with a number and #rrggbb or #rrggbbaa". The colouring falls back to grey.
+- Uses:
+  - A `color_by` scale or scheme may carry `ramp` instead of `stops`. Parts take the interpolated colour of their channel value. The legend strip shows a gradient bar from the first to the last stop value, each `legend` text under its value, then a swatch for `over_text` and one for `no_figure_text`. The popup adds a legend text only when the value equals its `at`, and the over or no-figure text.
+  - A `text` takes `"color_ramp": { "value": "{row.values.x}", "ramp": {...} }` for its ink, and `"background_ramp"` (same shape) to fill its cell. `value` is a binding or a number; a value that is not a number draws "color_ramp needs a number, not 'abc'" in place of the words. Over a `background_ramp` the ink stays the `color_ramp` or `color` only if it reaches 4.5:1 against the fill; otherwise it is black or white, whichever contrasts more. A filled cell fills its slot.
 
 ## Bindings
 
