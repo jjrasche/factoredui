@@ -26,9 +26,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -92,7 +91,7 @@ import coil3.svg.SvgDecoder
  */
 @Composable
 fun RenderSpec(root: SpecNode, context: RenderContext) {
-    CompositionLocalProvider(LocalSpecTheme provides context.theme) {
+    ThemeScope(context.theme) {
         RenderNode(node = root, context = context)
     }
 }
@@ -104,7 +103,7 @@ fun RenderSpec(root: SpecNode, context: RenderContext) {
  */
 @Composable
 fun RenderSpec(spec: Spec, context: RenderContext) {
-    CompositionLocalProvider(LocalSpecTheme provides context.theme) {
+    ThemeScope(context.theme) {
         Box(modifier = Modifier.fillMaxSize().background(context.theme.ground)) {
             if (spec.keybindings.isEmpty()) {
                 RenderNode(node = spec.root, context = context)
@@ -166,8 +165,8 @@ fun RenderNode(node: SpecNode, context: RenderContext) {
 
 @Composable
 private fun ThemeScope(theme: SpecTheme, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalSpecTheme provides theme) {
-        MaterialTheme(colorScheme = if (theme.isDark) darkColorScheme() else lightColorScheme(), content = content)
+    MaterialTheme(colorScheme = theme.colorScheme(MaterialTheme.colorScheme)) {
+        CompositionLocalProvider(LocalSpecTheme provides theme, LocalContentColor provides theme.ink, content = content)
     }
 }
 

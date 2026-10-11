@@ -1,5 +1,8 @@
 package ai.factoredui.compose.renderer
 
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -31,6 +34,39 @@ fun SpecTheme.tokenColor(name: String): Color? = when (name) {
     "ink" -> ink
     "muted" -> muted
     else -> null
+}
+
+private const val LOW_SURFACE_STEP = 0.03f
+private const val HIGH_SURFACE_STEP = 0.08f
+private const val HIGHEST_SURFACE_STEP = 0.10f
+
+private fun SpecTheme.surfaceAt(step: Float): Color = lerp(ground, ink, step)
+
+private fun isSchemeDark(scheme: ColorScheme): Boolean = scheme.background.luminance() < 0.5f
+
+/** The host's scheme if it is the theme's kind, else that kind's default, with every surface and content colour from the theme. */
+fun SpecTheme.colorScheme(host: ColorScheme): ColorScheme {
+    val family = if (isSchemeDark(host) == isDark) host else if (isDark) darkColorScheme() else lightColorScheme()
+    return family.copy(
+        background = ground,
+        onBackground = ink,
+        surface = ground,
+        onSurface = ink,
+        surfaceVariant = surfaceAt(SURFACE_STEP),
+        onSurfaceVariant = muted,
+        surfaceTint = ink,
+        surfaceBright = surfaceAt(HIGHEST_SURFACE_STEP),
+        surfaceDim = ground,
+        surfaceContainerLowest = ground,
+        surfaceContainerLow = surfaceAt(LOW_SURFACE_STEP),
+        surfaceContainer = surfaceAt(SURFACE_STEP),
+        surfaceContainerHigh = surfaceAt(HIGH_SURFACE_STEP),
+        surfaceContainerHighest = surfaceAt(HIGHEST_SURFACE_STEP),
+        inverseSurface = ink,
+        inverseOnSurface = ground,
+        outline = muted,
+        outlineVariant = hairline,
+    )
 }
 
 fun themeNamed(name: String?): SpecTheme? = when (name) {

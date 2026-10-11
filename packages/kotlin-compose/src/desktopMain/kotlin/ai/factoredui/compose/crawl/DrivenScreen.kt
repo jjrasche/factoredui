@@ -103,9 +103,20 @@ class DrivenScreen internal constructor(
         return tapAt(centre.x, centre.y)
     }
 
+    /** Where the first drawn node showing [text], as a label or as the contents of a field, sits. */
+    fun boundsOfText(text: String): DpRect? {
+        settle()
+        val bounds = nodeShowing(text)?.boundsInRoot ?: return null
+        return DpRect(bounds.left.dp, bounds.top.dp, bounds.right.dp, bounds.bottom.dp)
+    }
+
+    private fun isShowing(node: androidx.compose.ui.semantics.SemanticsNode, text: String): Boolean =
+        node.config.getOrNull(SemanticsProperties.Text)?.any { it.text == text } == true ||
+            node.config.getOrNull(SemanticsProperties.EditableText)?.text == text
+
     private fun nodeShowing(text: String): androidx.compose.ui.semantics.SemanticsNode? {
         fun find(node: androidx.compose.ui.semantics.SemanticsNode): androidx.compose.ui.semantics.SemanticsNode? {
-            if (node.config.getOrNull(SemanticsProperties.Text)?.any { it.text == text } == true) return node
+            if (isShowing(node, text)) return node
             return node.children.firstNotNullOfOrNull(::find)
         }
         return scene.semanticsOwners.firstNotNullOfOrNull { find(it.unmergedRootSemanticsNode) }
