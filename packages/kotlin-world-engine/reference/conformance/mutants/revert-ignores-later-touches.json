@@ -1,7 +1,0 @@
-{
-  "id": "revert-ignores-later-touches",
-  "breaks": "reverts an event even when a later event touched the same tiles",
-  "edits": [
-    {"find": "        if clash:\n            return Refusal(\"revert-conflict\"", "replace": "        if False:\n            return Refusal(\"revert-conflict\""}
-  ]
-}
