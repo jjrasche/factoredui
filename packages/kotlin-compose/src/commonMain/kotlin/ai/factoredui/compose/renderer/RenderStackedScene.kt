@@ -115,11 +115,18 @@ private class PartTapTarget(
     val keepLocalSelection: (Set<String>) -> Unit,
 )
 
-private fun applyPartTap(target: PartTapTarget, xPx: Double, yPx: Double) {
-    val hit = findTappedPart(target, xPx, yPx)
+private fun applyPartTap(target: PartTapTarget, xPx: Double, yPx: Double) = tapPart(target, findTappedPart(target, xPx, yPx))
+
+private fun tapPart(target: PartTapTarget, hit: VisiblePart?) {
     val nextSelection = selectionAfterTap(target.selection, hit?.footprint?.id)
     writeSelection(target, nextSelection)
     dispatchPartTap(target, hit)
+}
+
+private fun tapPartById(target: PartTapTarget, partId: String): Boolean {
+    val part = target.parts.firstOrNull { it.footprint.id == partId } ?: return false
+    tapPart(target, part)
+    return true
 }
 
 private fun findTappedPart(target: PartTapTarget, xPx: Double, yPx: Double): VisiblePart? =
@@ -169,7 +176,13 @@ private fun RenderSizedStackedScene(
             val picture = StackedPicture(scene, parts, props.drawing, fit, values, props.colourScale, props.highlightIds + selection)
             val notices = sceneNotices(scene, parts, props, fit)
             val popup = popupLines(scene, parts, selection, props, values)
-            RecordDrawn { this.scene = sceneRecord(props, notices, partReadings(picture, props.highlightIds, selection), popup) }
+            val tapTarget = PartTapTarget(node.id, scene, parts, props.drawing, fit, selection, selectedPath, props.onPartTap, context, scope) {
+                localSelection = it
+            }
+            RecordDrawn {
+                this.scene = sceneRecord(props, notices, partReadings(picture, props.highlightIds, selection), popup)
+                partTap = { partId -> tapPartById(tapTarget, partId) }
+            }
             Canvas(
                 modifier = Modifier.fillMaxSize()
                     .clipToBounds()
@@ -177,10 +190,7 @@ private fun RenderSizedStackedScene(
                     .testTag(partsTag(node.id))
                     .semantics { stateDescription = drawnPartsSummary(parts, props.highlightIds, selection) }
                     .pointerInput(parts, fit, selection, selectedPath, props.onPartTap) {
-                        val target = PartTapTarget(node.id, scene, parts, props.drawing, fit, selection, selectedPath, props.onPartTap, context, scope) {
-                            localSelection = it
-                        }
-                        detectTapGestures(onTap = { offset -> applyPartTap(target, offset.x.toDouble(), offset.y.toDouble()) })
+                        detectTapGestures(onTap = { offset -> applyPartTap(tapTarget, offset.x.toDouble(), offset.y.toDouble()) })
                     },
             ) {
                 drawStackedScene(picture, palette)

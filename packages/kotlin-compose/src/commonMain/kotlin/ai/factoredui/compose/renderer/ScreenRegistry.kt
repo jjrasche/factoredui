@@ -34,7 +34,10 @@ data class ScenePartRecord(
     val canvasBottom: Float,
     val canvasCentreX: Float,
     val canvasCentreY: Float,
+    val coveredBy: List<String> = emptyList(),
 )
+
+data class MenuItemRecord(val value: String, val label: String, val selected: Boolean)
 
 data class SceneLegendRecord(val text: String, val colour: Long)
 
@@ -69,6 +72,12 @@ class NodeRecord(
     var notices: List<String> = emptyList()
     var scene: SceneRecord? = null
     var canvas: CanvasPlacement? = null
+    var fill: Long? = null
+    var ink: Long? = null
+    var shownProps: Map<String, Any?> = emptyMap()
+    var menu: List<MenuItemRecord>? = null
+    val menuBounds: MutableMap<String, ScreenBounds> = mutableMapOf()
+    var partTap: ((String) -> Boolean)? = null
 }
 
 class ScreenRegistry {
@@ -118,6 +127,17 @@ internal fun Modifier.placementOf(id: String): Modifier = composed {
         Modifier
     } else {
         Modifier.onGloballyPositioned { coordinates -> registry.update(identity.path) { bounds = windowUnits(coordinates, density) } }
+    }
+}
+
+internal fun Modifier.menuItemPlacement(value: String): Modifier = composed {
+    val registry = LocalScreenRegistry.current
+    val identity = LocalNodeIdentity.current
+    val density = LocalDensity.current
+    if (registry == null || identity == null) {
+        Modifier
+    } else {
+        Modifier.onGloballyPositioned { coordinates -> registry.update(identity.path) { menuBounds[value] = windowUnits(coordinates, density) } }
     }
 }
 

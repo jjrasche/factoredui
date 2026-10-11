@@ -16,6 +16,7 @@ import ai.factoredui.compose.stackedscene.VisiblePart
 import ai.factoredui.compose.stackedscene.colourFor
 import ai.factoredui.compose.stackedscene.faceShades
 import ai.factoredui.compose.stackedscene.flatViewOf
+import ai.factoredui.compose.stackedscene.hitDrawnPart
 import ai.factoredui.compose.stackedscene.isoProject
 import ai.factoredui.compose.stackedscene.mmToCanvas
 import ai.factoredui.compose.stackedscene.partBox
@@ -179,10 +180,17 @@ private fun isoReading(picture: StackedPicture, part: VisiblePart, outline: Stri
 }
 
 /** Each part as drawn: its fill is the colour painted at its centre (the top face in the iso), from the same colouring the drawing uses. */
-internal fun partReadings(picture: StackedPicture, highlightIds: Set<String>, selection: Set<String>): List<ScenePartRecord> = picture.parts.map { part ->
+internal fun partReadings(picture: StackedPicture, highlightIds: Set<String>, selection: Set<String>): List<ScenePartRecord> = picture.parts.mapIndexed { index, part ->
     val outline = outlineOf(part, highlightIds, selection)
-    if (picture.drawing == StackedDrawing.ISO) isoReading(picture, part, outline) else flatReading(picture, part, outline)
+    val reading = if (picture.drawing == StackedDrawing.ISO) isoReading(picture, part, outline) else flatReading(picture, part, outline)
+    reading.copy(coveredBy = partsOver(picture, index, reading.canvasCentreX.toDouble(), reading.canvasCentreY.toDouble()))
 }
+
+/** The parts drawn after this one that a tap at its centre would land on, found with the tap's own hit test. */
+private fun partsOver(picture: StackedPicture, index: Int, x: Double, y: Double): List<String> =
+    picture.parts.drop(index + 1)
+        .filter { hitDrawnPart(picture.scene, listOf(it), picture.drawing, picture.fit, x, y) != null }
+        .map { it.footprint.id }
 
 internal fun legendReadings(scale: ColourScale?): List<SceneLegendRecord> {
     val ramp = scale?.ramp ?: return legendEntries(scale).map { SceneLegendRecord(it.label, it.colour) }

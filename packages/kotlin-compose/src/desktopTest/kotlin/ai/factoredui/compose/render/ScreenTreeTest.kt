@@ -85,13 +85,13 @@ private fun partsOf(scene: JsonObject): Map<String, JsonObject> =
 
 private val EXPECTED_TREE = """
 {"id":"page","type":"column","text":null,"props":{},"visible":true,"enabled":true,"action":null,"children":[
- {"id":"greeting","type":"text","text":"Ada","props":{"value":"Ada"},"visible":true,"enabled":true,"action":null,"children":[]},
+ {"id":"greeting","type":"text","text":"Ada","props":{"value":"Ada"},"ink":"#1a1a1a","visible":true,"enabled":true,"action":null,"children":[]},
  {"id":"secret","type":"text","text":null,"props":{},"visible":false,"enabled":true,"action":null,"children":[]},
  {"id":"go","type":"button","text":"Go","props":{},"visible":true,"enabled":true,"action":"set_binding","children":[]},
  {"id":"rows","type":"list","text":null,"props":{"data":"<list: 3 items>"},"visible":true,"enabled":true,"action":null,"children":[
-  {"id":"rows/0/row-label","type":"text","text":"a","props":{"value":"a"},"visible":true,"enabled":true,"action":null,"children":[]},
-  {"id":"rows/1/row-label","type":"text","text":"b","props":{"value":"b"},"visible":true,"enabled":true,"action":null,"children":[]},
-  {"id":"rows/2/row-label","type":"text","text":"c","props":{"value":"c"},"visible":true,"enabled":true,"action":null,"children":[]}]},
+  {"id":"rows/0/row-label","type":"text","text":"a","props":{"value":"a"},"ink":"#1a1a1a","visible":true,"enabled":true,"action":null,"children":[]},
+  {"id":"rows/1/row-label","type":"text","text":"b","props":{"value":"b"},"ink":"#1a1a1a","visible":true,"enabled":true,"action":null,"children":[]},
+  {"id":"rows/2/row-label","type":"text","text":"c","props":{"value":"c"},"ink":"#1a1a1a","visible":true,"enabled":true,"action":null,"children":[]}]},
  {"id":"board","type":"scene","text":null,"props":{"hide_top":0,"scene_view":"<text: SCENE_CHARS chars>","view":"plan"},"visible":true,"enabled":true,"action":null,
   "scene":{"view":"plan","focus":"all","hide_top":0,"show_lower":false,"y_axis":"up","active_scheme":null,
    "legend":[{"text":"quiet","color":"#3a7ca5"},{"text":"busy","color":"#e0a030"},{"text":"over full","color":"#b03a2e"},{"text":"no count","color":"#9aa4ad"}],

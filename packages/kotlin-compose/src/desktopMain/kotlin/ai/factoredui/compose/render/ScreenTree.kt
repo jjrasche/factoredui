@@ -1,6 +1,7 @@
 package ai.factoredui.compose.render
 
 import ai.factoredui.compose.renderer.CanvasPlacement
+import ai.factoredui.compose.renderer.MenuItemRecord
 import ai.factoredui.compose.renderer.NodeRecord
 import ai.factoredui.compose.renderer.ScenePartRecord
 import ai.factoredui.compose.renderer.SceneRecord
@@ -51,6 +52,11 @@ fun idsShowing(root: ScreenNode, substring: String): List<String> =
 
 private fun hexOf(colour: Long): String = "#" + (colour and 0xFFFFFF).toString(16).padStart(6, '0')
 
+private fun hexWithAlphaOf(colour: Long): String {
+    val alpha = (colour shr 24) and 0xFF
+    return if (alpha == 0xFFL) hexOf(colour) else hexOf(colour) + alpha.toString(16).padStart(2, '0')
+}
+
 private fun boundsJson(bounds: ScreenBounds?): JsonElement = bounds?.let {
     buildJsonObject {
         put("x", it.x)
@@ -90,6 +96,7 @@ private fun partJson(part: ScenePartRecord, canvas: CanvasPlacement?): JsonObjec
     put("outline", part.outline)
     put("value", valueJson(part.value))
     put("bounds", boundsJson(partBounds(part, canvas)))
+    put("covered_by", JsonArray(part.coveredBy.map(::JsonPrimitive)))
     canvas?.let { put("centre", buildJsonObject { partCentre(part, it).let { point -> put("x", point.x); put("y", point.y) } }) }
 }
 
@@ -106,35 +113,72 @@ private fun sceneJson(scene: SceneRecord, canvas: CanvasPlacement?): JsonObject 
     put("popup", valueJson(scene.popup))
 }
 
+fun optionPath(selectPath: String, value: String): String = "$selectPath/option/$value"
+
+private fun optionJson(record: NodeRecord, item: MenuItemRecord): JsonObject = buildJsonObject {
+    put("id", optionPath(record.path, item.value))
+    put("type", "option")
+    put("text", item.label)
+    put("props", buildJsonObject { put("value", item.value) })
+    put("visible", true)
+    put("enabled", true)
+    put("action", JsonNull)
+    put("selected", item.selected)
+    put("bounds", boundsJson(record.menuBounds[item.value]))
+    put("children", JsonArray(emptyList()))
+}
+
 fun screenJson(node: ScreenNode): JsonObject = buildJsonObject {
     val record = node.record
     put("id", record.path)
     put("type", record.type)
     put("text", valueJson(record.text))
-    put("props", JsonObject(record.boundProps.mapValues { valueJson(it.value) }))
+    put("props", JsonObject((record.boundProps + record.shownProps).toSortedMap().mapValues { valueJson(it.value) }))
     put("visible", record.visible)
     put("enabled", record.enabled)
     put("action", valueJson(record.action))
     put("bounds", boundsJson(record.bounds))
+    record.fill?.let { put("fill", hexWithAlphaOf(it)) }
+    record.ink?.let { put("ink", hexOf(it)) }
     if (record.notices.isNotEmpty()) put("notices", JsonArray(record.notices.map(::JsonPrimitive)))
     record.scene?.let { put("scene", sceneJson(it, record.canvas)) }
-    put("children", JsonArray(node.children.map(::screenJson)))
+    val options = record.menu.orEmpty().map { optionJson(record, it) }
+    put("children", JsonArray(node.children.map(::screenJson) + options))
 }
 
-/** Where a click on [id] lands: a node's centre, or for "<scene node>/<part id>" the part's centre. */
-fun clickPointFor(registry: ScreenRegistry, id: String): Point {
-    val record = registry.recordOf(id)
-    if (record != null) {
-        val bounds = record.bounds ?: error("'$id' is drawn with no bounds")
-        require(bounds.hasSize) { "'$id' is drawn with no size" }
-        return Point(bounds.centreX, bounds.centreY)
-    }
+sealed interface ClickTarget {
+    data class AtPoint(val point: Point) : ClickTarget
+    data class ScenePart(val scenePath: String, val partId: String) : ClickTarget
+}
+
+private fun nodeCentre(id: String, bounds: ScreenBounds?): Point {
+    bounds ?: error("'$id' is drawn with no bounds")
+    require(bounds.hasSize) { "'$id' is drawn with no size" }
+    return Point(bounds.centreX, bounds.centreY)
+}
+
+private fun optionTarget(registry: ScreenRegistry, id: String): ClickTarget? {
+    val selectPath = id.substringBefore("/option/", missingDelimiterValue = "")
+    val select = registry.recordOf(selectPath)?.takeIf { it.type == "select" } ?: return null
+    val value = id.substringAfter("/option/")
+    val menu = select.menu ?: error("select '$selectPath' is not open")
+    require(menu.any { it.value == value }) { "select '$selectPath' has no option '$value'" }
+    return ClickTarget.AtPoint(nodeCentre(id, select.menuBounds[value]))
+}
+
+/** A node or an open select's option is clicked at its centre; a scene part is tapped by its id, so a part under another is still the one tapped. */
+fun clickTargetFor(registry: ScreenRegistry, id: String): ClickTarget {
+    registry.recordOf(id)?.let { return ClickTarget.AtPoint(nodeCentre(id, it.bounds)) }
+    optionTarget(registry, id)?.let { return it }
     val scenePath = id.substringBeforeLast('/', missingDelimiterValue = "")
     val partId = id.substringAfterLast('/')
-    val scene = registry.recordOf(scenePath)?.takeIf { it.scene != null } ?: error("no node or scene part has id '$id'")
-    val part = scene.scene!!.parts.firstOrNull { it.id == partId } ?: error("scene '$scenePath' draws no part '$partId'")
-    val canvas = scene.canvas ?: error("scene '$scenePath' has not been placed yet")
-    val bounds = partBounds(part, canvas)
-    require(bounds != null && bounds.hasSize) { "part '$partId' is drawn with no size" }
-    return partCentre(part, canvas)
+    val scene = registry.recordOf(scenePath)?.scene ?: error("no node or scene part has id '$id'")
+    require(scene.parts.any { it.id == partId }) { "scene '$scenePath' draws no part '$partId'" }
+    return ClickTarget.ScenePart(scenePath, partId)
+}
+
+fun tapScenePart(registry: ScreenRegistry, target: ClickTarget.ScenePart): String {
+    val tap = registry.recordOf(target.scenePath)?.partTap ?: error("scene '${target.scenePath}' takes no taps")
+    require(tap(target.partId)) { "scene '${target.scenePath}' draws no part '${target.partId}'" }
+    return "tapped ${target.scenePath}/${target.partId}"
 }

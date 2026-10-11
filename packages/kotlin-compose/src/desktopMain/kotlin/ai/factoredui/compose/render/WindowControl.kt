@@ -77,7 +77,7 @@ class WindowControl(private val context: RenderContext, private val surface: Con
     fun start(port: Int): HttpServer = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0).apply {
         createContext("/set") { exchange -> answer(exchange) { query -> setBinding(query) } }
         createContext("/get") { exchange -> answer(exchange) { query -> readBinding(query) } }
-        createContext("/click") { exchange -> answer(exchange) { query -> surface.click(clickPoint(query)) } }
+        createContext("/click") { exchange -> answer(exchange) { query -> click(query) } }
         createContext("/wheel") { exchange -> answer(exchange) { query -> surface.wheel(pointOf(query), query.getValue("notches").toInt()) } }
         createContext("/shot") { exchange -> answer(exchange) { query -> surface.shot(File(query.getValue("file"))) } }
         createContext("/tree") { exchange -> answer(exchange) { query -> surface.onScreenThread { treeText(query) } } }
@@ -101,9 +101,12 @@ class WindowControl(private val context: RenderContext, private val surface: Con
         return anyToJson(current).toString()
     }
 
-    private fun clickPoint(query: Map<String, String>): Point {
-        val id = query["id"] ?: return pointOf(query)
-        return surface.onScreenThread { clickPointFor(context.screen, id) }
+    private fun click(query: Map<String, String>): String {
+        val id = query["id"] ?: return surface.click(pointOf(query))
+        return when (val target = surface.onScreenThread { clickTargetFor(context.screen, id) }) {
+            is ClickTarget.AtPoint -> surface.click(target.point)
+            is ClickTarget.ScenePart -> surface.onScreenThread { tapScenePart(context.screen, target) }
+        }
     }
 
     private fun treeText(query: Map<String, String>): String {

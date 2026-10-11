@@ -386,6 +386,7 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
 private fun Modifier.groundOf(props: LayoutProps): Modifier {
     val theme = LocalSpecTheme.current
     val ground = props.background?.let { theme.tokenColor(it) ?: it.parseColor() } ?: return this
+    RecordDrawn { fill = argbOf(ground) }
     return this.background(ground)
 }
 
@@ -523,6 +524,7 @@ private fun StyledCard(
         CardDefaults.cardElevation()
     }
     val cardModifier = widthModifier.nodeTag(node.id)
+    RecordDrawn { fill = props.background?.let(::argbOf) }
     val action = node.action
     if (action != null) {
         val scope = rememberCoroutineScope()
@@ -712,7 +714,11 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
         else -> MaterialTheme.typography.bodyMedium
     }
     val paint = textPaint(props, LocalSpecTheme.current.ink)
-    RecordDrawn { text = paint.notice ?: props.value }
+    RecordDrawn {
+        text = paint.notice ?: props.value
+        fill = paint.background?.let(::argbOf)
+        ink = argbOf(paint.ink)
+    }
     val fills = fillsItsSlot(props.align, paint.background != null, LocalWidthIsShared.current)
     Text(
         text = paint.notice ?: props.value,
