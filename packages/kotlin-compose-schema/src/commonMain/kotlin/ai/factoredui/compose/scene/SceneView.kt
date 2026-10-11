@@ -82,7 +82,7 @@ data class BoundaryLayer(val version: Long, val polygons: List<BoundaryPolygon>,
 
 data class StackLevel(val stackLevel: Int, val zBaseMm: Long?, val label: String? = null)
 
-data class GridSpec(val shape: String, val tileFeet: Double, val cols: Int, val rows: Int)
+data class GridSpec(val shape: String, val tileFeet: Double, val cols: Int, val rows: Int, val north: String? = null)
 
 data class Annotation(val refKind: String, val refId: String?, val kind: String, val text: String, val source: String?, val value: Double? = null)
 

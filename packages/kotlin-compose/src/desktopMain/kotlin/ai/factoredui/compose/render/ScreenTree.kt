@@ -106,6 +106,7 @@ private fun sceneJson(scene: SceneRecord, canvas: CanvasPlacement?): JsonObject 
     put("hide_top", scene.hideTop)
     put("show_lower", scene.showLower)
     put("y_axis", scene.yAxis)
+    put("north", valueJson(scene.north))
     put("active_scheme", valueJson(scene.activeScheme))
     put("legend", buildJsonArray { scene.legend.forEach { entry -> add(buildJsonObject { put("text", entry.text); put("color", hexOf(entry.colour)) }) } })
     put("notices", JsonArray(scene.notices.map(::JsonPrimitive)))

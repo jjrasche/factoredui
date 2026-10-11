@@ -176,7 +176,8 @@ private fun boundariesJson(layer: BoundaryLayer): JsonObject = JsonObject(
 )
 
 private fun gridJson(grid: GridSpec): JsonObject = JsonObject(
-    mapOf("shape" to JsonPrimitive(grid.shape), "tile_feet" to JsonPrimitive(grid.tileFeet), "cols" to JsonPrimitive(grid.cols), "rows" to JsonPrimitive(grid.rows)),
+    mapOf("shape" to JsonPrimitive(grid.shape), "tile_feet" to JsonPrimitive(grid.tileFeet), "cols" to JsonPrimitive(grid.cols), "rows" to JsonPrimitive(grid.rows)) +
+        listOfNotNull(grid.north?.let { "north" to JsonPrimitive(it) }),
 )
 
 private fun annotationsJson(layer: AnnotationLayer): JsonObject = JsonObject(

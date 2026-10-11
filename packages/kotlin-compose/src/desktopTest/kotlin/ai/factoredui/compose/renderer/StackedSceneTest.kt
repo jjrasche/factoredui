@@ -80,6 +80,21 @@ private fun orientedSpec(yAxis: String, view: String, hideTop: Int = 0) = json.d
     """.trimIndent(),
 )
 
+private fun unstatedSpec(hideTop: Int = 0) = json.decodeFromString(
+    Spec.serializer(),
+    """
+    {"spec_version":1,"renderer_min":1,"root":{"id":"board","type":"scene","props":{
+      "view_state":{"renderer":"stacked_scene"},"scene_view":"{board.scene}","view":"plan","hide_top":$hideTop,"selected":"{board.selected}"
+    }}}
+    """.trimIndent(),
+)
+
+private fun boardWithNorth(north: String): String {
+    val scene = json.parseToJsonElement(stackedBoardText()).jsonObject
+    val grid = json.parseToJsonElement("""{"shape":"square","north":"$north","tile_mm":300,"cols":20,"rows":16}""")
+    return JsonObject(scene + ("grid" to grid)).toString()
+}
+
 /** The board with every part's rows counted from the other edge: y negated and re-based into the same window. */
 private fun mirroredBoardText(): String {
     val scene = json.parseToJsonElement(stackedBoardText()).jsonObject
@@ -222,6 +237,25 @@ class StackedSceneTest {
                 screen.tapAt(x.toFloat(), y.toFloat())
                 assertEquals(listOf(expected), selectedIn(screen.store()), yAxis)
             }
+        }
+    }
+
+    @Test
+    fun a_grid_whose_row_0_is_north_draws_row_0_at_the_top_unless_the_node_states_a_y_axis() {
+        val fit = fitDrawing(board, StackedDrawing.PLAN, WIDTH.toDouble(), HEIGHT.toDouble())
+        val (x, y) = mmToCanvas(fit, 3000.0, 750.0)
+        listOf(unstatedSpec(hideTop = 1) to "r2", orientedSpec("up", "plan", hideTop = 1) to "r1").forEach { (spec, expected) ->
+            driveScreen(spec, storeFor("plan", scene = boardWithNorth("row_0")), WIDTH, HEIGHT).use { screen ->
+                screen.tapAt(x.toFloat(), y.toFloat())
+                assertEquals(listOf(expected), selectedIn(screen.store()), expected)
+            }
+        }
+    }
+
+    @Test
+    fun a_grid_north_the_renderer_does_not_know_is_named_on_screen_and_y_is_drawn_up() {
+        driveScreen(unstatedSpec(), storeFor("plan", scene = boardWithNorth("row_last")), WIDTH, HEIGHT).use { screen ->
+            assertTrue("the scene's grid north 'row_last' is not row_0; y is drawn up." in screen.textsUnder("board"))
         }
     }
 

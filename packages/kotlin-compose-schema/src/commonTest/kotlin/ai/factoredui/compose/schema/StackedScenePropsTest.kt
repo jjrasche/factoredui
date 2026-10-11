@@ -75,8 +75,8 @@ class StackedScenePropsTest {
     }
 
     @Test
-    fun y_axis_reads_up_by_default_and_down_when_named() {
-        assertEquals(YAxis.UP, resolveStackedSceneProps(emptyMap()).yAxis)
+    fun y_axis_reads_as_unstated_by_default_and_up_or_down_when_named() {
+        assertEquals(null, resolveStackedSceneProps(emptyMap()).yAxis)
         assertEquals(YAxis.UP, resolveStackedSceneProps(mapOf("y_axis" to "up")).yAxis)
         val down = resolveStackedSceneProps(mapOf("y_axis" to "down"))
         assertEquals(YAxis.DOWN, down.yAxis)

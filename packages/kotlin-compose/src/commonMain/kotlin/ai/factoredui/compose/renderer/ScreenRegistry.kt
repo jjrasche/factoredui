@@ -47,6 +47,7 @@ data class SceneRecord(
     val hideTop: Int,
     val showLower: Boolean,
     val yAxis: String,
+    val north: String?,
     val activeScheme: String?,
     val legend: List<SceneLegendRecord>,
     val notices: List<String>,

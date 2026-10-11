@@ -121,6 +121,16 @@ class ScreenTreeDetailTest {
     }
 
     @Test
+    fun a_scene_states_its_grids_north_and_the_y_axis_it_drew_with() {
+        val scene = JsonObject(json.parseToJsonElement(stackedBoardText()).jsonObject + ("grid" to json.parseToJsonElement("""{"shape":"square","north":"row_0","tile_mm":300,"cols":20,"rows":16}""")))
+        drivingSpec(BOARD, mapOf("board" to mapOf("scene" to scene.toString()))) { port, _ ->
+            val drawn = treeAt(port, "board").getValue("scene").jsonObject
+            assertEquals("row_0", drawn.text("north"))
+            assertEquals("down", drawn.text("y_axis"))
+        }
+    }
+
+    @Test
     fun a_modals_children_are_nodes_in_the_tree_and_click_by_id() {
         drivingSpec(DIALOG, emptyMap()) { port, context ->
             val agree = treeAt(port, "agree")

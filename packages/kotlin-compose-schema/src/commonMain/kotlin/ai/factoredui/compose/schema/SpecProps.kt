@@ -1067,7 +1067,7 @@ data class StackedSceneProps(
     val onPartTap: String? = null,
     val colourScale: ColourScale? = null,
     val notes: List<String> = emptyList(),
-    val yAxis: YAxis = YAxis.UP,
+    val yAxis: YAxis? = null,
     val activeScheme: String? = null,
 )
 
@@ -1082,8 +1082,8 @@ private fun drawingReading(raw: Any?): PropReading<StackedDrawing> {
     return PropReading(drawing)
 }
 
-private fun yAxisReading(raw: Any?): PropReading<YAxis> {
-    if (raw == null) return PropReading(YAxis.UP)
+private fun yAxisReading(raw: Any?): PropReading<YAxis?> {
+    if (raw == null) return PropReading(null)
     val yAxis = yAxisOf(raw) ?: return PropReading(YAxis.UP, "y_axis '$raw' is not up or down; y is drawn up.")
     return PropReading(yAxis)
 }

@@ -27,7 +27,9 @@ import ai.factoredui.compose.stackedscene.partValueText
 import ai.factoredui.compose.stackedscene.partValues
 import ai.factoredui.compose.stackedscene.partsToDraw
 import ai.factoredui.compose.stackedscene.popupAnchor
+import ai.factoredui.compose.stackedscene.YAxis
 import ai.factoredui.compose.stackedscene.sceneForYAxis
+import ai.factoredui.compose.stackedscene.sceneYAxis
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -86,8 +88,10 @@ internal fun RenderStackedScene(node: SpecNode, resolvedProps: Map<String, Any?>
     if (scene == null) {
         StackedSceneNotice(node.id, "The stacked scene cannot be drawn: ${reading.exceptionOrNull()?.message}")
     } else {
-        val props = resolveStackedSceneProps(resolvedProps)
-        val oriented = remember(scene, props.yAxis) { sceneForYAxis(scene, props.yAxis) }
+        val stated = resolveStackedSceneProps(resolvedProps)
+        val choice = sceneYAxis(stated.yAxis, scene.grid?.north)
+        val props = stated.copy(yAxis = choice.axis, notes = stated.notes + listOfNotNull(choice.notice))
+        val oriented = remember(scene, choice.axis) { sceneForYAxis(scene, choice.axis) }
         RenderReadStackedScene(node, oriented, props, resolvedProps["selected"], context)
     }
 }
@@ -180,7 +184,7 @@ private fun RenderSizedStackedScene(
                 localSelection = it
             }
             RecordDrawn {
-                this.scene = sceneRecord(props, notices, partReadings(picture, props.highlightIds, selection), popup)
+                this.scene = sceneRecord(scene, props, notices, partReadings(picture, props.highlightIds, selection), popup)
                 partTap = { partId -> tapPartById(tapTarget, partId) }
             }
             Canvas(
@@ -233,12 +237,13 @@ private fun focusText(focus: LevelFocus): String = when (focus) {
     is LevelFocus.OneLevel -> focus.level.toString()
 }
 
-private fun sceneRecord(props: StackedSceneProps, notices: List<String>, parts: List<ScenePartRecord>, popup: List<String>?) = SceneRecord(
+private fun sceneRecord(scene: SceneView, props: StackedSceneProps, notices: List<String>, parts: List<ScenePartRecord>, popup: List<String>?) = SceneRecord(
     view = props.drawing.wire,
     focus = focusText(props.focus),
     hideTop = props.hideTopCount,
     showLower = props.showLower,
-    yAxis = props.yAxis.wire,
+    yAxis = (props.yAxis ?: YAxis.UP).wire,
+    north = scene.grid?.north,
     activeScheme = props.activeScheme,
     legend = legendReadings(props.colourScale),
     notices = notices,

@@ -93,7 +93,7 @@ private val EXPECTED_TREE = """
   {"id":"rows/1/row-label","type":"text","text":"b","props":{"value":"b"},"ink":"#1a1a1a","visible":true,"enabled":true,"action":null,"children":[]},
   {"id":"rows/2/row-label","type":"text","text":"c","props":{"value":"c"},"ink":"#1a1a1a","visible":true,"enabled":true,"action":null,"children":[]}]},
  {"id":"board","type":"scene","text":null,"props":{"hide_top":0,"scene_view":"<text: SCENE_CHARS chars>","view":"plan"},"visible":true,"enabled":true,"action":null,
-  "scene":{"view":"plan","focus":"all","hide_top":0,"show_lower":false,"y_axis":"up","active_scheme":null,
+  "scene":{"view":"plan","focus":"all","hide_top":0,"show_lower":false,"y_axis":"up","north":null,"active_scheme":null,
    "legend":[{"text":"quiet","color":"#3a7ca5"},{"text":"busy","color":"#e0a030"},{"text":"over full","color":"#b03a2e"},{"text":"no count","color":"#9aa4ad"}],
    "notices":[],"popup":null},
   "children":[]}]}

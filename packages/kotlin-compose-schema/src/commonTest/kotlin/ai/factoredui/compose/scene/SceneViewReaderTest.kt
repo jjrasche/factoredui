@@ -208,6 +208,20 @@ class SceneViewReaderTest {
     }
 
     @Test
+    fun the_grid_keeps_the_edge_its_row_0_stands_at_and_a_grid_without_one_says_nothing() {
+        val north = readSceneView(sceneWith(""""grid":{"shape":"square","north":"row_0","tile_mm":305,"cols":1,"rows":1}"""))
+        assertEquals("row_0", north.grid!!.north)
+        assertEquals(null, readSceneView(sceneWith(""""grid":{"shape":"square","tile_mm":305,"cols":1,"rows":1}""")).grid!!.north)
+        assertEquals("row_0", readSceneView(sceneViewJson(north)).grid!!.north, "the grid's north survives a round trip")
+    }
+
+    @Test
+    fun a_grid_north_that_is_not_text_is_refused() {
+        val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(""""grid":{"shape":"square","north":0,"tile_mm":305,"cols":1,"rows":1}""")) }
+        assertEquals("north must be text, not 0", failure.message)
+    }
+
+    @Test
     fun an_instance_provenance_naming_no_known_kind_is_refused() {
         val failure = assertFailsWith<SceneViewFormatException> { readSceneView(sceneWith(instanceWithProvenance("\"rumoured\""))) }
         assertEquals("provenance names no kind this reader knows: 'rumoured'", failure.message)

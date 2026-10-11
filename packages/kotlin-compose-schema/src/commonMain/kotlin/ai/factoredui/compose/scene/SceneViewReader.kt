@@ -242,7 +242,7 @@ private fun boundariesOf(layer: JsonObject): BoundaryLayer = BoundaryLayer(
 
 private fun gridOf(grid: JsonObject, sceneTileFeet: Double): GridSpec {
     val tileFeet = grid.double("tile_feet") ?: grid.double("tile_mm")?.let { it / MM_PER_FOOT } ?: sceneTileFeet
-    return GridSpec(grid.string("shape") ?: "square", tileFeet, grid.requiredInt("cols"), grid.requiredInt("rows"))
+    return GridSpec(grid.string("shape") ?: "square", tileFeet, grid.requiredInt("cols"), grid.requiredInt("rows"), grid.string("north"))
 }
 
 private fun annotationsOf(layer: JsonObject): AnnotationLayer = AnnotationLayer(
