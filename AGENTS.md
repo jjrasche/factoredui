@@ -130,6 +130,30 @@ Notices drawn over the scene:
 
 `packages/kotlin-compose/src/desktopTest/resources/specs/stacked-board.spec.json` is a working example: the scene, level selects, a colour scale, and report rows that each highlight their parts.
 
+## Driving a window
+
+An agent checks a screen through the same window a person uses, and reads it as text. Pictures are a receipt.
+
+- Build once: `./gradlew :kotlin-compose:installSpecWindow`. Then launch with `java -cp "packages/kotlin-compose/build/spec-window/lib/*" ai.factoredui.compose.render.SpecWindowKt <spec.json> [width] [height] [--data seeds.json] [--state a.b=text|json|reports:file ...] [--theme light|dark] [--title "name"] [--control <port>]`. `--state` repeats; `text` binds the file's text, `json` its decoded object, `reports` its reports keyed by id.
+- `--control <port>` serves these routes on 127.0.0.1 only:
+  - `GET /tree` returns what is drawn now, as JSON. Each node has `{id, type, text, props, visible, enabled, action, bounds {x,y,w,h}, children}`. A list's rows appear once each, with ids such as `rows/0/row-label`. `props` holds the resolved values of the props that were bindings; a bulky value appears as its shape, e.g. `"<list: 3 items>"`. A `stacked_scene` adds `scene: {view, focus, hide_top, show_lower, y_axis, active_scheme, legend, notices, parts, popup}`. Each part has `{id, type_id, level, fill, outline (normal, highlight, selected or faded), value, bounds, centre}`; `fill` is the colour painted at the part's centre (the top face in the iso). The same screen gives the same bytes.
+  - `/tree?id=<id>` returns that subtree, `/tree?visible=1` leaves out hidden nodes, and `/tree?text=<words>` returns the ids whose drawn text contains the words.
+  - `/click?id=<id>` clicks the centre of a node, and `/click?id=<scene id>/<part id>` the centre of a part. `/click?x=&y=` clicks a point; bounds are in these same units. An unknown id, an unknown part or a node with no size is refused with HTTP 400 "refused: ...".
+  - `/set?path=a.b&value=<json>` writes the live state, and `/get?path=a.b` reads it back.
+  - `/wheel?x=&y=&notches=` scrolls, and `/shot?file=<png>` saves what the window shows.
+- `/set` and `/click` change the running screen's state, as a person's input would. Read `/tree` after them to see the result.
+
+Example excerpt of `/tree?id=board` on the board fixture:
+
+```json
+{"id":"board","type":"scene","text":null,"props":{"hide_top":0,"scene_view":"<text: 3437 chars>","view":"plan"},"visible":true,"enabled":true,"action":null,
+ "bounds":{"x":0,"y":128,"w":800,"h":772},
+ "scene":{"view":"plan","focus":"all","hide_top":0,"show_lower":false,"y_axis":"up","active_scheme":null,
+  "legend":[{"text":"quiet","color":"#3a7ca5"},{"text":"busy","color":"#e0a030"}, ...],"notices":[],
+  "parts":[{"id":"r1","type_id":"bar","level":1,"fill":"#3a7ca5","outline":"normal","value":0.2,"bounds":{"x":24,"y":646,"w":752,"h":75},"centre":{"x":400,"y":684}}, ...],
+  "popup":"Plate / p2 · 50% · busy"}}
+```
+
 ## Checking a spec
 
 - Decode with `Json { ignoreUnknownKeys = true }` into `Spec.serializer()`.
