@@ -53,4 +53,57 @@ class SpecWindowArgsTest {
     fun aThemeFlagWithoutAValueIsRefused() {
         assertNull(parseWindowArgs(arrayOf("spec.json", "--theme")))
     }
+
+    @Test
+    fun stateFlagsRepeatAndEachNamesAPathAKindAndAFile() {
+        val parsed = parseWindowArgs(arrayOf("spec.json", "--state", "a.scene=text:s.json", "900", "--state", "reports=reports:r.json", "600"))
+        assertEquals(
+            WindowArgs("spec.json", 900, 600, null, stateFiles = listOf(StateFile("a.scene", StateFileKind.TEXT, "s.json"), StateFile("reports", StateFileKind.REPORTS, "r.json"))),
+            parsed,
+        )
+    }
+
+    @Test
+    fun aStateFileMayLiveOnAWindowsDrive() {
+        val parsed = parseWindowArgs(arrayOf("spec.json", "--state", "a=json:C:/x/y.json"))
+        assertEquals(listOf(StateFile("a", StateFileKind.JSON, "C:/x/y.json")), parsed?.stateFiles)
+    }
+
+    @Test
+    fun aStateFlagWithAnUnknownKindIsRefused() {
+        assertNull(parseWindowArgs(arrayOf("spec.json", "--state", "a=yaml:s.yaml")))
+    }
+
+    @Test
+    fun aStateFlagWithoutAPathIsRefused() {
+        assertNull(parseWindowArgs(arrayOf("spec.json", "--state", "text:s.json")))
+    }
+
+    @Test
+    fun aStateFlagWithoutAValueIsRefused() {
+        assertNull(parseWindowArgs(arrayOf("spec.json", "--state")))
+    }
+
+    @Test
+    fun aControlFlagNamesTheLoopbackPort() {
+        assertEquals(47110, parseWindowArgs(arrayOf("spec.json", "--control", "47110"))?.controlPort)
+    }
+
+    @Test
+    fun aControlFlagThatIsNotAPortIsRefused() {
+        assertNull(parseWindowArgs(arrayOf("spec.json", "--control", "high")))
+    }
+
+    @Test
+    fun aTitleFlagNamesTheWindowAndWithoutOneTheTitleIsLeftToTheSpec() {
+        assertEquals("Board review", parseWindowArgs(arrayOf("spec.json", "--title", "Board review"))?.title)
+        assertNull(parseWindowArgs(arrayOf("spec.json"))?.title)
+        assertNull(parseWindowArgs(arrayOf("spec.json", "--title")))
+    }
+
+    @Test
+    fun theWindowTitleIsTheTitleFlagOrNamesTheSpecRoot() {
+        assertEquals("Board review", windowTitle("Board review", "root"))
+        assertEquals("factoredui — root", windowTitle(null, "root"))
+    }
 }

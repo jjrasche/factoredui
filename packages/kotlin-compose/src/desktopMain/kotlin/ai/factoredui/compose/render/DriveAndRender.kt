@@ -98,7 +98,7 @@ private fun pointerType(name: String?): PointerEventType = when (name) {
 internal fun jsonObjectToMap(obj: JsonObject): Map<String, Any?> =
     obj.mapValues { (_, value) -> jsonToAny(value) }
 
-private fun jsonToAny(element: JsonElement): Any? = when (element) {
+internal fun jsonToAny(element: JsonElement): Any? = when (element) {
     is JsonNull -> null
     is JsonObject -> jsonObjectToMap(element)
     is JsonArray -> element.map { jsonToAny(it) }
@@ -111,7 +111,7 @@ private fun mapToJson(data: Map<String, Any?>): JsonObject = buildJsonObject {
     for ((key, value) in data) put(key, anyToJson(value))
 }
 
-private fun anyToJson(value: Any?): JsonElement = when (value) {
+internal fun anyToJson(value: Any?): JsonElement = when (value) {
     null -> JsonNull
     is String -> JsonPrimitive(value)
     is Boolean -> JsonPrimitive(value)

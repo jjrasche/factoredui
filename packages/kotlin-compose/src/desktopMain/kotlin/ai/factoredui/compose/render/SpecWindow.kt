@@ -1,5 +1,6 @@
 package ai.factoredui.compose.render
 
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -22,15 +23,31 @@ private const val DEFAULT_WIDTH = 1280
 private const val DEFAULT_HEIGHT = 800
 private const val DATA_FLAG = "--data"
 private const val THEME_FLAG = "--theme"
-private val WINDOW_FLAGS = setOf(DATA_FLAG, THEME_FLAG)
+private const val STATE_FLAG = "--state"
+private const val CONTROL_FLAG = "--control"
+private const val TITLE_FLAG = "--title"
+private val WINDOW_FLAGS = setOf(DATA_FLAG, THEME_FLAG, STATE_FLAG, CONTROL_FLAG, TITLE_FLAG)
 
-data class WindowArgs(val source: String, val width: Int, val height: Int, val dataPath: String?, val theme: String? = null)
+data class WindowArgs(
+    val source: String,
+    val width: Int,
+    val height: Int,
+    val dataPath: String?,
+    val theme: String? = null,
+    val stateFiles: List<StateFile> = emptyList(),
+    val controlPort: Int? = null,
+    val title: String? = null,
+)
+
+fun windowTitle(titleFlag: String?, rootId: String): String = titleFlag ?: "factoredui — $rootId"
 
 fun parseWindowArgs(args: Array<String>): WindowArgs? {
     if (args.isEmpty()) return null
     val flagIndexes = args.indices.filter { args[it] in WINDOW_FLAGS }
     if (flagIndexes.any { it + 1 >= args.size }) return null
-    val flags = flagIndexes.associate { args[it] to args[it + 1] }
+    val flags = flagIndexes.map { args[it] to args[it + 1] }
+    val stateFiles = flags.filter { it.first == STATE_FLAG }.map { parseStateFile(it.second) ?: return null }
+    val controlPort = flags.lastOrNull { it.first == CONTROL_FLAG }?.let { it.second.toIntOrNull() ?: return null }
     val consumed = flagIndexes.flatMap { listOf(it, it + 1) }.toSet()
     val positional = args.filterIndexed { index, _ -> index !in consumed }
     val sizes = positional.drop(1).mapNotNull { it.toIntOrNull() }
@@ -38,8 +55,11 @@ fun parseWindowArgs(args: Array<String>): WindowArgs? {
         source = positional.first(),
         width = sizes.getOrNull(0) ?: DEFAULT_WIDTH,
         height = sizes.getOrNull(1) ?: DEFAULT_HEIGHT,
-        dataPath = flags[DATA_FLAG],
-        theme = flags[THEME_FLAG],
+        dataPath = flags.lastOrNull { it.first == DATA_FLAG }?.second,
+        theme = flags.lastOrNull { it.first == THEME_FLAG }?.second,
+        stateFiles = stateFiles,
+        controlPort = controlPort,
+        title = flags.lastOrNull { it.first == TITLE_FLAG }?.second,
     )
 }
 
@@ -48,7 +68,7 @@ fun parseWindowArgs(args: Array<String>): WindowArgs? {
 fun main(args: Array<String>) {
     val parsed = parseWindowArgs(args)
     if (parsed == null) {
-        System.err.println("usage: spec-window <spec.json | world.json — path or http URL> [width=1280] [height=800] [--data data.json]")
+        System.err.println("usage: spec-window <spec.json | world.json — path or http URL> [width=1280] [height=800] [--data data.json] [--state a.b=text|json|reports:file ...] [--control port] [--theme light|dark] [--title text]")
         kotlin.system.exitProcess(2)
     }
     val source = parsed.source
@@ -67,15 +87,24 @@ fun main(args: Array<String>) {
             kotlin.system.exitProcess(5)
         }
     } ?: emptyMap()
-    val theme = resolveWindowTheme(parsed.theme, windowThemeFromEnvironment(), data["theme"])
-    val seeded = data + ("theme" to theme)
+    val state = runCatching { windowState(data, parsed.stateFiles) }.getOrElse { failure ->
+        System.err.println("spec-window: cannot read a state file — ${failure.message ?: failure::class.simpleName}")
+        kotlin.system.exitProcess(6)
+    }
+    val theme = resolveWindowTheme(parsed.theme, windowThemeFromEnvironment(), state["theme"])
+    val seeded = state + ("theme" to theme)
 
-    println("spec-window: ${spec.root.type} '${spec.root.id}' from $source with ${data.size} data keys, $theme theme — drag to pan, scroll to zoom")
+    val context = RenderContext(initialData = seeded, theme = themeNamed(theme) ?: SpecTheme.DARK)
+    val control = WindowControl(context)
+    parsed.controlPort?.let { port -> println("spec-window: control on 127.0.0.1:${control.start(port).address.port}") }
+
+    println("spec-window: ${spec.root.type} '${spec.root.id}' from $source with ${data.size} data keys and ${parsed.stateFiles.size} state files, $theme theme")
     singleWindowApplication(
         state = WindowState(size = DpSize(parsed.width.dp, parsed.height.dp), position = WindowPosition.Aligned(Alignment.Center)),
-        title = "factoredui — ${spec.root.id}",
+        title = windowTitle(parsed.title, spec.root.id),
     ) {
-        RenderSpec(spec = spec, context = RenderContext(initialData = seeded, theme = themeNamed(theme) ?: SpecTheme.DARK))
+        SideEffect { control.window = window }
+        RenderSpec(spec = spec, context = context)
     }
 }
 

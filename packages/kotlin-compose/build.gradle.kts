@@ -253,6 +253,18 @@ tasks.register<JavaExec>("specWindow") {
     mainClass.set("ai.factoredui.compose.render.SpecWindowKt")
 }
 
+// A window launched from this folder holds only these copies, so a rebuild never fights a live window
+// over the build outputs. Launch: java -cp "build/spec-window/lib/*" ai.factoredui.compose.render.SpecWindowKt
+tasks.register<Sync>("installSpecWindow") {
+    group = "render"
+    description = "Copy the spec window and its runtime into build/spec-window/lib, to launch with plain java."
+    val desktopCompilation = kotlin.jvm("desktop").compilations.getByName("main")
+    from(tasks.named("desktopJar"))
+    from(desktopCompilation.runtimeDependencyFiles)
+    from(desktopNativeRuntime)
+    into(layout.buildDirectory.dir("spec-window/lib"))
+}
+
 tasks.register<JavaExec>("servedSceneReceipt") {
     group = "render"
     description = "Capture a served scene3d world headlessly and print what it drew, as JSON."
