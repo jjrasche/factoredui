@@ -73,7 +73,7 @@ class ControlPortTreeExtrasTest {
             assertEquals(JsonPrimitive("Nothing ordered yet."), empty.getValue("text"))
             val bounds = empty.getValue("bounds").jsonObject
             assertTrue(bounds.getValue("w").jsonPrimitive.int > 0 && bounds.getValue("h").jsonPrimitive.int > 0, "$bounds")
-            assertEquals(200 to """["items/empty"]""", portCall(port, "tree", "text" to "Nothing ordered"))
+            assertEquals(listOf("items/empty"), json.parseToJsonElement(portCall(port, "tree", "text" to "Nothing ordered").second).jsonObject.getValue("ids").jsonArray.map { it.jsonPrimitive.content })
         }
     }
 

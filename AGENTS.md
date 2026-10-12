@@ -29,7 +29,9 @@ Eyes:
   - A list's rows appear once each, with ids such as `rows/0/row-label`.
   - `props` holds the resolved values of the props that were bindings. A bulky value appears as its shape, e.g. `"<list: 3 items>"`.
   - The same screen gives the same bytes.
-- `/tree?id=<id>` returns that subtree, and `/tree?visible=1` leaves out hidden nodes. `/tree?text=<words>` returns the ids whose drawn text contains the words.
+- `/tree?id=<id>` returns that subtree. Any id the tree emits works, including `<list id>/empty`, an open select's `<select id>/option/<value>` and a scene part's `<scene id>/<part id>`. A part comes back as its scene lists it, with `type` `part` and the full id.
+- `/tree?visible=1` leaves out hidden nodes.
+- `/tree?text=<words>` answers `{ids, hits}`: `ids` lists the ids whose drawn text contains the words, and `hits` gives each as `{id, text, bounds}`.
 - `/tree?depth=<n>` stops `n` levels below the node returned, so a large page's top-level structure is cheap to read. A node at the limit keeps its own fields, gives `children: []`, and says how many children it left out in `children_omitted`. With `?id=` the depth counts from that node.
 - A list with no rows that draws its `emptyText` has a child node `<list id>/empty` of type `empty`, whose `text` is the drawn message. The node is there only while the list is empty.
 - A `text` whose `value` binding resolved to null carries `"null": true`, so a verifier can list the bound cells that drew nothing, a dash or their `missing` text.

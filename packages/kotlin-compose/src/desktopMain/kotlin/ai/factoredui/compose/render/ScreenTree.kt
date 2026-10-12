@@ -18,6 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.awt.Point
@@ -41,19 +42,36 @@ private fun childrenOf(registry: ScreenRegistry, node: SpecNode, record: NodeRec
     return node.children.mapNotNull { nodeAt(registry, it, prefix) }
 }
 
-fun findNode(root: ScreenNode, path: String): ScreenNode? =
-    if (root.record.path == path) root else root.children.firstNotNullOfOrNull { findNode(it, path) }
-
 fun visibleOnly(node: ScreenNode): ScreenNode? =
     if (!node.record.visible) null else ScreenNode(node.record, node.children.mapNotNull(::visibleOnly))
 
-private fun allNodes(node: ScreenNode): List<ScreenNode> = listOf(node) + node.children.flatMap(::allNodes)
+private fun childrenOf(tree: JsonObject): List<JsonObject> = tree.getValue("children").jsonArray.map { it.jsonObject }
 
-private fun emptyIdsShowing(node: ScreenNode, substring: String): List<String> =
-    listOfNotNull(node.record.emptyMessage?.takeIf { it.contains(substring) }?.let { "${node.record.path}/empty" })
+private fun everyNode(tree: JsonObject): List<JsonObject> = listOf(tree) + childrenOf(tree).flatMap(::everyNode)
 
-fun idsShowing(root: ScreenNode, substring: String): List<String> =
-    allNodes(root).flatMap { node -> listOfNotNull(node.record.path.takeIf { node.record.text?.contains(substring) == true }) + emptyIdsShowing(node, substring) }
+private fun idOf(tree: JsonObject): String = tree.getValue("id").jsonPrimitive.content
+
+private fun drawnTextOf(tree: JsonObject): String? = (tree["text"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+
+/** Any node the tree emits by its id, synthetic children (an empty message, an open menu's options) included. */
+fun nodeById(tree: JsonObject, id: String): JsonObject? = everyNode(tree).firstOrNull { idOf(it) == id }
+
+/** A scene part by "<scene node id>/<part id>": the part as the scene lists it, addressed by that id and typed part. */
+fun scenePartById(tree: JsonObject, id: String): JsonObject? {
+    val scene = nodeById(tree, id.substringBeforeLast('/', missingDelimiterValue = ""))?.get("scene") as? JsonObject ?: return null
+    val partId = id.substringAfterLast('/')
+    val part = scene.getValue("parts").jsonArray.map { it.jsonObject }.firstOrNull { idOf(it) == partId } ?: return null
+    return JsonObject(mapOf("id" to JsonPrimitive(id), "type" to JsonPrimitive("part")) + part.filterKeys { it != "id" })
+}
+
+/** The nodes whose drawn text holds [substring]: their ids, and each as {id, text, bounds}. */
+fun textHits(tree: JsonObject, substring: String): JsonObject {
+    val hits = everyNode(tree).filter { drawnTextOf(it)?.contains(substring) == true }
+    return buildJsonObject {
+        put("ids", JsonArray(hits.map { JsonPrimitive(idOf(it)) }))
+        put("hits", JsonArray(hits.map { hit -> JsonObject(mapOf("id" to hit.getValue("id"), "text" to hit.getValue("text"), "bounds" to hit.getValue("bounds"))) }))
+    }
+}
 
 private fun hexOf(colour: Long): String = "#" + (colour and 0xFFFFFF).toString(16).padStart(6, '0')
 
@@ -153,14 +171,8 @@ private fun drawnChildren(node: ScreenNode): List<JsonObject> {
     return node.children.map(::screenJson) + options + empty
 }
 
-/** The tree below [node] to [depth] levels; a node at the limit keeps its own fields and says how many children it left out. */
-fun screenJsonToDepth(node: ScreenNode, depth: Int?): JsonObject {
-    val whole = screenJson(node)
-    if (depth == null) return whole
-    return limitedTo(whole, depth)
-}
-
-private fun limitedTo(tree: JsonObject, depth: Int): JsonObject {
+/** The tree to [depth] levels below its top; a node at the limit keeps its own fields and says how many children it left out. */
+fun limitedTo(tree: JsonObject, depth: Int): JsonObject {
     val children = tree.getValue("children").jsonArray
     if (depth > 0) return JsonObject(tree + ("children" to JsonArray(children.map { limitedTo(it.jsonObject, depth - 1) })))
     if (children.isEmpty()) return tree

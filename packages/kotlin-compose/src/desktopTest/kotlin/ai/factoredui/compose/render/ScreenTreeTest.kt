@@ -135,7 +135,7 @@ class ScreenTreeTest {
             assertEquals("rows/1/row-label", tree(port, "id" to "rows/1/row-label").getValue("id").jsonPrimitive.content)
             val visibleIds = tree(port, "visible" to "1").getValue("children").jsonArray.map { it.jsonObject.getValue("id").jsonPrimitive.content }
             assertEquals(listOf("greeting", "go", "rows", "board"), visibleIds)
-            assertEquals(200 to """["rows/1/row-label"]""", call(port, "tree", "text" to "b"))
+            assertEquals(listOf("rows/1/row-label"), json.parseToJsonElement(call(port, "tree", "text" to "b").second).jsonObject.getValue("ids").jsonArray.map { it.jsonPrimitive.content })
         }
     }
 
@@ -146,7 +146,7 @@ class ScreenTreeTest {
             assertEquals(JsonPrimitive("Bo"), tree(port, "id" to "greeting").getValue("text"))
             assertEquals(200, call(port, "click", "id" to "go").first)
             assertEquals("clicked", (context.data["greet"] as Map<*, *>)["name"])
-            assertEquals(200 to """["greeting"]""", call(port, "tree", "text" to "clicked"))
+            assertEquals(listOf("greeting"), json.parseToJsonElement(call(port, "tree", "text" to "clicked").second).jsonObject.getValue("ids").jsonArray.map { it.jsonPrimitive.content })
         }
     }
 

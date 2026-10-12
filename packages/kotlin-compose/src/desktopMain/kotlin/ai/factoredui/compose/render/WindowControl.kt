@@ -179,10 +179,12 @@ class WindowControl(private val context: RenderContext, private val surface: Con
     private fun treeText(query: RouteQuery): String {
         val drawn = screenNodes(context.screen) ?: error("nothing has been drawn yet")
         val shown = if (query.optional("visible") == "1") visibleOnly(drawn) ?: error("the root is not visible") else drawn
-        query.optional("text")?.let { substring -> return JsonArray(idsShowing(shown, substring).map(::JsonPrimitive)).toString() }
-        val subtree = query.optional("id")?.let { id -> findNode(shown, id) ?: error("no drawn node has id '$id'") } ?: shown
+        val whole = screenJson(shown)
+        query.optional("text")?.let { substring -> return textHits(whole, substring).toString() }
+        val subtree = query.optional("id")?.let { id -> nodeById(whole, id) ?: scenePartById(whole, id) ?: error("no drawn node has id '$id'") } ?: whole
         val depth = query.optional("depth")?.let { requireNotNull(it.toIntOrNull()?.takeIf { levels -> levels >= 0 }) { "depth must be a whole number of levels, not '$it'" } }
-        return JsonObject(mapOf("frame" to JsonPrimitive(context.screen.frame)) + screenJsonToDepth(subtree, depth)).toString()
+        val limited = depth?.let { limitedTo(subtree, it) } ?: subtree
+        return JsonObject(mapOf("frame" to JsonPrimitive(context.screen.frame)) + limited).toString()
     }
 }
 
