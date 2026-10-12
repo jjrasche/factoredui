@@ -654,8 +654,13 @@ private fun RenderRows(rows: List<Any?>, props: ListProps, context: RenderContex
         if (cap != null && all.size > cap) all.take(cap) else all
     }
 
-    if (visibleRows.isEmpty() && props.emptyText.isNotEmpty()) {
-        Text(text = props.emptyText, style = MaterialTheme.typography.bodyMedium)
+    val isShowingEmpty = visibleRows.isEmpty() && props.emptyText.isNotEmpty()
+    RecordDrawn {
+        emptyMessage = if (isShowingEmpty) props.emptyText else null
+        if (!isShowingEmpty) emptyBounds = null
+    }
+    if (isShowingEmpty) {
+        Text(text = props.emptyText, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.emptyMessagePlacement())
         return
     }
 
@@ -720,6 +725,7 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
         text = paint.notice ?: props.value
         fill = paint.background?.let(::argbOf)
         ink = argbOf(paint.ink)
+        isBoundToNull = isBindingToNull(node, resolvedProps)
     }
     val fills = fillsItsSlot(props.align, paint.background != null, LocalWidthIsShared.current)
     Text(
@@ -741,6 +747,11 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
 }
 
 internal val LocalWidthIsShared = staticCompositionLocalOf { false }
+
+private fun isBindingToNull(node: SpecNode, resolvedProps: Map<String, Any?>): Boolean {
+    val raw = node.props["value"] as? SpecValue.StringValue ?: return false
+    return BindingResolver.isBindingRef(raw.value) && resolvedProps["value"] == null
+}
 
 private fun fillsItsSlot(align: String, hasBackground: Boolean, isWidthShared: Boolean): Boolean =
     (align == "center" || align == "right" || hasBackground) && !isWidthShared

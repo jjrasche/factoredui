@@ -85,11 +85,14 @@ class NodeRecord(
     var menu: List<MenuItemRecord>? = null
     val menuBounds: MutableMap<String, ScreenBounds> = mutableMapOf()
     val menuComposed: MutableSet<String> = mutableSetOf()
+    var isBoundToNull: Boolean = false
+    var emptyMessage: String? = null
+    var emptyBounds: ScreenBounds? = null
     var partTap: ((String) -> Boolean)? = null
 }
 
 private fun NodeRecord.fingerprint(): List<Any?> =
-    listOf(visible, boundProps, enabled, action, text, bounds, rowCount, notices, scene, canvas, fill, ink, shownProps, menu, menuBounds.toMap(), menuComposed.toSet())
+    listOf(visible, boundProps, enabled, action, text, bounds, rowCount, notices, scene, canvas, fill, ink, shownProps, menu, menuBounds.toMap(), menuComposed.toSet(), isBoundToNull, emptyMessage, emptyBounds)
 
 /** Written on the screen's thread as it draws; [frame] and [changes] are read by a driver waiting on another thread for the screen to settle. */
 class ScreenRegistry {
@@ -188,6 +191,17 @@ internal fun Modifier.menuItemPlacement(value: String): Modifier = composed {
         Modifier
     } else {
         Modifier.onGloballyPositioned { coordinates -> registry.update(identity.path) { menuBounds[value] = windowUnits(coordinates, density) } }
+    }
+}
+
+internal fun Modifier.emptyMessagePlacement(): Modifier = composed {
+    val registry = LocalScreenRegistry.current
+    val identity = LocalNodeIdentity.current
+    val density = LocalDensity.current
+    if (registry == null || identity == null) {
+        Modifier
+    } else {
+        Modifier.onGloballyPositioned { coordinates -> registry.update(identity.path) { emptyBounds = windowUnits(coordinates, density) } }
     }
 }
 

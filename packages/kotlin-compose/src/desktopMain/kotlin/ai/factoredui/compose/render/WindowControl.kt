@@ -89,7 +89,7 @@ class ControlRoute(val name: String, val parameters: Set<String>, val handle: (R
 class WindowControl(private val context: RenderContext, private val surface: ControlSurface = AwtWindowSurface()) {
 
     val routes: List<ControlRoute> = listOf(
-        ControlRoute("tree", setOf("id", "text", "visible")) { query -> surface.onScreenThread { treeText(query) } },
+        ControlRoute("tree", setOf("id", "text", "visible", "depth")) { query -> surface.onScreenThread { treeText(query) } },
         ControlRoute("get", setOf("path")) { query -> readBinding(query.required("path")) },
         ControlRoute("set", setOf("path", "value", SETTLE_MS)) { query -> settled(query) { setBinding(query.required("path"), query.required("value")) } },
         ControlRoute("click", setOf("id", "x", "y", SETTLE_MS)) { query -> settled(query, clickExpectation(query)) { click(query) } },
@@ -181,7 +181,8 @@ class WindowControl(private val context: RenderContext, private val surface: Con
         val shown = if (query.optional("visible") == "1") visibleOnly(drawn) ?: error("the root is not visible") else drawn
         query.optional("text")?.let { substring -> return JsonArray(idsShowing(shown, substring).map(::JsonPrimitive)).toString() }
         val subtree = query.optional("id")?.let { id -> findNode(shown, id) ?: error("no drawn node has id '$id'") } ?: shown
-        return JsonObject(mapOf("frame" to JsonPrimitive(context.screen.frame)) + screenJson(subtree)).toString()
+        val depth = query.optional("depth")?.let { requireNotNull(it.toIntOrNull()?.takeIf { levels -> levels >= 0 }) { "depth must be a whole number of levels, not '$it'" } }
+        return JsonObject(mapOf("frame" to JsonPrimitive(context.screen.frame)) + screenJsonToDepth(subtree, depth)).toString()
     }
 }
 

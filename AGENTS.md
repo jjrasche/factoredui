@@ -14,7 +14,7 @@ Launch:
 
 <!-- control-port-routes -->
 ```
-/tree   id text visible
+/tree   id text visible depth
 /get    path
 /set    path value settle_ms
 /click  id x y settle_ms
@@ -30,6 +30,9 @@ Eyes:
   - `props` holds the resolved values of the props that were bindings. A bulky value appears as its shape, e.g. `"<list: 3 items>"`.
   - The same screen gives the same bytes.
 - `/tree?id=<id>` returns that subtree, and `/tree?visible=1` leaves out hidden nodes. `/tree?text=<words>` returns the ids whose drawn text contains the words.
+- `/tree?depth=<n>` stops `n` levels below the node returned, so a large page's top-level structure is cheap to read. A node at the limit keeps its own fields, gives `children: []`, and says how many children it left out in `children_omitted`. With `?id=` the depth counts from that node.
+- A list with no rows that draws its `emptyText` has a child node `<list id>/empty` of type `empty`, whose `text` is the drawn message. The node is there only while the list is empty.
+- A `text` whose `value` binding resolved to null carries `"null": true`, so a verifier can list the bound cells that drew nothing, a dash or their `missing` text.
 - A node that paints colour says which, in the values the drawing used. A `text` gives its `ink`, and its `fill` when it has a `background_ramp`. A `card`, `column` or `row` with a background gives its `fill`. Colours are `#rrggbb`, or `#rrggbbaa` when translucent.
 - A `select` gives `options` (`value` and `label`) and its current `value` in `props`. While its menu is open, the items are its children, with ids `<select id>/option/<value>`, `text`, `selected` and `bounds`. A `modal`'s children are ordinary nodes.
 - A `stacked_scene` adds `scene: {view, focus, hide_top, show_lower, y_axis, active_scheme, legend, notices, parts, popup}`.

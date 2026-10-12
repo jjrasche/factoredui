@@ -16,6 +16,8 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.awt.Point
@@ -47,8 +49,11 @@ fun visibleOnly(node: ScreenNode): ScreenNode? =
 
 private fun allNodes(node: ScreenNode): List<ScreenNode> = listOf(node) + node.children.flatMap(::allNodes)
 
+private fun emptyIdsShowing(node: ScreenNode, substring: String): List<String> =
+    listOfNotNull(node.record.emptyMessage?.takeIf { it.contains(substring) }?.let { "${node.record.path}/empty" })
+
 fun idsShowing(root: ScreenNode, substring: String): List<String> =
-    allNodes(root).filter { it.record.text?.contains(substring) == true }.map { it.record.path }
+    allNodes(root).flatMap { node -> listOfNotNull(node.record.path.takeIf { node.record.text?.contains(substring) == true }) + emptyIdsShowing(node, substring) }
 
 private fun hexOf(colour: Long): String = "#" + (colour and 0xFFFFFF).toString(16).padStart(6, '0')
 
@@ -129,6 +134,39 @@ private fun optionJson(record: NodeRecord, item: MenuItemRecord): JsonObject = b
     put("children", JsonArray(emptyList()))
 }
 
+private fun emptyJson(record: NodeRecord, message: String): JsonObject = buildJsonObject {
+    put("id", "${record.path}/empty")
+    put("type", "empty")
+    put("text", message)
+    put("props", JsonObject(emptyMap()))
+    put("visible", true)
+    put("enabled", true)
+    put("action", JsonNull)
+    put("bounds", boundsJson(record.emptyBounds))
+    put("children", JsonArray(emptyList()))
+}
+
+private fun drawnChildren(node: ScreenNode): List<JsonObject> {
+    val record = node.record
+    val options = record.menu.orEmpty().map { optionJson(record, it) }
+    val empty = listOfNotNull(record.emptyMessage?.let { emptyJson(record, it) })
+    return node.children.map(::screenJson) + options + empty
+}
+
+/** The tree below [node] to [depth] levels; a node at the limit keeps its own fields and says how many children it left out. */
+fun screenJsonToDepth(node: ScreenNode, depth: Int?): JsonObject {
+    val whole = screenJson(node)
+    if (depth == null) return whole
+    return limitedTo(whole, depth)
+}
+
+private fun limitedTo(tree: JsonObject, depth: Int): JsonObject {
+    val children = tree.getValue("children").jsonArray
+    if (depth > 0) return JsonObject(tree + ("children" to JsonArray(children.map { limitedTo(it.jsonObject, depth - 1) })))
+    if (children.isEmpty()) return tree
+    return JsonObject(tree + ("children" to JsonArray(emptyList())) + ("children_omitted" to JsonPrimitive(children.size)))
+}
+
 fun screenJson(node: ScreenNode): JsonObject = buildJsonObject {
     val record = node.record
     put("id", record.path)
@@ -139,12 +177,12 @@ fun screenJson(node: ScreenNode): JsonObject = buildJsonObject {
     put("enabled", record.enabled)
     put("action", valueJson(record.action))
     put("bounds", boundsJson(record.bounds))
+    if (record.isBoundToNull) put("null", true)
     record.fill?.let { put("fill", hexWithAlphaOf(it)) }
     record.ink?.let { put("ink", hexOf(it)) }
     if (record.notices.isNotEmpty()) put("notices", JsonArray(record.notices.map(::JsonPrimitive)))
     record.scene?.let { put("scene", sceneJson(it, record.canvas)) }
-    val options = record.menu.orEmpty().map { optionJson(record, it) }
-    put("children", JsonArray(node.children.map(::screenJson) + options))
+    put("children", JsonArray(drawnChildren(node)))
 }
 
 sealed interface ClickTarget {
