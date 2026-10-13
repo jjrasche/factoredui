@@ -1,8 +1,10 @@
 package ai.factoredui.compose.render
 
 import ai.factoredui.compose.renderer.RenderContext
+import ai.factoredui.compose.renderer.stackedBoardText
 import ai.factoredui.compose.schema.Spec
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -29,6 +31,25 @@ private const val FIELDS_CLOSE = "<!-- /tree-node-fields -->"
 
 private fun documentedNodeFields(guide: String): Set<String> =
     guide.substringAfter(FIELDS_OPEN, "").substringBefore(FIELDS_CLOSE, "").replace("`", " ").split(Regex("[\\s,]+")).filter { it.isNotEmpty() }.toSet()
+
+private const val SCENE_FIELDS_OPEN = "<!-- scene-record-fields -->"
+private const val SCENE_FIELDS_CLOSE = "<!-- /scene-record-fields -->"
+
+private fun documentedSceneFields(guide: String): Set<String> =
+    guide.substringAfter(SCENE_FIELDS_OPEN, "").substringBefore(SCENE_FIELDS_CLOSE, "").replace("`", " ").split(Regex("[\\s,]+")).filter { it.isNotEmpty() }.toSet()
+
+private val BOARD_PAGE = Json.decodeFromString(
+    Spec.serializer(),
+    """{"spec_version":1,"renderer_min":1,"root":{"id":"board","type":"scene","props":{"view_state":{"renderer":"stacked_scene"},"scene_view":"{board.scene}","view":"iso"}}}""",
+)
+
+private fun emittedSceneFields(): Set<String> {
+    val context = RenderContext(initialData = mapOf("board" to mapOf("scene" to stackedBoardText())))
+    SceneSurface(BOARD_PAGE, context, 400, 300).use { surface ->
+        val tree = surface.onScreenThread { screenNodes(context.screen) }
+        return screenJson(tree!!).getValue("scene").jsonObject.keys
+    }
+}
 
 private val PLAIN_PAGE = Json.decodeFromString(Spec.serializer(), """{"spec_version":1,"renderer_min":1,"root":{"id":"page","type":"column","children":[{"id":"t","type":"text","props":{"value":"hi"}}]}}""")
 
@@ -63,6 +84,13 @@ class ControlPortDocTest {
         val documented = documentedNodeFields(GUIDE.readText())
         assertTrue(documented.isNotEmpty(), "AGENTS.md has no $FIELDS_OPEN block")
         assertEquals(emittedPlainPageFields(), documented)
+    }
+
+    @Test
+    fun the_guides_scene_field_list_names_exactly_the_fields_a_scene_record_carries() {
+        val documented = documentedSceneFields(GUIDE.readText())
+        assertTrue(documented.isNotEmpty(), "AGENTS.md has no $SCENE_FIELDS_OPEN block")
+        assertEquals(emittedSceneFields(), documented)
     }
 
     @Test
