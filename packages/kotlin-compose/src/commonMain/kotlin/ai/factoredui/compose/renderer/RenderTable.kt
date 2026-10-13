@@ -2,12 +2,14 @@ package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.format.MISSING_FIGURE
 import ai.factoredui.compose.schema.ActionRef
+import ai.factoredui.compose.schema.DisplayProfile
 import ai.factoredui.compose.schema.ShownColumn
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.schema.TableLayout
 import ai.factoredui.compose.schema.readColumnOverrides
+import ai.factoredui.compose.schema.mergedProfile
 import ai.factoredui.compose.schema.readDisplayProfile
 import ai.factoredui.compose.schema.readTableView
 import ai.factoredui.compose.schema.tableLayout
@@ -20,9 +22,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+
+val LocalDisplayProfile = compositionLocalOf<DisplayProfile?> { null }
+
+private val PROFILE_SCOPES = setOf(
+    SpecNodeType.COLUMN, SpecNodeType.ROW, SpecNodeType.STACK, SpecNodeType.SCROLLVIEW, SpecNodeType.GRID,
+    SpecNodeType.CARD, SpecNodeType.LIST, SpecNodeType.TABS, SpecNodeType.MODAL,
+)
+
+/** The display profile a container's descendant tables inherit: its own `display` when it has one, else its ancestors'. */
+internal fun scopedProfileOf(node: SpecNode, resolvedProps: Map<String, Any?>): DisplayProfile? {
+    if (node.type !in PROFILE_SCOPES) return null
+    return (resolvedProps["display"] as? Map<*, *>)?.let(::readDisplayProfile)
+}
 
 private const val LABEL_COLUMN = "label"
 private const val LABEL_FLEX = 2.0
@@ -101,7 +117,7 @@ internal fun RenderTable(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     }
     val layout: TableLayout = tableLayout(
         view,
-        readDisplayProfile(resolvedProps["display"]),
+        mergedProfile(LocalDisplayProfile.current, (resolvedProps["display"] as? Map<*, *>)?.let(::readDisplayProfile)),
         readColumnOverrides(resolvedProps["columns"]),
         resolvedProps["show_unit"] != false,
         resolvedProps["missing"] as? String ?: MISSING_FIGURE,

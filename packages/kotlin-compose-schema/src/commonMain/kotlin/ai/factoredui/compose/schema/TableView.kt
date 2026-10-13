@@ -49,6 +49,12 @@ fun readDisplayProfile(raw: Any?): DisplayProfile {
     return DisplayProfile(entriesOf(fields?.get("units")), entriesOf(fields?.get("kinds")))
 }
 
+fun mergedProfile(inherited: DisplayProfile?, own: DisplayProfile?): DisplayProfile {
+    val base = inherited ?: DisplayProfile(emptyMap(), emptyMap())
+    if (own == null) return base
+    return DisplayProfile(base.units + own.units, base.kinds + own.kinds)
+}
+
 fun readColumnOverrides(raw: Any?): Map<String, ColumnOverride> =
     (raw as? Map<*, *>).orEmpty().entries.mapNotNull { (key, value) ->
         val fields = value as? Map<*, *> ?: return@mapNotNull null

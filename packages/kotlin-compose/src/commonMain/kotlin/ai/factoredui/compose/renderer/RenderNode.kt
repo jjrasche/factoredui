@@ -184,7 +184,8 @@ fun RenderNode(node: SpecNode, context: RenderContext) {
         action = node.action?.action
     }
     val scopedTheme = themeNamed(resolvedProps["theme"] as? String)
-    CompositionLocalProvider(LocalNodeIdentity provides NodeIdentity(node.id, path)) {
+    val profile = scopedProfileOf(node, resolvedProps) ?: LocalDisplayProfile.current
+    CompositionLocalProvider(LocalNodeIdentity provides NodeIdentity(node.id, path), LocalDisplayProfile provides profile) {
         if (scopedTheme == null) {
             RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context)
         } else {
@@ -437,8 +438,11 @@ private fun RenderStack(node: SpecNode, context: RenderContext) {
 
 @Composable
 private fun RenderScrollView(node: SpecNode, context: RenderContext) {
-    Column(modifier = Modifier.nodeTag(node.id).verticalScroll(rememberScrollState())) {
-        node.children.forEach { child -> RenderNode(node = child, context = context) }
+    BoxWithConstraints(propagateMinConstraints = true) {
+        val scrolls = if (constraints.hasBoundedHeight) Modifier.verticalScroll(rememberScrollState()) else Modifier
+        Column(modifier = Modifier.nodeTag(node.id).then(scrolls)) {
+            node.children.forEach { child -> RenderNode(node = child, context = context) }
+        }
     }
 }
 
