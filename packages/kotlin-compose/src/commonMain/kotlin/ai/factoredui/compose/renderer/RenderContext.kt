@@ -81,6 +81,11 @@ class RenderContext private constructor(
         store.update { current -> writeAtPath(current, path.split("."), value) }
     }
 
+    fun setBindings(writes: Map<String, Any?>) {
+        val writable = writes.filterKeys { it.isNotEmpty() }
+        store.update { current -> writable.entries.fold(current) { written, (path, value) -> writeAtPath(written, path.split("."), value) } }
+    }
+
     /**
      * Return a context sharing this one's underlying store but with an
      * additional read-only data overlay merged on top. Used by list/template
@@ -181,9 +186,40 @@ private fun setBindingRefusal(nodeId: String, params: Map<String, Any?>): String
 
 private const val SET_BINDING_VALUE = "value"
 
+private const val SET_BINDING_VALUES = "values"
+
+private val SINGLE_FORM_KEYS = listOf("path", SET_BINDING_VALUE)
+
+private fun setBindingValuesRefusal(nodeId: String, params: Map<String, Any?>): String? {
+    val refused = "set_binding on '$nodeId' was refused:"
+    val singleFormKeys = SINGLE_FORM_KEYS.filter { it in params }
+    if (singleFormKeys.isNotEmpty()) {
+        val seen = singleFormKeys.joinToString(" and ") { "'$it'" }
+        return "$refused it gives 'values' and also $seen; give either 'path' with 'value' or 'values', not both"
+    }
+    val values = params[SET_BINDING_VALUES]
+    if (values !is Map<*, *>) return "$refused 'values' must be an object of paths to values, not '$values'"
+    if (values.isEmpty()) return "$refused 'values' must name at least one path, not {}"
+    val unwritablePaths = values.keys.filterNot { it is String && it.isNotEmpty() }
+    if (unwritablePaths.isNotEmpty()) return "$refused every path in 'values' must be non-empty text, not '${unwritablePaths.first()}'"
+    return null
+}
+
+private fun bindingWritesIn(params: Map<String, Any?>): Map<String, Any?> =
+    (params[SET_BINDING_VALUES] as Map<*, *>).entries.associate { (path, value) -> path.toString() to value }
+
 private fun RenderContext.writeBindingFrom(nodeId: String, params: Map<String, Any?>) {
+    if (SET_BINDING_VALUES in params) writeBindingValuesFrom(nodeId, params) else writeOneBindingFrom(nodeId, params)
+}
+
+private fun RenderContext.writeOneBindingFrom(nodeId: String, params: Map<String, Any?>) {
     val refusal = setBindingRefusal(nodeId, params)
     if (refusal != null) setBinding(RENDERER_ERROR_PATH, refusal) else setBinding(params["path"] as String, params[SET_BINDING_VALUE])
+}
+
+private fun RenderContext.writeBindingValuesFrom(nodeId: String, params: Map<String, Any?>) {
+    val refusal = setBindingValuesRefusal(nodeId, params)
+    if (refusal != null) setBinding(RENDERER_ERROR_PATH, refusal) else setBindings(bindingWritesIn(params))
 }
 
 fun sceneIntentDispatcher(

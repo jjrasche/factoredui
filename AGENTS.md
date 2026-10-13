@@ -173,6 +173,7 @@ A string `"{path.to.value}"` is resolved at render time from one state map. Insi
 - `button`, `card` and tappable nodes dispatch their `action` to the host's ActionRegistry.
 - Every param is resolved against the data first. Inside a list row, `"{row.ids}"` is that row's ids.
 - One action is built in: `set_binding` with params `{ "path": "a.b", "value": ... }`. It writes `value` to `path` and never reaches the host.
+- `set_binding` with params `{ "values": { "a.turns": 0, "a.zoom": 1 } }` writes every path in one tap, in the object's key order, each value resolved as `value` is. It refuses `values` beside `path` or `value`, an empty `values`, a `values` that is not an object, or an empty path, and then writes none of them.
 - A row tap changes state with it, for example a report row that picks its parts: `{ "action": "set_binding", "params": { "path": "board.picked", "value": "{row.object_ids}" } }`.
 - Dotted paths reach into row maps: `{row.values.worth}` is the `worth` entry of the row's `values`.
 - `set_binding` refuses an empty `path` or a missing `value`. It writes nothing to the path and writes the reason to `renderer.error`. Bind a text node to `"{renderer.error}"` to show it.
