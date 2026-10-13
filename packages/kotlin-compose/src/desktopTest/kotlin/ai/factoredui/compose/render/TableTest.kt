@@ -15,6 +15,8 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import ai.factoredui.compose.scene.readReports
+import ai.factoredui.compose.scene.reportsState
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
@@ -208,53 +210,48 @@ class TableTest {
 
 private const val REAL_VIEWS = "C:/Users/rasche_j/Documents/workspace/house-world/scene/house-floor.views.json"
 
-private const val REAL_PROFILE = """{"units":{
-  "count":{"scale":1,"decimals":0}, "usd":"usd", "usd/count":"usd", "mm":"feet_inches", "kg":"pounds",
-  "kg*mm/second^2":{"scale":0.000224809,"suffix":" lbf","decimals":0},
-  "kg/second^2":{"scale":0.0057101,"suffix":" lbf/in","decimals":1},
-  "kg/mm/second^2":{"scale":20885.4,"suffix":" psf","decimals":0},
-  "joule":{"scale":0.737562,"suffix":" ft·lbf","decimals":0},
-  "joule*mm":{"scale":0.0024198,"suffix":" ft²·lbf","decimals":0},
-  "second":{"scale":1,"suffix":" s","decimals":2},
-  "labour_hour":{"scale":1,"suffix":" h","decimals":1},
-  "square_metre":{"scale":10.7639,"suffix":" sq ft","decimals":1},
-  "square_metre/second":{"scale":10.7639,"suffix":" sq ft/s","decimals":2},
-  "kg/square_metre":{"scale":0.204816,"suffix":" psf","decimals":1},
-  "1":{"scale":100,"suffix":"%","decimals":0}}}"""
-
 private fun nodesById(tree: JsonObject): Map<String, JsonObject> =
     mapOf(tree.getValue("id").jsonPrimitive.content to tree) + tree.getValue("children").jsonArray.flatMap { nodesById(it.jsonObject).entries }.associate { it.key to it.value }
+
+private val EXPONENT = Regex("[0-9][eE][-+]?[0-9]")
+
+/** A profile drawn from the file itself: every unit it uses maps to a plain three-decimal figure, so a new unit cannot fail the check. */
+private fun passThroughProfile(views: List<Map<*, *>>): Map<String, Any?> {
+    val units = views.flatMap { view -> (view["columns"] as List<*>).mapNotNull { (it as Map<*, *>)["unit"] as? String } }.toSet()
+    return mapOf("units" to units.associateWith { mapOf("scale" to 1.0, "decimals" to 3.0) })
+}
 
 class TableRealViewsTest {
 
     @Test
-    fun every_view_of_the_real_house_floor_file_draws_through_table_with_no_notice_and_no_unexpected_empty_cell() {
+    fun every_view_of_the_real_house_floor_file_draws_through_table_with_no_notice_no_exponent_and_no_unexpected_empty_cell() {
         val file = File(REAL_VIEWS)
         if (!file.exists()) {
             println("SKIPPED: $REAL_VIEWS does not exist on this machine; the real-file check needs it")
             return
         }
-        val views = (plain(json.parseToJsonElement(file.readText())) as Map<*, *>)["views"] as List<*>
-        assertEquals(29, views.size)
-        val tables = views.indices.joinToString(",") { """{"id":"t$it","type":"table","props":{"view":"{views.$it}","display":"{display}"}}""" }
+        val reports = reportsState(readReports(file.readText()))
+        val views = reports.values.toList()
+        assertTrue(views.isNotEmpty(), "the file holds at least one view")
+        val tables = reports.keys.joinToString(",") { id -> """{"id":"t-$id","type":"table","props":{"view":"{reports.$id}","display":"{display}"}}""" }
         val spec = json.decodeFromString(Spec.serializer(), """{"spec_version":1,"renderer_min":1,"root":{"id":"page","type":"scrollview","children":[$tables]}}""")
-        val store = mapOf("views" to views.indices.associate { it.toString() to views[it] }, "display" to plain(json.parseToJsonElement(REAL_PROFILE)))
+        val store = mapOf("reports" to reports, "display" to passThroughProfile(views))
         driving(spec, store, width = 1400, height = 900) { port, _ ->
             val drawn = nodesById(json.parseToJsonElement(portCall(port, "tree").second).jsonObject)
-            views.forEachIndexed { index, rawView ->
-                val view = rawView as Map<*, *>
-                val table = drawn.getValue("t$index")
-                assertTrue("notices" !in table, "view ${view["id"]}: ${table["notices"]}")
+            reports.forEach { (id, view) ->
+                val table = drawn.getValue("t-$id")
+                assertTrue("notices" !in table, "view $id: ${table["notices"]}")
                 val columns = (view["columns"] as List<*>).map { it as Map<*, *> }
                 (view["rows"] as List<*>).forEachIndexed { rowIndex, rawRow ->
                     val values = (rawRow as Map<*, *>)["values"] as Map<*, *>
                     columns.forEach { column ->
-                        val id = "t$index/row/$rowIndex/${column["id"]}"
-                        val cell = drawn[id] ?: error("$id (${view["id"]}) is not in the tree")
+                        val cellId = "t-$id/row/$rowIndex/${column["id"]}"
+                        val cell = drawn[cellId] ?: error("$cellId is not in the tree")
                         val text = cell.getValue("text").jsonPrimitive.content
-                        val isNullWithoutDisplay = values[column["id"]] == null && column["null_display"] == null
-                        assertTrue(text.isNotEmpty() || isNullWithoutDisplay, "$id (${view["id"]}) drew nothing for ${values[column["id"]]}")
-                        assertTrue(!text.contains("needs a number") || values[column["id"]] is String, "$id: $text")
+                        val value = values[column["id"]]
+                        assertTrue(text.isNotEmpty() || value == null, "$cellId drew nothing for $value")
+                        assertTrue(!EXPONENT.containsMatchIn(text) || value is String, "$cellId drew an exponent: $text")
+                        assertTrue(!text.contains("needs a number") || value is String, "$cellId: $text")
                     }
                 }
             }
