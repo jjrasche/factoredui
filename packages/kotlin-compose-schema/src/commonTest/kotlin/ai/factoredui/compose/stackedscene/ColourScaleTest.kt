@@ -148,15 +148,15 @@ class ColourScaleTest {
     }
 
     @Test
-    fun the_top_face_is_the_lightest_shade_and_the_south_face_the_darkest() {
+    fun the_top_face_is_the_lightest_shade_and_a_face_across_y_the_darkest() {
         val shades = faceShades(AMBER)
-        assertTrue(lightness(shades.top) > lightness(shades.west))
-        assertTrue(lightness(shades.west) > lightness(shades.south))
+        assertTrue(lightness(shades.top) > lightness(shades.xSide))
+        assertTrue(lightness(shades.xSide) > lightness(shades.ySide))
     }
 
     @Test
     fun every_face_keeps_the_hue_of_the_stop_colour() {
         val shades = faceShades(PURPLE)
-        listOf(shades.top, shades.west, shades.south).forEach { assertEquals(hueOf(PURPLE), hueOf(it), 2.0) }
+        listOf(shades.top, shades.xSide, shades.ySide).forEach { assertEquals(hueOf(PURPLE), hueOf(it), 2.0) }
     }
 }

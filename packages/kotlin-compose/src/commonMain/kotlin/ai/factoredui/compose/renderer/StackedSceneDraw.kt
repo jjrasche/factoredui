@@ -54,6 +54,7 @@ internal class StackedPicture(
     val parts: List<VisiblePart>,
     val drawing: StackedDrawing,
     val fit: CanvasFit,
+    val quarterTurns: Int,
     val values: Map<String, PartValue>,
     val colourScale: ColourScale?,
     val outlinedIds: Set<String>,
@@ -129,7 +130,7 @@ private fun isoPolygon(fit: CanvasFit, polygon: List<Pair<Double, Double>>): Pat
 private fun DrawScope.drawIsoGround(picture: StackedPicture, palette: StackedPalette) {
     val window = picture.scene.window
     val corners = listOf(window.x0 to window.y0, window.x1 to window.y0, window.x1 to window.y1, window.x0 to window.y1)
-        .map { (x, y) -> isoProject(x.toDouble(), y.toDouble(), 0.0).let { canvasPoint(picture.fit, it.u, it.v) } }
+        .map { (x, y) -> isoProject(x.toDouble(), y.toDouble(), 0.0, picture.quarterTurns).let { canvasPoint(picture.fit, it.u, it.v) } }
     val ground = pathThrough(corners)
     drawPath(ground, palette.groundFill)
     drawPath(ground, palette.groundEdge, style = Stroke(1f))
@@ -138,18 +139,18 @@ private fun DrawScope.drawIsoGround(picture: StackedPicture, palette: StackedPal
 private fun DrawScope.drawIsoParts(picture: StackedPicture, palette: StackedPalette) {
     drawIsoGround(picture, palette)
     picture.parts.forEach { part ->
-        val faces = projectFaces(partBox(picture.scene, part.footprint))
+        val faces = projectFaces(partBox(picture.scene, part.footprint), picture.quarterTurns)
         val shades = faceShades(picture.colourOf(part))
         val alpha = solidity(part, ISO_SOLID_ALPHA)
-        listOf(faces.top to shades.top, faces.west to shades.west, faces.south to shades.south).forEach { (polygon, shade) ->
+        listOf(faces.top to shades.top, faces.xSide to shades.xSide, faces.ySide to shades.ySide).forEach { (polygon, shade) ->
             val face = isoPolygon(picture.fit, polygon)
             drawPath(face, Color(shade).copy(alpha = alpha))
             drawPath(face, palette.edge.copy(alpha = ISO_EDGE_ALPHA * alpha), style = Stroke(ISO_EDGE_PX))
         }
     }
     picture.parts.filter { it.footprint.id in picture.outlinedIds }.forEach { part ->
-        val faces = projectFaces(partBox(picture.scene, part.footprint))
-        listOf(faces.top, faces.west, faces.south).forEach { drawPath(isoPolygon(picture.fit, it), palette.outline, style = Stroke(ISO_OUTLINE_PX)) }
+        val faces = projectFaces(partBox(picture.scene, part.footprint), picture.quarterTurns)
+        listOf(faces.top, faces.xSide, faces.ySide).forEach { drawPath(isoPolygon(picture.fit, it), palette.outline, style = Stroke(ISO_OUTLINE_PX)) }
     }
 }
 
@@ -169,8 +170,8 @@ private fun flatReading(picture: StackedPicture, part: VisiblePart, outline: Str
 }
 
 private fun isoReading(picture: StackedPicture, part: VisiblePart, outline: String): ScenePartRecord {
-    val faces = projectFaces(partBox(picture.scene, part.footprint))
-    val points = (faces.top + faces.west + faces.south).map { (u, v) -> canvasPoint(picture.fit, u, v) }
+    val faces = projectFaces(partBox(picture.scene, part.footprint), picture.quarterTurns)
+    val points = (faces.top + faces.xSide + faces.ySide).map { (u, v) -> canvasPoint(picture.fit, u, v) }
     val top = faces.top.map { (u, v) -> canvasPoint(picture.fit, u, v) }
     return ScenePartRecord(
         part.footprint.id, part.footprint.type, part.level, faceShades(picture.colourOf(part)).top, outline, picture.values[part.footprint.id]?.value,
@@ -189,7 +190,7 @@ internal fun partReadings(picture: StackedPicture, highlightIds: Set<String>, se
 /** The parts drawn after this one that a tap at its centre would land on, found with the tap's own hit test. */
 private fun partsOver(picture: StackedPicture, index: Int, x: Double, y: Double): List<String> =
     picture.parts.drop(index + 1)
-        .filter { hitDrawnPart(picture.scene, listOf(it), picture.drawing, picture.fit, x, y) != null }
+        .filter { hitDrawnPart(picture.scene, listOf(it), picture.drawing, picture.fit, x, y, picture.quarterTurns) != null }
         .map { it.footprint.id }
 
 internal fun legendReadings(scale: ColourScale?): List<SceneLegendRecord> {

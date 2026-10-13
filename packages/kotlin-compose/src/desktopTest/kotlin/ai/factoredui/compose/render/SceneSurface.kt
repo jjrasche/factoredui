@@ -11,6 +11,7 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerKeyboardModifiers
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import org.jetbrains.skia.EncodedImageFormat
@@ -61,6 +62,17 @@ class SceneSurface(spec: Spec, context: RenderContext, width: Int, height: Int, 
         scene.sendPointerEvent(PointerEventType.Press, Offset(point.x.toFloat(), point.y.toFloat()))
         scene.sendPointerEvent(PointerEventType.Release, Offset(point.x.toFloat(), point.y.toFloat()))
         "clicked ${point.x},${point.y}"
+    }
+
+    /** Presses at [from], moves to [to] in [steps] even steps and releases there, with the control key held when [isCtrlHeld]. */
+    fun drag(from: Point, to: Point, steps: Int = 10, isCtrlHeld: Boolean = false): String = onScreenThread {
+        val keys = PointerKeyboardModifiers(isCtrlPressed = isCtrlHeld)
+        val start = Offset(from.x.toFloat(), from.y.toFloat())
+        val end = Offset(to.x.toFloat(), to.y.toFloat())
+        scene.sendPointerEvent(PointerEventType.Press, start, keyboardModifiers = keys)
+        (1..steps).forEach { step -> scene.sendPointerEvent(PointerEventType.Move, start + (end - start) * (step.toFloat() / steps), keyboardModifiers = keys) }
+        scene.sendPointerEvent(PointerEventType.Release, end, keyboardModifiers = keys)
+        "dragged ${from.x},${from.y} to ${to.x},${to.y}"
     }
 
     override fun wheel(point: Point, notches: Int): String = onScreenThread {

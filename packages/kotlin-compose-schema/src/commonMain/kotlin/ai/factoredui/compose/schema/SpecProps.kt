@@ -9,6 +9,9 @@ import ai.factoredui.compose.ramp.RampReading
 import ai.factoredui.compose.ramp.readColourRamp
 import ai.factoredui.compose.stackedscene.ColourScale
 import ai.factoredui.compose.stackedscene.ColourStop
+import ai.factoredui.compose.stackedscene.SceneCamera
+import ai.factoredui.compose.stackedscene.aspectOf
+import ai.factoredui.compose.stackedscene.clampedZoom
 import ai.factoredui.compose.stackedscene.LevelFocus
 import ai.factoredui.compose.stackedscene.NEUTRAL_PART_COLOUR
 import ai.factoredui.compose.stackedscene.StackedDrawing
@@ -945,6 +948,8 @@ data class StackedSceneProps(
     val notes: List<String> = emptyList(),
     val yAxis: YAxis? = null,
     val activeScheme: String? = null,
+    val quarterTurns: Int = 0,
+    val camera: SceneCamera = SceneCamera(),
 )
 
 private data class PropReading<T>(val value: T, val note: String? = null)
@@ -981,6 +986,27 @@ private fun hideTopReading(raw: Any?): PropReading<Int> {
     if (raw == null) return PropReading(0)
     val count = (wholeNumberOf(raw) ?: (raw as? String)?.toIntOrNull())?.takeIf { it >= 0 } ?: return PropReading(0, "hide_top must be a whole number of levels, not '$raw'; no level is hidden.")
     return PropReading(count)
+}
+
+private fun quarterTurnsReading(nodeId: String, raw: Any?): PropReading<Int> {
+    if (raw == null) return PropReading(0)
+    val turns = wholeNumberOf(raw) ?: (raw as? String)?.toIntOrNull()
+        ?: return PropReading(0, "scene '$nodeId': quarter_turns must be a whole number, not '$raw'; the first aspect is drawn.")
+    return PropReading(aspectOf(turns))
+}
+
+private fun finiteNumberOf(raw: Any?): Double? = ((raw as? Number)?.toDouble() ?: (raw as? String)?.toDoubleOrNull())?.takeIf { it.isFinite() }
+
+private fun zoomReading(raw: Any?): PropReading<Double> {
+    if (raw == null) return PropReading(1.0)
+    val zoom = finiteNumberOf(raw)?.takeIf { it > 0 } ?: return PropReading(1.0, "zoom must be a number above 0, not '$raw'; the view is drawn at zoom 1.")
+    return PropReading(clampedZoom(zoom))
+}
+
+private fun panReading(name: String, raw: Any?): PropReading<Double> {
+    if (raw == null) return PropReading(0.0)
+    val pan = finiteNumberOf(raw) ?: return PropReading(0.0, "$name must be a number, not '$raw'; the view is not shifted.")
+    return PropReading(pan)
 }
 
 private fun highlightReading(raw: Any?): PropReading<Set<String>> {
@@ -1072,7 +1098,8 @@ private fun colourByReading(raw: Any?): PropReading<ColourScale?> {
     return colourScaleReading(COLOR_BY, raw)
 }
 
-fun resolveStackedSceneProps(resolved: Map<String, Any?>): StackedSceneProps {
+/** [nodeId] names the scene in the notice for a quarter_turns it cannot read. */
+fun resolveStackedSceneProps(resolved: Map<String, Any?>, nodeId: String): StackedSceneProps {
     val drawing = drawingReading(resolved["view"])
     val focus = focusReading(resolved["focus"])
     val showLower = showLowerReading(resolved["show_lower"])
@@ -1081,6 +1108,10 @@ fun resolveStackedSceneProps(resolved: Map<String, Any?>): StackedSceneProps {
     val onPartTap = onPartTapReading(resolved["on_part_tap"])
     val colourScale = colourByReading(resolved[COLOR_BY])
     val yAxis = yAxisReading(resolved["y_axis"])
+    val quarterTurns = quarterTurnsReading(nodeId, resolved["quarter_turns"])
+    val zoom = zoomReading(resolved["zoom"])
+    val panX = panReading("pan_x", resolved["pan_x"])
+    val panY = panReading("pan_y", resolved["pan_y"])
     return StackedSceneProps(
         drawing = drawing.value,
         focus = focus.value,
@@ -1089,8 +1120,13 @@ fun resolveStackedSceneProps(resolved: Map<String, Any?>): StackedSceneProps {
         highlightIds = highlight.value,
         onPartTap = onPartTap.value,
         colourScale = colourScale.value,
-        notes = listOfNotNull(drawing.note, yAxis.note, focus.note, showLower.note, hideTop.note, highlight.note, onPartTap.note, colourScale.note),
+        notes = listOfNotNull(
+            drawing.note, yAxis.note, focus.note, showLower.note, hideTop.note, highlight.note, onPartTap.note, colourScale.note,
+            quarterTurns.note, zoom.note, panX.note, panY.note,
+        ),
         yAxis = yAxis.value,
         activeScheme = activeSchemeOf(resolved[COLOR_BY]),
+        quarterTurns = quarterTurns.value,
+        camera = SceneCamera(zoom.value, panX.value, panY.value),
     )
 }

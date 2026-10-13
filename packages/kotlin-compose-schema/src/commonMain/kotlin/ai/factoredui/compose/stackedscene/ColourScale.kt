@@ -16,7 +16,7 @@ data class ColourScale(
     val ramp: ColourRamp? = null,
 )
 
-data class FaceShades(val top: Long, val west: Long, val south: Long)
+data class FaceShades(val top: Long, val xSide: Long, val ySide: Long)
 
 data class LegendEntry(val colour: Long, val label: String)
 
@@ -24,7 +24,7 @@ const val NEUTRAL_PART_COLOUR: Long = 0xFF9AA4AD
 
 private const val OPAQUE: Long = 0xFF000000L
 private const val TOP_TOWARD_WHITE = 0.22
-private const val SOUTH_DARKENING = 0.72
+private const val Y_SIDE_DARKENING = 0.72
 
 private fun rgbOfHex(hex: String?): Int? {
     val digits = hex?.removePrefix("#") ?: return null
@@ -59,8 +59,8 @@ private fun towardWhite(colour: Long, share: Double): Long = colourOf(channelsOf
 
 private fun darkened(colour: Long, factor: Double): Long = colourOf(channelsOf(colour).map { (it * factor).toLong() })
 
-/** The west face is the colour itself, lit from above and shaded to the south, so every face keeps the stop's hue. */
-fun faceShades(colour: Long): FaceShades = FaceShades(top = towardWhite(colour, TOP_TOWARD_WHITE), west = colour, south = darkened(colour, SOUTH_DARKENING))
+/** A face across x (west or east) is the colour itself, the top is lit and a face across y (south or north) is shaded, so every face keeps the stop's hue and its shade at any turn. */
+fun faceShades(colour: Long): FaceShades = FaceShades(top = towardWhite(colour, TOP_TOWARD_WHITE), xSide = colour, ySide = darkened(colour, Y_SIDE_DARKENING))
 
 fun legendEntries(scale: ColourScale?): List<LegendEntry> {
     if (scale == null || scale.ramp != null) return emptyList()

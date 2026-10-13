@@ -148,7 +148,7 @@ private fun centreOf(scene: SceneView, partId: String, drawing: StackedDrawing):
     val fit = fitDrawing(scene, drawing, WIDTH.toDouble(), HEIGHT.toDouble())
     val part = scene.footprints!!.items.first { it.id == partId }
     val centre = if (drawing == StackedDrawing.ISO) {
-        val top = projectFaces(partBox(scene, part)).top.map { (u, v) -> mmToCanvas(fit, u, v) }
+        val top = projectFaces(partBox(scene, part), 0).top.map { (u, v) -> mmToCanvas(fit, u, v) }
         top.sumOf { it.first } / top.size to top.sumOf { it.second } / top.size
     } else {
         val rect = partRectMm(scene, part)

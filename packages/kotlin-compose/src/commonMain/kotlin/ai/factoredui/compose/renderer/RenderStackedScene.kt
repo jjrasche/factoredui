@@ -46,7 +46,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -88,7 +90,7 @@ internal fun RenderStackedScene(node: SpecNode, resolvedProps: Map<String, Any?>
     if (scene == null) {
         StackedSceneNotice(node.id, "The stacked scene cannot be drawn: ${reading.exceptionOrNull()?.message}")
     } else {
-        val stated = resolveStackedSceneProps(resolvedProps)
+        val stated = resolveStackedSceneProps(resolvedProps, node.id)
         val choice = sceneYAxis(stated.yAxis, scene.grid?.north)
         val props = stated.copy(yAxis = choice.axis, notes = stated.notes + listOfNotNull(choice.notice))
         val oriented = remember(scene, choice.axis) { sceneForYAxis(scene, choice.axis) }
@@ -111,6 +113,7 @@ private class PartTapTarget(
     val parts: List<VisiblePart>,
     val drawing: StackedDrawing,
     val fit: CanvasFit,
+    val quarterTurns: Int,
     val selection: Set<String>,
     val selectedPath: String?,
     val onPartTap: String?,
@@ -134,7 +137,7 @@ private fun tapPartById(target: PartTapTarget, partId: String): Boolean {
 }
 
 private fun findTappedPart(target: PartTapTarget, xPx: Double, yPx: Double): VisiblePart? =
-    hitDrawnPart(target.scene, target.parts, target.drawing, target.fit, xPx, yPx)
+    hitDrawnPart(target.scene, target.parts, target.drawing, target.fit, xPx, yPx, target.quarterTurns)
 
 private fun writeSelection(target: PartTapTarget, nextSelection: List<String>) {
     val path = target.selectedPath
@@ -166,8 +169,20 @@ private fun RenderSizedStackedScene(
     val selectedPath = node.props["selected"]?.bindingPath()
     var localSelection by remember { mutableStateOf(resolveGeomapSelection(resolvedSelected)) }
     val selection = if (selectedPath != null) resolveGeomapSelection(resolvedSelected) else localSelection
-    val parts = remember(scene, props) {
-        partsToDraw(scene, props.drawing, props.focus, props.showLower, props.hideTopCount, props.highlightIds)
+    val framingPaths = framingPathsOf(node)
+    var heldFraming by remember { mutableStateOf<SceneFraming?>(null) }
+    val framing = shownFraming(SceneFraming(props.quarterTurns, props.camera), heldFraming, framingPaths)
+    val framingInHand = remember { FramingInHand() }
+    SideEffect {
+        framingInHand.drawn = framing
+        framingInHand.moved = null
+    }
+    val moveFraming: (SceneFraming) -> Unit = { next ->
+        writeFraming(context, framingPaths, framingInHand.current(), next) { heldFraming = it }
+        framingInHand.moved = next
+    }
+    val parts = remember(scene, props.drawing, props.focus, props.showLower, props.hideTopCount, props.highlightIds, framing.quarterTurns) {
+        partsToDraw(scene, props.drawing, props.focus, props.showLower, props.hideTopCount, props.highlightIds, framing.quarterTurns)
     }
     val values = remember(scene, props.colourScale) { props.colourScale?.let { partValues(scene, it.channel) }.orEmpty() }
     val scope = rememberCoroutineScope()
@@ -176,16 +191,24 @@ private fun RenderSizedStackedScene(
         BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
             val widthPx = constraints.maxWidth.toDouble()
             val heightPx = constraints.maxHeight.toDouble()
-            val fit = remember(scene, props.drawing, widthPx, heightPx) { fitDrawing(scene, props.drawing, widthPx, heightPx) }
-            val picture = StackedPicture(scene, parts, props.drawing, fit, values, props.colourScale, props.highlightIds + selection)
+            val fit = remember(scene, props.drawing, widthPx, heightPx, framing) { fitDrawing(scene, props.drawing, widthPx, heightPx, framing.quarterTurns, framing.camera) }
+            val picture = StackedPicture(scene, parts, props.drawing, fit, framing.quarterTurns, values, props.colourScale, props.highlightIds + selection)
             val notices = sceneNotices(scene, parts, props, fit)
             val popup = popupLines(scene, parts, selection, props, values)
-            val tapTarget = PartTapTarget(node.id, scene, parts, props.drawing, fit, selection, selectedPath, props.onPartTap, context, scope) {
+            val tapTarget = PartTapTarget(node.id, scene, parts, props.drawing, fit, framing.quarterTurns, selection, selectedPath, props.onPartTap, context, scope) {
                 localSelection = it
             }
+            val latestTapTarget by rememberUpdatedState(tapTarget)
             RecordDrawn {
-                this.scene = sceneRecord(scene, props, notices, partReadings(picture, props.highlightIds, selection), popup)
+                this.scene = sceneRecord(scene, props, framing, notices, partReadings(picture, props.highlightIds, selection), popup)
                 partTap = { partId -> tapPartById(tapTarget, partId) }
+            }
+            val pointer = if (framingPaths.isGestureEnabled) {
+                Modifier.framingGestures(props.drawing == StackedDrawing.ISO, framingInHand, moveFraming) { offset -> applyPartTap(latestTapTarget, offset.x.toDouble(), offset.y.toDouble()) }
+            } else {
+                Modifier.pointerInput(parts, fit, selection, selectedPath, props.onPartTap) {
+                    detectTapGestures(onTap = { offset -> applyPartTap(tapTarget, offset.x.toDouble(), offset.y.toDouble()) })
+                }
             }
             Canvas(
                 modifier = Modifier.fillMaxSize()
@@ -193,14 +216,12 @@ private fun RenderSizedStackedScene(
                     .canvasPlacement()
                     .testTag(partsTag(node.id))
                     .semantics { stateDescription = drawnPartsSummary(parts, props.highlightIds, selection) }
-                    .pointerInput(parts, fit, selection, selectedPath, props.onPartTap) {
-                        detectTapGestures(onTap = { offset -> applyPartTap(tapTarget, offset.x.toDouble(), offset.y.toDouble()) })
-                    },
+                    .then(pointer),
             ) {
                 drawStackedScene(picture, palette)
             }
             StackedSceneNotes(notices, Modifier.align(Alignment.TopStart))
-            SelectedPartPopup(node.id, scene, parts, selection, props, fit, popup)
+            SelectedPartPopup(node.id, scene, parts, selection, props, fit, framing.quarterTurns, popup)
         }
         ColourLegend(node.id, props.colourScale, Modifier.fillMaxWidth())
     }
@@ -237,7 +258,7 @@ private fun focusText(focus: LevelFocus): String = when (focus) {
     is LevelFocus.OneLevel -> focus.level.toString()
 }
 
-private fun sceneRecord(scene: SceneView, props: StackedSceneProps, notices: List<String>, parts: List<ScenePartRecord>, popup: List<String>?) = SceneRecord(
+private fun sceneRecord(scene: SceneView, props: StackedSceneProps, framing: SceneFraming, notices: List<String>, parts: List<ScenePartRecord>, popup: List<String>?) = SceneRecord(
     view = props.drawing.wire,
     focus = focusText(props.focus),
     hideTop = props.hideTopCount,
@@ -245,6 +266,10 @@ private fun sceneRecord(scene: SceneView, props: StackedSceneProps, notices: Lis
     yAxis = (props.yAxis ?: YAxis.UP).wire,
     north = scene.grid?.north,
     activeScheme = props.activeScheme,
+    quarterTurns = framing.quarterTurns,
+    zoom = framing.camera.zoom,
+    panX = framing.camera.panX,
+    panY = framing.camera.panY,
     legend = legendReadings(props.colourScale),
     notices = notices,
     parts = parts,
@@ -267,9 +292,10 @@ private fun SelectedPartPopup(
     selection: Set<String>,
     props: StackedSceneProps,
     fit: CanvasFit,
+    quarterTurns: Int,
     lines: List<String>?,
 ) {
     val part = selectedPart(parts, selection) ?: return
-    val anchor = popupAnchor(scene, part.footprint, props.drawing, fit)
+    val anchor = popupAnchor(scene, part.footprint, props.drawing, fit, quarterTurns)
     PartPopup(popupTag(nodeId), lines ?: return, anchor.first.toFloat(), anchor.second.toFloat())
 }

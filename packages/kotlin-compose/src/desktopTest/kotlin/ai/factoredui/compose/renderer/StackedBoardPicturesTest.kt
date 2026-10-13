@@ -56,7 +56,7 @@ class StackedBoardPicturesTest {
         driveScreen(stackedBoardSpec(), stackedBoardStore("iso", board = mapOf("hide_top" to "1")), BOARD_SCREEN_WIDTH, BOARD_SCREEN_HEIGHT).use { screen ->
             val area = assertNotNull(screen.boundsOf("board"))
             val fit = fitDrawing(scene, StackedDrawing.ISO, (area.right - area.left).value.toDouble(), (area.bottom - area.top).value.toDouble())
-            val top = projectFaces(partBox(scene, bar)).top.map { (u, v) -> mmToCanvas(fit, u, v) }
+            val top = projectFaces(partBox(scene, bar), 0).top.map { (u, v) -> mmToCanvas(fit, u, v) }
             screen.tapAt(area.left.value + (top.sumOf { it.first } / top.size).toFloat(), area.top.value + (top.sumOf { it.second } / top.size).toFloat())
             assertEquals(listOf("Wide bar", "r2 · 90% · busy"), screen.textsUnder(popupTag("board")))
             savePicture("07-iso-bar-popup.png", screen.frame().png)

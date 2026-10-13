@@ -23,13 +23,18 @@ fun partsToDraw(
     showLower: Boolean,
     hideTopCount: Int,
     highlightIds: Set<String>,
+    quarterTurns: Int = 0,
 ): List<VisiblePart> {
     val shown = fadeUnhighlighted(visibleParts(scene, focus, showLower, hideTopCount), highlightIds)
-    return if (drawing == StackedDrawing.ISO) orderForIso(scene, shown) else orderForView(scene, shown, flatViewOf(drawing))
+    return if (drawing == StackedDrawing.ISO) orderForIso(scene, shown, quarterTurns) else orderForView(scene, shown, flatViewOf(drawing))
 }
 
-fun fitDrawing(scene: SceneView, drawing: StackedDrawing, widthPx: Double, heightPx: Double): CanvasFit {
-    if (drawing == StackedDrawing.ISO) return fitWindow(isoWindow(scene), widthPx, heightPx, DRAWING_MARGIN_PX)
+/** The plan and the elevations ignore [quarterTurns]; [camera] zooms and shifts every view. */
+fun fitDrawing(scene: SceneView, drawing: StackedDrawing, widthPx: Double, heightPx: Double, quarterTurns: Int = 0, camera: SceneCamera = SceneCamera()): CanvasFit =
+    cameraFit(fittedDrawing(scene, drawing, widthPx, heightPx, quarterTurns), camera, widthPx, heightPx)
+
+private fun fittedDrawing(scene: SceneView, drawing: StackedDrawing, widthPx: Double, heightPx: Double, quarterTurns: Int): CanvasFit {
+    if (drawing == StackedDrawing.ISO) return fitWindow(isoWindow(scene, quarterTurns), widthPx, heightPx, DRAWING_MARGIN_PX)
     val view = flatViewOf(drawing)
     val exaggeration = exaggerationFor(scene, view, widthPx, heightPx, DRAWING_MARGIN_PX).toDouble()
     return fitWindow(viewWindow(scene, view), widthPx, heightPx, DRAWING_MARGIN_PX, exaggeration)
@@ -38,22 +43,22 @@ fun fitDrawing(scene: SceneView, drawing: StackedDrawing, widthPx: Double, heigh
 const val MIN_INTRINSIC_SCENE_HEIGHT = 200.0
 private const val MOST_HEIGHT_PER_WIDTH = 1.5
 
-/** The height a scene takes when its container sets none, as in a scroll: its window's shape at [width], held between bounds. */
+/** The height a scene takes when its container sets none, as in a scroll: its window's shape at [width], held between bounds; the iso's first aspect sets it, so a quarter turn never moves the page. */
 fun intrinsicSceneHeight(scene: SceneView, drawing: StackedDrawing, width: Double): Double {
-    val window = if (drawing == StackedDrawing.ISO) isoWindow(scene) else viewWindow(scene, flatViewOf(drawing))
+    val window = if (drawing == StackedDrawing.ISO) isoWindow(scene, 0) else viewWindow(scene, flatViewOf(drawing))
     val shape = (window.y1 - window.y0) / (window.x1 - window.x0)
     val natural = (width - 2 * DRAWING_MARGIN_PX) * shape + 2 * DRAWING_MARGIN_PX
     return natural.coerceIn(MIN_INTRINSIC_SCENE_HEIGHT, maxOf(MIN_INTRINSIC_SCENE_HEIGHT, width * MOST_HEIGHT_PER_WIDTH))
 }
 
-fun hitDrawnPart(scene: SceneView, parts: List<VisiblePart>, drawing: StackedDrawing, fit: CanvasFit, xPx: Double, yPx: Double): VisiblePart? {
+fun hitDrawnPart(scene: SceneView, parts: List<VisiblePart>, drawing: StackedDrawing, fit: CanvasFit, xPx: Double, yPx: Double, quarterTurns: Int = 0): VisiblePart? {
     val (u, v) = canvasToMm(fit, xPx, yPx)
-    return if (drawing == StackedDrawing.ISO) hitIso(scene, parts, u, v) else hitPartInView(scene, parts, u, v, flatViewOf(drawing))
+    return if (drawing == StackedDrawing.ISO) hitIso(scene, parts, u, v, quarterTurns) else hitPartInView(scene, parts, u, v, flatViewOf(drawing))
 }
 
-fun popupAnchor(scene: SceneView, footprint: SceneFootprint, drawing: StackedDrawing, fit: CanvasFit): Pair<Double, Double> {
+fun popupAnchor(scene: SceneView, footprint: SceneFootprint, drawing: StackedDrawing, fit: CanvasFit, quarterTurns: Int = 0): Pair<Double, Double> {
     if (drawing == StackedDrawing.ISO) {
-        val top = projectFaces(partBox(scene, footprint)).top.map { (u, v) -> mmToCanvas(fit, u, v) }
+        val top = projectFaces(partBox(scene, footprint), quarterTurns).top.map { (u, v) -> mmToCanvas(fit, u, v) }
         return top.sumOf { it.first } / top.size to top.minOf { it.second }
     }
     val rect = partRectInView(scene, footprint, flatViewOf(drawing))

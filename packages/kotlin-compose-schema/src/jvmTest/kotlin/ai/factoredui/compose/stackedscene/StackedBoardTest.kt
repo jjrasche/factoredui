@@ -51,6 +51,33 @@ private fun drawn(scene: SceneView, drawing: StackedDrawing, highlight: Set<Stri
 
 private fun SceneView.part(id: String) = footprints!!.items.first { it.id == id }
 
+/** The order the iso painted the board in before it could turn, read from that code. */
+private val PAINT_ORDER_AT_45 = listOf("b6", "b3", "b5", "b2", "b4", "b1", "r2", "r1", "p4", "p3", "p2", "p1")
+
+private val AZIMUTH_45 = Math.toRadians(45.0)
+private val ELEVATION = Math.toRadians(35.264)
+
+/** The projection the iso drew before it could turn, written out: u = x cos 45 - y sin 45, v = z cos e + (x sin 45 + y cos 45) sin e. */
+private fun cornersAt45(box: PartBox): List<Pair<Double, Double>> =
+    listOf(box.x0, box.x1).flatMap { x ->
+        listOf(box.y0, box.y1).flatMap { y ->
+            listOf(box.z0, box.z1).map { z ->
+                val depth = x * kotlin.math.sin(AZIMUTH_45) + y * kotlin.math.cos(AZIMUTH_45)
+                (x * kotlin.math.cos(AZIMUTH_45) - y * kotlin.math.sin(AZIMUTH_45)) to (z * kotlin.math.cos(ELEVATION) + depth * kotlin.math.sin(ELEVATION))
+            }
+        }
+    }
+
+/** The frame the iso drew before it could turn: the tight box of every corner at 45 degrees, widened by 24% each side and 6% top and bottom. */
+private fun tightIsoWindowAt45(scene: SceneView): RectMm {
+    val points = scene.footprints!!.items.flatMap { cornersAt45(partBox(scene, it)) }
+    val left = points.minOf { it.first }
+    val right = points.maxOf { it.first }
+    val bottom = points.minOf { it.second }
+    val top = points.maxOf { it.second }
+    return RectMm(left - (right - left) * 0.24, bottom - (top - bottom) * 0.06, right + (right - left) * 0.24, top + (top - bottom) * 0.06)
+}
+
 class StackedBoardTest {
 
     @Test
@@ -129,14 +156,48 @@ class StackedBoardTest {
     @Test
     fun the_iso_order_draws_every_part_exactly_once() {
         val scene = board()
-        val ordered = orderForIso(scene, everyPart(scene)).map { it.footprint.id }
+        val ordered = orderForIso(scene, everyPart(scene), 0).map { it.footprint.id }
         assertEquals(scene.footprints!!.items.map { it.id }.sorted(), ordered.sorted())
+    }
+
+    @Test
+    fun at_the_first_aspect_zoom_1_and_no_pan_every_iso_corner_is_drawn_exactly_where_the_45_degree_frame_drew_it() {
+        val scene = board()
+        val before = fitWindow(tightIsoWindowAt45(scene), CANVAS_WIDTH, CANVAS_HEIGHT, DRAWING_MARGIN_PX)
+        val now = fitDrawing(scene, StackedDrawing.ISO, CANVAS_WIDTH, CANVAS_HEIGHT, quarterTurns = 0, camera = SceneCamera(zoom = 1.0, panX = 0.0, panY = 0.0))
+        assertEquals(before, now)
+        scene.footprints!!.items.forEach { footprint ->
+            val box = partBox(scene, footprint)
+            val drawn = listOf(box.x0, box.x1).flatMap { x -> listOf(box.y0, box.y1).flatMap { y -> listOf(box.z0, box.z1).map { z -> isoProject(x, y, z, 0).let { it.u to it.v } } } }
+            cornersAt45(box).zip(drawn).forEach { (expected, actual) -> assertTrue(kotlin.math.abs(expected.first - actual.first) < 1e-9 && kotlin.math.abs(expected.second - actual.second) < 1e-9, "${footprint.id}: $actual vs $expected") }
+        }
+    }
+
+    @Test
+    fun at_zoom_1_and_no_pan_the_plan_and_elevations_are_drawn_exactly_as_their_fitted_windows() {
+        val scene = board()
+        listOf(StackedDrawing.PLAN to FlatView.PLAN, StackedDrawing.SOUTH to FlatView.SOUTH, StackedDrawing.WEST to FlatView.WEST).forEach { (drawing, view) ->
+            val exaggeration = exaggerationFor(scene, view, CANVAS_WIDTH, CANVAS_HEIGHT, DRAWING_MARGIN_PX).toDouble()
+            val before = fitWindow(viewWindow(scene, view), CANVAS_WIDTH, CANVAS_HEIGHT, DRAWING_MARGIN_PX, exaggeration)
+            assertEquals(before, fitDrawing(scene, drawing, CANVAS_WIDTH, CANVAS_HEIGHT, quarterTurns = 3, camera = SceneCamera()), "$drawing")
+        }
+    }
+
+    @Test
+    fun at_the_first_aspect_the_iso_paints_the_parts_in_the_order_it_painted_them_before_it_could_turn() =
+        assertEquals(PAINT_ORDER_AT_45, orderForIso(board(), everyPart(board()), 0).map { it.footprint.id })
+
+    @Test
+    fun the_plan_paints_the_parts_in_the_same_order_at_every_quarter_turn() {
+        val scene = board()
+        val first = partsToDraw(scene, StackedDrawing.PLAN, LevelFocus.AllLevels, true, 0, emptySet(), quarterTurns = 0).map { it.footprint.id }
+        (1..3).forEach { turns -> assertEquals(first, partsToDraw(scene, StackedDrawing.PLAN, LevelFocus.AllLevels, true, 0, emptySet(), quarterTurns = turns).map { it.footprint.id }) }
     }
 
     @Test
     fun in_iso_every_part_is_painted_after_each_part_it_stands_on() {
         val scene = board()
-        val ordered = orderForIso(scene, everyPart(scene)).map { it.footprint }
+        val ordered = orderForIso(scene, everyPart(scene), 0).map { it.footprint }
         val position = ordered.withIndex().associate { it.value.id to it.index }
         val boxes = ordered.associate { it.id to partBox(scene, it) }
         val standsOn = ordered.flatMap { upper ->
@@ -174,7 +235,7 @@ class StackedBoardTest {
                 val rect = partRectMm(scene, plate)
                 mmToCanvas(fit, (rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
             } else {
-                val top = projectFaces(partBox(scene, plate)).top.map { (u, v) -> mmToCanvas(fit, u, v) }
+                val top = projectFaces(partBox(scene, plate), 0).top.map { (u, v) -> mmToCanvas(fit, u, v) }
                 top.sumOf { it.first } / 4 to top.sumOf { it.second } / 4
             }
             assertEquals("p3", hitDrawnPart(scene, parts, drawing, fit, centre.first, centre.second)?.footprint?.id, "$drawing")
@@ -261,7 +322,7 @@ class StackedBoardTest {
 
     @Test
     fun with_no_height_given_the_iso_takes_the_height_its_projected_window_asks_for() {
-        val window = isoWindow(board())
+        val window = isoWindow(board(), 0)
         val expected = (400.0 - 2 * DRAWING_MARGIN_PX) * (window.y1 - window.y0) / (window.x1 - window.x0) + 2 * DRAWING_MARGIN_PX
         assertEquals(expected.coerceIn(MIN_INTRINSIC_SCENE_HEIGHT, 600.0), intrinsicSceneHeight(board(), StackedDrawing.ISO, 400.0), 1e-9)
     }
