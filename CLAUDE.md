@@ -40,7 +40,7 @@ The rendering half of agent-platform. Kotlin Multiplatform + Compose Multiplatfo
 
 - **Container primitives** — column, row, stack, scrollview, grid, list, card, tabs, modal.
 - **Widget leaves** — text, button, image, video, icon, divider, spacer, textinput, toggle, select, slider, chip. `video` plays a local file on Android; other targets render a visible unsupported notice.
-- **Dense/semantic primitives** — `scene3d`, `canvas`, `geomap`, `graph`, `scene`. Take typed data (a world, a drawing, a topology, a stock-and-flow diagram, a scene payload) instead of child components; scene3d runs its own simulation loop, and `scene` picks a renderer from `view_state` (today only `stacked_scene`). Future members: timeline, heatmap, flow-field, scatterplot3d.
+- **Dense/semantic primitives** — `scene3d`, `canvas`, `geomap`, `graph`, `scene`, `table`. Take typed data (a world, a drawing, a topology, a stock-and-flow diagram, a scene payload, an engine view) instead of child components; scene3d runs its own simulation loop, and `scene` picks a renderer from `view_state` (today only `stacked_scene`). Future members: timeline, heatmap, flow-field, scatterplot3d.
 
 ### Spec schema
 

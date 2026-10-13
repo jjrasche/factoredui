@@ -1,6 +1,7 @@
 package ai.factoredui.compose.renderer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -291,6 +292,7 @@ private fun RenderNodeByType(
         SpecNodeType.GEOMAP -> RenderGeomap(node, resolvedProps, context)
         SpecNodeType.GRAPH -> RenderGraph(node, resolvedProps, context)
         SpecNodeType.SCENE -> RenderScene(node, resolvedProps, context)
+        SpecNodeType.TABLE -> RenderTable(node, resolvedProps, context)
         SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)
         SpecNodeType.VIDEO -> RenderVideo(node, resolvedProps, context)
         SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)
@@ -361,7 +363,10 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val claimsSpace = props.flex > 0f
     val fillWidth = hasFlexChild || claimsSpace || props.justify != LayoutJustify.START
-    val rowModifier = Modifier.nodeTag(node.id).groundOf(props).padding(props.padding.dp)
+    val scope = rememberCoroutineScope()
+    val rowModifier = Modifier.nodeTag(node.id).groundOf(props)
+        .let { modifier -> node.action?.let { action -> modifier.clickable { scope.launch { context.dispatch(node.id, action) } } } ?: modifier }
+        .padding(props.padding.dp)
         .let { if (fillWidth) it.fillMaxWidth() else it }
         .let { if (claimsSpace) it.fillMaxHeight() else it }
     Row(

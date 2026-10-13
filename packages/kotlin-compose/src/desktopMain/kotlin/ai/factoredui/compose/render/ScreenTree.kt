@@ -36,6 +36,7 @@ private fun nodeAt(registry: ScreenRegistry, node: SpecNode, prefix: String): Sc
 }
 
 private fun childrenOf(registry: ScreenRegistry, node: SpecNode, record: NodeRecord, prefix: String): List<ScreenNode> {
+    if (record.syntheticChildren.isNotEmpty()) return record.syntheticChildren.mapNotNull { (childPrefix, child) -> nodeAt(registry, child, childPrefix) }
     val template = if (node.type == SpecNodeType.LIST) node.props.asListProps().itemTemplate else null
     val rows = record.rowCount
     if (template != null && rows != null) return (0 until rows).mapNotNull { index -> nodeAt(registry, template, "${record.path}/$index/") }

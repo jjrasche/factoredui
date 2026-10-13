@@ -102,10 +102,10 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene.
+column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table.
 
 - There is no table and no ratio-against-a-limit widget.
-- A table is a `list` with an `itemTemplate`.
+- A table of the engine's views is a `table` (see Tables). Any other table is a `list` with an `itemTemplate`.
 
 ## Formatted figures
 
@@ -216,6 +216,33 @@ Notices drawn over the scene:
 - Draw it with `RenderSpec(spec, RenderContext(initialData = ...))` in a `runComposeUiTest`.
 - `RenderListChildrenTest` and `EveryPrimitiveDrawsTest` are the working examples.
 - A binding that names no key renders blank. Assert the text you expect is displayed.
+
+## Tables
+
+A `table` draws one view from the engine's views response: `{ id, label, columns: [ { id, label, unit, kind, type, null_display } ], rows: [ { id, label, object_ids, values } ] }`. It draws a title, a header row and one row per view row, laid out like list rows (lazy in a bounded pane, stacked inside a scroll).
+
+- `view`: a binding to the view object.
+- `display`: the display profile, inline or a binding so one profile serves every table: `{ "units": { "<unit>": <entry> }, "kinds": { "<kind>": <entry> } }`. An entry is a named format (`"usd"`), an object format (`{ "scale", "suffix", "decimals" }`), or `{ "format": <either>, "label": "<text>" }`.
+- A column's format is its `columns` override's, else its unit's entry, else its kind's entry, else none (the plain figure). A unit, or the kind of a unit-less column, that no entry covers draws plain figures, and the table gives one notice naming them, on screen and in its `/tree` `notices`: "table 'bom': no display entry for unit(s) 'kg*mm/second^2', 'joule'; drawn as plain figures". A text column (`type` or `kind` `text`) is drawn as text with no format.
+- `show_unit` (default true): the header shows the entry's unit label after the column label: the entry's `label`, else an object format's `suffix` trimmed (" lbf" shows "Force (lbf)"), else nothing (a named format such as `usd` adds nothing unless it has a `label`).
+- `columns`: overrides by column id, `{ "format", "label", "hidden", "align" }`. An override `label` is the whole header, as written. Numeric columns align right and others left unless `align` says otherwise.
+- `title`: defaults to the view's `label`; a string replaces it and `false` hides it.
+- `show_label` (default true) shows each row's label as the first column, headed `label_header` (default empty).
+- `missing` (default "–") is drawn for a null value; a column's `null_display` wins over it. A null-bound cell carries `"null": true` in `/tree`.
+- `empty_text` is drawn when the view has no rows, as the node `<table id>/empty`.
+- `on_row_tap`: an action dispatched when a row is tapped, with params in the row's scope as list rows have: `{row.id}`, `{row.label}`, `{row.object_ids}`, `{row.values.<column>}`.
+- `flex` as any child of a column or row.
+- `/tree` ids: the table `<id>`, its header row `<id>/head` and header cells `<id>/head/<column>` (the row label's header is `<id>/head/label`), each row `<id>/row/<i>` (zero-based) and each cell `<id>/row/<i>/label` and `<id>/row/<i>/<column>`. Cells are text nodes: they carry `text`, `null`, `ink` and `bounds`. A row with `on_row_tap` clicks by id.
+
+```json
+{ "id": "bom", "type": "table", "props": {
+    "view": "{views.bom}", "display": "{display}", "label_header": "Item",
+    "on_row_tap": { "action": "set_binding", "params": { "path": "board.picked", "value": "{row.object_ids}" } } } }
+```
+
+with a profile such as `{ "units": { "count": { "scale": 1, "decimals": 0 }, "usd": "usd", "usd/count": "usd", "mm": "feet_inches", "kg*mm/second^2": { "scale": 0.000224809, "suffix": " lbf", "decimals": 0 } }, "kinds": { "ratio": "percent" } }`.
+
+A `row` with an `action` is tappable too, dispatching it like a card does.
 
 ## Scene data
 

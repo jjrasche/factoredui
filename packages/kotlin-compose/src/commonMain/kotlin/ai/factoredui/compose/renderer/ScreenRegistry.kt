@@ -88,6 +88,7 @@ class NodeRecord(
     var isBoundToNull: Boolean = false
     var emptyMessage: String? = null
     var emptyBounds: ScreenBounds? = null
+    var syntheticChildren: List<Pair<String, SpecNode>> = emptyList()
     var partTap: ((String) -> Boolean)? = null
 }
 
