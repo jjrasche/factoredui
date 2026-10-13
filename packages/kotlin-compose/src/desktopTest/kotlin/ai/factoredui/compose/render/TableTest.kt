@@ -146,6 +146,8 @@ class TableTest {
         val plainReference = """,{"id":"ref-plain","type":"text","props":{"value":11126025.8}}"""
         driving(tableSpec("", extra = plainReference), storeWith(unmapped)) { port, _ ->
             assertEquals(textAt(port, "ref-plain"), textAt(port, "parts/row/0/force"), "an unmapped unit draws the plain figure a text node draws")
+            assertEquals("11126025.8", textAt(port, "ref-plain"), "a plain figure draws with no exponent")
+            assertEquals("11126025.8", textAt(port, "parts/row/0/force"))
             assertEquals(
                 listOf("table 'parts': no display entry for unit(s) 'furlong', 'joule'; drawn as plain figures"),
                 nodeAt(port, "parts").getValue("notices").jsonArray.map { it.jsonPrimitive.content },
