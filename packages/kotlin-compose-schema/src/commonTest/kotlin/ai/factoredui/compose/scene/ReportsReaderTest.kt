@@ -61,7 +61,7 @@ class ReportsReaderTest {
         assertEquals(mapOf("a" to 10.0, "b" to null), row.limits)
         assertEquals(mapOf("a" to "over"), row.flags)
         assertEquals(mapOf("a" to 1.2), row.fractions)
-        assertEquals(listOf(ReportColumn("kind", "Kind", null)), views.single().columns)
+        assertEquals(listOf(ReportColumn("kind", "Kind", null, type = "text")), views.single().columns)
         val both = readReports("""{"views":[{"id":"new","label":"New","columns":[],"rows":[]}],"reports":[{"id":"old","label":"Old","columns":[],"rows":[]}]}""")
         assertEquals(listOf("new"), both.map { it.id })
         val stateRow = (reportsState(views).getValue("loads")["rows"] as List<*>).single() as Map<*, *>
@@ -158,6 +158,19 @@ class ReportsReaderTest {
         val row = (reportsState(readReports(reportsWith(engineRow, columns))).getValue("groups")["rows"] as List<*>).single() as Map<*, *>
         assertEquals(mapOf("use" to 0.5695250804362033), row["fractions"])
         assertEquals(mapOf("use" to "within"), row["flags"])
+    }
+
+    @Test
+    fun a_columns_kind_type_null_display_and_bad_reach_the_state_beside_its_unit() {
+        val columns = """[{"id":"use","label":"Use","unit":"1","kind":"ratio","bad":"above","null_display":"not measured"},{"id":"note","label":"Note","type":"text"}]"""
+        val state = reportsState(readReports(reportsWith("[]", columns)))
+        assertEquals(
+            listOf(
+                mapOf("id" to "use", "label" to "Use", "unit" to "1", "kind" to "ratio", "bad" to "above", "null_display" to "not measured"),
+                mapOf("id" to "note", "label" to "Note", "unit" to null, "type" to "text"),
+            ),
+            state.getValue("groups")["columns"],
+        )
     }
 
     @Test

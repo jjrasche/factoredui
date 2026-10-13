@@ -11,7 +11,19 @@ class ReportsFormatException(message: String) : IllegalArgumentException(message
 private const val VIEWS_KEY = "views"
 private const val LEGACY_REPORTS_KEY = "reports"
 
-data class ReportColumn(val id: String, val label: String, val unit: String?)
+data class ReportColumn(
+    val id: String,
+    val label: String,
+    val unit: String?,
+    val kind: String? = null,
+    val type: String? = null,
+    val nullDisplay: String? = null,
+    val bad: String? = null,
+)
+
+private fun columnState(column: ReportColumn): Map<String, Any?> =
+    mapOf("id" to column.id, "label" to column.label, "unit" to column.unit) +
+        listOf("kind" to column.kind, "type" to column.type, "null_display" to column.nullDisplay, "bad" to column.bad).filter { it.second != null }
 
 /** A null value is a figure the engine does not know; it is never zero. Absent fractions or flags stay absent, never empty. */
 data class ReportRow(
@@ -48,7 +60,7 @@ fun reportsState(reports: List<Report>): Map<String, Map<String, Any?>> = report
     report.id to mapOf(
         "id" to report.id,
         "label" to report.label,
-        "columns" to report.columns.map { mapOf("id" to it.id, "label" to it.label, "unit" to it.unit) },
+        "columns" to report.columns.map(::columnState),
         "rows" to reportRowsState(report),
     )
 }
@@ -107,7 +119,15 @@ private fun flagsAt(fields: JsonObject, where: String): Map<String, String?>? =
 
 private fun columnOf(where: String, column: JsonObject): ReportColumn {
     val id = idAt(column, where)
-    return ReportColumn(id, textAt(column, "label", where) ?: id, textAt(column, "unit", where))
+    return ReportColumn(
+        id,
+        textAt(column, "label", where) ?: id,
+        textAt(column, "unit", where),
+        textAt(column, "kind", where),
+        textAt(column, "type", where),
+        textAt(column, "null_display", where),
+        textAt(column, "bad", where),
+    )
 }
 
 private fun rowOf(where: String, row: JsonObject): ReportRow {
