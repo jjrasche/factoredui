@@ -7,6 +7,7 @@ import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.schema.StackedSceneProps
+import ai.factoredui.compose.schema.asLayoutProps
 import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.resolveGeomapSelection
 import ai.factoredui.compose.schema.resolveStackedSceneProps
@@ -153,7 +154,7 @@ private fun dispatchPartTap(target: PartTapTarget, hit: VisiblePart?) {
 @Composable
 private fun RenderReadStackedScene(node: SpecNode, scene: SceneView, props: StackedSceneProps, resolvedSelected: Any?, context: RenderContext) {
     BoxWithConstraints {
-        RenderSizedStackedScene(node, scene, props, resolvedSelected, context, sceneSize(scene, props.drawing))
+        RenderSizedStackedScene(node, scene, props, resolvedSelected, context, sceneSize(scene, props.drawing, node.props.asLayoutProps().height))
     }
 }
 
@@ -229,11 +230,12 @@ private fun RenderSizedStackedScene(
 
 private val UNBOUNDED_SCENE_WIDTH = 480.dp
 
-/** A scroll offers unbounded height; the scene then takes its window's shape rather than collapsing to nothing. */
-private fun BoxWithConstraintsScope.sceneSize(scene: SceneView, drawing: StackedDrawing): Modifier {
+/** A scroll offers unbounded height; the scene then takes its own height, or else its window's shape, rather than collapsing to nothing. */
+private fun BoxWithConstraintsScope.sceneSize(scene: SceneView, drawing: StackedDrawing, ownHeight: Float?): Modifier {
     if (constraints.hasBoundedHeight) return Modifier.fillMaxSize()
     val width = if (constraints.hasBoundedWidth) maxWidth else UNBOUNDED_SCENE_WIDTH
-    return Modifier.width(width).height(intrinsicSceneHeight(scene, drawing, width.value.toDouble()).dp)
+    val height = ownHeight?.dp ?: intrinsicSceneHeight(scene, drawing, width.value.toDouble()).dp
+    return Modifier.width(width).height(height)
 }
 
 private fun sceneNotices(scene: SceneView, parts: List<VisiblePart>, props: StackedSceneProps, fit: CanvasFit): List<String> = buildList {

@@ -8,7 +8,7 @@ data class ProfileEntry(val format: Any, val label: String?)
 
 data class DisplayProfile(val units: Map<String, ProfileEntry>, val kinds: Map<String, ProfileEntry>)
 
-data class ColumnOverride(val format: Any?, val label: String?, val isHidden: Boolean, val align: String?, val width: Double? = null)
+data class ColumnOverride(val format: Any?, val label: String?, val isHidden: Boolean, val align: String?, val width: Double? = null, val widthFault: String? = null)
 
 data class ShownColumn(val id: String, val header: String, val format: Any?, val missing: String, val align: String, val width: Double? = null)
 
@@ -58,7 +58,8 @@ fun mergedProfile(inherited: DisplayProfile?, own: DisplayProfile?): DisplayProf
 fun readColumnOverrides(raw: Any?): Map<String, ColumnOverride> =
     (raw as? Map<*, *>).orEmpty().entries.mapNotNull { (key, value) ->
         val fields = value as? Map<*, *> ?: return@mapNotNull null
-        key.toString() to ColumnOverride(fields["format"], fields["label"] as? String, fields["hidden"] == true, fields["align"] as? String, (fields["width"] as? Number)?.toDouble())
+        val width = slotSizeOf("column '$key' width", fields["width"])
+        key.toString() to ColumnOverride(fields["format"], fields["label"] as? String, fields["hidden"] == true, fields["align"] as? String, width.dp, width.fault)
     }.toMap()
 
 private fun unitLabelOf(entry: ProfileEntry): String? =
@@ -80,10 +81,16 @@ private fun shownColumn(column: TableColumn, override: ColumnOverride?, entry: P
 
 private fun quoted(names: List<String>): String = names.joinToString { "'$it'" }
 
-private fun unmappedNotice(tableId: String, units: List<String>, kinds: List<String>): String? {
+private fun unmappedText(units: List<String>, kinds: List<String>): String? {
     val parts = listOfNotNull(units.takeIf { it.isNotEmpty() }?.let { "unit(s) ${quoted(it)}" }, kinds.takeIf { it.isNotEmpty() }?.let { "kind(s) ${quoted(it)}" })
     if (parts.isEmpty()) return null
-    return "table '$tableId': no display entry for ${parts.joinToString(" and ")}; drawn as plain figures"
+    return "no display entry for ${parts.joinToString(" and ")}; drawn as plain figures"
+}
+
+private fun tableNotice(tableId: String, unmapped: String?, widthFaults: List<String>): String? {
+    val parts = listOfNotNull(unmapped) + widthFaults
+    if (parts.isEmpty()) return null
+    return "table '$tableId': ${parts.joinToString("; ")}"
 }
 
 /** A column's format: its override's, else its unit's entry, else its kind's, else none; what no entry covers is named once. */
@@ -93,5 +100,6 @@ fun tableLayout(view: TableView, profile: DisplayProfile, overrides: Map<String,
     val units = unmapped.mapNotNull { it.unit }.distinct()
     val kinds = unmapped.filter { it.unit == null }.mapNotNull { it.kind }.distinct()
     val columns = shown.map { shownColumn(it, overrides[it.id], profileEntryFor(it, profile), showUnit, missing) }
-    return TableLayout(columns, unmappedNotice(view.id, units, kinds))
+    val widthFaults = shown.mapNotNull { overrides[it.id]?.widthFault }
+    return TableLayout(columns, tableNotice(view.id, unmappedText(units, kinds), widthFaults))
 }

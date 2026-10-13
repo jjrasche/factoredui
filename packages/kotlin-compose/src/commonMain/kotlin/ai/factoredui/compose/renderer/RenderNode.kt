@@ -347,11 +347,14 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
         verticalArrangement = verticalArrangement(props.justify, props.gap),
         horizontalAlignment = columnHorizontalAlignment(props.align),
     ) {
+        SlotSizeNotices(node.children)
         node.children.forEach { child ->
             val childLayout = child.props.asLayoutProps()
             val childFlex = childLayout.flex
             val fixedWidth = childLayout.width
+            val fixedHeight = childLayout.height
             when {
+                fixedHeight != null -> Box(Modifier.height(fixedHeight.dp).then(columnSlotWidth(fixedWidth, props.align)), propagateMinConstraints = true) { RenderInSlot(child, context, fixedWidth) }
                 fixedWidth != null -> Box(Modifier.let { if (childFlex > 0f) it.weight(childFlex) else it }.width(fixedWidth.dp)) { RenderInFixedSlot(child, context) }
                 childFlex > 0f -> Box(Modifier.weight(childFlex)) { RenderNode(node = child, context = context) }
                 props.align == LayoutAlign.STRETCH -> Box(Modifier.fillMaxWidth()) { RenderNode(node = child, context = context) }
@@ -378,13 +381,19 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
         horizontalArrangement = horizontalArrangement(props.justify, props.gap),
         verticalAlignment = rowVerticalAlignment(props.align),
     ) {
+        SlotSizeNotices(node.children)
         node.children.forEach { child ->
             val childLayout = child.props.asLayoutProps()
             val fixedWidth = childLayout.width
+            val fixedHeight = heightOf(childLayout.height)
+            val isHeightFixed = childLayout.height != null
             when {
-                fixedWidth != null -> Box(modifier = Modifier.width(fixedWidth.dp)) { RenderInFixedSlot(child, context) }
-                childLayout.flex > 0f -> Box(modifier = Modifier.weight(childLayout.flex)) {
+                fixedWidth != null -> Box(modifier = Modifier.width(fixedWidth.dp).then(fixedHeight), propagateMinConstraints = isHeightFixed) { RenderInFixedSlot(child, context) }
+                childLayout.flex > 0f -> Box(modifier = Modifier.weight(childLayout.flex).then(fixedHeight), propagateMinConstraints = isHeightFixed) {
                     CompositionLocalProvider(LocalSlotWidth provides SlotWidth.GIVEN) { RenderNode(node = child, context = context) }
+                }
+                isHeightFixed -> Box(modifier = fixedHeight, propagateMinConstraints = true) {
+                    CompositionLocalProvider(LocalSlotWidth provides SlotWidth.SHARED) { RenderNode(node = child, context = context) }
                 }
                 else -> CompositionLocalProvider(LocalSlotWidth provides SlotWidth.SHARED) { RenderNode(node = child, context = context) }
             }
@@ -395,6 +404,37 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
 @Composable
 private fun RenderInFixedSlot(child: SpecNode, context: RenderContext) {
     CompositionLocalProvider(LocalSlotWidth provides SlotWidth.FIXED) { RenderNode(node = child, context = context) }
+}
+
+@Composable
+private fun RenderInSlot(child: SpecNode, context: RenderContext, fixedWidth: Float?) {
+    if (fixedWidth != null) RenderInFixedSlot(child, context) else RenderNode(node = child, context = context)
+}
+
+private fun heightOf(fixedHeight: Float?): Modifier = fixedHeight?.let { Modifier.height(it.dp) } ?: Modifier
+
+private fun widthOf(fixedWidth: Float?): Modifier = fixedWidth?.let { Modifier.width(it.dp) } ?: Modifier
+
+private fun columnSlotWidth(fixedWidth: Float?, align: LayoutAlign): Modifier = when {
+    fixedWidth != null -> Modifier.width(fixedWidth.dp)
+    align == LayoutAlign.STRETCH -> Modifier.fillMaxWidth()
+    else -> Modifier
+}
+
+/** A child of a stack or a scroll with a width or height is drawn in a slot of exactly that size; one with neither is drawn as it is. */
+@Composable
+private fun RenderSizedChild(child: SpecNode, context: RenderContext) {
+    val layout = child.props.asLayoutProps()
+    if (layout.width == null && layout.height == null) return RenderNode(node = child, context = context)
+    Box(modifier = widthOf(layout.width).then(heightOf(layout.height)), propagateMinConstraints = true) { RenderInSlot(child, context, layout.width) }
+}
+
+@Composable
+private fun SlotSizeNotices(children: List<SpecNode>) {
+    val faults = children.flatMap { child -> child.props.asLayoutProps().sizeFaults.map { "'${child.id}' $it" } }
+    if (faults.isEmpty()) return
+    RecordDrawn { notices = faults }
+    faults.forEach { Text(text = it, style = MaterialTheme.typography.bodySmall, color = Color(0xFFB3261E)) }
 }
 
 // A declared ground is painted UNDER the padding, so the colour fills the container
@@ -441,7 +481,8 @@ private fun horizontalArrangement(justify: LayoutJustify, gap: Int): Arrangement
 @Composable
 private fun RenderStack(node: SpecNode, context: RenderContext) {
     Box(modifier = Modifier.nodeTag(node.id)) {
-        node.children.forEach { child -> RenderNode(node = child, context = context) }
+        SlotSizeNotices(node.children)
+        node.children.forEach { child -> RenderSizedChild(child, context) }
     }
 }
 
@@ -450,7 +491,8 @@ private fun RenderScrollView(node: SpecNode, context: RenderContext) {
     BoxWithConstraints(propagateMinConstraints = true) {
         val scrolls = if (constraints.hasBoundedHeight) Modifier.verticalScroll(rememberScrollState()) else Modifier
         Column(modifier = Modifier.nodeTag(node.id).then(scrolls)) {
-            node.children.forEach { child -> RenderNode(node = child, context = context) }
+            SlotSizeNotices(node.children)
+            node.children.forEach { child -> RenderSizedChild(child, context) }
         }
     }
 }

@@ -25,6 +25,21 @@ private fun layoutOf(view: Map<String, Any?>, overrides: Any? = null, showUnit: 
 class TableLayoutTest {
 
     @Test
+    fun a_column_width_of_zero_less_or_not_a_number_is_ignored_and_named_in_the_tables_one_notice() {
+        listOf(0 to "0", -3 to "-3", "wide" to "wide", true to "true", Double.NaN to "NaN").forEach { (raw, shown) ->
+            val layout = layoutOf(view(column("qty", "Quantity"), column("cost", "Cost", unit = "usd")), mapOf("cost" to mapOf("width" to raw)))
+            assertEquals(listOf(null, null), layout.columns.map { it.width }, "$raw")
+            assertEquals("table 'parts': column 'cost' width must be a number of dp above 0, not '$shown'; it is ignored.", layout.notice, "$raw")
+        }
+    }
+
+    @Test
+    fun a_bad_column_width_joins_the_unmapped_unit_notice_in_one_notice() {
+        val layout = layoutOf(view(column("force", "Force", unit = "newton")), mapOf("force" to mapOf("width" to -1)))
+        assertEquals("table 'parts': no display entry for unit(s) 'newton'; drawn as plain figures; column 'force' width must be a number of dp above 0, not '-1'; it is ignored.", layout.notice)
+    }
+
+    @Test
     fun a_columns_width_override_reaches_its_shown_column_and_a_column_with_none_has_no_width() {
         val layout = layoutOf(view(column("qty", "Quantity"), column("cost", "Cost", unit = "usd")), mapOf("cost" to mapOf("width" to 220)))
         assertEquals(listOf(null, 220.0), layout.columns.map { it.width })

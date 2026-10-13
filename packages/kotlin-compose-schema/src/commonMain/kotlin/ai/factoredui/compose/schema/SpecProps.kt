@@ -184,12 +184,20 @@ data class LayoutProps(
     val flex: Float = 0f,
     val background: String? = null,
     val width: Float? = null,
+    val height: Float? = null,
+    val sizeFaults: List<String> = emptyList(),
 )
 
 enum class LayoutAlign { START, CENTER, END, STRETCH }
 enum class LayoutJustify { START, CENTER, END, BETWEEN, AROUND }
 
-fun Map<String, SpecValue>.asLayoutProps(): LayoutProps = LayoutProps(
+fun Map<String, SpecValue>.asLayoutProps(): LayoutProps {
+    val width = slotSizeOf("width", get("width"))
+    val height = slotSizeOf("height", get("height"))
+    return layoutPropsOf(width, height)
+}
+
+private fun Map<String, SpecValue>.layoutPropsOf(width: SlotSize, height: SlotSize): LayoutProps = LayoutProps(
     background = string("background"),
     gap = int("gap") ?: 0,
     padding = int("padding") ?: 0,
@@ -207,7 +215,9 @@ fun Map<String, SpecValue>.asLayoutProps(): LayoutProps = LayoutProps(
         else -> LayoutJustify.START
     },
     flex = double("flex")?.toFloat() ?: 0f,
-    width = double("width")?.toFloat(),
+    width = width.dp?.toFloat(),
+    height = height.dp?.toFloat(),
+    sizeFaults = listOfNotNull(width.fault, height.fault),
 )
 
 // --- ImageProps ---
