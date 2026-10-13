@@ -362,24 +362,44 @@ fun Map<String, SpecValue>.asSliderProps(): SliderProps = SliderProps(
 
 // --- SelectProps ---
 
-data class SelectOption(val label: String, val value: String)
+/** [value] is the option's JSON value (text, number or bool); [key] is its canonical text, which matches a bound value and names it on the control port. */
+data class SelectOption(val label: String, val value: Any, val key: String)
 
 data class SelectProps(
     val options: List<SelectOption> = emptyList(),
     val placeholder: String = "",
+    val droppedOptionIndices: List<Int> = emptyList(),
 )
+
+fun selectOptionKeyOf(value: Any?): String? = when (value) {
+    is String -> value
+    is Boolean -> value.toString()
+    is Number -> figureOf(value)?.let(::plainFigureText)
+    else -> null
+}
+
+private fun SpecValue.selectOptionValue(): Any? = when (this) {
+    is SpecValue.StringValue -> value
+    is SpecValue.NumberValue -> value
+    is SpecValue.BooleanValue -> value
+    else -> null
+}
+
+private fun selectOptionOf(item: SpecValue): SelectOption? {
+    val obj = (item as? SpecValue.ObjectValue)?.value ?: return null
+    val label = obj.string("label") ?: return null
+    val value = obj["value"]?.selectOptionValue() ?: return null
+    val key = selectOptionKeyOf(value) ?: return null
+    return SelectOption(label = label, value = value, key = key)
+}
 
 fun Map<String, SpecValue>.asSelectProps(): SelectProps {
     val rawOptions = (get("options") as? SpecValue.ArrayValue)?.value ?: emptyList()
-    val parsed = rawOptions.mapNotNull { item ->
-        val obj = (item as? SpecValue.ObjectValue)?.value ?: return@mapNotNull null
-        val label = obj.string("label") ?: return@mapNotNull null
-        val value = obj.string("value") ?: return@mapNotNull null
-        SelectOption(label = label, value = value)
-    }
+    val read = rawOptions.map(::selectOptionOf)
     return SelectProps(
-        options = parsed,
+        options = read.filterNotNull(),
         placeholder = string("placeholder") ?: "",
+        droppedOptionIndices = read.indices.filter { read[it] == null },
     )
 }
 

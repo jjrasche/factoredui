@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -23,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import ai.factoredui.compose.schema.SpecNode
@@ -31,6 +33,7 @@ import ai.factoredui.compose.schema.asSelectProps
 import ai.factoredui.compose.schema.asSliderProps
 import ai.factoredui.compose.schema.asTabsProps
 import ai.factoredui.compose.schema.asToggleProps
+import ai.factoredui.compose.schema.selectOptionKeyOf
 import ai.factoredui.compose.schema.bindingPath
 
 /**
@@ -117,45 +120,56 @@ internal fun RenderSelect(
 ) {
     val props = node.props.asSelectProps()
     val writePath = node.props["value"]?.bindingPath()
-    val currentValue = (resolvedProps["value"] as? String) ?: ""
-    val currentLabel = props.options.firstOrNull { it.value == currentValue }?.label
+    val currentKey = selectOptionKeyOf(resolvedProps["value"])
+    val shownValue = if (currentKey == null) "" else resolvedProps["value"]
+    val currentLabel = props.options.firstOrNull { it.key == currentKey }?.label
         ?: props.placeholder.ifEmpty { "Select…" }
+    val droppedNotice = droppedOptionsNotice(node.id, props.droppedOptionIndices)
     val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
     RecordDrawn {
         text = currentLabel
-        shownProps = mapOf("options" to props.options.map { mapOf("value" to it.value, "label" to it.label) }, "value" to currentValue)
-        menu = if (expanded) props.options.map { MenuItemRecord(it.value, it.label, it.value == currentValue) } else null
+        shownProps = mapOf("options" to props.options.map { mapOf("value" to it.value, "label" to it.label) }, "value" to shownValue)
+        menu = if (expanded) props.options.map { MenuItemRecord(it.key, it.label, it.key == currentKey) } else null
+        notices = listOfNotNull(droppedNotice)
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .nodeTag(node.id),
-    ) {
-        OutlinedButton(
-            onClick = { expanded = true },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(currentLabel) }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .nodeTag(node.id),
         ) {
-            props.options.forEach { option ->
-                RecordMenuItemLifetime(option.value)
-                DropdownMenuItem(
-                    modifier = Modifier.menuItemPlacement(option.value),
-                    text = { Text(option.label) },
-                    onClick = {
-                        expanded = false
-                        writePath?.let { context.setBinding(it, option.value) }
-                        node.action?.let { ref -> scope.launch { context.dispatch(node.id, ref) } }
-                    },
-                )
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(currentLabel) }
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                props.options.forEach { option ->
+                    RecordMenuItemLifetime(option.key)
+                    DropdownMenuItem(
+                        modifier = Modifier.menuItemPlacement(option.key),
+                        text = { Text(option.label) },
+                        onClick = {
+                            expanded = false
+                            writePath?.let { context.setBinding(it, option.value) }
+                            node.action?.let { ref -> scope.launch { context.dispatch(node.id, ref) } }
+                        },
+                    )
+                }
             }
         }
+        droppedNotice?.let { Text(text = it, style = MaterialTheme.typography.bodySmall, color = Color(0xFFB3261E)) }
     }
+}
+
+private fun droppedOptionsNotice(nodeId: String, droppedIndices: List<Int>): String? {
+    if (droppedIndices.isEmpty()) return null
+    return "select '$nodeId' dropped options ${droppedIndices.joinToString(", ")}: each needs a text 'label' and a 'value' that is text, a number or true/false"
 }
 
 @Composable
