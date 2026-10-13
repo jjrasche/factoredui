@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.jsonArray
@@ -90,6 +91,12 @@ private fun boundsJson(bounds: ScreenBounds?): JsonElement = bounds?.let {
     }
 } ?: JsonNull
 
+/** A node with no place on screen (clipped out of view, or not placed yet) is not composed and has null bounds. */
+private fun JsonObjectBuilder.putPlacement(bounds: ScreenBounds?) {
+    put("composed", bounds != null)
+    put("bounds", boundsJson(bounds))
+}
+
 fun valueJson(value: Any?): JsonElement = when (value) {
     null -> JsonNull
     is String -> JsonPrimitive(value)
@@ -149,7 +156,7 @@ private fun optionJson(record: NodeRecord, item: MenuItemRecord): JsonObject = b
     put("enabled", true)
     put("action", JsonNull)
     put("selected", item.selected)
-    put("bounds", boundsJson(record.menuBounds[item.value]))
+    putPlacement(record.menuBounds[item.value])
     put("children", JsonArray(emptyList()))
 }
 
@@ -161,7 +168,7 @@ private fun emptyJson(record: NodeRecord, message: String): JsonObject = buildJs
     put("visible", true)
     put("enabled", true)
     put("action", JsonNull)
-    put("bounds", boundsJson(record.emptyBounds))
+    putPlacement(record.emptyBounds)
     put("children", JsonArray(emptyList()))
 }
 
@@ -189,7 +196,7 @@ fun screenJson(node: ScreenNode): JsonObject = buildJsonObject {
     put("visible", record.visible)
     put("enabled", record.enabled)
     put("action", valueJson(record.action))
-    put("bounds", boundsJson(record.bounds))
+    putPlacement(record.bounds)
     if (record.isBoundToNull) put("null", true)
     record.fill?.let { put("fill", hexWithAlphaOf(it)) }
     record.ink?.let { put("ink", hexOf(it)) }

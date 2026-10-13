@@ -25,7 +25,9 @@ Launch:
 
 Eyes:
 
-- `/tree` returns what is drawn now, as JSON. Each node has `{id, type, text, props, visible, enabled, action, bounds {x,y,w,h}, children}`. The object returned also carries a top-level `frame`: the count of frames the screen has drawn while the control port waited for it to settle.
+- `/tree` returns what is drawn now, as JSON. Each node has these fields (the test `ControlPortDocTest` keeps this list equal to the fields a node carries): <!-- tree-node-fields -->`id, type, text, props, visible, enabled, action, composed, bounds, children`<!-- /tree-node-fields -->. The object returned also carries a top-level `frame`: the count of frames the screen has drawn while the control port waited for it to settle.
+  - `bounds` is `{x, y, w, h}` where the node shows in the window. `composed` is `true` when the node has that place on screen. A node with no place on screen, because it is clipped wholly out of view (below the fold of a scroll, or off the window) or is not placed yet, has `"composed": false` and `"bounds": null`, while `visible` still says whether its spec shows it.
+  - A node in view with no size, such as an empty `column`, is composed: its `bounds` give its place with `w` or `h` 0.
   - A list's rows appear once each, with ids such as `rows/0/row-label`.
   - `props` holds the resolved values of the props that were bindings. A bulky value appears as its shape, e.g. `"<list: 3 items>"`.
   - The same screen gives the same bytes.
@@ -43,13 +45,13 @@ Eyes:
   - `covered_by` lists the parts drawn over that centre. When it is not empty, a pixel click there reaches the top part, not this one.
 - `/get?path=a.b.c` takes a dotted path and answers its live value as JSON. A path that names no key is refused.
 - Scrolled rows:
-  - A row below the fold of a `scrollview` (or of a list inside one) is in `/tree` with its text, but its bounds have no size (`w` and `h` 0) until it is scrolled into view.
+  - A row below the fold of a `scrollview` (or of a list or table inside one) is in `/tree` with its text, but has `"composed": false` and `"bounds": null` until it is scrolled into view. A table's head and rows below the fold are the same.
   - A lazy list (one with a bounded height, such as a `flex` list outside a scroll) draws only the rows in view. A row beyond them is not in `/tree` at all.
   - In both cases `/wheel` is the hand that brings the row into view.
 
 Hands:
 
-- `/click?id=<id>` clicks the centre of a node. A node with no size answers HTTP 400 "refused: '<id>' is drawn with no size".
+- `/click?id=<id>` clicks the centre of a node. A node that is not composed answers HTTP 400 "refused: '<id>' is drawn with no bounds", and a composed node with no size answers "refused: '<id>' is drawn with no size".
 - `/click?id=<scene id>/<part id>` (e.g. `board/e21`) taps that part by id, even when another part covers it. The selection (and the scene's `selected` binding when it has one), highlight, popup and `on_part_tap` are the same as a real tap. `/tree` then shows the part's `outline` as `selected`, and the scene's `popup` names it.
 - `/click?id=<select id>/option/<value>` picks that item, writing the binding and closing the menu. It works only while the menu is open, so click the select by id first. On a closed select it answers 400 "refused: select '<id>' is not open".
 - `/click?x=&y=` is a plain pixel click. Bounds and centres are in these same units.

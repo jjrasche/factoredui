@@ -163,14 +163,25 @@ internal val LocalPathPrefix = compositionLocalOf { "" }
 
 internal val LocalNodeIdentity = compositionLocalOf<NodeIdentity?> { null }
 
-private fun windowUnits(coordinates: LayoutCoordinates, density: Density): ScreenBounds {
-    val rect = coordinates.boundsInWindow()
-    return ScreenBounds(
-        (rect.left / density.density).roundToInt(),
-        (rect.top / density.density).roundToInt(),
-        (rect.width / density.density).roundToInt(),
-        (rect.height / density.density).roundToInt(),
-    )
+private fun unitsOf(left: Float, top: Float, width: Float, height: Float, density: Density): ScreenBounds = ScreenBounds(
+    (left / density.density).roundToInt(),
+    (top / density.density).roundToInt(),
+    (width / density.density).roundToInt(),
+    (height / density.density).roundToInt(),
+)
+
+/** Where a node shows in the window: null when it is clipped wholly out of view (below a scroll's fold, off the window); a node with no size keeps its place. */
+private fun windowUnits(coordinates: LayoutCoordinates, density: Density): ScreenBounds? {
+    val shown = coordinates.boundsInWindow()
+    if (!shown.isEmpty) return unitsOf(shown.left, shown.top, shown.width, shown.height, density)
+    val size = coordinates.size
+    if (size.width > 0 && size.height > 0) return null
+    val origin = coordinates.positionInWindow()
+    return unitsOf(origin.x, origin.y, size.width.toFloat(), size.height.toFloat(), density)
+}
+
+private fun MutableMap<String, ScreenBounds>.place(value: String, bounds: ScreenBounds?) {
+    if (bounds == null) remove(value) else put(value, bounds)
 }
 
 internal fun Modifier.placementOf(id: String): Modifier = composed {
@@ -191,7 +202,7 @@ internal fun Modifier.menuItemPlacement(value: String): Modifier = composed {
     if (registry == null || identity == null) {
         Modifier
     } else {
-        Modifier.onGloballyPositioned { coordinates -> registry.update(identity.path) { menuBounds[value] = windowUnits(coordinates, density) } }
+        Modifier.onGloballyPositioned { coordinates -> registry.update(identity.path) { menuBounds.place(value, windowUnits(coordinates, density)) } }
     }
 }
 

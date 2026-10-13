@@ -50,7 +50,7 @@ private fun screenStore(view: String = "plan", hideTop: Int = 0) = mapOf(
 )
 
 private fun withoutPlacement(element: JsonElement): JsonElement = when (element) {
-    is JsonObject -> JsonObject(element.filterKeys { it != "bounds" && it != "centre" && it != "parts" && it != "frame" }.mapValues { withoutPlacement(it.value) })
+    is JsonObject -> JsonObject(element.filterKeys { it != "bounds" && it != "composed" && it != "centre" && it != "parts" && it != "frame" }.mapValues { withoutPlacement(it.value) })
     is JsonArray -> JsonArray(element.map(::withoutPlacement))
     else -> element
 }

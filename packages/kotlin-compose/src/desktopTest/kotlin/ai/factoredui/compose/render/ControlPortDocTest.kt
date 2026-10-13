@@ -1,6 +1,8 @@
 package ai.factoredui.compose.render
 
 import ai.factoredui.compose.renderer.RenderContext
+import ai.factoredui.compose.schema.Spec
+import kotlinx.serialization.json.Json
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -22,6 +24,22 @@ private fun documentedRoutes(guide: String): Map<String, Set<String>> {
     }
 }
 
+private const val FIELDS_OPEN = "<!-- tree-node-fields -->"
+private const val FIELDS_CLOSE = "<!-- /tree-node-fields -->"
+
+private fun documentedNodeFields(guide: String): Set<String> =
+    guide.substringAfter(FIELDS_OPEN, "").substringBefore(FIELDS_CLOSE, "").replace("`", " ").split(Regex("[\\s,]+")).filter { it.isNotEmpty() }.toSet()
+
+private val PLAIN_PAGE = Json.decodeFromString(Spec.serializer(), """{"spec_version":1,"renderer_min":1,"root":{"id":"page","type":"column","children":[{"id":"t","type":"text","props":{"value":"hi"}}]}}""")
+
+private fun emittedPlainPageFields(): Set<String> {
+    val context = RenderContext()
+    SceneSurface(PLAIN_PAGE, context, 200, 100).use { surface ->
+        val tree = surface.onScreenThread { screenNodes(context.screen) }
+        return screenJson(tree!!).keys
+    }
+}
+
 private fun servedRoutes(): Map<String, Set<String>> = WindowControl(RenderContext()).routes.associate { it.name to it.parameters }
 
 class ControlPortDocTest {
@@ -38,6 +56,13 @@ class ControlPortDocTest {
         val guide = GUIDE.readText()
         assertNotEquals(servedRoutes(), documentedRoutes(guide.replace("/wheel ", "/scroll ")))
         assertNotEquals(servedRoutes(), documentedRoutes(guide.replace("/set    path value", "/set    path")))
+    }
+
+    @Test
+    fun the_guides_node_field_list_names_exactly_the_fields_every_tree_node_carries() {
+        val documented = documentedNodeFields(GUIDE.readText())
+        assertTrue(documented.isNotEmpty(), "AGENTS.md has no $FIELDS_OPEN block")
+        assertEquals(emittedPlainPageFields(), documented)
     }
 
     @Test
