@@ -63,28 +63,34 @@ private fun actionRefOf(raw: SpecValue?): ActionRef? {
     return ActionRef(action, (fields["params"] as? SpecValue.ObjectValue)?.value.orEmpty())
 }
 
-private fun cellNode(id: String, value: String, flex: Double, align: String, extra: Map<String, SpecValue> = emptyMap()) = SpecNode(
+private fun cellNode(id: String, value: String, slot: Pair<String, SpecValue>, align: String, extra: Map<String, SpecValue> = emptyMap()) = SpecNode(
     id = id,
     type = SpecNodeType.TEXT,
-    props = mapOf("value" to SpecValue.StringValue(value), "flex" to SpecValue.NumberValue(flex), "align" to SpecValue.StringValue(align)) + extra,
+    props = mapOf("value" to SpecValue.StringValue(value), slot, "align" to SpecValue.StringValue(align)) + extra,
 )
+
+private val LABEL_SLOT = "flex" to SpecValue.NumberValue(LABEL_FLEX)
+
+/** A column with a width keeps that many dp; the others share what is left. */
+private fun slotOf(column: ShownColumn): Pair<String, SpecValue> =
+    column.width?.let { "width" to SpecValue.NumberValue(it) } ?: ("flex" to SpecValue.NumberValue(VALUE_FLEX))
 
 private fun rowLayoutProps(): Map<String, SpecValue> = mapOf("gap" to SpecValue.NumberValue(ROW_GAP), "padding" to SpecValue.NumberValue(ROW_PADDING))
 
 private fun headerNode(columns: List<ShownColumn>, showLabel: Boolean, labelHeader: String): SpecNode {
     val bold = mapOf("bold" to SpecValue.BooleanValue(true))
-    val label = listOfNotNull(cellNode("head/$LABEL_COLUMN", labelHeader, LABEL_FLEX, "left", bold).takeIf { showLabel })
-    val cells = columns.map { cellNode("head/${it.id}", it.header, VALUE_FLEX, it.align, bold) }
+    val label = listOfNotNull(cellNode("head/$LABEL_COLUMN", labelHeader, LABEL_SLOT, "left", bold).takeIf { showLabel })
+    val cells = columns.map { cellNode("head/${it.id}", it.header, slotOf(it), it.align, bold) }
     return SpecNode(id = "head", type = SpecNodeType.ROW, props = rowLayoutProps(), children = label + cells)
 }
 
 private fun valueCell(index: Int, column: ShownColumn): SpecNode {
     val format = column.format?.let { mapOf("format" to specValueOf(it)) }.orEmpty()
-    return cellNode("$index/${column.id}", "{row.values.${column.id}}", VALUE_FLEX, column.align, format + ("missing" to SpecValue.StringValue(column.missing)))
+    return cellNode("$index/${column.id}", "{row.values.${column.id}}", slotOf(column), column.align, format + ("missing" to SpecValue.StringValue(column.missing)))
 }
 
 private fun rowNode(index: Int, columns: List<ShownColumn>, showLabel: Boolean, rowTap: ActionRef?): SpecNode {
-    val label = listOfNotNull(cellNode("$index/$LABEL_COLUMN", "{row.label}", LABEL_FLEX, "left").takeIf { showLabel })
+    val label = listOfNotNull(cellNode("$index/$LABEL_COLUMN", "{row.label}", LABEL_SLOT, "left").takeIf { showLabel })
     return SpecNode(id = "$index", type = SpecNodeType.ROW, props = rowLayoutProps(), children = label + columns.map { valueCell(index, it) }, action = rowTap)
 }
 

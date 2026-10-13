@@ -180,6 +180,7 @@ data class LayoutProps(
     val justify: LayoutJustify = LayoutJustify.START,
     val flex: Float = 0f,
     val background: String? = null,
+    val width: Float? = null,
 )
 
 enum class LayoutAlign { START, CENTER, END, STRETCH }
@@ -203,6 +204,7 @@ fun Map<String, SpecValue>.asLayoutProps(): LayoutProps = LayoutProps(
         else -> LayoutJustify.START
     },
     flex = double("flex")?.toFloat() ?: 0f,
+    width = double("width")?.toFloat(),
 )
 
 // --- ImageProps ---

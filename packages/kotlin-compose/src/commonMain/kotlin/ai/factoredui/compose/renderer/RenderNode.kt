@@ -348,8 +348,11 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
         horizontalAlignment = columnHorizontalAlignment(props.align),
     ) {
         node.children.forEach { child ->
-            val childFlex = child.props.asLayoutProps().flex
+            val childLayout = child.props.asLayoutProps()
+            val childFlex = childLayout.flex
+            val fixedWidth = childLayout.width
             when {
+                fixedWidth != null -> Box(Modifier.let { if (childFlex > 0f) it.weight(childFlex) else it }.width(fixedWidth.dp)) { RenderInFixedSlot(child, context) }
                 childFlex > 0f -> Box(Modifier.weight(childFlex)) { RenderNode(node = child, context = context) }
                 props.align == LayoutAlign.STRETCH -> Box(Modifier.fillMaxWidth()) { RenderNode(node = child, context = context) }
                 else -> RenderNode(node = child, context = context)
@@ -376,16 +379,22 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
         verticalAlignment = rowVerticalAlignment(props.align),
     ) {
         node.children.forEach { child ->
-            val childFlex = child.props.asLayoutProps().flex
-            if (childFlex > 0f) {
-                Box(modifier = Modifier.weight(childFlex)) {
-                    CompositionLocalProvider(LocalWidthIsShared provides false) { RenderNode(node = child, context = context) }
+            val childLayout = child.props.asLayoutProps()
+            val fixedWidth = childLayout.width
+            when {
+                fixedWidth != null -> Box(modifier = Modifier.width(fixedWidth.dp)) { RenderInFixedSlot(child, context) }
+                childLayout.flex > 0f -> Box(modifier = Modifier.weight(childLayout.flex)) {
+                    CompositionLocalProvider(LocalSlotWidth provides SlotWidth.GIVEN) { RenderNode(node = child, context = context) }
                 }
-            } else {
-                CompositionLocalProvider(LocalWidthIsShared provides true) { RenderNode(node = child, context = context) }
+                else -> CompositionLocalProvider(LocalSlotWidth provides SlotWidth.SHARED) { RenderNode(node = child, context = context) }
             }
         }
     }
+}
+
+@Composable
+private fun RenderInFixedSlot(child: SpecNode, context: RenderContext) {
+    CompositionLocalProvider(LocalSlotWidth provides SlotWidth.FIXED) { RenderNode(node = child, context = context) }
 }
 
 // A declared ground is painted UNDER the padding, so the colour fills the container
@@ -736,7 +745,7 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
         ink = argbOf(paint.ink)
         isBoundToNull = isBindingToNull(node, resolvedProps)
     }
-    val fills = fillsItsSlot(props.align, paint.background != null, LocalWidthIsShared.current)
+    val fills = fillsItsSlot(props.align, paint.background != null, LocalSlotWidth.current)
     Text(
         text = paint.notice ?: props.value,
         style = style.copy(
@@ -755,15 +764,21 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
     )
 }
 
-internal val LocalWidthIsShared = staticCompositionLocalOf { false }
+/** The width a node's slot gives it: what its parent gives (a flex share or the parent's width), shared with flex siblings in a row, or a fixed `width`. */
+internal enum class SlotWidth { GIVEN, SHARED, FIXED }
+
+internal val LocalSlotWidth = staticCompositionLocalOf { SlotWidth.GIVEN }
 
 private fun isBindingToNull(node: SpecNode, resolvedProps: Map<String, Any?>): Boolean {
     val raw = node.props["value"] as? SpecValue.StringValue ?: return false
     return BindingResolver.isBindingRef(raw.value) && resolvedProps["value"] == null
 }
 
-private fun fillsItsSlot(align: String, hasBackground: Boolean, isWidthShared: Boolean): Boolean =
-    (align == "center" || align == "right" || hasBackground) && !isWidthShared
+private fun fillsItsSlot(align: String, hasBackground: Boolean, slot: SlotWidth): Boolean = when (slot) {
+    SlotWidth.FIXED -> true
+    SlotWidth.SHARED -> false
+    SlotWidth.GIVEN -> align == "center" || align == "right" || hasBackground
+}
 
 private class TextPaint(val ink: Color, val background: Color?, val notice: String?)
 

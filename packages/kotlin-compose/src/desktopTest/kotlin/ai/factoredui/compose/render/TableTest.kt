@@ -23,6 +23,7 @@ import java.net.URI
 import java.net.URLEncoder
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 private val json = Json { ignoreUnknownKeys = true }
@@ -206,6 +207,33 @@ class TableTest {
             assertEquals("row 380", textAt(port, "parts/row/380/label"))
         }
     }
+
+    @Test
+    fun a_column_with_a_width_draws_that_wide_in_its_head_and_every_row_while_the_others_still_share_the_rest() {
+        val widths = driving(tableSpec(""","columns":{"span":{"width":220}}"""), storeWith()) { port, _ -> cellWidths(port) }
+        assertEquals(listOf(220, 220, 220), widths.getValue("span"), "$widths")
+        val shared = SHARED_COLUMNS.map { widths.getValue(it) }
+        assertTrue(isOneShare(shared.flatten()), "$widths")
+        assertNotEquals(220, shared.first().first(), "$widths")
+    }
+
+    @Test
+    fun a_column_override_with_no_width_draws_as_a_table_with_no_override() {
+        val plainWidths = driving(tableSpec(""), storeWith()) { port, _ -> cellWidths(port) }
+        val labelledWidths = driving(tableSpec(""","columns":{"span":{"label":"Reach"}}"""), storeWith()) { port, _ -> cellWidths(port) }
+        assertEquals(plainWidths, labelledWidths)
+        assertTrue(isOneShare(plainWidths.values.flatten()), "$plainWidths")
+    }
+}
+
+/** Shares of one width differ by at most the pixel a weighted layout rounds. */
+private fun isOneShare(widths: List<Int>): Boolean = widths.max() - widths.min() <= 1
+
+private val SHARED_COLUMNS = listOf("qty", "cost", "use", "force", "pressure")
+
+/** Each right-aligned column's drawn width in the head and in each row, which fill their cells. */
+private fun cellWidths(port: Int): Map<String, List<Int>> = (SHARED_COLUMNS + "span").associateWith { column ->
+    listOf("parts/head/$column", "parts/row/0/$column", "parts/row/1/$column").map { nodeAt(port, it).getValue("bounds").jsonObject.getValue("w").jsonPrimitive.int }
 }
 
 private const val REAL_VIEWS = "C:/Users/rasche_j/Documents/workspace/house-world/scene/house-floor.views.json"

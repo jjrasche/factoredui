@@ -25,6 +25,12 @@ private fun layoutOf(view: Map<String, Any?>, overrides: Any? = null, showUnit: 
 class TableLayoutTest {
 
     @Test
+    fun a_columns_width_override_reaches_its_shown_column_and_a_column_with_none_has_no_width() {
+        val layout = layoutOf(view(column("qty", "Quantity"), column("cost", "Cost", unit = "usd")), mapOf("cost" to mapOf("width" to 220)))
+        assertEquals(listOf(null, 220.0), layout.columns.map { it.width })
+    }
+
+    @Test
     fun a_columns_format_comes_from_its_override_then_its_unit_then_its_kind() {
         val both = view(column("cost", "Cost", unit = "usd", kind = "length"))
         assertEquals("usd", layoutOf(both).columns.single().format)

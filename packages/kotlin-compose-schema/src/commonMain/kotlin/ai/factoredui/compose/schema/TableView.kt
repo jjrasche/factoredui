@@ -8,9 +8,9 @@ data class ProfileEntry(val format: Any, val label: String?)
 
 data class DisplayProfile(val units: Map<String, ProfileEntry>, val kinds: Map<String, ProfileEntry>)
 
-data class ColumnOverride(val format: Any?, val label: String?, val isHidden: Boolean, val align: String?)
+data class ColumnOverride(val format: Any?, val label: String?, val isHidden: Boolean, val align: String?, val width: Double? = null)
 
-data class ShownColumn(val id: String, val header: String, val format: Any?, val missing: String, val align: String)
+data class ShownColumn(val id: String, val header: String, val format: Any?, val missing: String, val align: String, val width: Double? = null)
 
 data class TableLayout(val columns: List<ShownColumn>, val notice: String?)
 
@@ -58,7 +58,7 @@ fun mergedProfile(inherited: DisplayProfile?, own: DisplayProfile?): DisplayProf
 fun readColumnOverrides(raw: Any?): Map<String, ColumnOverride> =
     (raw as? Map<*, *>).orEmpty().entries.mapNotNull { (key, value) ->
         val fields = value as? Map<*, *> ?: return@mapNotNull null
-        key.toString() to ColumnOverride(fields["format"], fields["label"] as? String, fields["hidden"] == true, fields["align"] as? String)
+        key.toString() to ColumnOverride(fields["format"], fields["label"] as? String, fields["hidden"] == true, fields["align"] as? String, (fields["width"] as? Number)?.toDouble())
     }.toMap()
 
 private fun unitLabelOf(entry: ProfileEntry): String? =
@@ -75,7 +75,7 @@ private fun shownColumn(column: TableColumn, override: ColumnOverride?, entry: P
     val unitLabel = entry?.let(::unitLabelOf)?.takeIf { showUnit }
     val header = override?.label ?: listOfNotNull(column.label, unitLabel?.let { "($it)" }).joinToString(" ")
     val align = override?.align ?: if (isNumeric(column)) ALIGN_RIGHT else ALIGN_LEFT
-    return ShownColumn(column.id, header, override?.format ?: entry?.format, column.nullDisplay ?: missing, align)
+    return ShownColumn(column.id, header, override?.format ?: entry?.format, column.nullDisplay ?: missing, align, override?.width)
 }
 
 private fun quoted(names: List<String>): String = names.joinToString { "'$it'" }
