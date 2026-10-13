@@ -7,6 +7,7 @@ Build or verify a screen (a world, a table, anything) by driving the window a pe
 Launch:
 
 - Build once: `./gradlew :kotlin-compose:installSpecWindow`.
+- The window needs Java 21: the schema library on its class path (`kotlin-compose-schema`) is built as class file version 65. The first `java` on a PATH may be older and fail with `UnsupportedClassVersionError`, so launch with a Java 21 JDK's `java`.
 - Then run `java -cp "packages/kotlin-compose/build/spec-window/lib/*" ai.factoredui.compose.render.SpecWindowKt <spec.json> [width] [height] [--data seeds.json] [--state a.b=text|json|reports:file ...] [--theme light|dark] [--title "name"] [--section <key>] [--control <port>]`.
 - `--section <key>` draws the spec (`{spec_version, renderer_min, root}`) found at that top-level key of the file, so one file can hold a `screen` beside other sections, which are ignored. A key the file lacks is refused with the keys it holds: "the file has no section 'scene'; its top-level keys are projection, screen, sprites, types". Without `--section` the whole file is the spec.
 - `--state` repeats. `text` binds the file's text, `json` its decoded object, and `reports` its reports keyed by id.
@@ -228,7 +229,7 @@ Notices drawn over the scene:
 
 A `table` draws one view from the engine's views response: `{ id, label, columns: [ { id, label, unit, kind, type, null_display } ], rows: [ { id, label, object_ids, values } ] }`. It draws a title, a header row and one row per view row, laid out like list rows (lazy in a bounded pane, stacked inside a scroll). A `table` with a `height` is a fixed pane that scrolls its own rows, inside a scroll too.
 
-- `view`: a binding to the view object.
+- `view`: a binding to the view object, for example `"view": "{reports.<view id>}"` with the views loaded by `--state reports=reports:<views.json>`. A bare id string is not a view: it is refused with the notice "table '<id>' has no view: bind view to the engine's view object".
 - `display`: the display profile, inline or a binding so one profile serves every table: `{ "units": { "<unit>": <entry> }, "kinds": { "<kind>": <entry> } }`. An entry is a named format (`"usd"`), an object format (`{ "scale", "suffix", "decimals" }`), or `{ "format": <either>, "label": "<text>" }`.
 - `display` is inherited. Any container (`column`, `row`, `stack`, `scrollview`, `grid`, `card`, `list`, `tabs`, `modal`) may carry `display`, and every `table` below it inherits it, through list rows, cards and scrolls; the screen root's `display` is the screen-wide default. The nearest container with a `display` wins for its subtree. A table's own `display` is merged over what it inherits, key by key: each of its `units` and `kinds` entries replaces the inherited entry for the same unit or kind, and every other entry is inherited. `display` on any other node is ignored. The resolution order and the notice below use the merged profile.
 - A column's format is decided in this order: its `columns` override's `format`; else the profile's `units` entry for its `unit`; else the profile's `kinds` entry for its `kind`; else none, the plain figure. A unit with no entry falls through to the kind, so `unit: "1", kind: "ratio"` takes `kinds.ratio`. A text column (`type` or `kind` `text`) is drawn as text with no format.
