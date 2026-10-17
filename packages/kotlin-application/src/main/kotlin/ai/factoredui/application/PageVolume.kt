@@ -64,7 +64,7 @@ internal fun volumeNode(file: SystemFile, expansion: Expansion): JsonObject? {
     val order = systemOrder(file, expansion)
     val bases = baseOfEachLevel(expansion.objects)
     val fromObjects = expansion.objects.map { placedObject(it) to (bases[it.level ?: 0] ?: 0.0) }
-    val fromInstances = expansion.instances.map { placedInstance(it) to (levelUnder(expansion, it)?.let { level -> bases[level] } ?: 0.0) }
+    val fromInstances = expansion.instances.map { placedInstance(it) to ((levelUnder(expansion, it)?.let { level -> bases[level] } ?: 0.0) + it.elevationMm) }
     val boxes = (fromObjects + fromInstances).map { (placed, base) -> boxNode(placed, base) }
     val styled = order.filter { system -> boxes.any { it["style"] == system } }
     val hasEstimate = boxes.any { it["estimate"] == true }

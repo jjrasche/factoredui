@@ -32,6 +32,7 @@ data class ExpandedInstance(
     val yMm: Double,
     val rotationDeg: Double,
     val lengthMm: Double,
+    val elevationMm: Double = 0.0,
     val fields: Map<String, Double?> = emptyMap(),
 )
 
@@ -86,6 +87,7 @@ private fun instanceOf(entry: JsonObject): ExpandedInstance {
         yMm = entry.requiredNumber("y_mm", "instance '$id'"),
         rotationDeg = entry.number("rotation_deg") ?: 0.0,
         lengthMm = entry.requiredNumber("length_mm", "instance '$id'"),
+        elevationMm = entry.number("elevation_mm") ?: 0.0,
         fields = fieldsOf(entry),
     )
 }

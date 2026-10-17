@@ -29,7 +29,7 @@ private val EXPANSION = """
     { "id": "g1", "system": "gamma", "type": "edge", "x_mm": 100, "y_mm": 200, "width_mm": 2000, "depth_mm": null, "level": 2, "fields": { "height_mm": 3000, "thickness_mm": null } },
     { "id": "g2", "system": "gamma", "type": "edge", "x_mm": 100, "y_mm": 200, "width_mm": null, "depth_mm": 1000, "level": 2, "fields": { "height_mm": 3000 } },
     { "id": "g3", "system": "gamma", "type": "dot", "x_mm": 100, "y_mm": 200, "width_mm": null, "depth_mm": null, "level": 0, "fields": { "above_grade_mm": null } } ],
-  "instances": [ { "id": "i1", "system": "gamma", "type": "bar", "x_mm": 1000, "y_mm": 200, "rotation_deg": 90, "length_mm": 1000, "fields": { "glass_height_mm": null } } ],
+  "instances": [ { "id": "i1", "system": "gamma", "type": "bar", "x_mm": 1000, "y_mm": 200, "rotation_deg": 90, "length_mm": 1000, "elevation_mm": 250, "fields": { "glass_height_mm": null } } ],
   "supplied": { "stock": { "value": 630, "unit": "board_foot", "reason": "from a note" } } }
 """
 
@@ -154,13 +154,13 @@ class PageSpecTest {
     }
 
     @Test
-    fun each_level_stands_on_the_one_below_and_an_instance_stands_on_the_highest_level_it_lies_along() {
+    fun each_level_stands_on_the_one_below_and_an_instance_stands_on_the_highest_level_it_lies_along_lifted_by_its_elevation() {
         val boxes = volumeBoxes()
         assertEquals(0.0, boxes["g3"]!!.number("z_mm"))
         assertEquals(400.0, boxes["a1"]!!.number("z_mm"))
         assertEquals(600.0, boxes["g1"]!!.number("z_mm"))
         assertEquals(3600.0, boxes["b1"]!!.number("z_mm"))
-        assertEquals(600.0, boxes["i1"]!!.number("z_mm"))
+        assertEquals(850.0, boxes["i1"]!!.number("z_mm"))
         assertEquals(90.0, boxes["i1"]!!.number("rotation_deg"))
     }
 
