@@ -106,7 +106,7 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table.
+column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan.
 
 - There is no table and no ratio-against-a-limit widget.
 - A table of the engine's views is a `table` (see Tables). Any other table is a `list` with an `itemTemplate`.
@@ -268,6 +268,18 @@ The `scene` family reads the engine's scene payload (`SceneView`, read by `readS
 - Annotations carry a numeric `value`. Null means unknown, never zero.
 - An absent or null key takes its default.
 - A present key of the wrong type is refused with a `SceneViewFormatException` naming the key. A fraction where a whole number belongs is refused, never rounded. So are a number given as text, a non-array list, a non-object list entry and a malformed `points_mm` pair.
+
+## Plan
+
+A `plan` draws shapes placed in millimetres, seen from above, with the largest y at the top. It holds no vocabulary of its own: the host names every style.
+
+- `shapes`: a list of `{ id, kind, x_mm, y_mm, ... }`. `kind` is `rect` (`width_mm` east and `depth_mm` north from its corner), `line` (to `x2_mm`, `y2_mm`), `marker` (a small square at the point) or `label` (`text`, `align` of `start`, `center` (default) or `end` about the point, and `dx_dp`, `dy_dp` to nudge it right and down).
+- `styles`: style name to `{ fill, stroke, weight, dash }`. Colours are `#rrggbb` or `#rrggbbaa`, `weight` is dp, `dash` is a bool. A shape's `style` names one; a shape with no style takes the theme's ink.
+- `legend`: a list of `{ label, style }`, drawn as swatches under the plan.
+- `empty_text`: drawn when no shape can be drawn.
+- The drawing is fitted to the available width with a margin, and takes the height of its window (at most 1.5 times its width).
+- Shapes are painted in the order given. `/tree` has a node `<plan id>/<shape id>` for each shape, with its bounds, and `<plan id>/legend/<i>` for each legend text.
+- A shape that cannot be drawn (a rect with no `width_mm`, an unknown `kind`, a point that is not a number) is not drawn and the plan prints a notice naming it. A shape whose `style` is not in `styles` is drawn plain and the plan names the style.
 
 ## Reports data
 

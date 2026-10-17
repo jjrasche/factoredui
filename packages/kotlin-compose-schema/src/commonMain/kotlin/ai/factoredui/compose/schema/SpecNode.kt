@@ -88,6 +88,7 @@ enum class SpecNodeType {
     @SerialName("graph") GRAPH,
     @SerialName("scene") SCENE,
     @SerialName("table") TABLE,
+    @SerialName("plan") PLAN,
 }
 
 /**
