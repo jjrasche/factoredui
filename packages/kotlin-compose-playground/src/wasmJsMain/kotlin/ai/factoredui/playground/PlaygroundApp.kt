@@ -83,7 +83,7 @@ fun PlaygroundApp() {
     MaterialTheme {
         Surface(Modifier.fillMaxSize()) {
             if (fullscreen) {
-                RenderedSpecPanel(specFlow = specFlow, context = context, modifier = Modifier.fillMaxSize())
+                RenderedSpecPanel(specFlow = specFlow, context = context, modifier = Modifier.fillMaxSize(), isBare = true)
             } else {
                 Row(Modifier.fillMaxSize()) {
                     SpecEditorPanel(

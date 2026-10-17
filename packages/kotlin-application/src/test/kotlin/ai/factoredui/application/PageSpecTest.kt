@@ -74,7 +74,7 @@ class PageSpecTest {
 
     @Test
     fun rects_are_painted_from_the_highest_level_down_and_before_lines_and_markers() {
-        val order = planShapes().filter { it.text("kind") != "label" }.map { it.text("id") }
+        val order = planShapes().filter { it.text("kind") != "label" && !it.text("id").startsWith("arrow:") }.map { it.text("id") }
         assertEquals(listOf("b1", "a1", "g1", "g2", "g3", "i1"), order)
     }
 
@@ -83,15 +83,18 @@ class PageSpecTest {
         val styles = page()["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["styles"]!!.jsonObject
         assertEquals("true", styles["beta"]!!.jsonObject.text("dash"))
         assertEquals("false", styles["alpha"]!!.jsonObject.text("dash"))
-        assertEquals(3, styles.values.map { it.jsonObject.text("stroke") }.toSet().size)
+        assertEquals(3, styles.filterKeys { it != "north arrow" }.values.map { it.jsonObject.text("stroke") }.toSet().size)
     }
 
     @Test
-    fun a_rect_is_labelled_with_its_system_and_its_millimetres_and_north_is_marked() {
+    fun a_rect_is_labelled_with_its_system_and_its_millimetres_and_north_is_drawn_as_an_arrow_not_a_glyph() {
         val labels = planShapes().filter { it.text("kind") == "label" }.associate { it.text("id") to it.text("text") }
         assertEquals("alpha 2000 × 1000 mm", labels["label:a1"])
         assertEquals("beta 4000 × 3000 mm", labels["label:b1"])
-        assertEquals("N ↑", labels["label:north"])
+        assertEquals("N", labels["arrow:label"])
+        val arrowLines = planShapes().filter { it.text("id").startsWith("arrow:") && it.text("kind") == "line" }
+        assertEquals(listOf("arrow:shaft", "arrow:west", "arrow:east"), arrowLines.map { it.text("id") })
+        assertEquals(emptyList(), labels.values.filter { text -> text.any { it.code > 0x2000 } })
     }
 
     @Test

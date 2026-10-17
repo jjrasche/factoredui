@@ -9,6 +9,13 @@ private const val FILL_ALPHA = "40"
 private const val LABEL_INSET_DP = 6
 private const val LABEL_ROW_DP = 14
 private const val LABEL_FIRST_ROW_DP = 12
+private const val NORTH_STYLE = "north arrow"
+private const val NORTH_INK = "#1a1a1a"
+private const val ARROW_INSET = 0.06
+private const val ARROW_BASE = 0.14
+private const val ARROW_TIP = 0.04
+private const val ARROW_HEAD_DROP = 0.03
+private const val ARROW_HEAD_SPREAD = 0.025
 
 internal fun systemOrder(file: SystemFile, expansion: Expansion): List<String> {
     val named = file.systems.map { it.name }
@@ -70,10 +77,22 @@ private fun rectLabels(rects: List<ExpandedObject>): List<Map<String, Any?>> {
     }
 }
 
-private fun northLabel(extent: Pair<Double, Double>?): Map<String, Any?>? =
-    extent?.let { (east, north) ->
-        shape("label:north", "label", null, "x_mm" to east, "y_mm" to north, "text" to "N ↑", "align" to "end", "dy_dp" to -LABEL_FIRST_ROW_DP)
-    }
+private fun northArrow(extent: Pair<Double, Double>?): List<Map<String, Any?>> {
+    val (east, north) = extent ?: return emptyList()
+    val x = east - east * ARROW_INSET
+    val base = north - north * ARROW_BASE
+    val tip = north - north * ARROW_TIP
+    val headDrop = north * ARROW_HEAD_DROP
+    val headSpread = east * ARROW_HEAD_SPREAD
+    fun stroke(id: String, fromX: Double, fromY: Double, toX: Double, toY: Double) =
+        shape("arrow:$id", "line", NORTH_STYLE, "x_mm" to fromX, "y_mm" to fromY, "x2_mm" to toX, "y2_mm" to toY)
+    return listOf(
+        stroke("shaft", x, base, x, tip),
+        stroke("west", x, tip, x - headSpread, tip - headDrop),
+        stroke("east", x, tip, x + headSpread, tip - headDrop),
+        shape("arrow:label", "label", null, "x_mm" to x, "y_mm" to base, "text" to "N", "dy_dp" to LABEL_FIRST_ROW_DP),
+    )
+}
 
 internal fun planNode(file: SystemFile, expansion: Expansion): JsonObject {
     val order = systemOrder(file, expansion)
@@ -82,13 +101,13 @@ internal fun planNode(file: SystemFile, expansion: Expansion): JsonObject {
     val lines = expansion.objects.filter { !isRect(it) && (it.widthMm != null || it.depthMm != null) }
     val markers = expansion.objects.filter { it.widthMm == null && it.depthMm == null }
     val drawn = rects.map(::rectShape) + lines.map(::lineShape) + markers.map(::markerShape) + expansion.instances.map(::instanceShape)
-    val shapes = drawn + rectLabels(rects) + listOfNotNull(northLabel(expansion.extentMm))
+    val shapes = drawn + rectLabels(rects) + northArrow(expansion.extentMm)
     val styled = order.filter { system -> drawn.any { it["style"] == system } }
     return specNode(
         "plan", "plan",
         mapOf(
             "shapes" to shapes,
-            "styles" to styled.associateWith { styleOf(colourOfSystem(order, it), it in overhead) },
+            "styles" to styled.associateWith { styleOf(colourOfSystem(order, it), it in overhead) } + (NORTH_STYLE to mapOf("stroke" to NORTH_INK, "weight" to 2)),
             "legend" to styled.map { mapOf("label" to it, "style" to it) },
             "empty_text" to "The expansion has nothing to draw.",
         ),

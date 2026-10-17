@@ -36,13 +36,15 @@ private fun settingNode(system: String, setting: SystemSetting): JsonObject {
     return specNode("$id.setting", "column", mapOf("gap" to 2), listOfNotNull(line, reason?.let { textNode("$id.reason", it, variant = "caption", color = MUTED_INK) }))
 }
 
+private const val SWATCH_DP = 14
+
 private fun countLabel(count: Int) = "$count ${if (count == 1) "object" else "objects"}"
 
 internal fun systemCard(entry: SystemEntry, colour: String, objectCount: Int): JsonObject {
     val heading = specNode(
         "${entry.name}.heading", "row", mapOf("gap" to 8, "align" to "center"),
         listOfNotNull(
-            specNode("${entry.name}.swatch", "text", mapOf("value" to "■", "color" to colour)),
+            specNode("${entry.name}.swatch", "row", mapOf("background" to colour, "width" to SWATCH_DP, "height" to SWATCH_DP)),
             textNode("${entry.name}.title", entry.name, variant = "subheading", bold = true, flex = 1),
             textNode("${entry.name}.count", countLabel(objectCount), variant = "caption", color = MUTED_INK),
         ),
