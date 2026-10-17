@@ -106,7 +106,7 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan.
+column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume.
 
 - There is no table and no ratio-against-a-limit widget.
 - A table of the engine's views is a `table` (see Tables). Any other table is a `list` with an `itemTemplate`.
@@ -280,6 +280,16 @@ A `plan` draws shapes placed in millimetres, seen from above, with the largest y
 - The drawing is fitted to the available width with a margin, and takes the height of its window (at most 1.5 times its width).
 - Shapes are painted in the order given. `/tree` has a node `<plan id>/<shape id>` for each shape, with its bounds, and `<plan id>/legend/<i>` for each legend text.
 - A shape that cannot be drawn (a rect with no `width_mm`, an unknown `kind`, a point that is not a number) is not drawn and the plan prints a notice naming it. A shape whose `style` is not in `styles` is drawn plain and the plan names the style.
+
+## Volume
+
+A `volume` draws boxes in millimetres as one solid scene the person turns, slides and zooms. Like `plan`, it holds no vocabulary: the host names every style. Millimetres are x east, y north, z up.
+
+- `boxes`: a list of `{ id, x_mm, y_mm, z_mm, width_mm, depth_mm, height_mm, rotation_deg, style, estimate }`. `x_mm`, `y_mm` is the centre of the footprint on the ground, `z_mm` the underside, and `rotation_deg` turns it anticlockwise seen from above. A `width_mm` or `depth_mm` of 0 is a vertical plane and both 0 is a vertical edge. An `estimate` of true hatches the box and dashes its outline: the host uses it for a size it was not given.
+- `styles`: style name to `{ stroke, weight }`. The body is the stroke lightened and shaded by face. `legend`: a list of `{ label, style, hatched }`; `hatched` draws the swatch hatched. `empty_text` is drawn when nothing can be drawn.
+- One finger or the left button turns the view; two fingers, a right-drag or Ctrl-drag slide it; a pinch or the wheel zooms. A "Reset view" line under the drawing returns to the first framing, from the south-west looking north-east.
+- The drawing is at most 560 dp wide and 1.15 times its width tall. Boxes are painted far to near by their centres, so two boxes that interpenetrate may overlap wrongly.
+- `/tree` has a node `<volume id>/<box id>` for each box with its projected bounds (so a drag shows as bounds that moved), `<volume id>/north`, `<volume id>/reset` and `<volume id>/legend/<i>`. A box that cannot be drawn is named in a notice and not drawn; a `style` not in `styles` is drawn plain and named.
 
 ## Reports data
 

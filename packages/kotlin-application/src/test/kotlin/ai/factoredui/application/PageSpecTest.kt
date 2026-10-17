@@ -24,12 +24,12 @@ private val SYSTEM_FILE = """
 private val EXPANSION = """
 { "extent_mm": [4000, 3000],
   "objects": [
-    { "id": "a1", "system": "alpha", "type": "slab", "x_mm": 100, "y_mm": 200, "width_mm": 2000, "depth_mm": 1000, "level": 1, "fields": {} },
-    { "id": "b1", "system": "beta", "type": "cover", "x_mm": 0, "y_mm": 0, "width_mm": 4000, "depth_mm": 3000, "level": 3, "fields": {} },
-    { "id": "g1", "system": "gamma", "type": "edge", "x_mm": 100, "y_mm": 200, "width_mm": 2000, "depth_mm": null, "level": 2, "fields": {} },
-    { "id": "g2", "system": "gamma", "type": "edge", "x_mm": 100, "y_mm": 200, "width_mm": null, "depth_mm": 1000, "level": 2, "fields": {} },
-    { "id": "g3", "system": "gamma", "type": "dot", "x_mm": 100, "y_mm": 200, "width_mm": null, "depth_mm": null, "level": 0, "fields": {} } ],
-  "instances": [ { "id": "i1", "system": "gamma", "type": "bar", "x_mm": 1000, "y_mm": 200, "rotation_deg": 90, "length_mm": 1000, "fields": {} } ],
+    { "id": "a1", "system": "alpha", "type": "slab", "x_mm": 100, "y_mm": 200, "width_mm": 2000, "depth_mm": 1000, "level": 1, "fields": { "thickness_mm": 200 } },
+    { "id": "b1", "system": "beta", "type": "cover", "x_mm": 0, "y_mm": 0, "width_mm": 4000, "depth_mm": 3000, "level": 3, "fields": { "thickness_mm": null } },
+    { "id": "g1", "system": "gamma", "type": "edge", "x_mm": 100, "y_mm": 200, "width_mm": 2000, "depth_mm": null, "level": 2, "fields": { "height_mm": 3000, "thickness_mm": null } },
+    { "id": "g2", "system": "gamma", "type": "edge", "x_mm": 100, "y_mm": 200, "width_mm": null, "depth_mm": 1000, "level": 2, "fields": { "height_mm": 3000 } },
+    { "id": "g3", "system": "gamma", "type": "dot", "x_mm": 100, "y_mm": 200, "width_mm": null, "depth_mm": null, "level": 0, "fields": { "above_grade_mm": null } } ],
+  "instances": [ { "id": "i1", "system": "gamma", "type": "bar", "x_mm": 1000, "y_mm": 200, "rotation_deg": 90, "length_mm": 1000, "fields": { "glass_height_mm": null } } ],
   "supplied": { "stock": { "value": 630, "unit": "board_foot", "reason": "from a note" } } }
 """
 
@@ -42,6 +42,9 @@ private fun JsonObject.byId(id: String): JsonObject = nodes().first { it["id"]!!
 private fun planShapes(): List<JsonObject> = page()["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["shapes"]!!.jsonArray.map { it.jsonObject }
 
 private fun JsonObject.text(key: String) = this[key]!!.jsonPrimitive.content
+
+private fun volumeBoxes(): Map<String, JsonObject> =
+    page()["root"]!!.jsonObject.byId("volume")["props"]!!.jsonObject["boxes"]!!.jsonArray.map { it.jsonObject }.associateBy { it.text("id") }
 
 private fun JsonObject.number(key: String) = this[key]!!.jsonPrimitive.content.toDouble()
 
@@ -135,5 +138,49 @@ class PageSpecTest {
     fun a_refused_expansion_is_an_error_carrying_the_engines_reason() {
         val failure = assertFailsWith<ExpansionFormatException> { readExpansion("""{ "refused": { "rule": "r", "message": "no" } }""") }
         assertTrue(failure.message!!.contains("\"message\":\"no\""))
+    }
+
+    @Test
+    fun a_known_height_is_drawn_true_and_an_unknown_one_is_a_marked_stand_in_of_the_nominal_height() {
+        val boxes = volumeBoxes()
+        assertEquals(3000.0, boxes["g1"]!!.number("height_mm"))
+        assertEquals("false", boxes["g1"]!!.text("estimate"))
+        assertEquals(200.0, boxes["a1"]!!.number("height_mm"))
+        assertEquals("false", boxes["a1"]!!.text("estimate"))
+        assertEquals(NOMINAL_HEIGHT_MM, boxes["b1"]!!.number("height_mm"))
+        assertEquals("true", boxes["b1"]!!.text("estimate"))
+        assertEquals(NOMINAL_HEIGHT_MM, boxes["g3"]!!.number("height_mm"))
+        assertEquals("true", boxes["g3"]!!.text("estimate"))
+    }
+
+    @Test
+    fun each_level_stands_on_the_one_below_and_an_instance_stands_on_the_highest_level_it_lies_along() {
+        val boxes = volumeBoxes()
+        assertEquals(0.0, boxes["g3"]!!.number("z_mm"))
+        assertEquals(400.0, boxes["a1"]!!.number("z_mm"))
+        assertEquals(600.0, boxes["g1"]!!.number("z_mm"))
+        assertEquals(3600.0, boxes["b1"]!!.number("z_mm"))
+        assertEquals(600.0, boxes["i1"]!!.number("z_mm"))
+        assertEquals(90.0, boxes["i1"]!!.number("rotation_deg"))
+    }
+
+    @Test
+    fun a_footprint_known_one_way_is_a_plane_and_the_legend_says_what_the_hatching_means() {
+        val boxes = volumeBoxes()
+        assertEquals(0.0, boxes["g1"]!!.number("depth_mm"))
+        assertEquals(0.0, boxes["g2"]!!.number("width_mm"))
+        assertEquals(1100.0, boxes["g1"]!!.number("x_mm"))
+        val legend = page()["root"]!!.jsonObject.byId("volume")["props"]!!.jsonObject["legend"]!!.jsonArray.map { it.jsonObject }
+        assertEquals("height unknown, drawn 400 mm tall", legend.last().text("label"))
+        assertEquals("true", legend.last().text("hatched"))
+    }
+
+    @Test
+    fun the_two_views_sit_behind_a_switch_and_neither_view_names_a_glyph() {
+        val views = page()["root"]!!.jsonObject.byId("views")
+        assertEquals("tabs", views.text("type"))
+        assertEquals(listOf("plan-view", "volume-view"), views["children"]!!.jsonArray.map { it.jsonObject.text("id") })
+        val everyText = page()["root"]!!.jsonObject.nodes().mapNotNull { node -> (node["props"] as? JsonObject)?.get("value").let { it as? JsonPrimitive }?.takeIf { it.isString }?.content }
+        assertEquals(emptyList(), everyText.filter { value -> value.any { it.code > 0x2000 } })
     }
 }

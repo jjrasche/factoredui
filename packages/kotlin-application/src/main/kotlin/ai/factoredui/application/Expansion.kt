@@ -21,6 +21,7 @@ data class ExpandedObject(
     val widthMm: Double?,
     val depthMm: Double?,
     val level: Int?,
+    val fields: Map<String, Double?> = emptyMap(),
 )
 
 data class ExpandedInstance(
@@ -31,6 +32,7 @@ data class ExpandedInstance(
     val yMm: Double,
     val rotationDeg: Double,
     val lengthMm: Double,
+    val fields: Map<String, Double?> = emptyMap(),
 )
 
 data class SuppliedFigure(val name: String, val value: Double, val unit: String, val reason: String?)
@@ -50,6 +52,15 @@ private fun JsonObject.requiredNumber(key: String, where: String): Double = numb
 
 private fun JsonObject.requiredText(key: String, where: String): String = text(key) ?: throw ExpansionFormatException("$where lacks a text $key")
 
+private fun fieldsOf(entry: JsonObject): Map<String, Double?> =
+    (entry["fields"] as? JsonObject).orEmpty().mapNotNull { (name, value) ->
+        when {
+            value is JsonNull -> name to null
+            value is JsonPrimitive && !value.isString -> value.doubleOrNull?.let { name to it }
+            else -> null
+        }
+    }.toMap()
+
 private fun objectOf(entry: JsonObject): ExpandedObject {
     val id = entry.requiredText("id", "an object")
     return ExpandedObject(
@@ -61,6 +72,7 @@ private fun objectOf(entry: JsonObject): ExpandedObject {
         widthMm = entry.number("width_mm"),
         depthMm = entry.number("depth_mm"),
         level = entry.number("level")?.toInt(),
+        fields = fieldsOf(entry),
     )
 }
 
@@ -74,6 +86,7 @@ private fun instanceOf(entry: JsonObject): ExpandedInstance {
         yMm = entry.requiredNumber("y_mm", "instance '$id'"),
         rotationDeg = entry.number("rotation_deg") ?: 0.0,
         lengthMm = entry.requiredNumber("length_mm", "instance '$id'"),
+        fields = fieldsOf(entry),
     )
 }
 

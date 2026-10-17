@@ -89,6 +89,7 @@ enum class SpecNodeType {
     @SerialName("scene") SCENE,
     @SerialName("table") TABLE,
     @SerialName("plan") PLAN,
+    @SerialName("volume") VOLUME,
 }
 
 /**

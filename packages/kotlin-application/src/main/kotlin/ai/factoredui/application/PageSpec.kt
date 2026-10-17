@@ -8,17 +8,39 @@ private const val PAGE_GAP = 12
 
 private fun extentCaption(expansion: Expansion): String {
     val overall = expansion.extentMm?.let { (width, depth) -> " ${formatMm(width)} × ${formatMm(depth)} overall." }.orEmpty()
-    return "Seen from above, north up. Every length is in millimetres.$overall"
+    return "Every length is in millimetres.$overall"
 }
 
 private fun hasUnknownSize(expansion: Expansion) = expansion.objects.any { it.widthMm == null || it.depthMm == null }
 
 private const val UNKNOWN_SIZE_NOTE = "A line or a square is drawn where the expansion gives only part of a size."
+private const val PLAN_NOTE = "Seen from above, north up."
+private const val VOLUME_NOTE = "Drag to turn. Two fingers, or a right-drag, slide it; pinch or scroll to zoom. Each level stands on the one below, and a size the expansion does not give is drawn as a hatched stand-in."
+private const val VIEW_PATH = "{view.index}"
 
 private fun countBySystem(expansion: Expansion): Map<String, Int> =
     (expansion.objects.map { it.system } + expansion.instances.map { it.system }).groupingBy { it }.eachCount()
 
-/** The page for one expansion: the plan, a table of every object, a card per system saying what is given and what is not. */
+private fun noteNode(id: String, text: String) = textNode(id, text, variant = "caption", color = MUTED_INK)
+
+private fun planView(file: SystemFile, expansion: Expansion): JsonObject = specNode(
+    "plan-view", "column", mapOf("gap" to 4),
+    listOfNotNull(
+        noteNode("plan-note", PLAN_NOTE),
+        planNode(file, expansion),
+        if (hasUnknownSize(expansion)) noteNode("unknown-size-note", UNKNOWN_SIZE_NOTE) else null,
+    ),
+)
+
+/** A plan and, when there is something to stand up, a solid view of the same expansion behind a switch. */
+private fun viewsNode(file: SystemFile, expansion: Expansion): JsonObject {
+    val plan = planView(file, expansion)
+    val volume = volumeNode(file, expansion) ?: return plan
+    val solid = specNode("volume-view", "column", mapOf("gap" to 4), listOf(volume, noteNode("volume-note", VOLUME_NOTE)))
+    return specNode("views", "tabs", mapOf("items" to listOf("Plan", "3D"), "selectedIndex" to VIEW_PATH), listOf(plan, solid))
+}
+
+/** The page for one expansion: the plan or the solid view, a table of every object, a card per system saying what is given and what is not. */
 fun buildPageSpec(file: SystemFile, expansion: Expansion): JsonObject {
     val order = systemOrder(file, expansion)
     val counts = countBySystem(expansion)
@@ -26,8 +48,7 @@ fun buildPageSpec(file: SystemFile, expansion: Expansion): JsonObject {
     val children = listOfNotNull(
         textNode("title", file.title, variant = "heading", bold = true),
         textNode("caption", extentCaption(expansion), variant = "caption", color = MUTED_INK),
-        planNode(file, expansion),
-        if (hasUnknownSize(expansion)) textNode("unknown-size-note", UNKNOWN_SIZE_NOTE, variant = "caption", color = MUTED_INK) else null,
+        viewsNode(file, expansion),
         objectTableNode(expansion),
         textNode("cards-title", "What each system gives, and what it does not", variant = "subheading", bold = true),
     ) + cards + listOfNotNull(suppliedNode(expansion.supplied))

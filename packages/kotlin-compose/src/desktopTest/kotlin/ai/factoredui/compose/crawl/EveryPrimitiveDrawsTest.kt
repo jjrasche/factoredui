@@ -40,6 +40,7 @@ private val minimalNodeOf: Map<SpecNodeType, String> = mapOf(
     SpecNodeType.SCENE to """{ "id": "n", "type": "scene", "props": {} }""",
     SpecNodeType.TABLE to """{ "id": "n", "type": "table", "props": {} }""",
     SpecNodeType.PLAN to """{ "id": "n", "type": "plan", "props": { "shapes": [ { "id": "a", "kind": "rect", "x_mm": 0, "y_mm": 0, "width_mm": 1000, "depth_mm": 600 } ] } }""",
+    SpecNodeType.VOLUME to """{ "id": "n", "type": "volume", "props": { "boxes": [ { "id": "a", "x_mm": 0, "y_mm": 0, "z_mm": 0, "width_mm": 1000, "depth_mm": 600, "height_mm": 500 } ] } }""",
 )
 
 // A spacer reserves space and paints nothing — that is its whole job, so it is held to

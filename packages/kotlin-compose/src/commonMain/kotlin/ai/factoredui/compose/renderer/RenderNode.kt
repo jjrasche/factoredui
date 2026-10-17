@@ -293,6 +293,7 @@ private fun RenderNodeByType(
         SpecNodeType.GEOMAP -> RenderGeomap(node, resolvedProps, context)
         SpecNodeType.GRAPH -> RenderGraph(node, resolvedProps, context)
         SpecNodeType.PLAN -> RenderPlan(node, resolvedProps, context)
+        SpecNodeType.VOLUME -> RenderVolume(node, resolvedProps)
         SpecNodeType.SCENE -> RenderScene(node, resolvedProps, context)
         SpecNodeType.TABLE -> RenderTable(node, resolvedProps, context)
         SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)

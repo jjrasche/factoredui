@@ -151,7 +151,7 @@ private fun PlanLabel(nodeId: String, shape: PlanShape, box: PlanBox, ink: Color
 
 /** Places its one child at a point of the drawing: [fixed] sizes it with its top-left at the point, otherwise it is measured and centred on the point's y. */
 @Composable
-private fun PlanPlaced(x: Float, y: Float, align: PlanLabelAlign, fixed: IntSize?, content: @Composable () -> Unit) {
+internal fun PlanPlaced(x: Float, y: Float, align: PlanLabelAlign, fixed: IntSize?, content: @Composable () -> Unit) {
     Layout(content = content, modifier = Modifier.fillMaxSize()) { measurables, constraints ->
         val bounds = fixed?.let { Constraints.fixed(it.width, it.height) } ?: constraints.copy(minWidth = 0, minHeight = 0)
         val placeable = measurables.first().measure(bounds)

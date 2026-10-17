@@ -80,6 +80,22 @@ class DrivenScreen internal constructor(
         return recorded.drop(before)
     }
 
+    fun drag(fromXDp: Float, fromYDp: Float, toXDp: Float, toYDp: Float, steps: Int = 8) {
+        val from = Offset(fromXDp, fromYDp)
+        scene.sendPointerEvent(PointerEventType.Press, from)
+        for (step in 1..steps) {
+            val fraction = step / steps.toFloat()
+            scene.sendPointerEvent(PointerEventType.Move, Offset(fromXDp + (toXDp - fromXDp) * fraction, fromYDp + (toYDp - fromYDp) * fraction))
+        }
+        scene.sendPointerEvent(PointerEventType.Release, Offset(toXDp, toYDp))
+        settle()
+    }
+
+    fun scrollAt(xDp: Float, yDp: Float, wheelDelta: Float) {
+        scene.sendPointerEvent(PointerEventType.Scroll, Offset(xDp, yDp), scrollDelta = Offset(0f, wheelDelta))
+        settle()
+    }
+
     fun store(): Map<String, Any?> = context.data
 
     fun type(path: String, value: Any?) {
