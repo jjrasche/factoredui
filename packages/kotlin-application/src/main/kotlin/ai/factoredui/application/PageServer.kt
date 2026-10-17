@@ -30,10 +30,14 @@ private fun respond(exchange: HttpExchange, status: Int, contentType: String, bo
 
 private fun respondText(exchange: HttpExchange, status: Int, text: String) = respond(exchange, status, "text/plain; charset=utf-8", text.toByteArray())
 
+private fun solveOrSayWhy(options: Options): Solving =
+    runCatching { readSolving(solveSystem(options.runtime, options.system)) }
+        .getOrElse { Solving(emptyList(), failure = it.message ?: it::class.simpleName) }
+
 private fun serveSpec(exchange: HttpExchange, options: Options) {
     val spec = runCatching {
         val file = readSystemFile(Files.readString(options.system))
-        buildPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)))
+        buildPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options))
     }
     spec.fold(
         onSuccess = { respond(exchange, 200, CONTENT_TYPES.getValue("json"), it.toString().toByteArray()) },

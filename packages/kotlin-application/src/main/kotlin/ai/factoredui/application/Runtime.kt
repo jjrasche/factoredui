@@ -25,6 +25,8 @@ private fun runInRuntime(launcher: Path, vararg arguments: String): String {
 /** The runtime's answer to `expand` on a system file, as the text it printed. */
 fun expandSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "expand", systemFile.toAbsolutePath().toString())
 
+fun solveSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "solve", systemFile.toAbsolutePath().toString())
+
 /** The short commit the runtime's checkout is at, or "unknown" when it is not a checkout. */
 fun runtimePin(launcher: Path): String {
     val process = ProcessBuilder("git", "-C", runtimeRoot(launcher).toString(), "rev-parse", "--short", "HEAD").redirectErrorStream(true).start()
