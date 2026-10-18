@@ -7,9 +7,32 @@
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
         body { font-family: sans-serif; }
+        #loading-status { padding: 16px; font-size: 16px; line-height: 1.4; color: #333; }
     </style>
 </head>
 <body>
-    <script src="playground.js"></script>
+    <div id="loading-status">Loading the page. It is an application that needs a browser with WebAssembly GC: Chrome or Edge 119, Firefox 120 or Safari 18.2, or newer.</div>
+    <noscript><p style="padding: 16px">This page needs JavaScript.</p></noscript>
+    <script>
+        (function () {
+            var status = document.getElementById("loading-status");
+            var gcModule = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 120, 0]);
+            var canRun = typeof WebAssembly === "object" && WebAssembly.validate(gcModule);
+            if (!canRun) {
+                status.textContent = "This browser cannot run the page: it lacks WebAssembly GC. Use Chrome or Edge 119, Firefox 120 or Safari 18.2, or newer.";
+                return;
+            }
+            new MutationObserver(function (changes, observer) {
+                if (document.querySelector("canvas")) { status.remove(); observer.disconnect(); }
+            }).observe(document.body, { childList: true, subtree: true });
+            setTimeout(function () {
+                if (document.getElementById("loading-status")) { status.textContent += " Still loading; the first load downloads several megabytes."; }
+            }, 15000);
+            var script = document.createElement("script");
+            script.src = "playground.js";
+            script.onerror = function () { status.textContent = "The application script did not load. Reload the page."; };
+            document.body.appendChild(script);
+        })();
+    </script>
 </body>
 </html>

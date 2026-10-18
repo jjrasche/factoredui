@@ -5,6 +5,8 @@ import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
+import java.util.zip.GZIPOutputStream
 
 private const val SPEC_PATH = "/spec.json"
 private const val ENTRY_PATH = "/index.html"
@@ -28,6 +30,29 @@ private fun respond(exchange: HttpExchange, status: Int, contentType: String, bo
     exchange.responseBody.use { it.write(body) }
 }
 
+private fun acceptsGzip(exchange: HttpExchange) = exchange.requestHeaders["Accept-Encoding"].orEmpty().any { "gzip" in it }
+
+private fun gzip(body: ByteArray): ByteArray {
+    val packed = java.io.ByteArrayOutputStream()
+    GZIPOutputStream(packed).use { it.write(body) }
+    return packed.toByteArray()
+}
+
+private class CompressedFile(val modifiedMillis: Long, val bytes: ByteArray)
+
+private val compressedFiles = ConcurrentHashMap<Path, CompressedFile>()
+
+private fun compressedBytesOf(file: Path): ByteArray {
+    val modified = Files.getLastModifiedTime(file).toMillis()
+    return compressedFiles.compute(file) { _, kept -> kept?.takeIf { it.modifiedMillis == modified } ?: CompressedFile(modified, gzip(Files.readAllBytes(file))) }!!.bytes
+}
+
+private fun respondFile(exchange: HttpExchange, file: Path) {
+    if (!acceptsGzip(exchange)) return respond(exchange, 200, contentTypeOf(file), Files.readAllBytes(file))
+    exchange.responseHeaders.add("Content-Encoding", "gzip")
+    respond(exchange, 200, contentTypeOf(file), compressedBytesOf(file))
+}
+
 private fun respondText(exchange: HttpExchange, status: Int, text: String) = respond(exchange, status, "text/plain; charset=utf-8", text.toByteArray())
 
 private fun solveOrSayWhy(options: Options): Solving =
@@ -49,7 +74,7 @@ private fun serveBundleFile(exchange: HttpExchange, bundle: Path) {
     val relative = exchange.requestURI.path.removePrefix("/")
     val file = bundle.resolve(relative).normalize()
     if (!file.startsWith(bundle) || !Files.isRegularFile(file)) return respondText(exchange, 404, "no such file: /$relative")
-    respond(exchange, 200, contentTypeOf(file), Files.readAllBytes(file))
+    respondFile(exchange, file)
 }
 
 private fun redirectToEntry(exchange: HttpExchange) {
