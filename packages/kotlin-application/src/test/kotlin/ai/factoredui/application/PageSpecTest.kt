@@ -120,10 +120,42 @@ class PageSpecTest {
     }
 
     @Test
+    fun systems_that_are_drawn_never_share_a_colour_however_many_systems_the_file_names() {
+        val named = (0..10).joinToString(",") { "\"s$it\": { \"settings\": {} }" }
+        val file = readSystemFile("""{ "id": "w", "title": "W", "systems": { $named } }""")
+        val expansion = readExpansion(
+            """{ "extent_mm": [10, 10], "objects": [
+                { "id": "early", "system": "s2", "type": "t", "x_mm": 0, "y_mm": 0, "width_mm": 5, "depth_mm": 5, "level": 0, "fields": {} },
+                { "id": "late", "system": "s10", "type": "t", "x_mm": 0, "y_mm": 0, "width_mm": 5, "depth_mm": 5, "level": 0, "fields": {} } ],
+               "instances": [], "supplied": {} }""",
+        )
+        val styles = buildPageSpec(file, expansion)["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["styles"]!!.jsonObject
+        assertEquals(2, listOf("s2", "s10").map { styles[it]!!.jsonObject.text("stroke") }.toSet().size)
+    }
+
+    @Test
+    fun an_instance_row_carries_its_elevation_and_own_fields_and_two_instances_at_one_spot_have_different_row_ids() {
+        val expansion = readExpansion(
+            """{ "extent_mm": [10, 10], "objects": [], "supplied": {}, "instances": [
+                { "id": "g@1,2", "system": "gamma", "type": "glazing", "x_mm": 1, "y_mm": 2, "rotation_deg": 0, "length_mm": 9, "elevation_mm": 1219, "fields": { "facing_degrees": 180, "sill_height_mm": 1219, "glass_height_mm": 1219 } },
+                { "id": "g@1,2", "system": "gamma", "type": "glazing", "x_mm": 1, "y_mm": 2, "rotation_deg": 0, "length_mm": 9, "elevation_mm": 2438, "fields": { "facing_degrees": 180, "sill_height_mm": 2438, "glass_height_mm": 1219 } } ] }""",
+        )
+        val view = buildPageSpec(readSystemFile(SYSTEM_FILE), expansion)["root"]!!.jsonObject.byId("instances")["props"]!!.jsonObject["view"]!!.jsonObject
+        val columnIds = view["columns"]!!.jsonArray.map { it.jsonObject.text("id") }
+        listOf("length_mm", "elevation_mm", "facing_degrees", "sill_height_mm", "glass_height_mm").forEach { assertTrue(it in columnIds, it) }
+        val rows = view["rows"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(2, rows.map { it.text("id") }.toSet().size)
+        assertEquals(2438.0, rows.last()["values"]!!.jsonObject.number("sill_height_mm"))
+        assertEquals(180.0, rows.last()["values"]!!.jsonObject.number("facing_degrees"))
+        assertEquals(2438.0, rows.last()["values"]!!.jsonObject.number("elevation_mm"))
+    }
+
+    @Test
     fun the_table_holds_every_object_and_instance_and_the_word_tile_appears_nowhere() {
-        val rows = page()["root"]!!.jsonObject.byId("objects")["props"]!!.jsonObject["view"]!!.jsonObject["rows"]!!.jsonArray
-        assertEquals(6, rows.size)
-        assertEquals("i1 · 90°", rows.last().jsonObject.text("label"))
+        val spec = page()["root"]!!.jsonObject
+        assertEquals(5, spec.byId("objects")["props"]!!.jsonObject["view"]!!.jsonObject["rows"]!!.jsonArray.size)
+        val instances = spec.byId("instances")["props"]!!.jsonObject["view"]!!.jsonObject["rows"]!!.jsonArray
+        assertEquals("i1 · 90°", instances.single().jsonObject.text("label"))
         assertTrue(!page().toString().contains("tile", ignoreCase = true))
     }
 

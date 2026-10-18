@@ -4,7 +4,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlin.math.cos
 import kotlin.math.sin
 
-private val SYSTEM_COLOURS = listOf("#3b7dd8", "#c07a1f", "#2e8b57", "#a23b8c", "#c0392b", "#2a9d9d", "#7a6a2f", "#6b5bd2")
+private val SYSTEM_COLOURS = listOf("#3b7dd8", "#c07a1f", "#2e8b57", "#a23b8c", "#c0392b", "#2a9d9d", "#7a6a2f", "#6b5bd2", "#6d4c41", "#d81b60")
 private const val FILL_ALPHA = "40"
 private const val LABEL_INSET_DP = 6
 private const val LABEL_ROW_DP = 14
@@ -17,10 +17,12 @@ private const val ARROW_TIP = 0.04
 private const val ARROW_HEAD_DROP = 0.03
 private const val ARROW_HEAD_SPREAD = 0.025
 
+/** Systems that are drawn come first, so each takes its own colour before any system that draws nothing. */
 internal fun systemOrder(file: SystemFile, expansion: Expansion): List<String> {
     val named = file.systems.map { it.name }
     val drawn = (expansion.objects.map { it.system } + expansion.instances.map { it.system }).distinct()
-    return named + drawn.filterNot { it in named }
+    val drawnInOrder = (named + drawn).distinct().filter { it in drawn }
+    return drawnInOrder + named.filterNot { it in drawn }
 }
 
 internal fun colourOfSystem(order: List<String>, system: String): String = SYSTEM_COLOURS[order.indexOf(system) % SYSTEM_COLOURS.size]

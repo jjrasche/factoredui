@@ -42,4 +42,29 @@ class PageServerTest {
         assertNull(answer.headers().firstValue("Content-Encoding").orElse(null))
         assertContentEquals(BUNDLE_TEXT, answer.body())
     }
+
+    private fun fakeRuntime(callLog: Path): Path {
+        val launcher = Files.createDirectories(Files.createTempDirectory("runtime").resolve("bin")).resolve("we")
+        Files.writeString(launcher, "echo \"$1\" >> '$callLog'\necho '{\"extent_mm\": [10, 10], \"objects\": [], \"instances\": [], \"supplied\": {}}'\n")
+        return launcher
+    }
+
+    @Test
+    fun the_page_is_built_once_per_state_of_the_world_file_not_once_per_load() {
+        val callLog = Files.createTempFile("calls", ".log")
+        val system = Files.createTempFile("system", ".json").also { Files.writeString(it, """{ "id": "w", "title": "W", "systems": {} }""") }
+        val cached = startPageServer(Options(system, fakeRuntime(callLog), bundle, "127.0.0.1", 0))
+        try {
+            repeat(3) { assertEquals(200, fetchFrom(cached, "/spec.json").statusCode()) }
+            assertEquals(1, Files.readAllLines(callLog).count { it == "expand" })
+            Files.writeString(system, """{ "id": "w", "title": "Changed", "systems": {} }""")
+            assertEquals(200, fetchFrom(cached, "/spec.json").statusCode())
+            assertEquals(2, Files.readAllLines(callLog).count { it == "expand" })
+        } finally {
+            cached.stop(0)
+        }
+    }
+
+    private fun fetchFrom(running: com.sun.net.httpserver.HttpServer, path: String): HttpResponse<ByteArray> =
+        client.send(HttpRequest.newBuilder(URI("http://127.0.0.1:${running.address.port}$path")).build(), HttpResponse.BodyHandlers.ofByteArray())
 }

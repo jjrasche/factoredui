@@ -6,6 +6,7 @@ import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.GZIPOutputStream
 
 private const val SPEC_PATH = "/spec.json"
@@ -59,13 +60,25 @@ private fun solveOrSayWhy(options: Options): Solving =
     runCatching { readSolving(solveSystem(options.runtime, options.system)) }
         .getOrElse { Solving(emptyList(), failure = it.message ?: it::class.simpleName) }
 
-private fun serveSpec(exchange: HttpExchange, options: Options) {
-    val spec = runCatching {
-        val file = readSystemFile(Files.readString(options.system))
-        buildPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options))
+private class BuiltSpec(val worldStamp: Pair<Long, Long>, val body: ByteArray)
+
+private fun stampOf(system: Path): Pair<Long, Long> = Files.getLastModifiedTime(system).toMillis() to Files.size(system)
+
+private fun buildSpecBody(options: Options): ByteArray {
+    val file = readSystemFile(Files.readString(options.system))
+    return buildPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options)).toString().toByteArray()
+}
+
+private fun serveSpec(exchange: HttpExchange, options: Options, built: AtomicReference<BuiltSpec?>) {
+    val body = runCatching {
+        synchronized(built) {
+            val stamp = stampOf(options.system)
+            built.get()?.takeIf { it.worldStamp == stamp }?.body
+                ?: buildSpecBody(options).also { built.set(BuiltSpec(stamp, it)) }
+        }
     }
-    spec.fold(
-        onSuccess = { respond(exchange, 200, CONTENT_TYPES.getValue("json"), it.toString().toByteArray()) },
+    body.fold(
+        onSuccess = { respond(exchange, 200, CONTENT_TYPES.getValue("json"), it) },
         onFailure = { respondText(exchange, 502, "cannot build the page: ${it.message}") },
     )
 }
@@ -85,11 +98,12 @@ private fun redirectToEntry(exchange: HttpExchange) {
 
 fun startPageServer(options: Options): HttpServer {
     val bundle = options.bundle.toAbsolutePath().normalize()
+    val builtSpec = AtomicReference<BuiltSpec?>(null)
     val server = HttpServer.create(InetSocketAddress(options.bind, options.port), 0)
     server.createContext("/") { exchange ->
         when (exchange.requestURI.path) {
             "/" -> redirectToEntry(exchange)
-            SPEC_PATH -> serveSpec(exchange, options)
+            SPEC_PATH -> serveSpec(exchange, options, builtSpec)
             else -> serveBundleFile(exchange, bundle)
         }
     }

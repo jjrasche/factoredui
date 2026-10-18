@@ -50,6 +50,7 @@ fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = nu
         textNode("caption", extentCaption(expansion), variant = "caption", color = MUTED_INK),
         viewsNode(file, expansion),
         objectTableNode(expansion),
+        instanceTableNode(expansion),
         solving?.let(::solvingNode),
         textNode("cards-title", "What each system gives, and what it does not", variant = "subheading", bold = true),
     ) + cards + listOfNotNull(suppliedNode(expansion.supplied))
