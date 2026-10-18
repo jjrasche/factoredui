@@ -103,15 +103,26 @@ private fun extentOf(root: JsonObject): Pair<Double, Double>? {
     return if (pair.size == 2 && pair.all { it != null }) pair[0]!! to pair[1]!! else null
 }
 
+/** The engine may give two things one id; a selection and a card are keyed by id, so the second and later get a number. */
+private fun <T> withUniqueIds(items: List<T>, taken: MutableSet<String>, idOf: (T) -> String, rename: (T, String) -> T): List<T> =
+    items.map { item ->
+        val base = idOf(item)
+        var candidate = base
+        var count = 1
+        while (!taken.add(candidate)) candidate = "$base (${++count})"
+        if (candidate == base) item else rename(item, candidate)
+    }
+
 /** Reads the answer of `we expand`; a refused answer is an error carrying the engine's reason. */
 fun readExpansion(text: String): Expansion {
     val root = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject
         ?: throw ExpansionFormatException("the expansion is not a JSON object")
     root["refused"]?.let { throw ExpansionFormatException("the engine refused the world: $it") }
+    val taken = mutableSetOf<String>()
     return Expansion(
         extentMm = extentOf(root),
-        objects = objectsIn(root, "objects").map(::objectOf),
-        instances = objectsIn(root, "instances").map(::instanceOf),
+        objects = withUniqueIds(objectsIn(root, "objects").map(::objectOf), taken, { it.id }) { item, id -> item.copy(id = id) },
+        instances = withUniqueIds(objectsIn(root, "instances").map(::instanceOf), taken, { it.id }) { item, id -> item.copy(id = id) },
         supplied = (root["supplied"] as? JsonObject).orEmpty().map { (name, entry) -> suppliedOf(name, entry as? JsonObject ?: throw ExpansionFormatException("supplied '$name' is not an object")) },
     )
 }

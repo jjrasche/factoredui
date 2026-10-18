@@ -238,4 +238,16 @@ class PageSpecTest {
         assertEquals("toggle", root.byId("tables-switch").text("type"))
         assertEquals(root.byId("tables-switch")["props"]!!.jsonObject.text("value"), root.byId("tables").text("visible"))
     }
+
+    @Test
+    fun two_things_the_engine_gives_one_id_are_told_apart_so_each_can_be_selected() {
+        val expansion = readExpansion(
+            """{ "extent_mm": [10, 10], "objects": [], "supplied": {}, "instances": [
+                { "id": "g", "system": "gamma", "type": "glazing", "x_mm": 1, "y_mm": 2, "rotation_deg": 0, "length_mm": 9, "elevation_mm": 1, "fields": {} },
+                { "id": "g", "system": "gamma", "type": "glazing", "x_mm": 1, "y_mm": 2, "rotation_deg": 0, "length_mm": 9, "elevation_mm": 2, "fields": {} } ] }""",
+        )
+        assertEquals(listOf("g", "g (2)"), expansion.instances.map { it.id })
+        val plan = buildPageSpec(readSystemFile(SYSTEM_FILE), expansion)["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject
+        assertEquals(setOf("g", "g (2)"), plan["details"]!!.jsonObject.keys)
+    }
 }
