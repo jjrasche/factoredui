@@ -24,7 +24,7 @@ class PlanPickingTest {
 
     @Test
     fun things_in_reach_are_listed_nearest_first_and_coincident_ones_keep_their_order() {
-        assertEquals(listOf("post", "wall"), pickTargets(listOf(WALL, POST), 52f, 148f, 60f).take(2))
+        assertEquals(listOf("post", "wall"), pickTargets(listOf(WALL, POST), 60f, 120f, 80f))
         val lower = PickTarget.Reach("lower", 50f, 50f, 150f, 50f)
         val upper = PickTarget.Reach("upper", 50f, 50f, 150f, 50f)
         assertEquals(listOf("wall", "lower", "upper"), pickTargets(listOf(WALL, lower, upper), 100f, 50f, 10f))
