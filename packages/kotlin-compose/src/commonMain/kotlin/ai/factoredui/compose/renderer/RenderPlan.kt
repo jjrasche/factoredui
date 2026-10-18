@@ -135,7 +135,7 @@ private fun PlanDrawing(nodeId: String, read: PlanRead, window: RectMm, selectio
         val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
         Box(
             modifier = Modifier.width(widthDp).height(heightDp).pointerInput(targets, selection.ids) {
-                detectTapGestures(onTap = { at -> selection.tap(pickTarget(targets, at.x, at.y, reachPx)) })
+                detectTapGestures(onTap = { at -> selection.tap(pickTargets(targets, at.x, at.y, reachPx)) })
             },
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {

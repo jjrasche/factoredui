@@ -23,9 +23,9 @@ private fun contains(target: PickTarget.Area, x: Float, y: Float) = x >= target.
 
 private fun areaOf(target: PickTarget.Area) = (target.right - target.left) * (target.bottom - target.top)
 
-/** A line or point within [reachPx] of the tap wins, the nearest of them; failing that the smallest rectangle holding the tap, so a room is picked through the walls and a floor through its roof. */
-internal fun pickTarget(targets: List<PickTarget>, x: Float, y: Float, reachPx: Float): String? {
-    val near = targets.filterIsInstance<PickTarget.Reach>().map { it to distanceToSegment(x, y, it) }.filter { it.second <= reachPx }.minByOrNull { it.second }
-    if (near != null) return near.first.id
-    return targets.filterIsInstance<PickTarget.Area>().filter { contains(it, x, y) }.minByOrNull(::areaOf)?.id
+/** Everything the tap could mean, nearest first: the lines and points within [reachPx] by distance, then the rectangles holding the tap, smallest first. Ties keep the order given. */
+internal fun pickTargets(targets: List<PickTarget>, x: Float, y: Float, reachPx: Float): List<String> {
+    val near = targets.filterIsInstance<PickTarget.Reach>().map { it to distanceToSegment(x, y, it) }.filter { it.second <= reachPx }.sortedBy { it.second }.map { it.first.id }
+    val holding = targets.filterIsInstance<PickTarget.Area>().filter { contains(it, x, y) }.sortedBy(::areaOf).map { it.id }
+    return (near + holding).distinct()
 }

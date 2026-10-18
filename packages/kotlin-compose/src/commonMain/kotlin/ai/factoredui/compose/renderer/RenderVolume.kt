@@ -192,11 +192,12 @@ private fun edgeDistance(corners: List<Offset>, at: Offset): Float =
         hypot(at.x - (a.x + along * dx), at.y - (a.y + along * dy))
     }
 
-/** The nearest box to the eye whose faces hold the tap; failing that the one with an edge within [reachPx], which catches a plane seen edge-on. Boxes are given back to front. */
-private fun pickProjectedBox(boxes: List<ProjectedBox>, at: Offset, reachPx: Float): String? {
+/** Every box the tap could mean: those whose faces hold it, nearest the eye first, then those with an edge within [reachPx] (a plane seen edge-on), nearest first. Boxes are given back to front. */
+private fun pickProjectedBoxes(boxes: List<ProjectedBox>, at: Offset, reachPx: Float): List<String> {
     val front = boxes.asReversed()
-    front.firstOrNull { projected -> projected.faces.any { isInside(it.corners, at) } }?.let { return it.box.id }
-    return front.map { projected -> projected to projected.faces.minOf { edgeDistance(it.corners, at) } }.filter { it.second <= reachPx }.minByOrNull { it.second }?.first?.box?.id
+    val holding = front.filter { projected -> projected.faces.any { isInside(it.corners, at) } }.map { it.box.id }
+    val near = front.map { projected -> projected to projected.faces.minOf { edgeDistance(it.corners, at) } }.filter { it.second <= reachPx }.sortedBy { it.second }.map { it.first.box.id }
+    return (holding + near).distinct()
 }
 
 @Composable
@@ -234,7 +235,7 @@ private fun VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, 
         val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
         Box(
             modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }.pointerInput(scene, selection.ids) {
-                detectTapGestures(onTap = { at -> selection.tap(pickProjectedBox(scene.boxes.filter { isPickable(it.box.id, details) }, at, reachPx)) })
+                detectTapGestures(onTap = { at -> selection.tap(pickProjectedBoxes(scene.boxes.filter { isPickable(it.box.id, details) }, at, reachPx)) })
             },
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {

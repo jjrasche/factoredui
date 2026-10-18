@@ -24,7 +24,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /** The ids selected in a drawing and the way to change them: a tap on [tapped] selects it, a tap on it again or on nothing clears. */
-internal class DrawingSelection(val ids: Set<String>, val tap: (String?) -> Unit)
+internal class DrawingSelection(val ids: Set<String>, val tap: (List<String>) -> Unit)
+
+/** A tap that could mean several things walks them in turn: the next after the selected one, wrapping to the first. One candidate toggles, none clears. */
+internal fun selectionAfterTapAmong(selection: Set<String>, candidates: List<String>): List<String> = when {
+    candidates.isEmpty() -> emptyList()
+    candidates.size == 1 -> selectionAfterTap(selection, candidates.single())
+    else -> listOf(candidates[(candidates.indexOf(selection.singleOrNull()) + 1) % candidates.size])
+}
 
 /** The selection lives in the bound path of `selected` when there is one, so two drawings and any card bound to it agree; otherwise in the drawing. */
 @Composable
@@ -32,8 +39,8 @@ internal fun rememberDrawingSelection(node: SpecNode, resolvedSelected: Any?, co
     val path = node.props["selected"]?.bindingPath()
     var local by remember { mutableStateOf(resolveGeomapSelection(resolvedSelected)) }
     val ids = if (path != null) resolveGeomapSelection(resolvedSelected) else local
-    return DrawingSelection(ids) { tapped ->
-        val next = selectionAfterTap(ids, tapped)
+    return DrawingSelection(ids) { candidates ->
+        val next = selectionAfterTapAmong(ids, candidates)
         if (path != null) context.setBinding(path, next) else local = next.toSet()
     }
 }
