@@ -77,6 +77,8 @@ internal fun volumeNode(file: SystemFile, expansion: Expansion): JsonObject? {
             "styles" to styled.associateWith { mapOf("stroke" to colourOfSystem(order, it)) },
             "legend" to legend,
             "empty_text" to "The expansion has nothing to draw.",
+            "selected" to SELECTION_PATH,
+            "details" to detailsOf(file, expansion),
         ),
     )
 }

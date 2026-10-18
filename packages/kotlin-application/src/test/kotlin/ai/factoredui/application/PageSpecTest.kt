@@ -215,4 +215,27 @@ class PageSpecTest {
         val everyText = page()["root"]!!.jsonObject.nodes().mapNotNull { node -> (node["props"] as? JsonObject)?.get("value").let { it as? JsonPrimitive }?.takeIf { it.isString }?.content }
         assertEquals(emptyList(), everyText.filter { value -> value.any { it.code > 0x2000 } })
     }
+
+    @Test
+    fun selecting_a_drawn_thing_shows_what_it_is_its_systems_settings_with_reasons_and_the_rules_naming_it() {
+        val file = readSystemFile("""{ "id": "w", "title": "W", "binds": { "openings": ["alpha", "gamma"] }, "systems": {
+            "alpha": { "solution": "plain", "settings": { "width_mm": 2000 }, "reasons": { "width_mm": "Jim measured it" } } } }""")
+        val details = buildPageSpec(file, readExpansion(EXPANSION))["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["details"]!!.jsonObject
+        val sections = details["a1"]!!.jsonObject["sections"]!!.jsonArray.map { it.jsonObject }
+        val rows = sections.flatMap { it["rows"]!!.jsonArray.map { row -> row.jsonObject } }.associateBy { it.text("label") }
+        assertEquals("alpha", rows.getValue("system")["value"]!!.jsonPrimitive.content)
+        assertEquals("plain", rows.getValue("solution")["value"]!!.jsonPrimitive.content)
+        assertEquals("200", rows.getValue("thickness")["value"]!!.jsonPrimitive.content)
+        assertEquals("Jim measured it", rows.getValue("width")["note"]!!.jsonPrimitive.content)
+        assertEquals("openings", rows.getValue("bound as")["value"]!!.jsonPrimitive.content)
+        assertTrue("i1" in details.keys && "g3" in details.keys)
+    }
+
+    @Test
+    fun the_plan_and_the_solid_view_share_one_selection_and_the_tables_wait_behind_a_switch_that_starts_off() {
+        val root = page()["root"]!!.jsonObject
+        assertEquals(root.byId("plan")["props"]!!.jsonObject.text("selected"), root.byId("volume")["props"]!!.jsonObject.text("selected"))
+        assertEquals("toggle", root.byId("tables-switch").text("type"))
+        assertEquals(root.byId("tables-switch")["props"]!!.jsonObject.text("value"), root.byId("tables").text("visible"))
+    }
 }

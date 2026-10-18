@@ -1,5 +1,7 @@
 package ai.factoredui.compose.renderer
 
+import ai.factoredui.compose.detail.SelectionDetail
+import ai.factoredui.compose.detail.readSelectionDetails
 import ai.factoredui.compose.plan.PlanLabelAlign
 import ai.factoredui.compose.plan.PlanLegendEntry
 import ai.factoredui.compose.plan.PlanRead
@@ -39,6 +41,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -56,6 +60,8 @@ import kotlin.math.min
 private const val PLAN_MARGIN_DP = 28f
 private const val PLAN_MAX_ASPECT = 1.5f
 private const val PLAN_MAX_WIDTH_DP = 420f
+private const val PICK_REACH_DP = 14f
+private const val SELECTED_EXTRA_DP = 3f
 private const val OUTLINE_DP = 1.5f
 private const val LINE_DP = 3f
 private const val MARKER_DP = 10f
@@ -102,29 +108,39 @@ internal fun RenderPlan(node: SpecNode, resolvedProps: Map<String, Any?>, contex
     val read = remember(resolvedProps["shapes"], resolvedProps["styles"], resolvedProps["legend"]) {
         readPlan(resolvedProps["shapes"], resolvedProps["styles"], resolvedProps["legend"])
     }
+    val details = remember(resolvedProps["details"]) { readSelectionDetails(resolvedProps["details"]) }
+    val selection = rememberDrawingSelection(node, resolvedProps["selected"], context)
     val window = planWindow(read.shapes)?.let(::paddedWindow)
     Column(modifier = Modifier.fillMaxWidth().nodeTag(node.id)) {
         read.notices.forEach { Text(text = it, style = LEGEND_TEXT, color = NOTICE_INK) }
         if (window == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = LEGEND_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            PlanDrawing(node.id, read, window)
+            PlanDrawing(node.id, read, window, selection, details)
+            SelectionDetailCard(node.id, selection.ids, details)
             PlanLegend(node.id, read.legend, read.styles)
         }
     }
 }
 
 @Composable
-private fun PlanDrawing(nodeId: String, read: PlanRead, window: RectMm) {
+private fun PlanDrawing(nodeId: String, read: PlanRead, window: RectMm, selection: DrawingSelection, details: Map<String, SelectionDetail>) {
     val theme = LocalSpecTheme.current
     val density = LocalDensity.current
     BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         val widthDp = min(maxWidth, PLAN_MAX_WIDTH_DP.dp)
         val heightDp: Dp = (widthDp - (PLAN_MARGIN_DP * 2).dp) * planAspect(window) + (PLAN_MARGIN_DP * 2).dp
         val fit = fitWindow(window, with(density) { widthDp.toPx() }.toDouble(), with(density) { heightDp.toPx() }.toDouble(), with(density) { PLAN_MARGIN_DP.dp.toPx() }.toDouble())
-        Box(modifier = Modifier.width(widthDp).height(heightDp)) {
+        val targets = remember(read, fit, details) { pickTargetsOf(read.shapes, fit, details) }
+        val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
+        Box(
+            modifier = Modifier.width(widthDp).height(heightDp).pointerInput(targets, selection.ids) {
+                detectTapGestures(onTap = { at -> selection.tap(pickTarget(targets, at.x, at.y, reachPx)) })
+            },
+        ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 read.shapes.forEach { drawPlanShape(it, read.styles[it.style] ?: PlanStyle(), boxOf(fit, it), theme.ink) }
+                read.shapes.filter { it.id in selection.ids && it.kind != PlanShapeKind.LABEL }.forEach { drawSelectedPlanShape(it, boxOf(fit, it), theme.ink) }
             }
             read.shapes.forEach { shape ->
                 val box = boxOf(fit, shape)
@@ -132,6 +148,25 @@ private fun PlanDrawing(nodeId: String, read: PlanRead, window: RectMm) {
                 else PlanShapeTag(nodeId, shape, box)
             }
         }
+    }
+}
+
+private fun pickTargetsOf(shapes: List<PlanShape>, fit: CanvasFit, details: Map<String, SelectionDetail>): List<PickTarget> =
+    shapes.filter { it.kind != PlanShapeKind.LABEL && isPickable(it.id, details) }.map { shape ->
+        val box = boxOf(fit, shape)
+        when (shape.kind) {
+            PlanShapeKind.RECT -> PickTarget.Area(shape.id, box.left, box.top, box.right, box.bottom)
+            PlanShapeKind.LINE -> lineEnd(shape, box, start = true).let { from -> lineEnd(shape, box, start = false).let { to -> PickTarget.Reach(shape.id, from.x, from.y, to.x, to.y) } }
+            else -> PickTarget.Reach(shape.id, box.left, box.top, box.left, box.top)
+        }
+    }
+
+private fun DrawScope.drawSelectedPlanShape(shape: PlanShape, box: PlanBox, ink: Color) {
+    val width = (LINE_DP + SELECTED_EXTRA_DP).dp.toPx()
+    when (shape.kind) {
+        PlanShapeKind.RECT -> drawRect(ink, Offset(box.left, box.top), Size(box.right - box.left, box.bottom - box.top), style = Stroke(width = width))
+        PlanShapeKind.LINE -> drawLine(ink, lineEnd(shape, box, start = true), lineEnd(shape, box, start = false), strokeWidth = width)
+        else -> drawCircle(ink, radius = MARKER_DP.dp.toPx(), center = Offset(box.left, box.top), style = Stroke(width = width))
     }
 }
 
@@ -192,7 +227,7 @@ private fun DrawScope.drawPlanShape(shape: PlanShape, style: PlanStyle, box: Pla
 }
 
 /** A line's two ends in canvas pixels: the box holds them as its opposite corners, so a rising line needs its ends told apart by the shape. */
-private fun DrawScope.lineEnd(shape: PlanShape, box: PlanBox, start: Boolean): Offset {
+private fun lineEnd(shape: PlanShape, box: PlanBox, start: Boolean): Offset {
     val goesEast = shape.x2Mm!! >= shape.xMm
     val goesNorth = shape.y2Mm!! >= shape.yMm
     val east = if (start) goesEast else !goesEast

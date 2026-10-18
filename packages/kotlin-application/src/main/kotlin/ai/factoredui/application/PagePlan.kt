@@ -9,6 +9,7 @@ private const val FILL_ALPHA = "40"
 private const val LABEL_INSET_DP = 6
 private const val LABEL_ROW_DP = 14
 private const val LABEL_FIRST_ROW_DP = 12
+internal const val SELECTION_PATH = "{selection.ids}"
 private const val NORTH_STYLE = "north arrow"
 private const val NORTH_INK = "#1a1a1a"
 private const val ARROW_INSET = 0.06
@@ -112,6 +113,8 @@ internal fun planNode(file: SystemFile, expansion: Expansion): JsonObject {
             "styles" to styled.associateWith { styleOf(colourOfSystem(order, it), it in overhead) } + (NORTH_STYLE to mapOf("stroke" to NORTH_INK, "weight" to 2)),
             "legend" to styled.map { mapOf("label" to it, "style" to it) },
             "empty_text" to "The expansion has nothing to draw.",
+            "selected" to SELECTION_PATH,
+            "details" to detailsOf(file, expansion),
         ),
     )
 }

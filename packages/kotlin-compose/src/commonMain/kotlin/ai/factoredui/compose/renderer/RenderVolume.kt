@@ -1,5 +1,7 @@
 package ai.factoredui.compose.renderer
 
+import ai.factoredui.compose.detail.SelectionDetail
+import ai.factoredui.compose.detail.readSelectionDetails
 import ai.factoredui.compose.math.Camera
 import ai.factoredui.compose.math.Vec3
 import ai.factoredui.compose.math.project
@@ -17,6 +19,7 @@ import ai.factoredui.compose.volume.volumeSpan
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,6 +67,8 @@ import kotlin.math.max
 import kotlin.math.sin
 
 private const val VOLUME_MAX_WIDTH_DP = 560f
+private const val PICK_REACH_DP = 12f
+private const val SELECTED_OUTLINE_DP = 3.5f
 private const val VOLUME_ASPECT = 1.15f
 private const val FRAMING_YAW = -(PI / 4).toFloat()
 private const val FRAMING_PITCH = (PI / 6).toFloat()
@@ -162,25 +167,60 @@ private fun DrawScope.drawProjectedBox(projected: ProjectedBox, style: PlanStyle
     }
 }
 
+private fun DrawScope.drawSelectedBox(projected: ProjectedBox, ink: Color) {
+    projected.faces.forEach { face -> drawPath(pathOf(face.corners), ink, style = Stroke(width = SELECTED_OUTLINE_DP.dp.toPx())) }
+}
+
+private fun isInside(corners: List<Offset>, at: Offset): Boolean {
+    var inside = false
+    corners.indices.forEach { i ->
+        val a = corners[i]
+        val b = corners[(i + 1) % corners.size]
+        if ((a.y > at.y) != (b.y > at.y) && at.x < (b.x - a.x) * (at.y - a.y) / (b.y - a.y) + a.x) inside = !inside
+    }
+    return inside
+}
+
+private fun edgeDistance(corners: List<Offset>, at: Offset): Float =
+    corners.indices.minOf { i ->
+        val a = corners[i]
+        val b = corners[(i + 1) % corners.size]
+        val dx = b.x - a.x
+        val dy = b.y - a.y
+        val lengthSquared = dx * dx + dy * dy
+        val along = if (lengthSquared == 0f) 0f else (((at.x - a.x) * dx + (at.y - a.y) * dy) / lengthSquared).coerceIn(0f, 1f)
+        hypot(at.x - (a.x + along * dx), at.y - (a.y + along * dy))
+    }
+
+/** The nearest box to the eye whose faces hold the tap; failing that the one with an edge within [reachPx], which catches a plane seen edge-on. Boxes are given back to front. */
+private fun pickProjectedBox(boxes: List<ProjectedBox>, at: Offset, reachPx: Float): String? {
+    val front = boxes.asReversed()
+    front.firstOrNull { projected -> projected.faces.any { isInside(it.corners, at) } }?.let { return it.box.id }
+    return front.map { projected -> projected to projected.faces.minOf { edgeDistance(it.corners, at) } }.filter { it.second <= reachPx }.minByOrNull { it.second }?.first?.box?.id
+}
+
 @Composable
-internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>) {
+internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val read = remember(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"]) {
         readVolume(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"])
     }
+    val details = remember(resolvedProps["details"]) { readSelectionDetails(resolvedProps["details"]) }
+    val selection = rememberDrawingSelection(node, resolvedProps["selected"], context)
     val span = volumeSpan(read.boxes)
     Column(modifier = Modifier.fillMaxWidth().nodeTag(node.id)) {
         read.notices.forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, read, span)
+            VolumeDrawing(node.id, read, span, selection, details)
+            SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
     }
 }
 
 @Composable
-private fun VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm) {
+private fun VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>) {
     val theme = LocalSpecTheme.current
     val camera = remember(span) { Camera().also { frameCamera(it, span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -191,10 +231,16 @@ private fun VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm) 
         val widthPx = with(density) { widthDp.toPx() }
         val heightPx = with(density) { heightDp.toPx() }
         val scene = remember(revision, read, span, widthPx, heightPx) { projectScene(read, span, camera, widthPx, heightPx) }
-        Box(modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }) {
+        val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
+        Box(
+            modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }.pointerInput(scene, selection.ids) {
+                detectTapGestures(onTap = { at -> selection.tap(pickProjectedBox(scene.boxes.filter { isPickable(it.box.id, details) }, at, reachPx)) })
+            },
+        ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 scene.ground?.let { drawPath(pathOf(it), GROUND_FILL, style = Fill) }
                 scene.boxes.forEach { drawProjectedBox(it, read.styles[it.box.style] ?: PlanStyle(), theme.ink) }
+                scene.boxes.filter { it.box.id in selection.ids }.forEach { drawSelectedBox(it, theme.ink) }
             }
             scene.boxes.forEach { projected ->
                 val size = IntSize(max(1, (projected.right - projected.left).toInt()), max(1, (projected.bottom - projected.top).toInt()))

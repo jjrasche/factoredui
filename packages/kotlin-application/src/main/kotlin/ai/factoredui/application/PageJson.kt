@@ -20,14 +20,14 @@ internal fun jsonOf(value: Any?): JsonElement = when (value) {
     else -> throw IllegalArgumentException("${value::class.simpleName} is not a JSON value")
 }
 
-internal fun specNode(id: String, type: String, props: Map<String, Any?> = emptyMap(), children: List<JsonObject> = emptyList()): JsonObject =
+internal fun specNode(id: String, type: String, props: Map<String, Any?> = emptyMap(), children: List<JsonObject> = emptyList(), visible: String? = null): JsonObject =
     JsonObject(
         mapOf(
             "id" to JsonPrimitive(id),
             "type" to JsonPrimitive(type),
             "props" to jsonOf(props),
             "children" to JsonArray(children),
-        ),
+        ) + listOfNotNull(visible?.let { "visible" to JsonPrimitive(it) }),
     )
 
 internal fun textNode(id: String, value: String, variant: String? = null, color: String? = null, bold: Boolean = false, flex: Number? = null): JsonObject =

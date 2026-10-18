@@ -17,6 +17,7 @@ private const val UNKNOWN_SIZE_NOTE = "A line or a square is drawn where the exp
 private const val PLAN_NOTE = "Seen from above, north up."
 private const val VOLUME_NOTE = "Drag to turn. Two fingers, or a right-drag, slide it; pinch or scroll to zoom. Each level stands on the one below, and a size the expansion does not give is drawn as a hatched stand-in."
 private const val VIEW_PATH = "{view.index}"
+private const val TABLES_PATH = "{ui.tables}"
 
 private fun countBySystem(expansion: Expansion): Map<String, Int> =
     (expansion.objects.map { it.system } + expansion.instances.map { it.system }).groupingBy { it }.eachCount()
@@ -40,6 +41,13 @@ private fun viewsNode(file: SystemFile, expansion: Expansion): JsonObject {
     return specNode("views", "tabs", mapOf("items" to listOf("Plan", "3D"), "selectedIndex" to VIEW_PATH), listOf(plan, solid))
 }
 
+/** The tables of every object, behind a switch that starts off. */
+private fun tablesNode(expansion: Expansion): JsonObject {
+    val switch = specNode("tables-switch", "toggle", mapOf("label" to "Table", "value" to TABLES_PATH))
+    val tables = specNode("tables", "column", mapOf("gap" to PAGE_GAP), listOfNotNull(objectTableNode(expansion), instanceTableNode(expansion)), visible = TABLES_PATH)
+    return specNode("tables-section", "column", mapOf("gap" to 4), listOf(switch, tables))
+}
+
 /** The page for one expansion: the plan or the solid view, a table of every object, a card per system saying what is given and what is not. */
 fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = null): JsonObject {
     val order = systemOrder(file, expansion)
@@ -49,8 +57,7 @@ fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = nu
         textNode("title", file.title, variant = "heading", bold = true),
         textNode("caption", extentCaption(expansion), variant = "caption", color = MUTED_INK),
         viewsNode(file, expansion),
-        objectTableNode(expansion),
-        instanceTableNode(expansion),
+        tablesNode(expansion),
         solving?.let(::solvingNode),
         textNode("cards-title", "What each system gives, and what it does not", variant = "subheading", bold = true),
     ) + cards + listOfNotNull(suppliedNode(expansion.supplied))
