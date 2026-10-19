@@ -95,4 +95,16 @@ class BlueprintTest {
         assertTrue(failed.toString().contains("The geometry could not be read: no geometry"))
         assertEquals("no geometry", assertFailsWith<GeometryFormatException> { readGeometry("""{"refused": {"rule": "x", "message": "no geometry"}}""") }.message)
     }
+
+    @Test
+    fun an_opening_is_a_hole_in_the_solid_wall_view_and_not_a_box_laid_over_it() {
+        val expansion = readExpansion(
+            """{ "extent_mm": [2000, 100], "supplied": {}, "instances": [], "objects": [
+                { "id": "wall-a", "system": "walls", "type": "wall", "x_mm": 0, "y_mm": 0, "width_mm": 1000, "depth_mm": 100, "level": 0, "elevation_mm": 0, "fields": { "height_mm": 3000 } } ] }""",
+        )
+        val boxes = volumeNode(readSystemFile(SYSTEM_FILE), expansion, geometry = readGeometry(GEOMETRY))!!["props"]!!.jsonObject.entries("boxes")
+        assertEquals(listOf("wall-a", "wall-a#2"), boxes.map { it.text("id") })
+        val area = boxes.sumOf { it.text("width_mm").toDouble() * it.text("height_mm").toDouble() }
+        assertEquals(1000.0 * 3000.0 - 1000.0 * 1000.0, area)
+    }
 }

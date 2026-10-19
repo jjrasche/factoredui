@@ -59,13 +59,14 @@ private fun boxNode(placed: Placed, baseMm: Double): Map<String, Any?> {
 }
 
 /** The expansion as stacked boxes: a level stands on the one below, a size the expansion does not give is a hatched stand-in of [NOMINAL_HEIGHT_MM]. */
-internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay? = null): JsonObject? {
+internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay? = null, geometry: Geometry? = null): JsonObject? {
     if (expansion.objects.isEmpty() && expansion.instances.isEmpty()) return null
     val order = systemOrder(file, expansion)
     val bases = baseOfEachLevel(expansion.objects)
     val fromObjects = expansion.objects.map { placedObject(it) to (bases[it.level ?: 0] ?: 0.0) }
     val fromInstances = expansion.instances.map { placedInstance(it) to ((levelUnder(expansion, it)?.let { level -> bases[level] } ?: 0.0) + it.elevationMm) }
-    val boxes = (fromObjects + fromInstances).map { (placed, base) -> boxNode(placed, base).let { box -> if (overlay == null) box else box + ("style" to overlayStyleOf(overlay, placed.id)) } }
+    val whole = (fromObjects + fromInstances).map { (placed, base) -> boxNode(placed, base).let { box -> if (overlay == null) box else box + ("style" to overlayStyleOf(overlay, placed.id)) } }
+    val boxes = geometry?.let { withCutsOpened(whole, it) } ?: whole
     val styled = order.filter { system -> boxes.any { it["style"] == system } }
     val hasEstimate = boxes.any { it["estimate"] == true }
     val boxIds = boxes.map { it["id"] as String }
@@ -79,7 +80,7 @@ internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay
             "legend" to legend,
             "empty_text" to "The expansion has nothing to draw.",
             "selected" to SELECTION_PATH,
-            "details" to detailsOf(file, expansion, overlay),
+            "details" to detailsOf(file, expansion, overlay).let { details -> geometry?.let { withFragmentDetails(details, boxes) } ?: details },
         ),
     )
 }

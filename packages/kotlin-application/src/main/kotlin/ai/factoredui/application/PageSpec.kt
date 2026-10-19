@@ -33,19 +33,19 @@ private fun planView(file: SystemFile, expansion: Expansion, overlay: Overlay?):
     ),
 )
 
-private fun overlayNote(overlaying: Overlaying): JsonObject =
+internal fun overlayNote(overlaying: Overlaying): JsonObject =
     noteNode("overlay-note", overlaying.overlay?.let(::overlayCaption) ?: "The overlay could not be run: ${overlaying.failure}")
 
 /** A plan and, when there is something to stand up, a solid view of the same expansion behind a switch. */
-private fun viewsNode(file: SystemFile, expansion: Expansion, overlay: Overlay?): JsonObject {
+private fun viewsNode(file: SystemFile, expansion: Expansion, overlay: Overlay?, geometry: Geometry?): JsonObject {
     val plan = planView(file, expansion, overlay)
-    val volume = volumeNode(file, expansion, overlay) ?: return plan
+    val volume = volumeNode(file, expansion, overlay, geometry) ?: return plan
     val solid = specNode("volume-view", "column", mapOf("gap" to 4), listOf(volume, noteNode("volume-note", VOLUME_NOTE)))
     return specNode("views", "tabs", mapOf("items" to listOf("Plan", "3D"), "selectedIndex" to VIEW_PATH), listOf(plan, solid))
 }
 
 /** The tables of every object, behind a switch that starts off. */
-private fun tablesNode(expansion: Expansion): JsonObject {
+internal fun tablesNode(expansion: Expansion): JsonObject {
     val switch = specNode("tables-switch", "toggle", mapOf("label" to "Table", "value" to TABLES_PATH))
     val tables = specNode("tables", "column", mapOf("gap" to PAGE_GAP), listOfNotNull(objectTableNode(expansion), instanceTableNode(expansion)), visible = TABLES_PATH)
     return specNode("tables-section", "column", mapOf("gap" to 4), listOf(switch, tables))
@@ -62,7 +62,7 @@ fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = nu
         textNode("title", file.title, variant = "heading", bold = true),
         textNode("caption", extentCaption(expansion), variant = "caption", color = MUTED_INK),
         overlaying?.let(::overlayNote),
-        viewsNode(file, expansion, overlaying?.overlay),
+        viewsNode(file, expansion, overlaying?.overlay, geometried?.geometry),
         geometried?.let { blueprintNode(it, expansion) },
         tablesNode(expansion),
         solving?.let(::solvingNode),

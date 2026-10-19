@@ -98,7 +98,7 @@ private fun stampOf(system: Path): Pair<Long, Long> = Files.getLastModifiedTime(
 
 private fun buildSpecBody(options: Options): ByteArray {
     val file = readSystemFile(Files.readString(options.system))
-    return buildPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options), overlayOrSayWhy(options), rankOrSayWhy(options), describeOrSayWhy(options), geometryOrSayWhy(options)).toString().toByteArray()
+    return buildLensPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options), overlayOrSayWhy(options), rankOrSayWhy(options), describeOrSayWhy(options), geometryOrSayWhy(options)).toString().toByteArray()
 }
 
 private fun serveSpec(exchange: HttpExchange, options: Options, built: AtomicReference<BuiltSpec?>) {
