@@ -97,24 +97,28 @@ private fun northArrow(extent: Pair<Double, Double>?): List<Map<String, Any?>> {
     )
 }
 
-internal fun planNode(file: SystemFile, expansion: Expansion): JsonObject {
+internal fun planNode(file: SystemFile, expansion: Expansion, overlay: Overlay? = null): JsonObject {
     val order = systemOrder(file, expansion)
     val overhead = overheadSystems(expansion)
     val rects = expansion.objects.filter(::isRect).sortedByDescending { it.level ?: 0 }
     val lines = expansion.objects.filter { !isRect(it) && (it.widthMm != null || it.depthMm != null) }
     val markers = expansion.objects.filter { it.widthMm == null && it.depthMm == null }
     val drawn = rects.map(::rectShape) + lines.map(::lineShape) + markers.map(::markerShape) + expansion.instances.map(::instanceShape)
-    val shapes = drawn + rectLabels(rects) + northArrow(expansion.extentMm)
+    val painted = if (overlay == null) drawn else drawn.map { it + ("style" to overlayStyleOf(overlay, it["id"] as String)) }
+    val shapes = painted + rectLabels(rects) + northArrow(expansion.extentMm)
     val styled = order.filter { system -> drawn.any { it["style"] == system } }
+    val paintedIds = drawn.map { it["id"] as String }
+    val systemStyles = styled.associateWith { styleOf(colourOfSystem(order, it), it in overhead) }
+    val systemLegend = styled.map { mapOf("label" to it, "style" to it) }
     return specNode(
         "plan", "plan",
         mapOf(
             "shapes" to shapes,
-            "styles" to styled.associateWith { styleOf(colourOfSystem(order, it), it in overhead) } + (NORTH_STYLE to mapOf("stroke" to NORTH_INK, "weight" to 2)),
-            "legend" to styled.map { mapOf("label" to it, "style" to it) },
+            "styles" to (if (overlay == null) systemStyles else overlayStyles(overlay, paintedIds) + stopStyles(overlay)) + (NORTH_STYLE to mapOf("stroke" to NORTH_INK, "weight" to 2)),
+            "legend" to (if (overlay == null) systemLegend else overlayLegend(overlay, paintedIds)),
             "empty_text" to "The expansion has nothing to draw.",
             "selected" to SELECTION_PATH,
-            "details" to detailsOf(file, expansion),
+            "details" to detailsOf(file, expansion, overlay),
         ),
     )
 }

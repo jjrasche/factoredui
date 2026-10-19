@@ -29,10 +29,21 @@ private fun fieldRows(fields: Map<String, Double?>) = fields.map { (name, value)
 private fun identityRows(entry: SystemEntry?, system: String, type: String) =
     listOf(row("system", system), row("solution", entry?.solution), row("type", type))
 
-private fun detailOf(file: SystemFile, id: String, system: String, type: String, placeRows: List<Map<String, Any?>>, fields: Map<String, Double?>): Map<String, Any?> {
+private fun overlayRows(overlay: Overlay, id: String): List<Map<String, Any?>> {
+    val reading = overlay.pieces[id]
+    return when {
+        reading == null -> listOf(row("figure", "does not apply"))
+        reading.reason != null -> listOf(row("figure", "unknown"), row("why", reading.reason))
+        reading.value == null -> listOf(row("figure", "does not apply"))
+        else -> listOf(row("figure", "${formatFigure(reading.value)} ${overlay.unit}"), row("on the scale", reading.position?.let(::formatFigure)))
+    }
+}
+
+private fun detailOf(file: SystemFile, id: String, system: String, type: String, placeRows: List<Map<String, Any?>>, fields: Map<String, Double?>, overlay: Overlay?): Map<String, Any?> {
     val entry = file.systems.firstOrNull { it.name == system }
     val sections = listOfNotNull(
         section("What it is", identityRows(entry, system, type)),
+        overlay?.let { section(it.label, overlayRows(it, id)) },
         section("Where", placeRows),
         section("Its fields", fieldRows(fields)).takeIf { fields.isNotEmpty() },
         entry?.let { section("The $system system's settings", settingRows(it)) }?.takeIf { entry.settings.isNotEmpty() },
@@ -52,6 +63,6 @@ private fun instancePlaceRows(item: ExpandedInstance) = listOf(
 )
 
 /** What a card says when one object or placed length is selected: what it is, where, its fields, its system's settings with the reasons the file gives, and the rules that name its system. */
-internal fun detailsOf(file: SystemFile, expansion: Expansion): Map<String, Any?> =
-    expansion.objects.associate { it.id to detailOf(file, it.id, it.system, it.type, objectPlaceRows(it), it.fields) } +
-        expansion.instances.associate { it.id to detailOf(file, it.id, it.system, it.type, instancePlaceRows(it), it.fields) }
+internal fun detailsOf(file: SystemFile, expansion: Expansion, overlay: Overlay? = null): Map<String, Any?> =
+    expansion.objects.associate { it.id to detailOf(file, it.id, it.system, it.type, objectPlaceRows(it), it.fields, overlay) } +
+        expansion.instances.associate { it.id to detailOf(file, it.id, it.system, it.type, instancePlaceRows(it), it.fields, overlay) }

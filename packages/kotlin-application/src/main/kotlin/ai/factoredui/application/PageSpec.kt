@@ -24,19 +24,22 @@ private fun countBySystem(expansion: Expansion): Map<String, Int> =
 
 private fun noteNode(id: String, text: String) = textNode(id, text, variant = "caption", color = MUTED_INK)
 
-private fun planView(file: SystemFile, expansion: Expansion): JsonObject = specNode(
+private fun planView(file: SystemFile, expansion: Expansion, overlay: Overlay?): JsonObject = specNode(
     "plan-view", "column", mapOf("gap" to 4),
     listOfNotNull(
         noteNode("plan-note", PLAN_NOTE),
-        planNode(file, expansion),
+        planNode(file, expansion, overlay),
         if (hasUnknownSize(expansion)) noteNode("unknown-size-note", UNKNOWN_SIZE_NOTE) else null,
     ),
 )
 
+private fun overlayNote(overlaying: Overlaying): JsonObject =
+    noteNode("overlay-note", overlaying.overlay?.let(::overlayCaption) ?: "The overlay could not be run: ${overlaying.failure}")
+
 /** A plan and, when there is something to stand up, a solid view of the same expansion behind a switch. */
-private fun viewsNode(file: SystemFile, expansion: Expansion): JsonObject {
-    val plan = planView(file, expansion)
-    val volume = volumeNode(file, expansion) ?: return plan
+private fun viewsNode(file: SystemFile, expansion: Expansion, overlay: Overlay?): JsonObject {
+    val plan = planView(file, expansion, overlay)
+    val volume = volumeNode(file, expansion, overlay) ?: return plan
     val solid = specNode("volume-view", "column", mapOf("gap" to 4), listOf(volume, noteNode("volume-note", VOLUME_NOTE)))
     return specNode("views", "tabs", mapOf("items" to listOf("Plan", "3D"), "selectedIndex" to VIEW_PATH), listOf(plan, solid))
 }
@@ -49,14 +52,15 @@ private fun tablesNode(expansion: Expansion): JsonObject {
 }
 
 /** The page for one expansion: the plan or the solid view, a table of every object, a card per system saying what is given and what is not. */
-fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = null): JsonObject {
+fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = null, overlaying: Overlaying? = null): JsonObject {
     val order = systemOrder(file, expansion)
     val counts = countBySystem(expansion)
     val cards = file.systems.map { systemCard(it, colourOfSystem(order, it.name), counts[it.name] ?: 0) }
     val children = listOfNotNull(
         textNode("title", file.title, variant = "heading", bold = true),
         textNode("caption", extentCaption(expansion), variant = "caption", color = MUTED_INK),
-        viewsNode(file, expansion),
+        overlaying?.let(::overlayNote),
+        viewsNode(file, expansion, overlaying?.overlay),
         tablesNode(expansion),
         solving?.let(::solvingNode),
         textNode("cards-title", "What each system gives, and what it does not", variant = "subheading", bold = true),

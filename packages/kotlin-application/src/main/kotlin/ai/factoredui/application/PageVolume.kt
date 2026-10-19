@@ -59,26 +59,27 @@ private fun boxNode(placed: Placed, baseMm: Double): Map<String, Any?> {
 }
 
 /** The expansion as stacked boxes: a level stands on the one below, a size the expansion does not give is a hatched stand-in of [NOMINAL_HEIGHT_MM]. */
-internal fun volumeNode(file: SystemFile, expansion: Expansion): JsonObject? {
+internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay? = null): JsonObject? {
     if (expansion.objects.isEmpty() && expansion.instances.isEmpty()) return null
     val order = systemOrder(file, expansion)
     val bases = baseOfEachLevel(expansion.objects)
     val fromObjects = expansion.objects.map { placedObject(it) to (bases[it.level ?: 0] ?: 0.0) }
     val fromInstances = expansion.instances.map { placedInstance(it) to ((levelUnder(expansion, it)?.let { level -> bases[level] } ?: 0.0) + it.elevationMm) }
-    val boxes = (fromObjects + fromInstances).map { (placed, base) -> boxNode(placed, base) }
+    val boxes = (fromObjects + fromInstances).map { (placed, base) -> boxNode(placed, base).let { box -> if (overlay == null) box else box + ("style" to overlayStyleOf(overlay, placed.id)) } }
     val styled = order.filter { system -> boxes.any { it["style"] == system } }
     val hasEstimate = boxes.any { it["estimate"] == true }
-    val legend = styled.map { mapOf("label" to it, "style" to it) } +
-        listOfNotNull(if (hasEstimate) mapOf("label" to "$ESTIMATE_STYLE_NOTE, drawn ${formatMm(NOMINAL_HEIGHT_MM)} mm tall", "hatched" to true) else null)
+    val boxIds = boxes.map { it["id"] as String }
+    val keyed = if (overlay == null) styled.map { mapOf("label" to it, "style" to it) } else overlayLegend(overlay, boxIds)
+    val legend = keyed + listOfNotNull(if (hasEstimate) mapOf("label" to "$ESTIMATE_STYLE_NOTE, drawn ${formatMm(NOMINAL_HEIGHT_MM)} mm tall", "hatched" to true) else null)
     return specNode(
         "volume", "volume",
         mapOf(
             "boxes" to boxes,
-            "styles" to styled.associateWith { mapOf("stroke" to colourOfSystem(order, it)) },
+            "styles" to if (overlay == null) styled.associateWith { mapOf("stroke" to colourOfSystem(order, it)) } else overlayStyles(overlay, boxIds) + stopStyles(overlay),
             "legend" to legend,
             "empty_text" to "The expansion has nothing to draw.",
             "selected" to SELECTION_PATH,
-            "details" to detailsOf(file, expansion),
+            "details" to detailsOf(file, expansion, overlay),
         ),
     )
 }

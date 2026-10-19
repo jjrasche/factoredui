@@ -25,6 +25,9 @@ private fun runInRuntime(launcher: Path, vararg arguments: String): String {
 /** The runtime's answer to `expand` on a system file, as the text it printed. */
 fun expandSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "expand", systemFile.toAbsolutePath().toString())
 
+fun overlaySystem(launcher: Path, systemFile: Path, overlayId: String): String =
+    runInRuntime(launcher, "overlay", systemFile.toAbsolutePath().toString(), "--overlay", overlayId)
+
 fun solveSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "solve", systemFile.toAbsolutePath().toString())
 
 /** The short commit the runtime's checkout is at, or "unknown" when it is not a checkout. */
