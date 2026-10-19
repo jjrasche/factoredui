@@ -340,11 +340,41 @@ fun Map<String, SpecValue>.asGridProps(): GridProps = GridProps(
 
 data class ToggleProps(
     val label: String = "",
+    val color: String? = null,
 )
 
 fun Map<String, SpecValue>.asToggleProps(): ToggleProps = ToggleProps(
     label = string("label") ?: "",
+    color = string("color"),
 )
+
+// --- StackPlacement ---
+
+enum class StackAnchor { FILL, TOP, BOTTOM }
+
+data class SheetProps(val closedDp: Float, val openDp: Float)
+
+data class StackPlacement(val anchor: StackAnchor? = null, val sheet: SheetProps? = null)
+
+private fun Map<String, SpecValue>.sheetOf(): SheetProps? {
+    val fields = (get("sheet") as? SpecValue.ObjectValue)?.value ?: return null
+    val closed = fields.double("closed_dp")?.takeIf { it > 0.0 } ?: return null
+    val open = fields.double("open_dp")?.takeIf { it >= closed } ?: return null
+    return SheetProps(closed.toFloat(), open.toFloat())
+}
+
+/** Where a child of a `stack` sits: `anchor` is `fill`, `top` or `bottom`; a `sheet` is a bottom panel that drags between two heights. */
+fun Map<String, SpecValue>.asStackPlacement(): StackPlacement = StackPlacement(
+    anchor = when (string("anchor")) {
+        "fill" -> StackAnchor.FILL
+        "top" -> StackAnchor.TOP
+        "bottom" -> StackAnchor.BOTTOM
+        else -> null
+    },
+    sheet = sheetOf(),
+)
+
+fun Map<String, SpecValue>.fillsParent(): Boolean = boolean("fill") ?: false
 
 // --- SliderProps ---
 

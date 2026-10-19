@@ -62,7 +62,7 @@ internal fun RenderToggle(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (props.label.isNotEmpty()) {
-            Text(text = props.label, modifier = Modifier.weight(1f))
+            Text(text = props.label, color = planColour(props.color) ?: Color.Unspecified, modifier = Modifier.weight(1f))
         } else {
             Box(modifier = Modifier.weight(1f))
         }

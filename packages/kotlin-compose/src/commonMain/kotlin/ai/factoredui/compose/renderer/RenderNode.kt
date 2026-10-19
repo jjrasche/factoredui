@@ -80,6 +80,7 @@ import ai.factoredui.compose.schema.asGridProps
 import ai.factoredui.compose.schema.asIconProps
 import ai.factoredui.compose.schema.asImageProps
 import ai.factoredui.compose.schema.asLayoutProps
+import ai.factoredui.compose.schema.fillsParent
 import ai.factoredui.compose.schema.asListProps
 import ai.factoredui.compose.schema.asSpacerProps
 import ai.factoredui.compose.schema.asTextProps
@@ -425,7 +426,7 @@ private fun columnSlotWidth(fixedWidth: Float?, align: LayoutAlign): Modifier = 
 
 /** A child of a stack or a scroll with a width or height is drawn in a slot of exactly that size; one with neither is drawn as it is. */
 @Composable
-private fun RenderSizedChild(child: SpecNode, context: RenderContext) {
+internal fun RenderSizedChild(child: SpecNode, context: RenderContext) {
     val layout = child.props.asLayoutProps()
     if (layout.width == null && layout.height == null) return RenderNode(node = child, context = context)
     Box(modifier = widthOf(layout.width).then(heightOf(layout.height)), propagateMinConstraints = true) { RenderInSlot(child, context, layout.width) }
@@ -482,9 +483,9 @@ private fun horizontalArrangement(justify: LayoutJustify, gap: Int): Arrangement
 
 @Composable
 private fun RenderStack(node: SpecNode, context: RenderContext) {
-    Box(modifier = Modifier.nodeTag(node.id)) {
+    Box(modifier = (if (node.props.fillsParent()) Modifier.fillMaxSize() else Modifier).groundOf(node.props.asLayoutProps()).nodeTag(node.id)) {
         SlotSizeNotices(node.children)
-        node.children.forEach { child -> RenderSizedChild(child, context) }
+        node.children.forEach { child -> RenderStackChild(child, context) }
     }
 }
 

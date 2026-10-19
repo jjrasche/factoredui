@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -208,26 +209,29 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val details = remember(resolvedProps["details"]) { readSelectionDetails(resolvedProps["details"]) }
     val selection = rememberDrawingSelection(node, resolvedProps["selected"], context)
     val span = volumeSpan(read.boxes)
-    Column(modifier = Modifier.fillMaxWidth().nodeTag(node.id)) {
+    val fill = resolvedProps["fill"] == true
+    val bottomInsetDp = (resolvedProps["bottom_inset_dp"] as? Number)?.toFloat() ?: 0f
+    Column(modifier = (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).nodeTag(node.id)) {
         read.notices.forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, read, span, selection, details)
-            SelectionDetailCard(node.id, selection.ids, details)
+            VolumeDrawing(node.id, read, span, selection, details, if (fill) bottomInsetDp else null)
+            if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
     }
 }
 
 @Composable
-private fun VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?) {
     val theme = LocalSpecTheme.current
     val camera = remember(span) { Camera().also { frameCamera(it, span) } }
     var revision by remember(camera) { mutableStateOf(0) }
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-        val widthDp = min(maxWidth, VOLUME_MAX_WIDTH_DP.dp)
-        val heightDp = widthDp * VOLUME_ASPECT
+    val fits = fillInsetDp != null
+    BoxWithConstraints(modifier = if (fits) Modifier.fillMaxWidth().weight(1f) else Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        val widthDp = if (fits) maxWidth else min(maxWidth, VOLUME_MAX_WIDTH_DP.dp)
+        val heightDp = if (fits) (maxHeight - (fillInsetDp ?: 0f).dp).coerceAtLeast(1.dp) else widthDp * VOLUME_ASPECT
         val density = LocalDensity.current
         val widthPx = with(density) { widthDp.toPx() }
         val heightPx = with(density) { heightDp.toPx() }
@@ -248,14 +252,24 @@ private fun VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, 
                 PlanPlaced(projected.left, projected.top, PlanLabelAlign.START, size) { Box(modifier = Modifier.nodeTag("$nodeId/${projected.box.id}")) }
             }
             scene.north?.let { PlanPlaced(it.x, it.y, PlanLabelAlign.CENTER, null) { Text(text = "N", style = VOLUME_TEXT, color = theme.ink, modifier = Modifier.nodeTag("$nodeId/north")) } }
+            if (fits) {
+                Text(
+                    text = "Reset view",
+                    style = VOLUME_TEXT,
+                    color = theme.ink,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).clickable { frameCamera(camera, span); revision += 1 }.nodeTag("$nodeId/reset"),
+                )
+            }
         }
     }
-    Text(
-        text = "Reset view",
-        style = VOLUME_TEXT,
-        color = theme.ink,
-        modifier = Modifier.padding(top = 4.dp).clickable { frameCamera(camera, span); revision += 1 }.nodeTag("$nodeId/reset"),
-    )
+    if (!fits) {
+        Text(
+            text = "Reset view",
+            style = VOLUME_TEXT,
+            color = theme.ink,
+            modifier = Modifier.padding(top = 4.dp).clickable { frameCamera(camera, span); revision += 1 }.nodeTag("$nodeId/reset"),
+        )
+    }
 }
 
 /** One finger or the left button turns the view, two fingers or the right button or Ctrl slides it, a pinch or the wheel zooms. */

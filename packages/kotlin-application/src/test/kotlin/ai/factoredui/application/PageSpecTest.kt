@@ -250,4 +250,14 @@ class PageSpecTest {
         val plan = buildPageSpec(readSystemFile(SYSTEM_FILE), expansion)["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject
         assertEquals(setOf("g", "g (2)"), plan["details"]!!.jsonObject.keys)
     }
+
+    @Test
+    fun an_opening_is_drawn_as_deep_as_the_wall_it_sits_in() {
+        val expansion = readExpansion(
+            """{ "extent_mm": [10, 10], "objects": [], "supplied": {}, "instances": [
+                { "id": "w", "system": "gamma", "type": "glazing", "x_mm": 1, "y_mm": 2, "rotation_deg": 0, "length_mm": 9, "elevation_mm": 1, "fields": { "height_mm": 5, "thickness_mm": 114 } } ] }""",
+        )
+        val box = buildPageSpec(readSystemFile(SYSTEM_FILE), expansion)["root"]!!.jsonObject.byId("volume")["props"]!!.jsonObject["boxes"]!!.jsonArray.first().jsonObject
+        assertEquals(114.0, box.number("depth_mm"))
+    }
 }

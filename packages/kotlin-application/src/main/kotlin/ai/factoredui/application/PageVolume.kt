@@ -24,7 +24,7 @@ private fun placedObject(item: ExpandedObject) = Placed(
     item.widthMm ?: 0.0, item.depthMm ?: 0.0, 0.0, item.level ?: 0, item.fields, item.widthMm != null && item.depthMm != null,
 )
 
-private fun placedInstance(item: ExpandedInstance) = Placed(item.id, item.system, item.xMm, item.yMm, item.lengthMm, 0.0, item.rotationDeg, null, item.fields, false)
+private fun placedInstance(item: ExpandedInstance) = Placed(item.id, item.system, item.xMm, item.yMm, item.lengthMm, item.fields["thickness_mm"] ?: 0.0, item.rotationDeg, null, item.fields, false)
 
 private fun baseOfEachLevel(objects: List<ExpandedObject>): Map<Int, Double> {
     val heights = objects.groupBy { it.level ?: 0 }.mapValues { (_, items) -> items.maxOf { sizedBy(it.fields, it.widthMm != null && it.depthMm != null).heightMm } }
