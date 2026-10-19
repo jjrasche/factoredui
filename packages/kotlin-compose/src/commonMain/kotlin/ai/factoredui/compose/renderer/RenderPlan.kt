@@ -16,6 +16,7 @@ import ai.factoredui.compose.stackedscene.RectMm
 import ai.factoredui.compose.stackedscene.fitWindow
 import ai.factoredui.compose.stackedscene.mmToCanvas
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -116,7 +117,7 @@ internal fun RenderPlan(node: SpecNode, resolvedProps: Map<String, Any?>, contex
         if (window == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = LEGEND_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            PlanDrawing(node.id, read, window, selection, details)
+            PlanDrawing(node.id, read, window, selection, details, planColour(resolvedProps["ground"] as? String))
             SelectionDetailCard(node.id, selection.ids, details)
             PlanLegend(node.id, read.legend, read.styles)
         }
@@ -124,7 +125,7 @@ internal fun RenderPlan(node: SpecNode, resolvedProps: Map<String, Any?>, contex
 }
 
 @Composable
-private fun PlanDrawing(nodeId: String, read: PlanRead, window: RectMm, selection: DrawingSelection, details: Map<String, SelectionDetail>) {
+private fun PlanDrawing(nodeId: String, read: PlanRead, window: RectMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, ground: Color?) {
     val theme = LocalSpecTheme.current
     val density = LocalDensity.current
     BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
@@ -134,7 +135,7 @@ private fun PlanDrawing(nodeId: String, read: PlanRead, window: RectMm, selectio
         val targets = remember(read, fit, details) { pickTargetsOf(read.shapes, fit, details) }
         val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
         Box(
-            modifier = Modifier.width(widthDp).height(heightDp).pointerInput(targets, selection.ids) {
+            modifier = Modifier.width(widthDp).height(heightDp).then(if (ground != null) Modifier.background(ground) else Modifier).pointerInput(targets, selection.ids) {
                 detectTapGestures(onTap = { at -> selection.tap(pickTargets(targets, at.x, at.y, reachPx)) })
             },
         ) {
@@ -144,7 +145,7 @@ private fun PlanDrawing(nodeId: String, read: PlanRead, window: RectMm, selectio
             }
             read.shapes.forEach { shape ->
                 val box = boxOf(fit, shape)
-                if (shape.kind == PlanShapeKind.LABEL) PlanLabel(nodeId, shape, box, theme.ink)
+                if (shape.kind == PlanShapeKind.LABEL) PlanLabel(nodeId, shape, box, planColour(read.styles[shape.style]?.stroke) ?: theme.ink)
                 else PlanShapeTag(nodeId, shape, box)
             }
         }

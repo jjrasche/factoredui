@@ -19,11 +19,21 @@ data class VolumeBox(
 
 data class VolumeLegendEntry(val label: String, val style: String?, val isHatched: Boolean)
 
+data class VolumePoint(val xMm: Double, val yMm: Double, val zMm: Double)
+
+/** A straight line in millimetres between two points, drawn in [style]. */
+data class VolumeLine(val id: String, val from: VolumePoint, val to: VolumePoint, val style: String? = null)
+
+/** Words at a point in millimetres, drawn in the ink of [style]. */
+data class VolumeLabel(val id: String, val at: VolumePoint, val text: String, val style: String? = null)
+
 data class VolumeRead(
     val boxes: List<VolumeBox>,
     val styles: Map<String, PlanStyle>,
     val legend: List<VolumeLegendEntry>,
     val notices: List<String>,
+    val lines: List<VolumeLine> = emptyList(),
+    val labels: List<VolumeLabel> = emptyList(),
 )
 
 /** The horizontal and vertical span of a set of boxes, in millimetres, from their turned corners. */
@@ -52,7 +62,37 @@ private fun legendOf(resolved: Any?): List<VolumeLegendEntry> =
         VolumeLegendEntry(label, fields["style"] as? String, fields["hatched"] as? Boolean ?: false)
     }
 
-fun readVolume(boxes: Any?, styles: Any?, legend: Any?): VolumeRead {
+private fun pointOf(raw: Any?): VolumePoint? {
+    val numbers = (raw as? List<*>)?.map { (it as? Number)?.toDouble()?.takeIf { value -> value.isFinite() } }
+    if (numbers == null || numbers.size != 3 || numbers.any { it == null }) return null
+    return VolumePoint(numbers[0]!!, numbers[1]!!, numbers[2]!!)
+}
+
+private fun linesOf(resolved: Any?): Pair<List<VolumeLine>, List<String>> {
+    val entries = (resolved as? List<*>).orEmpty().mapIndexed { index, entry ->
+        val fields = entry as? Map<*, *>
+        val id = fields?.get("id") as? String ?: "line $index"
+        val from = pointOf(fields?.get("from"))
+        val to = pointOf(fields?.get("to"))
+        if (fields == null || from == null || to == null) null to "volume line '$id': from and to must each be [x_mm, y_mm, z_mm]; it is not drawn."
+        else VolumeLine(id, from, to, fields["style"] as? String) to null
+    }
+    return entries.mapNotNull { it.first } to entries.mapNotNull { it.second }
+}
+
+private fun labelsOf(resolved: Any?): Pair<List<VolumeLabel>, List<String>> {
+    val entries = (resolved as? List<*>).orEmpty().mapIndexed { index, entry ->
+        val fields = entry as? Map<*, *>
+        val id = fields?.get("id") as? String ?: "label $index"
+        val at = pointOf(fields?.get("at"))
+        val text = fields?.get("text") as? String
+        if (fields == null || at == null || text == null) null to "volume label '$id': at must be [x_mm, y_mm, z_mm] and text must be words; it is not drawn."
+        else VolumeLabel(id, at, text, fields["style"] as? String) to null
+    }
+    return entries.mapNotNull { it.first } to entries.mapNotNull { it.second }
+}
+
+fun readVolume(boxes: Any?, styles: Any?, legend: Any?, lines: Any? = null, labels: Any? = null): VolumeRead {
     val entries = (boxes as? List<*>).orEmpty().mapIndexed { index, entry ->
         (entry as? Map<*, *>)?.let { boxOf(index, it) } ?: (null to "volume box $index is not an object; it is not drawn.")
     }
@@ -60,7 +100,9 @@ fun readVolume(boxes: Any?, styles: Any?, legend: Any?): VolumeRead {
     val drawn = entries.mapNotNull { it.first }
     val unknownStyles = drawn.mapNotNull { it.style }.filter { it !in readStyles }.distinct()
         .map { "volume style '$it' is not in styles; its boxes are drawn plain." }
-    return VolumeRead(drawn, readStyles, legendOf(legend), entries.mapNotNull { it.second } + unknownStyles)
+    val (readLines, lineNotices) = linesOf(lines)
+    val (readLabels, labelNotices) = labelsOf(labels)
+    return VolumeRead(drawn, readStyles, legendOf(legend), entries.mapNotNull { it.second } + unknownStyles + lineNotices + labelNotices, readLines, readLabels)
 }
 
 /** The four ground corners of a box as east-north pairs, turned about its centre. */

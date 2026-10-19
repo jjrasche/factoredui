@@ -67,4 +67,22 @@ class VolumeBoxesTest {
         assertEquals(listOf("wall", "glass"), paintOnTop(listOf(glass, wall)) { it }.map { it.id })
         assertEquals(listOf("wall", "glass"), paintOnTop(listOf(wall, glass)) { it }.map { it.id })
     }
+
+    @Test
+    fun a_line_and_a_label_are_read_in_millimetres_and_one_without_a_point_is_dropped_and_named() {
+        val read = readVolume(
+            emptyList<Any>(), null, null,
+            lines = listOf(mapOf("id" to "seam", "from" to listOf(1, 2, 3), "to" to listOf(1, 2, 9), "style" to "seam"), mapOf("id" to "bad", "from" to listOf(1, 2))),
+            labels = listOf(mapOf("id" to "width", "at" to listOf(0, 0, 0), "text" to "2438 mm"), mapOf("id" to "lost", "at" to listOf(0, 0, 0))),
+        )
+        assertEquals(VolumeLine("seam", VolumePoint(1.0, 2.0, 3.0), VolumePoint(1.0, 2.0, 9.0), "seam"), read.lines.single())
+        assertEquals(VolumeLabel("width", VolumePoint(0.0, 0.0, 0.0), "2438 mm"), read.labels.single())
+        assertEquals(
+            listOf(
+                "volume line 'bad': from and to must each be [x_mm, y_mm, z_mm]; it is not drawn.",
+                "volume label 'lost': at must be [x_mm, y_mm, z_mm] and text must be words; it is not drawn.",
+            ),
+            read.notices,
+        )
+    }
 }

@@ -33,6 +33,8 @@ fun rankSystem(launcher: Path, systemFile: Path, systemId: String): String =
 
 fun describeSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "describe", systemFile.toAbsolutePath().toString())
 
+fun geometrySystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "geometry", systemFile.toAbsolutePath().toString())
+
 fun solveSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "solve", systemFile.toAbsolutePath().toString())
 
 /** The short commit the runtime's checkout is at, or "unknown" when it is not a checkout. */

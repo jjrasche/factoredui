@@ -100,7 +100,11 @@ private data class ProjectedFace(val corners: List<Offset>, val shade: Float)
 
 private data class ProjectedBox(val box: VolumeBox, val faces: List<ProjectedFace>, val left: Float, val top: Float, val right: Float, val bottom: Float)
 
-private class ProjectedScene(val ground: List<Offset>?, val boxes: List<ProjectedBox>, val north: Offset?)
+private class ProjectedLine(val from: Offset, val to: Offset, val style: String?)
+
+private class ProjectedLabel(val at: Offset, val text: String, val style: String?)
+
+private class ProjectedScene(val ground: List<Offset>?, val boxes: List<ProjectedBox>, val north: Offset?, val lines: List<ProjectedLine>, val labels: List<ProjectedLabel>)
 
 private fun projectBox(box: VolumeBox, eye: Vec3, project: (Vec3) -> Offset?): Pair<Float, ProjectedBox>? {
     val ground = footprintCorners(box)
@@ -130,7 +134,13 @@ private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, w
         span.east + marginX to span.north + marginY, span.west - marginX to span.north + marginY,
     ).map { project(worldOf(it.first, it.second, span.floor)) }
     val north = project(worldOf((span.west + span.east) / 2, span.north + marginY, span.floor))
-    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north)
+    val lines = read.lines.mapNotNull { line ->
+        val from = project(worldOf(line.from.xMm, line.from.yMm, line.from.zMm))
+        val to = project(worldOf(line.to.xMm, line.to.yMm, line.to.zMm))
+        if (from != null && to != null) ProjectedLine(from, to, line.style) else null
+    }
+    val labels = read.labels.mapNotNull { label -> project(worldOf(label.at.xMm, label.at.yMm, label.at.zMm))?.let { ProjectedLabel(it, label.text, label.style) } }
+    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north, lines, labels)
 }
 
 private fun pathOf(corners: List<Offset>): Path = Path().apply {
@@ -168,6 +178,23 @@ private fun DrawScope.drawProjectedBox(projected: ProjectedBox, style: PlanStyle
     }
 }
 
+/** A box as its edges only: each face is filled with the ground, so a nearer face hides the edges behind it, and the edges are stroked in the style's line. */
+private fun DrawScope.drawBlueprintBox(projected: ProjectedBox, style: PlanStyle, ground: Color, ink: Color) {
+    val stroke = planColour(style.stroke) ?: ink
+    val isDashed = projected.box.isEstimate || style.dash
+    val effect = if (isDashed) PathEffect.dashPathEffect(floatArrayOf(DASH_DP.dp.toPx(), DASH_DP.dp.toPx())) else null
+    projected.faces.forEach { face ->
+        val path = pathOf(face.corners)
+        drawPath(path, ground, style = Fill)
+        drawPath(path, stroke, style = Stroke(width = (style.weight ?: OUTLINE_DP).dp.toPx(), pathEffect = effect))
+    }
+}
+
+private fun DrawScope.drawProjectedLine(line: ProjectedLine, style: PlanStyle, ink: Color) {
+    val effect = if (style.dash) PathEffect.dashPathEffect(floatArrayOf(DASH_DP.dp.toPx(), DASH_DP.dp.toPx())) else null
+    drawLine(planColour(style.stroke) ?: ink, line.from, line.to, strokeWidth = (style.weight ?: OUTLINE_DP).dp.toPx(), pathEffect = effect)
+}
+
 private fun DrawScope.drawSelectedBox(projected: ProjectedBox, ink: Color) {
     projected.faces.forEach { face -> drawPath(pathOf(face.corners), ink, style = Stroke(width = SELECTED_OUTLINE_DP.dp.toPx())) }
 }
@@ -203,20 +230,22 @@ private fun pickProjectedBoxes(boxes: List<ProjectedBox>, at: Offset, reachPx: F
 
 @Composable
 internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
-    val read = remember(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"]) {
-        readVolume(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"])
+    val read = remember(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"], resolvedProps["lines"], resolvedProps["labels"]) {
+        readVolume(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"], resolvedProps["lines"], resolvedProps["labels"])
     }
     val details = remember(resolvedProps["details"]) { readSelectionDetails(resolvedProps["details"]) }
     val selection = rememberDrawingSelection(node, resolvedProps["selected"], context)
     val span = volumeSpan(read.boxes)
     val fill = resolvedProps["fill"] == true
     val bottomInsetDp = (resolvedProps["bottom_inset_dp"] as? Number)?.toFloat() ?: 0f
+    val blueprint = resolvedProps["mode"] == "blueprint"
+    val ground = planColour(resolvedProps["ground"] as? String)
     Column(modifier = (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).nodeTag(node.id)) {
         read.notices.forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, read, span, selection, details, if (fill) bottomInsetDp else null)
+            VolumeDrawing(node.id, read, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -224,7 +253,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?) {
     val theme = LocalSpecTheme.current
     val camera = remember(span) { Camera().also { frameCamera(it, span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -243,9 +272,19 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
             },
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                scene.ground?.let { drawPath(pathOf(it), GROUND_FILL, style = Fill) }
-                scene.boxes.forEach { drawProjectedBox(it, read.styles[it.box.style] ?: PlanStyle(), theme.ink) }
-                scene.boxes.filter { it.box.id in selection.ids }.forEach { drawSelectedBox(it, theme.ink) }
+                ground?.let { drawRect(it) }
+                if (!blueprint) scene.ground?.let { drawPath(pathOf(it), GROUND_FILL, style = Fill) }
+                scene.boxes.forEach {
+                    val style = read.styles[it.box.style] ?: PlanStyle()
+                    if (blueprint) drawBlueprintBox(it, style, ground ?: Color.Transparent, theme.ink) else drawProjectedBox(it, style, theme.ink)
+                }
+                scene.lines.forEach { drawProjectedLine(it, read.styles[it.style] ?: PlanStyle(), theme.ink) }
+                scene.boxes.filter { it.box.id in selection.ids }.forEach { drawSelectedBox(it, if (blueprint) Color.White else theme.ink) }
+            }
+            scene.labels.forEach { label ->
+                PlanPlaced(label.at.x, label.at.y, PlanLabelAlign.CENTER, null) {
+                    Text(text = label.text, style = VOLUME_TEXT, color = planColour(read.styles[label.style]?.stroke) ?: theme.ink)
+                }
             }
             scene.boxes.forEach { projected ->
                 val size = IntSize(max(1, (projected.right - projected.left).toInt()), max(1, (projected.bottom - projected.top).toInt()))

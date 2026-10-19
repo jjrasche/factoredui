@@ -52,7 +52,7 @@ private fun tablesNode(expansion: Expansion): JsonObject {
 }
 
 /** The page for one expansion: the plan or the solid view, a table of every object, a card per system saying what is given and what is not. */
-fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = null, overlaying: Overlaying? = null, ranked: Ranked? = null, describing: Describing? = null): JsonObject {
+fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = null, overlaying: Overlaying? = null, ranked: Ranked? = null, describing: Describing? = null, geometried: Geometried? = null): JsonObject {
     val order = systemOrder(file, expansion)
     val counts = countBySystem(expansion)
     val isDescribed = describing != null && describing.failure == null
@@ -63,6 +63,7 @@ fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = nu
         textNode("caption", extentCaption(expansion), variant = "caption", color = MUTED_INK),
         overlaying?.let(::overlayNote),
         viewsNode(file, expansion, overlaying?.overlay),
+        geometried?.let { blueprintNode(it, expansion) },
         tablesNode(expansion),
         solving?.let(::solvingNode),
         ranked?.let(::rankingNode),

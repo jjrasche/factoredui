@@ -22,6 +22,7 @@ data class ExpandedObject(
     val depthMm: Double?,
     val level: Int?,
     val fields: Map<String, Double?> = emptyMap(),
+    val elevationMm: Double? = null,
 )
 
 data class ExpandedInstance(
@@ -74,6 +75,7 @@ private fun objectOf(entry: JsonObject): ExpandedObject {
         depthMm = entry.number("depth_mm"),
         level = entry.number("level")?.toInt(),
         fields = fieldsOf(entry),
+        elevationMm = entry.number("elevation_mm"),
     )
 }
 

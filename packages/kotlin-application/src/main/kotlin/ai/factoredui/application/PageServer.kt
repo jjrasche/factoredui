@@ -88,13 +88,17 @@ private fun describeOrSayWhy(options: Options): Describing =
         Describing(systems, if (weighted) rankEach(options, systems) else emptyMap(), weighted)
     }.getOrElse { Describing(emptyList(), failure = it.message ?: it::class.simpleName) }
 
+private fun geometryOrSayWhy(options: Options): Geometried =
+    runCatching { Geometried(readGeometry(geometrySystem(options.runtime, options.system))) }
+        .getOrElse { Geometried(null, failure = it.message ?: it::class.simpleName) }
+
 private class BuiltSpec(val worldStamp: Pair<Long, Long>, val body: ByteArray)
 
 private fun stampOf(system: Path): Pair<Long, Long> = Files.getLastModifiedTime(system).toMillis() to Files.size(system)
 
 private fun buildSpecBody(options: Options): ByteArray {
     val file = readSystemFile(Files.readString(options.system))
-    return buildPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options), overlayOrSayWhy(options), rankOrSayWhy(options), describeOrSayWhy(options)).toString().toByteArray()
+    return buildPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options), overlayOrSayWhy(options), rankOrSayWhy(options), describeOrSayWhy(options), geometryOrSayWhy(options)).toString().toByteArray()
 }
 
 private fun serveSpec(exchange: HttpExchange, options: Options, built: AtomicReference<BuiltSpec?>) {
