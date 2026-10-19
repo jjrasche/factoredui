@@ -28,6 +28,9 @@ fun expandSystem(launcher: Path, systemFile: Path): String = runInRuntime(launch
 fun overlaySystem(launcher: Path, systemFile: Path, overlayId: String): String =
     runInRuntime(launcher, "overlay", systemFile.toAbsolutePath().toString(), "--overlay", overlayId)
 
+fun rankSystem(launcher: Path, systemFile: Path, systemId: String): String =
+    runInRuntime(launcher, "rank", systemFile.toAbsolutePath().toString(), "--system", systemId)
+
 fun solveSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "solve", systemFile.toAbsolutePath().toString())
 
 /** The short commit the runtime's checkout is at, or "unknown" when it is not a checkout. */

@@ -52,7 +52,7 @@ private fun tablesNode(expansion: Expansion): JsonObject {
 }
 
 /** The page for one expansion: the plan or the solid view, a table of every object, a card per system saying what is given and what is not. */
-fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = null, overlaying: Overlaying? = null): JsonObject {
+fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = null, overlaying: Overlaying? = null, ranked: Ranked? = null): JsonObject {
     val order = systemOrder(file, expansion)
     val counts = countBySystem(expansion)
     val cards = file.systems.map { systemCard(it, colourOfSystem(order, it.name), counts[it.name] ?: 0) }
@@ -63,6 +63,7 @@ fun buildPageSpec(file: SystemFile, expansion: Expansion, solving: Solving? = nu
         viewsNode(file, expansion, overlaying?.overlay),
         tablesNode(expansion),
         solving?.let(::solvingNode),
+        ranked?.let(::rankingNode),
         textNode("cards-title", "What each system gives, and what it does not", variant = "subheading", bold = true),
     ) + cards + listOfNotNull(suppliedNode(expansion.supplied))
     val page = specNode("page", "column", mapOf("padding" to PAGE_PADDING, "gap" to PAGE_GAP), children)

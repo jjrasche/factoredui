@@ -66,13 +66,19 @@ private fun overlayOrSayWhy(options: Options): Overlaying? {
         .getOrElse { Overlaying(null, failure = it.message ?: it::class.simpleName) }
 }
 
+private fun rankOrSayWhy(options: Options): Ranked? {
+    val chosen = options.rank ?: return null
+    return runCatching { Ranked(readRanking(rankSystem(options.runtime, options.system, chosen))) }
+        .getOrElse { Ranked(null, failure = it.message ?: it::class.simpleName) }
+}
+
 private class BuiltSpec(val worldStamp: Pair<Long, Long>, val body: ByteArray)
 
 private fun stampOf(system: Path): Pair<Long, Long> = Files.getLastModifiedTime(system).toMillis() to Files.size(system)
 
 private fun buildSpecBody(options: Options): ByteArray {
     val file = readSystemFile(Files.readString(options.system))
-    return buildPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options), overlayOrSayWhy(options)).toString().toByteArray()
+    return buildPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options), overlayOrSayWhy(options), rankOrSayWhy(options)).toString().toByteArray()
 }
 
 private fun serveSpec(exchange: HttpExchange, options: Options, built: AtomicReference<BuiltSpec?>) {
