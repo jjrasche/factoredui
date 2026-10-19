@@ -31,6 +31,8 @@ fun overlaySystem(launcher: Path, systemFile: Path, overlayId: String): String =
 fun rankSystem(launcher: Path, systemFile: Path, systemId: String): String =
     runInRuntime(launcher, "rank", systemFile.toAbsolutePath().toString(), "--system", systemId)
 
+fun describeSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "describe", systemFile.toAbsolutePath().toString())
+
 fun solveSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "solve", systemFile.toAbsolutePath().toString())
 
 /** The short commit the runtime's checkout is at, or "unknown" when it is not a checkout. */

@@ -72,13 +72,29 @@ private fun rankOrSayWhy(options: Options): Ranked? {
         .getOrElse { Ranked(null, failure = it.message ?: it::class.simpleName) }
 }
 
+private fun hasRankingWeights(options: Options): Boolean =
+    (kotlinx.serialization.json.Json.parseToJsonElement(Files.readString(options.system)) as? kotlinx.serialization.json.JsonObject)?.get("ranking") is kotlinx.serialization.json.JsonObject
+
+private fun rankEach(options: Options, systems: List<DescribedSystem>): Map<String, Ranked> =
+    systems.filter { it.alternatives.isNotEmpty() }.associate { system ->
+        system.id to runCatching { Ranked(readRanking(rankSystem(options.runtime, options.system, system.id))) }
+            .getOrElse { Ranked(null, failure = it.message ?: it::class.simpleName) }
+    }
+
+private fun describeOrSayWhy(options: Options): Describing =
+    runCatching {
+        val systems = readDescribed(describeSystem(options.runtime, options.system))
+        val weighted = hasRankingWeights(options)
+        Describing(systems, if (weighted) rankEach(options, systems) else emptyMap(), weighted)
+    }.getOrElse { Describing(emptyList(), failure = it.message ?: it::class.simpleName) }
+
 private class BuiltSpec(val worldStamp: Pair<Long, Long>, val body: ByteArray)
 
 private fun stampOf(system: Path): Pair<Long, Long> = Files.getLastModifiedTime(system).toMillis() to Files.size(system)
 
 private fun buildSpecBody(options: Options): ByteArray {
     val file = readSystemFile(Files.readString(options.system))
-    return buildPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options), overlayOrSayWhy(options), rankOrSayWhy(options)).toString().toByteArray()
+    return buildPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options), overlayOrSayWhy(options), rankOrSayWhy(options), describeOrSayWhy(options)).toString().toByteArray()
 }
 
 private fun serveSpec(exchange: HttpExchange, options: Options, built: AtomicReference<BuiltSpec?>) {

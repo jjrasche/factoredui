@@ -117,8 +117,7 @@ private fun figureLines(prefix: String, ranking: Ranking, figure: RankedFigure):
 private fun missingReason(candidate: RankedCandidate): String =
     if (candidate.missing.isEmpty()) "another candidate has a missing figure" else "its ${candidate.missing.joinToString(", ") { humanize(it) }} figure is missing"
 
-private fun candidateCard(ranking: Ranking, candidate: RankedCandidate): JsonObject {
-    val prefix = "rank.${ranking.system}.${candidate.solution}"
+internal fun candidateCard(ranking: Ranking, candidate: RankedCandidate, prefix: String = "rank.${ranking.system}.${candidate.solution}"): JsonObject {
     val chips = listOfNotNull(
         if (candidate.isChosen) specNode("$prefix.chosen", "chip", mapOf("label" to "chosen")) else null,
         if (!candidate.isSettled) specNode("$prefix.unsettled", "chip", mapOf("label" to "rank not settled")) else null,
