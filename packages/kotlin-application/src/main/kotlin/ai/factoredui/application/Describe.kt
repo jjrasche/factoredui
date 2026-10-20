@@ -92,29 +92,36 @@ private fun settingNode(prefix: String, setting: DescribedSetting): JsonObject {
 private fun settingsTakenBy(prefix: String, alternative: DescribedAlternative): List<JsonObject> =
     alternative.settings.map { setting -> textNode("$prefix.${setting.id}", "${humanize(setting.id)}${setting.unit?.let { " ($it)" }.orEmpty()}", variant = "caption", color = MUTED_INK) }
 
-private fun rankingOf(ranked: Ranked?, solution: String): RankedCandidate? = ranked?.ranking?.candidates?.firstOrNull { it.solution == solution }
+private const val NO_PRIORITIES = "No priorities set: the config gives no ranking weights, so the solutions are not ranked."
 
-private fun rankNode(prefix: String, system: DescribedSystem, alternative: DescribedAlternative, describing: Describing): JsonObject {
+/** The solutions of a system with alternatives, best first, each with its score bounds, whether its place is settled, its figures with their sources and gaps, and the chosen one marked. */
+private fun rankedSolutions(system: DescribedSystem, describing: Describing): List<JsonObject> {
+    if (system.alternatives.isEmpty()) return emptyList()
+    val prefix = "describe.${system.id}.ranked"
     val ranked = describing.rankings[system.id]
-    val candidate = rankingOf(ranked, alternative.id)
+    val ranking = ranked?.ranking
+    val heading = textNode("$prefix.title", "Solutions, ranked", variant = "subheading", bold = true)
     return when {
-        candidate != null -> candidateCard(ranked!!.ranking!!, candidate, "$prefix.rank")
-        ranked?.failure != null -> textNode("$prefix.rank", "The ranking could not be run: ${ranked.failure}", variant = "caption", color = MUTED_INK)
-        !describing.hasRankingWeights -> textNode("$prefix.rank", "The config gives no ranking weights, so nothing ranks this.", variant = "caption", color = MUTED_INK)
-        else -> textNode("$prefix.rank", "The ranking does not list it.", variant = "caption", color = MUTED_INK)
+        ranking != null -> listOf(
+            heading,
+            textNode("$prefix.weights", "Weights: " + ranking.weights.entries.joinToString(", ") { (name, weight) -> "${humanize(name)} ${formatFigure(weight)}" } + ".", variant = "caption", color = MUTED_INK),
+        ) + ranking.candidates.map { candidateCard(ranking, it, "$prefix.${it.solution}") }
+        ranked?.failure != null -> listOf(heading, textNode("$prefix.failure", "The ranking could not be run: ${ranked.failure}", variant = "caption", color = MUTED_INK))
+        !describing.hasRankingWeights -> listOf(heading, textNode("$prefix.none", NO_PRIORITIES, variant = "caption", color = MUTED_INK))
+        else -> emptyList()
     }
 }
 
 private fun bindingKey(id: String): String = id.replace(Regex("[^A-Za-z0-9_]"), "_")
 
-private fun alternativeNode(system: DescribedSystem, alternative: DescribedAlternative, describing: Describing): JsonObject {
+private fun alternativeNode(system: DescribedSystem, alternative: DescribedAlternative): JsonObject {
     val prefix = "describe.${system.id}.alt.${alternative.id}"
     val path = "{ui.alt.${bindingKey(system.id)}.${bindingKey(alternative.id)}}"
     val switch = specNode("$prefix.switch", "toggle", mapOf("label" to alternative.title, "value" to path))
     val detail = specNode(
         "$prefix.detail", "column", mapOf("gap" to 6),
         listOfNotNull(alternative.settings.takeIf { it.isNotEmpty() }?.let { textNode("$prefix.needs", "It would ask for these settings:", variant = "caption", color = MUTED_INK) }) +
-            settingsTakenBy("$prefix.need", alternative) + rankNode(prefix, system, alternative, describing),
+            settingsTakenBy("$prefix.need", alternative),
         visible = path,
     )
     return specNode("$prefix.item", "column", mapOf("gap" to 4), listOf(switch, detail))
@@ -129,17 +136,17 @@ private fun alsoLine(system: DescribedSystem): String? =
 private fun systemCard(system: DescribedSystem, describing: Describing): JsonObject {
     val prefix = "describe.${system.id}"
     val heading = specNode(
-        "$prefix.heading", "row", mapOf("gap" to 8, "align" to "center"),
-        listOf(textNode("$prefix.name", humanize(system.id), variant = "subheading", bold = true, flex = 1), specNode("$prefix.solution", "chip", mapOf("label" to system.solution))),
+        "$prefix.heading", "column", mapOf("gap" to 4),
+        listOf(textNode("$prefix.name", humanize(system.id), variant = "subheading", bold = true), specNode("$prefix.solution", "chip", mapOf("label" to system.solution))),
     )
     val body = listOfNotNull(
         heading,
         textNode("$prefix.title", system.title, variant = "caption", color = MUTED_INK),
         system.parts.takeIf { it.isNotEmpty() }?.let { textNode("$prefix.parts", "Made of ${it.joinToString(", ") { part -> humanize(part) }}.", variant = "caption", color = MUTED_INK) },
-    ) + system.settings.map { settingNode(prefix, it) } +
+    ) + system.settings.map { settingNode(prefix, it) } + rankedSolutions(system, describing) +
         listOfNotNull(
-            system.alternatives.takeIf { it.isNotEmpty() }?.let { textNode("$prefix.alternatives", "Alternatives: tap one to see what it asks for and how it ranks.", variant = "caption", color = MUTED_INK) },
-        ) + system.alternatives.map { alternativeNode(system, it, describing) } +
+            system.alternatives.takeIf { it.isNotEmpty() }?.let { textNode("$prefix.alternatives", "Alternatives: tap one to see what it asks for.", variant = "caption", color = MUTED_INK) },
+        ) + system.alternatives.map { alternativeNode(system, it) } +
         listOfNotNull(alsoLine(system)?.let { textNode("$prefix.also", it, variant = "caption", color = MUTED_INK) })
     return specNode("$prefix.card", "card", mapOf("padding" to 12), listOf(specNode("$prefix.body", "column", mapOf("gap" to 8), body)))
 }

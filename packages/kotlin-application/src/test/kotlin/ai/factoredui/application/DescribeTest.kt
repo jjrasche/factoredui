@@ -53,21 +53,31 @@ class DescribeTest {
     }
 
     @Test
-    fun an_alternative_opens_on_a_tap_and_shows_what_it_asks_for_and_how_it_ranks() {
+    fun an_alternative_opens_on_a_tap_and_shows_what_it_asks_for() {
         val root = page(described(true))["root"]!!.jsonObject
         val switch = root.byId("describe.pier.alt.post-b.switch")["props"]!!.jsonObject["value"]!!.jsonPrimitive.content
         val detail = root.byId("describe.pier.alt.post-b.detail")
         assertEquals(switch, detail["visible"]!!.jsonPrimitive.content)
         assertTrue(Regex("""\{[A-Za-z0-9_.]+}""").matches(switch))
         assertTrue("life (years)" in detail.texts())
-        assertTrue("#1 Post post-b" in detail.texts())
-        assertTrue("– no figure" == detail.byId("describe.pier.alt.post-b.rank.life.value")["props"]!!.jsonObject["missing"]!!.jsonPrimitive.content)
     }
 
     @Test
-    fun without_ranking_weights_the_alternative_says_nothing_ranks_it() {
-        val detail = page(described(false))["root"]!!.jsonObject.byId("describe.pier.alt.post-b.detail")
-        assertTrue("The config gives no ranking weights, so nothing ranks this." in detail.texts())
+    fun a_system_with_weights_lists_its_solutions_ranked_with_the_chosen_one_marked_and_gaps_shown() {
+        val card = page(described(true))["root"]!!.jsonObject.byId("describe.pier.card")
+        val order = card.texts().filter { it.startsWith("#") }
+        assertEquals(listOf("#1 Post post-b", "#2 Post post-a", "#3 Post post-c"), order)
+        assertEquals("chosen", card.byId("describe.pier.ranked.post-a.chosen")["props"]!!.jsonObject["label"]!!.jsonPrimitive.content)
+        assertEquals("rank not settled", card.byId("describe.pier.ranked.post-a.unsettled")["props"]!!.jsonObject["label"]!!.jsonPrimitive.content)
+        assertEquals("– no figure", card.byId("describe.pier.ranked.post-b.life.value")["props"]!!.jsonObject["missing"]!!.jsonPrimitive.content)
+        assertTrue(card.texts().any { it.contains("rank.fixture") })
+    }
+
+    @Test
+    fun without_ranking_weights_the_system_says_no_priorities_are_set() {
+        val card = page(described(false))["root"]!!.jsonObject.byId("describe.pier.card")
+        assertTrue(card.texts().any { it.startsWith("No priorities set") })
+        assertTrue(card.texts().none { it.startsWith("#") })
     }
 
     @Test
