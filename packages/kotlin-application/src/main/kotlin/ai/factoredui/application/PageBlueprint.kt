@@ -177,7 +177,27 @@ internal fun blueprintPlanShapes(geometry: Geometry, expansion: Expansion): List
     }
     val holes = geometry.cuts.map { rectShape("hole:${it.host}|${it.opening}", "hole", it.region.minMm[0], it.region.minMm[1], it.region.maxMm[0] - it.region.minMm[0], it.region.maxMm[1] - it.region.minMm[1]) }
     val unknown = unknownObjects(geometry, expansion).mapNotNull(::planUnknown)
-    return geometry.pieces.map { rectShape(it.id, "piece", it.xMm, it.yMm, it.dxMm, it.dyMm) } + seams + holes + unknown + extent?.let(::planDimension).orEmpty()
+    return geometry.pieces.map { rectShape(it.id, "piece", it.xMm, it.yMm, it.dxMm, it.dyMm) } + seams + holes + unknown + extent?.let { planChains(geometry, it) }.orEmpty() + extent?.let(::planDimension).orEmpty()
+}
+
+private const val WALL_BAND_MM = 200.0
+
+/** A chain along each side of the plan: the panels of the walls on that side and the openings cut in them, each edge to the next. */
+private fun planChains(geometry: Geometry, extent: Extent): List<Map<String, Any?>> {
+    fun alongX(onSide: (GeoPiece) -> Boolean): List<Double> {
+        val band = geometry.pieces.filter(onSide)
+        val ids = band.map { it.id }.toSet()
+        return band.flatMap { listOf(it.xMm, it.xMm + it.dxMm) } + geometry.cuts.filter { it.host in ids }.flatMap { listOf(it.region.minMm[0], it.region.maxMm[0]) }
+    }
+    fun alongY(onSide: (GeoPiece) -> Boolean): List<Double> {
+        val band = geometry.pieces.filter(onSide)
+        val ids = band.map { it.id }.toSet()
+        return band.flatMap { listOf(it.yMm, it.yMm + it.dyMm) } + geometry.cuts.filter { it.host in ids }.flatMap { listOf(it.region.minMm[1], it.region.maxMm[1]) }
+    }
+    return chainShapes("chain:south", alongX { it.yMm - extent.south <= WALL_BAND_MM && it.dyMm <= WALL_BAND_MM }, ChainSide.BELOW, extent.south - CHAIN_OFFSET_MM) +
+        chainShapes("chain:north", alongX { extent.north - (it.yMm + it.dyMm) <= WALL_BAND_MM && it.dyMm <= WALL_BAND_MM }, ChainSide.ABOVE, extent.north + CHAIN_OFFSET_MM) +
+        chainShapes("chain:west", alongY { it.xMm - extent.west <= WALL_BAND_MM && it.dxMm <= WALL_BAND_MM }, ChainSide.LEFT, extent.west - CHAIN_OFFSET_MM) +
+        chainShapes("chain:east", alongY { extent.east - (it.xMm + it.dxMm) <= WALL_BAND_MM && it.dxMm <= WALL_BAND_MM }, ChainSide.RIGHT, extent.east + CHAIN_OFFSET_MM)
 }
 
 internal fun blueprintPlanNode(geometry: Geometry, expansion: Expansion): JsonObject {

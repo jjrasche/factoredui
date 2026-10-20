@@ -3,6 +3,7 @@ package ai.factoredui.application
 import kotlinx.serialization.json.JsonObject
 
 private const val CUT_STYLE = "cut"
+private const val OVERALL_OFFSET_MM = 900.0
 private const val MIN_LABELLED_MM = 1000.0
 
 private class View(val id: String, val title: String, val range: (Extent, GeoPiece) -> Pair<Double, Double>, val nearDistance: (Extent, GeoPiece) -> Double, val span: (Extent) -> Double)
@@ -15,8 +16,8 @@ private val VIEWS = listOf(
 )
 
 internal fun flatDimensions(horizontalLow: Double, horizontalHigh: Double, verticalLow: Double, verticalHigh: Double): List<Map<String, Any?>> {
-    val belowY = verticalLow - DIMENSION_OFFSET_MM
-    val leftX = horizontalLow - DIMENSION_OFFSET_MM
+    val belowY = verticalLow - OVERALL_OFFSET_MM
+    val leftX = horizontalLow - OVERALL_OFFSET_MM
     fun label(id: String, x: Double, y: Double, text: String, dxDp: Int, dyDp: Int) =
         mapOf("id" to id, "kind" to "label", "style" to "dimension", "x_mm" to x, "y_mm" to y, "text" to text, "align" to "center", "dx_dp" to dxDp, "dy_dp" to dyDp)
     return listOf(
@@ -60,7 +61,11 @@ private fun elevationShapes(view: View, extent: Extent, geometry: Geometry): Lis
         rectShape("hole:${cut.host}|${cut.opening}", "hole", low, cut.region.minMm[2], high - low, cut.region.maxMm[2] - cut.region.minMm[2])
     }
     val (low, high) = view.range(extent, GeoPiece("extent", "", extent.west, extent.south, extent.floor, extent.east - extent.west, extent.north - extent.south, extent.ceiling - extent.floor))
-    return bodies + holes + labels + groundLine(low, high) + flatDimensions(low, high, extent.floor, extent.ceiling)
+    val xBreaks = (bodies + holes).flatMap { shape -> (shape["x_mm"] as Double).let { listOf(it, it + (shape["width_mm"] as Double)) } }
+    val zBreaks = listOf(extent.floor, extent.ceiling) + listOfNotNull(0.0.takeIf { extent.floor < 0.0 && extent.ceiling > 0.0 }) + shown.flatMap { listOf(it.zMm, it.zMm + it.dzMm) } +
+        geometry.cuts.filter { it.host in ids }.flatMap { listOf(it.region.minMm[2], it.region.maxMm[2]) }
+    val chains = chainShapes("chain:x", xBreaks, ChainSide.BELOW, extent.floor - CHAIN_OFFSET_MM) + chainShapes("chain:z", zBreaks, ChainSide.LEFT, low - CHAIN_OFFSET_MM)
+    return bodies + holes + labels + chains + groundLine(low, high) + flatDimensions(low, high, extent.floor, extent.ceiling)
 }
 
 internal class FlatDrawing(val id: String, val title: String, val shapes: List<Map<String, Any?>>)
@@ -74,6 +79,17 @@ internal fun elevationDrawings(geometry: Geometry): List<FlatDrawing> {
 internal fun blueprintElevationNodes(geometry: Geometry): List<JsonObject> =
     elevationDrawings(geometry).map { flatNode("blueprint-${it.id}", it.title, it.shapes, geometry) }
 
+/** The total thickness of a piece the section passes through, until the domain gives the layers it is built of. */
+private fun thicknessLabel(piece: GeoPiece): Map<String, Any?> {
+    val isUpright = piece.dxMm <= piece.dzMm
+    val thickness = if (isUpright) piece.dxMm else piece.dzMm
+    val at = if (isUpright) (piece.xMm + piece.dxMm) to (piece.zMm + piece.dzMm / 2) else (piece.xMm + piece.dxMm / 2) to piece.zMm
+    return mapOf(
+        "id" to "size:thickness:${piece.id}", "kind" to "label", "style" to "dimension", "x_mm" to at.first, "y_mm" to at.second,
+        "text" to "thickness ${dimensionText(thickness)}", "align" to if (isUpright) "start" else "center", "dx_dp" to if (isUpright) 6 else 0, "dy_dp" to if (isUpright) 0 else 12,
+    )
+}
+
 private fun cutsPlane(piece: GeoPiece, southMm: Double) = piece.yMm <= southMm && southMm <= piece.yMm + piece.dyMm
 
 /** The building cut by a vertical plane through the middle of its depth, looking north: what the plane passes through is drawn heavy. */
@@ -85,7 +101,10 @@ internal fun sectionDrawing(geometry: Geometry): FlatDrawing? {
     val holes = geometry.cuts.filter { it.region.minMm[1] <= planeMm && planeMm <= it.region.maxMm[1] }.map {
         rectShape("hole:${it.host}|${it.opening}", "hole", it.region.minMm[0], it.region.minMm[2], it.region.maxMm[0] - it.region.minMm[0], it.region.maxMm[2] - it.region.minMm[2])
     }
-    val shapes = bodies + holes + groundLine(extent.west, extent.east) + flatDimensions(extent.west, extent.east, extent.floor, extent.ceiling)
+    val xBreaks = passed.flatMap { listOf(it.xMm, it.xMm + it.dxMm) }
+    val zBreaks = listOf(extent.floor, extent.ceiling) + passed.flatMap { listOf(it.zMm, it.zMm + it.dzMm) }
+    val chains = chainShapes("chain:x", xBreaks, ChainSide.BELOW, extent.floor - CHAIN_OFFSET_MM) + chainShapes("chain:z", zBreaks, ChainSide.LEFT, extent.west - CHAIN_OFFSET_MM)
+    val shapes = bodies + holes + passed.map(::thicknessLabel) + chains + groundLine(extent.west, extent.east) + flatDimensions(extent.west, extent.east, extent.floor, extent.ceiling)
     return FlatDrawing("section", "Section through the middle of the depth (${dimensionText(planeMm)} from the south edge), looking north", shapes)
 }
 
