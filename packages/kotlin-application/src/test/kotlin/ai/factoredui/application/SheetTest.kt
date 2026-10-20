@@ -1,0 +1,74 @@
+package ai.factoredui.application
+
+import kotlin.math.abs
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+private fun recorded(name: String) = checkNotNull(SheetTest::class.java.getResource("/$name")).readText()
+
+private val GEOMETRY = readGeometry(recorded("live-geometry.json"))
+
+private val EXPANSION = readExpansion(recorded("live-expansion.json"))
+
+private val META = SheetMeta("A house", "2026-10-20", "abc1234", "we deadbee", 6)
+
+private val NOTES = listOf(NoteGroup("NOT MEASURED BY THE ENGINE", listOf("roof: height_mm is unknown (size-unknown)")), NoteGroup("ASSUMED SETTINGS", listOf("floor.thickness_mm = 114 mm: assumed: a 4-1/2 in SIP panel")))
+
+private fun planSheet() = sheetOf("Plan", "A-1 of 6", blueprintPlanShapes(GEOMETRY, EXPANSION), NOTES, META)
+
+
+class SheetTest {
+    @Test
+    fun a_wall_line_is_its_length_over_the_scale_on_paper() {
+        val shapes = listOf(mapOf("kind" to "line", "style" to "piece", "x_mm" to 0, "y_mm" to 0, "x2_mm" to 2400, "y2_mm" to 0))
+        val (scale, marks) = fitDrawing(shapes)
+        val line = marks.filterIsInstance<Segment>().single()
+        assertEquals(2400.0 / scale, abs(line.x2 - line.x1), 1e-9)
+        assertEquals(12, scale)
+    }
+
+    @Test
+    fun the_scale_is_the_largest_standard_one_at_which_the_house_fits_and_is_stated() {
+        val (scale, marks) = fitDrawing(blueprintPlanShapes(GEOMETRY, EXPANSION))
+        assertTrue(scale in listOf(8, 12, 16, 24, 32, 48, 64, 96), "scale $scale")
+        val bounds = boundsOfAll(marks)!!
+        assertTrue(bounds.width < SHEET_WIDTH_MM && bounds.height < SHEET_HEIGHT_MM, "bounds ${bounds.width} x ${bounds.height}")
+        assertTrue(sheetSvg(sheetOf("Plan", "A-1 of 6", blueprintPlanShapes(GEOMETRY, EXPANSION), NOTES, META)).contains(scaleName(scale).replace("\"", "&quot;")), scaleName(scale))
+    }
+
+    @Test
+    fun the_title_block_gives_project_sheet_date_scale_config_commit_and_engine_pin() {
+        val svg = sheetSvg(planSheet())
+        listOf("A house", "Plan", "A-1 of 6", "2026-10-20", "abc1234", "we deadbee").forEach { assertTrue(svg.contains(">$it<"), it) }
+    }
+
+    @Test
+    fun the_notes_block_lists_what_was_not_measured_and_what_was_assumed_with_its_reason() {
+        val svg = sheetSvg(planSheet())
+        assertTrue(svg.contains("roof: height_mm is unknown (size-unknown)"))
+        assertTrue(svg.contains("floor.thickness_mm = 114 mm: assumed: a 4-1/2 in SIP panel"))
+    }
+
+    @Test
+    fun the_dimension_strings_are_in_millimetres_and_feet_and_inches() {
+        assertTrue(sheetSvg(planSheet()).contains("2438 mm · 8'-0&quot;") || sheetSvg(planSheet()).contains("2438 mm · 8'-0\""))
+    }
+
+    @Test
+    fun every_sheet_of_the_house_is_made() {
+        val drawings = listOf(blueprintPlanShapes(GEOMETRY, EXPANSION)) + elevationDrawings(GEOMETRY).map { it.shapes } + listOfNotNull(sectionDrawing(GEOMETRY)?.shapes)
+        assertEquals(6, drawings.size)
+        drawings.forEach { shapes -> assertTrue(sheetSvg(sheetOf("Sheet", "A-n", shapes, NOTES, META)).startsWith("<svg")) }
+    }
+
+    @Test
+    fun the_pdf_has_a_cross_reference_table_at_the_offset_it_names() {
+        val bytes = sheetPdf(planSheet())
+        val text = String(bytes, Charsets.ISO_8859_1)
+        assertTrue(text.startsWith("%PDF-1.4"))
+        val offset = Regex("startxref\\n(\\d+)").find(text)!!.groupValues[1].toInt()
+        assertEquals("xref", text.substring(offset, offset + 4))
+        assertTrue(text.contains("(A house) Tj"))
+    }
+}

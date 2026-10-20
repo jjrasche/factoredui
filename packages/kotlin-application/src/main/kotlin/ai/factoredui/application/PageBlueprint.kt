@@ -169,7 +169,7 @@ private fun planUnknown(item: ExpandedObject): Map<String, Any?>? =
     else mapOf("id" to "unknown:${item.id}", "kind" to "marker", "style" to "unknown", "x_mm" to item.xMm, "y_mm" to item.yMm)
 
 /** The footprints of the pieces seen from above, with the seams, the holes and the dimensions of the whole. */
-internal fun blueprintPlanNode(geometry: Geometry, expansion: Expansion): JsonObject {
+internal fun blueprintPlanShapes(geometry: Geometry, expansion: Expansion): List<Map<String, Any?>> {
     val extent = extentOf(geometry.pieces)
     val seams = seamRegions(geometry).map { contact ->
         val (low, high) = contact.region.minMm to contact.region.maxMm
@@ -177,7 +177,11 @@ internal fun blueprintPlanNode(geometry: Geometry, expansion: Expansion): JsonOb
     }
     val holes = geometry.cuts.map { rectShape("hole:${it.host}|${it.opening}", "hole", it.region.minMm[0], it.region.minMm[1], it.region.maxMm[0] - it.region.minMm[0], it.region.maxMm[1] - it.region.minMm[1]) }
     val unknown = unknownObjects(geometry, expansion).mapNotNull(::planUnknown)
-    val shapes = geometry.pieces.map { rectShape(it.id, "piece", it.xMm, it.yMm, it.dxMm, it.dyMm) } + seams + holes + unknown + extent?.let(::planDimension).orEmpty()
+    return geometry.pieces.map { rectShape(it.id, "piece", it.xMm, it.yMm, it.dxMm, it.dyMm) } + seams + holes + unknown + extent?.let(::planDimension).orEmpty()
+}
+
+internal fun blueprintPlanNode(geometry: Geometry, expansion: Expansion): JsonObject {
+    val shapes = blueprintPlanShapes(geometry, expansion)
     return specNode(
         "blueprint-plan", "plan",
         mapOf(

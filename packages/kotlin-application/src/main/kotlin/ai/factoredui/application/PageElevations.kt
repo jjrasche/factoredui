@@ -63,16 +63,21 @@ private fun elevationShapes(view: View, extent: Extent, geometry: Geometry): Lis
     return bodies + holes + labels + groundLine(low, high) + flatDimensions(low, high, extent.floor, extent.ceiling)
 }
 
+internal class FlatDrawing(val id: String, val title: String, val shapes: List<Map<String, Any?>>)
+
 /** One elevation per side of the building: the pieces nearest the viewer, the holes cut in them, and the dimensions of the whole. */
-internal fun blueprintElevationNodes(geometry: Geometry): List<JsonObject> {
+internal fun elevationDrawings(geometry: Geometry): List<FlatDrawing> {
     val extent = extentOf(geometry.pieces) ?: return emptyList()
-    return VIEWS.map { view -> flatNode("blueprint-${view.id}", view.title, elevationShapes(view, extent, geometry), geometry) }
+    return VIEWS.map { view -> FlatDrawing(view.id, view.title, elevationShapes(view, extent, geometry)) }
 }
+
+internal fun blueprintElevationNodes(geometry: Geometry): List<JsonObject> =
+    elevationDrawings(geometry).map { flatNode("blueprint-${it.id}", it.title, it.shapes, geometry) }
 
 private fun cutsPlane(piece: GeoPiece, southMm: Double) = piece.yMm <= southMm && southMm <= piece.yMm + piece.dyMm
 
 /** The building cut by a vertical plane through the middle of its depth, looking north: what the plane passes through is drawn heavy. */
-internal fun blueprintSectionNode(geometry: Geometry): JsonObject? {
+internal fun sectionDrawing(geometry: Geometry): FlatDrawing? {
     val extent = extentOf(geometry.pieces) ?: return null
     val planeMm = (extent.south + extent.north) / 2
     val passed = geometry.pieces.filter { cutsPlane(it, planeMm) }
@@ -81,8 +86,10 @@ internal fun blueprintSectionNode(geometry: Geometry): JsonObject? {
         rectShape("hole:${it.host}|${it.opening}", "hole", it.region.minMm[0], it.region.minMm[2], it.region.maxMm[0] - it.region.minMm[0], it.region.maxMm[2] - it.region.minMm[2])
     }
     val shapes = bodies + holes + groundLine(extent.west, extent.east) + flatDimensions(extent.west, extent.east, extent.floor, extent.ceiling)
-    return flatNode("blueprint-section", "Section through the middle of the depth (${dimensionText(planeMm)} from the south edge), looking north", shapes, geometry)
+    return FlatDrawing("section", "Section through the middle of the depth (${dimensionText(planeMm)} from the south edge), looking north", shapes)
 }
+
+internal fun blueprintSectionNode(geometry: Geometry): JsonObject? = sectionDrawing(geometry)?.let { flatNode("blueprint-${it.id}", it.title, it.shapes, geometry) }
 
 private fun planView(geometry: Geometry, expansion: Expansion): JsonObject =
     specNode("blueprint-plan-view", "column", mapOf("gap" to 4), listOf(textNode("blueprint-plan-title", "Plan", variant = "caption", color = MUTED_INK), blueprintPlanNode(geometry, expansion)))
