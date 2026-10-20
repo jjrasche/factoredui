@@ -6,18 +6,21 @@ import java.util.concurrent.TimeUnit
 class RuntimeFailedException(message: String) : RuntimeException(message)
 
 private const val RUNTIME_TIMEOUT_SECONDS = 60L
+private const val SAMPLE_TIMEOUT_SECONDS = 600L
 
 private fun runtimeRoot(launcher: Path): Path = launcher.toAbsolutePath().parent.parent
 
-internal fun runInRuntime(launcher: Path, vararg arguments: String): String {
+internal fun runInRuntime(launcher: Path, vararg arguments: String): String = runInRuntimeWithin(launcher, RUNTIME_TIMEOUT_SECONDS, *arguments)
+
+private fun runInRuntimeWithin(launcher: Path, timeoutSeconds: Long, vararg arguments: String): String {
     val process = ProcessBuilder(listOf("sh", launcher.toAbsolutePath().toString()) + arguments)
         .directory(runtimeRoot(launcher).toFile())
         .redirectErrorStream(false)
         .start()
     val answer = process.inputStream.bufferedReader().readText()
-    if (!process.waitFor(RUNTIME_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+    if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
         process.destroyForcibly()
-        throw RuntimeFailedException("the runtime did not answer within $RUNTIME_TIMEOUT_SECONDS seconds")
+        throw RuntimeFailedException("the runtime did not answer within $timeoutSeconds seconds")
     }
     return answer.ifBlank { throw RuntimeFailedException("the runtime answered nothing: " + process.errorStream.bufferedReader().readText().trim()) }
 }
@@ -34,6 +37,9 @@ fun rankSystem(launcher: Path, systemFile: Path, systemId: String): String =
 fun describeSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "describe", systemFile.toAbsolutePath().toString())
 
 fun geometrySystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "geometry", systemFile.toAbsolutePath().toString())
+
+fun sampleSystem(launcher: Path, systemFile: Path, arguments: List<String>): String =
+    runInRuntimeWithin(launcher, SAMPLE_TIMEOUT_SECONDS, *(listOf("sample", systemFile.toAbsolutePath().toString()) + arguments).toTypedArray())
 
 fun solveSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "solve", systemFile.toAbsolutePath().toString())
 

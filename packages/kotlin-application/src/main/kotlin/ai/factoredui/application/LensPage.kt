@@ -65,6 +65,15 @@ private fun systemButtons(drawn: List<String>): JsonObject {
     return specNode("systems", "column", mapOf("gap" to 4, "padding" to 8), listOf(textNode("systems.hint", "Tap a system to see what it is set to, or a piece in the drawing.", variant = "caption", color = MUTED)) + rows)
 }
 
+private const val ODDS_VIEW = "odds"
+private const val BOARD_VIEW = "board"
+
+private fun views(boarded: Boarded?, sampled: Sampled?): List<String> = listOfNotNull(if (sampled != null) ODDS_VIEW else null, if (boarded != null) BOARD_VIEW else null)
+
+private fun viewPanels(boarded: Boarded?, sampled: Sampled?): List<JsonObject> = listOfNotNull(
+    sampled?.let { withVisible(inDark(oddsNode(it)), systemPath(ODDS_VIEW)) }, boarded?.let { withVisible(inDark(boardNode(it)), systemPath(BOARD_VIEW)) },
+)
+
 private fun withVisible(node: JsonObject, path: String): JsonObject = JsonObject(node + ("visible" to JsonPrimitive("{$path}")))
 
 private fun selectedPanels(describing: Describing?, file: SystemFile, drawn: List<String>): List<JsonObject> {
@@ -93,6 +102,8 @@ fun buildLensPageSpec(
     ranked: Ranked? = null,
     describing: Describing? = null,
     geometried: Geometried? = null,
+    boarded: Boarded? = null,
+    sampled: Sampled? = null,
 ): JsonObject {
     val geometry = geometried?.geometry
     val shaded = volumeNode(file, expansion, overlaying?.overlay, geometry)?.let { fullWorld(it, mapOf("ground" to WORLD_GROUND, "lighting" to "sun")) }
@@ -104,9 +115,9 @@ fun buildLensPageSpec(
     val drawings = geometry?.let { listOf(withVisible(inDark(blueprintDrawingsNode(it, expansion)), "ui.blueprint")) }.orEmpty()
     val body = specNode(
         "dock.body", "column", mapOf("gap" to 10, "padding" to 12),
-        listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + notes + drawings + selectedPanels(describing, file, drawn) + elsewhere(describing, file, expansion, solving, ranked),
+        listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + notes + drawings + selectedPanels(describing, file, drawn) + viewPanels(boarded, sampled) + elsewhere(describing, file, expansion, solving, ranked),
     )
-    val dock = specNode("dock", "column", mapOf("anchor" to "bottom", "sheet" to mapOf("closed_dp" to DOCK_CLOSED_DP, "open_dp" to DOCK_OPEN_DP), "background" to PANEL), listOf(systemButtons(drawn), body))
+    val dock = specNode("dock", "column", mapOf("anchor" to "bottom", "sheet" to mapOf("closed_dp" to DOCK_CLOSED_DP, "open_dp" to DOCK_OPEN_DP), "background" to PANEL), listOf(systemButtons(drawn + views(boarded, sampled)), body))
     val world = listOfNotNull(shaded, blueprint)
     val root = specNode("root", "stack", mapOf("fill" to true, "background" to HUD), world + listOf(topStrip(blueprint != null, file.title), dock))
     return JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "root" to root))
