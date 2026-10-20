@@ -66,11 +66,21 @@ private fun settingText(setting: DescribedSetting): String =
 
 private fun slug(title: String) = title.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
 
-private class Drawn(val title: String, val shapes: List<Map<String, Any?>>)
+internal class Drawn(val title: String, val shapes: List<Map<String, Any?>>)
 
 private fun drawingsOf(geometry: Geometry, expansion: Expansion): List<Drawn> =
     listOf(Drawn("Plan", blueprintPlanShapes(geometry, expansion))) + elevationDrawings(geometry).map { Drawn(it.title, it.shapes) } +
         listOfNotNull(sectionDrawing(geometry)?.let { Drawn("Section through the middle of the depth", it.shapes) })
+
+/** Every sheet, named by file stem: the design summary, the drawings, and, when the notes do not fit the column of a drawing, the sheets that continue them, which each drawing points to. */
+internal fun buildSheets(drawings: List<Drawn>, notes: List<NoteGroup>, summary: List<NoteGroup>, meta: SheetMeta): List<Pair<String, Sheet>> {
+    val plan = planNotes(notes)
+    val continuation = if (plan.continued.isEmpty()) emptyList() else textSheets("Notes, continued", { page, pages -> "N-1 (page $page of $pages)" }, plan.continued, meta)
+    val pointer = continuation.takeIf { it.isNotEmpty() }?.let { "Notes continue on sheet N-1, Notes, continued: ${it.size} page${if (it.size == 1) "" else "s"}." }
+    val summaries = textSheets("Design summary", { page, pages -> "S-1 (page $page of $pages)" }, summary, meta).mapIndexed { index, sheet -> "S-1-design-summary-p${index + 1}" to sheet }
+    val drawn = drawings.mapIndexed { index, item -> "A-${index + 1}-${slug(item.title)}" to sheetOf(item.title, "A-${index + 1} of ${drawings.size}", item.shapes, plan.onSheet, meta, pointer) }
+    return summaries + drawn + continuation.mapIndexed { index, sheet -> "N-1-notes-continued-p${index + 1}" to sheet }
+}
 
 /** Writes each sheet as SVG and PDF under the out directory and returns the files, named by sheet number and title. */
 fun exportSheets(options: ExportOptions): List<Path> {
@@ -82,17 +92,7 @@ fun exportSheets(options: ExportOptions): List<Path> {
     val drawings = drawingsOf(geometry, expansion)
     val meta = SheetMeta(file.title, LocalDate.now().toString(), configSource(options.system), enginePinText(options.system, options.runtime), drawings.size)
     Files.createDirectories(options.out)
-    val summaries = textSheets("Design summary", { page, pages -> "S-1 (page $page of $pages)" }, summaryGroups(loaded, geometry), meta)
-    return summaries.flatMapIndexed { index, sheet ->
-        val stem = "S-1-design-summary-p${index + 1}"
-        listOf(
-            options.out.resolve("$stem.svg").also { Files.writeString(it, sheetSvg(sheet)) },
-            options.out.resolve("$stem.pdf").also { Files.write(it, sheetPdf(sheet)) },
-        )
-    } + drawings.flatMapIndexed { index, drawn ->
-        val number = "A-${index + 1} of ${drawings.size}"
-        val sheet = sheetOf(drawn.title, number, drawn.shapes, notes, meta)
-        val stem = "A-${index + 1}-${slug(drawn.title)}"
+    return buildSheets(drawings, notes, summaryGroups(loaded, geometry), meta).flatMap { (stem, sheet) ->
         listOf(
             options.out.resolve("$stem.svg").also { Files.writeString(it, sheetSvg(sheet)) },
             options.out.resolve("$stem.pdf").also { Files.write(it, sheetPdf(sheet)) },

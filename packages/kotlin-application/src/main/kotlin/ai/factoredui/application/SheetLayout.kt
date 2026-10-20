@@ -109,15 +109,59 @@ private fun titleBlock(sheetName: String, sheetNumber: String, scaleText: String
     return marks + lines
 }
 
+private const val NOTE_PITCH = 1.35
+private const val POINTER_ROWS = 3
+
+private fun noteWidthMm() = NOTES_WIDTH_MM - 2 * PAD_MM
+
 private fun noteLines(groups: List<NoteGroup>, sizeMm: Double): List<Pair<String, Double>> = groups.flatMap { group ->
-    listOf(group.heading to NOTE_HEADING_MM) + group.lines.flatMap { line -> wrapWords(line, sizeMm, NOTES_WIDTH_MM - 2 * PAD_MM).mapIndexed { index, text -> (if (index == 0) text else "    $text") to sizeMm } } + ("" to sizeMm)
+    listOf(group.heading to NOTE_HEADING_MM) + group.lines.flatMap { line -> wrapWords(line, sizeMm, noteWidthMm()).mapIndexed { index, text -> (if (index == 0) text else "    $text") to sizeMm } } + ("" to sizeMm)
 }
 
-private fun notesBlock(groups: List<NoteGroup>): List<Mark> {
+private fun pointerLines(pointer: String?): List<Pair<String, Double>> =
+    pointer?.let { text -> wrapWords(text, NOTE_SIZE_MM, noteWidthMm()).map { it to NOTE_HEADING_MM } }.orEmpty()
+
+private fun notesBottomMm() = SHEET_HEIGHT_MM - MARGIN_MM - TITLE_HEIGHT_MM - PAD_MM
+
+private fun notesTopMm() = MARGIN_MM + PAD_MM
+
+private fun heightOf(rows: List<Pair<String, Double>>) = rows.sumOf { (_, size) -> size * NOTE_PITCH }
+
+private fun entryHeight(line: String) = wrapWords(line, NOTE_SIZE_MM, noteWidthMm()).size * NOTE_SIZE_MM * NOTE_PITCH
+
+/** The notes split into what fits the column of a sheet, with room left for the pointer, and what goes on continuation sheets. */
+internal class NotesPlan(val onSheet: List<NoteGroup>, val continued: List<NoteGroup>)
+
+internal fun planNotes(groups: List<NoteGroup>): NotesPlan {
+    val available = notesBottomMm() - notesTopMm()
+    if (heightOf(noteLines(groups, NOTE_SIZE_MM)) <= available) return NotesPlan(groups, emptyList())
+    val limit = available - POINTER_ROWS * NOTE_HEADING_MM * NOTE_PITCH
+    var used = 0.0
+    val onSheet = mutableListOf<NoteGroup>()
+    val continued = mutableListOf<NoteGroup>()
+    groups.forEach { group ->
+        val head = NOTE_HEADING_MM * NOTE_PITCH
+        val blank = NOTE_SIZE_MM * NOTE_PITCH
+        val taken = if (continued.isNotEmpty() || used + head + blank > limit) emptyList() else {
+            var running = used + head + blank
+            group.lines.takeWhile { line -> (running + entryHeight(line) <= limit).also { fits -> if (fits) running += entryHeight(line) } }
+        }
+        if (taken.isNotEmpty()) {
+            onSheet.add(NoteGroup(group.heading, taken))
+            used += head + blank + taken.sumOf { entryHeight(it) }
+        }
+        val rest = group.lines.drop(taken.size)
+        if (rest.isNotEmpty()) continued.add(NoteGroup(if (taken.isEmpty()) group.heading else "${group.heading} (continued)", rest))
+    }
+    return NotesPlan(onSheet, continued)
+}
+
+private fun notesBlock(groups: List<NoteGroup>, pointer: String?): List<Mark> {
     val left = SHEET_WIDTH_MM - MARGIN_MM - NOTES_WIDTH_MM
-    val size = NOTE_SIZE_MM
-    var y = MARGIN_MM + PAD_MM + NOTE_HEADING_MM
-    val words = noteLines(groups, size).map { (text, height) -> Words(left + PAD_MM, y, text, height, isBold = height == NOTE_HEADING_MM).also { y += height * 1.35 } }
+    val rows = noteLines(groups, NOTE_SIZE_MM) + pointerLines(pointer)
+    check(heightOf(rows) <= notesBottomMm() - notesTopMm()) { "the notes on a sheet are taller than the column; plan them with planNotes" }
+    var y = notesTopMm() + NOTE_HEADING_MM
+    val words = rows.map { (text, height) -> Words(left + PAD_MM, y, text, height, isBold = height == NOTE_HEADING_MM).also { y += height * NOTE_PITCH } }
     return words + Segment(left, MARGIN_MM, left, SHEET_HEIGHT_MM - MARGIN_MM - TITLE_HEIGHT_MM, Ink(BLACK, 0.35))
 }
 
@@ -156,9 +200,9 @@ internal fun textSheets(sheetName: String, numberOf: (page: Int, pages: Int) -> 
 }
 
 /** A sheet: the drawing to scale, a notes column, and a title block, inside a border. */
-internal fun sheetOf(sheetName: String, sheetNumber: String, shapes: List<Map<String, Any?>>, notes: List<NoteGroup>, meta: SheetMeta): Sheet {
+internal fun sheetOf(sheetName: String, sheetNumber: String, shapes: List<Map<String, Any?>>, notes: List<NoteGroup>, meta: SheetMeta, notesPointer: String? = null): Sheet {
     val (scale, drawing) = fitDrawing(shapes)
     val border = frame(MARGIN_MM, MARGIN_MM, SHEET_WIDTH_MM - 2 * MARGIN_MM, SHEET_HEIGHT_MM - 2 * MARGIN_MM, 0.7)
-    return Sheet(SHEET_WIDTH_MM, SHEET_HEIGHT_MM, listOf<Mark>(border) + drawing + notesBlock(notes) + titleBlock(sheetName, sheetNumber, scaleName(scale), meta))
+    return Sheet(SHEET_WIDTH_MM, SHEET_HEIGHT_MM, listOf<Mark>(border) + drawing + notesBlock(notes, notesPointer) + titleBlock(sheetName, sheetNumber, scaleName(scale), meta))
 }
 

@@ -92,4 +92,43 @@ class SheetTest {
         assertTrue(sheets.size > 2, "sheets ${sheets.size}")
         assertTrue(sheetSvg(sheets.last()).contains(">S-1 (${sheets.size} of ${sheets.size})<"))
     }
+
+    private fun assumptions(count: Int) = NoteGroup("ASSUMED SETTINGS", (1..count).map { "setting$it.value = $it unit: assumed, because this reason runs on over a few words so that it wraps onto a second line of the notes" })
+
+    private fun drawnSet() = listOf(Drawn("Plan", blueprintPlanShapes(GEOMETRY, EXPANSION)), Drawn("South elevation", elevationDrawings(GEOMETRY).first().shapes))
+
+    private fun titleTop() = SHEET_HEIGHT_MM - 8.0 - 36.0
+
+    @Test
+    fun notes_that_do_not_fit_continue_on_a_sheet_each_drawing_points_to_and_nothing_overlaps_the_title_block() {
+        val sheets = buildSheets(drawnSet(), listOf(assumptions(60)), emptyList(), META)
+        val drawings = sheets.filter { it.first.startsWith("A-") }
+        val continuation = sheets.filter { it.first.startsWith("N-1") }
+        assertTrue(continuation.isNotEmpty(), "a continuation sheet")
+        drawings.forEach { (_, sheet) ->
+            val notes = sheet.marks.filterIsInstance<Words>().filter { it.x > SHEET_WIDTH_MM - 8.0 - 150.0 && it.y < titleTop() + 1.0 }
+            assertTrue(notes.all { it.y <= titleTop() - 2.0 }, "a note line reaches the title block")
+            assertTrue(sheetSvg(sheet).contains("Notes continue on sheet N-1"))
+        }
+        continuation.forEach { (_, sheet) -> assertTrue(sheet.marks.filterIsInstance<Words>().all { it.y <= SHEET_HEIGHT_MM - 8.0 }) }
+        assertTrue(sheetSvg(continuation.first().second).contains(">Notes, continued<"))
+    }
+
+    @Test
+    fun every_note_is_on_a_drawing_or_a_continuation_sheet_exactly_once() {
+        val sheets = buildSheets(drawnSet(), listOf(assumptions(60)), emptyList(), META)
+        fun count(sheet: Sheet, prefix: String) = sheet.marks.filterIsInstance<Words>().count { it.text.startsWith(prefix) }
+        (1..60).forEach { n ->
+            val onDrawing = count(sheets.first { it.first.startsWith("A-1") }.second, "setting$n.value =")
+            val onContinuation = sheets.filter { it.first.startsWith("N-1") }.sumOf { count(it.second, "setting$n.value =") }
+            assertEquals(1, onDrawing + onContinuation, "setting$n")
+        }
+    }
+
+    @Test
+    fun notes_that_fit_stay_on_the_sheet_with_no_pointer_and_no_continuation() {
+        val sheets = buildSheets(drawnSet(), NOTES, emptyList(), META)
+        assertTrue(sheets.none { it.first.startsWith("N-1") })
+        assertTrue(sheets.none { sheetSvg(it.second).contains("Notes continue") })
+    }
 }
