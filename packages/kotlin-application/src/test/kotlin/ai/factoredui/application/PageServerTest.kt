@@ -49,19 +49,57 @@ class PageServerTest {
         return launcher
     }
 
+    private fun serving(system: Path, callLog: Path, cache: Path?) = startPageServer(Options(system, fakeRuntime(callLog), bundle, "127.0.0.1", 0, cacheDirectory = cache))
+
+    private fun calls(callLog: Path) = Files.readAllLines(callLog).count { it == "load" }
+
     @Test
-    fun the_page_is_built_from_one_load_per_state_of_the_world_file() {
+    fun the_page_is_built_once_per_state_of_the_world_file_as_two_loads_not_once_per_request() {
         val callLog = Files.createTempFile("calls", ".log")
         val system = Files.createTempFile("system", ".json").also { Files.writeString(it, """{ "id": "w", "title": "W", "systems": {} }""") }
-        val cached = startPageServer(Options(system, fakeRuntime(callLog), bundle, "127.0.0.1", 0))
+        val cached = serving(system, callLog, Files.createTempDirectory("cache"))
         try {
             repeat(3) { assertEquals(200, fetchFrom(cached, "/spec.json").statusCode()) }
-            assertEquals(1, Files.readAllLines(callLog).count { it == "load" })
+            assertEquals(2, calls(callLog))
             Files.writeString(system, """{ "id": "w", "title": "Changed", "systems": {} }""")
             assertEquals(200, fetchFrom(cached, "/spec.json").statusCode())
-            assertEquals(2, Files.readAllLines(callLog).count { it == "load" })
+            assertEquals(4, calls(callLog))
         } finally {
             cached.stop(0)
+        }
+    }
+
+    @Test
+    fun a_restarted_server_serves_the_last_build_from_disk_without_running_the_engine() {
+        val callLog = Files.createTempFile("calls", ".log")
+        val system = Files.createTempFile("system", ".json").also { Files.writeString(it, """{ "id": "w", "title": "W", "systems": {} }""") }
+        val cache = Files.createTempDirectory("cache")
+        val first = serving(system, callLog, cache)
+        val built = try { fetchFrom(first, "/spec.json") } finally { first.stop(0) }
+        val second = serving(system, callLog, cache)
+        try {
+            val served = fetchFrom(second, "/spec.json")
+            assertEquals(2, calls(callLog))
+            assertContentEquals(built.body(), served.body())
+            assertEquals(true, served.headers().firstValue("Server-Timing").get().startsWith("cache;desc=disk"))
+        } finally {
+            second.stop(0)
+        }
+    }
+
+    @Test
+    fun a_changed_world_file_is_not_served_from_the_disk() {
+        val callLog = Files.createTempFile("calls", ".log")
+        val system = Files.createTempFile("system", ".json").also { Files.writeString(it, """{ "id": "w", "title": "W", "systems": {} }""") }
+        val cache = Files.createTempDirectory("cache")
+        serving(system, callLog, cache).also { fetchFrom(it, "/spec.json"); it.stop(0) }
+        Files.writeString(system, """{ "id": "w", "title": "Another title", "systems": {} }""")
+        val restarted = serving(system, callLog, cache)
+        try {
+            assertEquals(200, fetchFrom(restarted, "/spec.json").statusCode())
+            assertEquals(4, calls(callLog))
+        } finally {
+            restarted.stop(0)
         }
     }
 

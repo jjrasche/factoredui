@@ -11,6 +11,12 @@ class LoadFormatException(message: String) : IllegalArgumentException(message)
 class SectionRefusedException(message: String, val setting: String?) : RuntimeException(message)
 
 class Loaded(private val sections: JsonObject) {
+    /** These sections, with each one this answer did not ask for taken from [other]. */
+    fun merged(other: Loaded): Loaded =
+        Loaded(JsonObject(sections.mapValues { (name, section) -> if (isAsked(section)) section else other.sections[name] ?: section }))
+
+    private fun isAsked(section: kotlinx.serialization.json.JsonElement) = (section as? JsonObject)?.get("asked") == JsonPrimitive(true)
+
     fun isSkipped(name: String): Boolean = sectionOf(name)["ok"] is JsonNull
 
     fun textOf(name: String): String {
@@ -32,5 +38,8 @@ fun readLoaded(text: String): Loaded {
     return Loaded(root["sections"] as? JsonObject ?: throw LoadFormatException("the load answer has no sections"))
 }
 
-fun loadSystem(launcher: Path, systemFile: Path, overlayId: String?): String =
-    runInRuntime(launcher, *listOfNotNull("load", systemFile.toAbsolutePath().toString(), overlayId?.let { "--overlay" }, overlayId).toTypedArray())
+fun loadSystem(launcher: Path, systemFile: Path, overlayId: String?, include: List<String>? = null): String =
+    runInRuntime(
+        launcher,
+        *listOfNotNull("load", systemFile.toAbsolutePath().toString(), overlayId?.let { "--overlay" }, overlayId, include?.let { "--include" }, include?.joinToString(",")).toTypedArray(),
+    )

@@ -5,7 +5,11 @@ import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.GZIPOutputStream
 
@@ -75,17 +79,29 @@ private fun rankOrSayWhy(options: Options): Ranked? {
 private fun hasRankingWeights(options: Options): Boolean =
     (kotlinx.serialization.json.Json.parseToJsonElement(Files.readString(options.system)) as? kotlinx.serialization.json.JsonObject)?.get("ranking") is kotlinx.serialization.json.JsonObject
 
-private fun rankEach(options: Options, systems: List<DescribedSystem>): Map<String, Ranked> =
-    systems.filter { it.alternatives.isNotEmpty() }.associate { system ->
-        system.id to runCatching { Ranked(readRanking(rankSystem(options.runtime, options.system, system.id))) }
-            .getOrElse { Ranked(null, failure = failureOf(it)) }
+private val workers: ExecutorService = Executors.newCachedThreadPool { task -> Thread(task).apply { isDaemon = true } }
+
+private fun <T> awaited(future: CompletableFuture<T>): T =
+    try {
+        future.get()
+    } catch (failure: ExecutionException) {
+        throw failure.cause ?: failure
     }
 
-private fun describeOrSayWhy(options: Options, loaded: Loaded): Describing =
+private fun <T> inWorker(block: () -> T): CompletableFuture<T> = CompletableFuture.supplyAsync({ block() }, workers)
+
+private fun rankEach(options: Options, systems: List<DescribedSystem>, timings: Timings): Map<String, Ranked> = timings.timed("rank") {
+    val asked = systems.filter { it.alternatives.isNotEmpty() }.associate { system ->
+        system.id to inWorker { runCatching { Ranked(readRanking(rankSystem(options.runtime, options.system, system.id))) }.getOrElse { Ranked(null, failure = failureOf(it)) } }
+    }
+    asked.mapValues { (_, future) -> awaited(future) }
+}
+
+private fun describeOrSayWhy(options: Options, loaded: Loaded, timings: Timings): Describing =
     runCatching {
         val systems = readDescribed(loaded.textOf("describe"))
         val weighted = hasRankingWeights(options)
-        Describing(systems, if (weighted) rankEach(options, systems) else emptyMap(), weighted)
+        Describing(systems, if (weighted) rankEach(options, systems, timings) else emptyMap(), weighted)
     }.getOrElse { Describing(emptyList(), failure = failureOf(it)) }
 
 private fun boardOrSayWhy(loaded: Loaded): Boarded? {
@@ -107,22 +123,69 @@ private class BuiltSpec(val worldStamp: Pair<Long, Long>, val body: ByteArray)
 
 private fun stampOf(system: Path): Pair<Long, Long> = Files.getLastModifiedTime(system).toMillis() to Files.size(system)
 
-private fun buildSpecBody(options: Options): ByteArray {
+private val CORE_SECTIONS = listOf("describe", "expansion", "geometry", "solving")
+
+private val SIMULATION_SECTIONS = listOf("simulation")
+
+private class Gathered(val loaded: Loaded, val described: Describing)
+
+/** The sections the page reads, asked for as two loads at once because the simulation is most of the time; the rankings start as soon as the core sections are in, while the simulation is still running. */
+private fun gather(options: Options, timings: Timings): Gathered {
+    val core = inWorker { timings.timed("load") { readLoaded(loadSystem(options.runtime, options.system, options.overlay, CORE_SECTIONS)) } }
+    val simulation = inWorker { timings.timed("simulation") { readLoaded(loadSystem(options.runtime, options.system, null, SIMULATION_SECTIONS)) } }
+    val coreLoaded = awaited(core)
+    val described = describeOrSayWhy(options, coreLoaded, timings)
+    return Gathered(runCatching { coreLoaded.merged(awaited(simulation)) }.getOrDefault(coreLoaded), described)
+}
+
+private fun buildSpecBody(options: Options, timings: Timings): ByteArray {
     val file = readSystemFile(Files.readString(options.system))
-    val loaded = readLoaded(loadSystem(options.runtime, options.system, options.overlay))
-    return buildLensPageSpec(file, readExpansion(loaded.textOf("expansion")), solveOrSayWhy(loaded), overlayOrSayWhy(options, loaded), rankOrSayWhy(options), describeOrSayWhy(options, loaded), geometryOrSayWhy(loaded), boardOrSayWhy(loaded), sampleOrSayWhy(options), buildOrSayWhy(loaded)).toString().toByteArray()
+    val sampling = inWorker { timings.timed("sample") { sampleOrSayWhy(options) } }
+    val gathered = gather(options, timings)
+    val loaded = gathered.loaded
+    val ranked = rankOrSayWhy(options)
+    return timings.timed("spec") {
+        buildLensPageSpec(
+            file, readExpansion(loaded.textOf("expansion")), solveOrSayWhy(loaded), overlayOrSayWhy(options, loaded), ranked, gathered.described, geometryOrSayWhy(loaded),
+            boardOrSayWhy(loaded), awaited(sampling), buildOrSayWhy(loaded),
+        ).toString().toByteArray()
+    }
+}
+
+private class Served(val body: ByteArray, val timing: String)
+
+private fun cacheOf(options: Options): SpecCache? = options.cacheDirectory?.let { SpecCache(it) }
+
+private fun keyOrNull(options: Options): String? = runCatching { specCacheKey(options) }.getOrNull()
+
+private fun buildAndKeep(options: Options, built: AtomicReference<BuiltSpec?>, stamp: Pair<Long, Long>, started: Long): Served {
+    val timings = Timings()
+    val body = buildSpecBody(options, timings)
+    runCatching { keyOrNull(options)?.let { cacheOf(options)?.write(it, body) } }
+    built.set(BuiltSpec(stamp, body))
+    return Served(body, timings.header((System.nanoTime() - started) / 1_000_000))
+}
+
+private fun serveFromMemoryOrDiskOrBuild(options: Options, built: AtomicReference<BuiltSpec?>): Served {
+    val started = System.nanoTime()
+    val stamp = stampOf(options.system)
+    built.get()?.takeIf { it.worldStamp == stamp }?.let { return Served(it.body, "cache;desc=memory") }
+    val key = keyOrNull(options)
+    val kept = key?.let { cacheOf(options)?.read(it) }
+    if (kept != null) {
+        built.set(BuiltSpec(stamp, kept))
+        return Served(kept, "cache;desc=disk, total;dur=${(System.nanoTime() - started) / 1_000_000}")
+    }
+    return buildAndKeep(options, built, stamp, started)
 }
 
 private fun serveSpec(exchange: HttpExchange, options: Options, built: AtomicReference<BuiltSpec?>) {
-    val body = runCatching {
-        synchronized(built) {
-            val stamp = stampOf(options.system)
-            built.get()?.takeIf { it.worldStamp == stamp }?.body
-                ?: buildSpecBody(options).also { built.set(BuiltSpec(stamp, it)) }
-        }
-    }
-    body.fold(
-        onSuccess = { respond(exchange, 200, CONTENT_TYPES.getValue("json"), it) },
+    val served = runCatching { synchronized(built) { serveFromMemoryOrDiskOrBuild(options, built) } }
+    served.fold(
+        onSuccess = {
+            exchange.responseHeaders.add("Server-Timing", it.timing)
+            respond(exchange, 200, CONTENT_TYPES.getValue("json"), it.body)
+        },
         onFailure = { respondText(exchange, 502, "cannot build the page: ${it.message}") },
     )
 }

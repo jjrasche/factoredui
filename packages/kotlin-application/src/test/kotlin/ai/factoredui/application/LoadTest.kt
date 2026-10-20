@@ -31,4 +31,14 @@ class LoadTest {
         assertTrue(readLoaded(LOAD).isSkipped("overlay"))
         assertFalse(readLoaded(LOAD).isSkipped("expansion"))
     }
+
+    @Test
+    fun a_section_this_answer_did_not_ask_for_is_taken_from_the_other_answer() {
+        val core = readLoaded("""{"sections": {"expansion": {"ok": true, "asked": true, "extent_mm": [1, 1]}, "simulation": {"ok": null, "asked": false, "skipped": "not asked"}}}""")
+        val simulation = readLoaded("""{"sections": {"expansion": {"ok": null, "asked": false, "skipped": "not asked"}, "simulation": {"ok": true, "asked": true, "steps": []}}}""")
+        val both = core.merged(simulation)
+        assertFalse(both.isSkipped("expansion"))
+        assertFalse(both.isSkipped("simulation"))
+        assertTrue(both.textOf("simulation").contains("steps"))
+    }
 }

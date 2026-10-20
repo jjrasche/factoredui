@@ -5,7 +5,7 @@ import java.nio.file.Paths
 
 class UsageException(message: String) : IllegalArgumentException(message)
 
-data class Options(val system: Path, val runtime: Path, val bundle: Path, val bind: String, val port: Int, val overlay: String? = null, val rank: String? = null, val sampleArguments: List<String>? = null)
+data class Options(val system: Path, val runtime: Path, val bundle: Path, val bind: String, val port: Int, val overlay: String? = null, val rank: String? = null, val sampleArguments: List<String>? = null, val cacheDirectory: Path? = defaultCacheDirectory())
 
 private val FLAGS = setOf("--system", "--runtime", "--bundle", "--bind", "--port", "--overlay", "--rank", "--sample-args")
 
