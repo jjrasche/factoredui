@@ -78,4 +78,14 @@ class LensPageTest {
         assertTrue(root.nodes().any { it["id"]!!.jsonPrimitive.content == "describe-failure" })
         assertTrue(root.toString().contains("The geometry could not be read: no geometry"))
     }
+
+    @Test
+    fun the_dock_shows_the_card_of_the_piece_tapped_in_either_world() {
+        val root = page()
+        val path = root.byId("volume").props()["detail_text"]!!.jsonPrimitive.content
+        assertEquals(path, root.byId("blueprint-3d").props()["detail_text"]!!.jsonPrimitive.content)
+        val tapped = root.byId("dock.tapped")
+        assertEquals(path, tapped.props()["value"]!!.jsonPrimitive.content)
+        assertEquals(path, tapped["visible"]!!.jsonPrimitive.content)
+    }
 }

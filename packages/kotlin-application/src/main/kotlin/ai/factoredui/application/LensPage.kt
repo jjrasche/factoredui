@@ -13,6 +13,7 @@ private const val DOCK_CLOSED_DP = 520
 private const val DOCK_OPEN_DP = 840
 private const val SYSTEMS_PER_ROW = 4
 private const val BLUEPRINT_PATH = "{ui.blueprint}"
+private const val SELECTION_CARD = "selection.card"
 
 private fun systemPath(system: String) = "ui.sys.${system.replace(Regex("[^A-Za-z0-9_]"), "_")}"
 
@@ -37,7 +38,7 @@ private fun worldProps(node: JsonObject, extra: Map<String, Any?>): JsonObject {
 }
 
 private fun fullWorld(node: JsonObject, extra: Map<String, Any?> = emptyMap(), visible: String? = null): JsonObject {
-    val placed = worldProps(node, mapOf("fill" to true, "bottom_inset_dp" to DOCK_CLOSED_DP, "anchor" to "fill") + extra)
+    val placed = worldProps(node, mapOf("fill" to true, "bottom_inset_dp" to DOCK_CLOSED_DP, "anchor" to "fill", "detail_text" to "{$SELECTION_CARD}") + extra)
     return if (visible == null) placed else JsonObject(placed + ("visible" to JsonPrimitive(visible)))
 }
 
@@ -61,7 +62,7 @@ private fun systemButtons(drawn: List<String>): JsonObject {
             },
         )
     }
-    return specNode("systems", "column", mapOf("gap" to 4, "padding" to 8), listOf(textNode("systems.hint", "Tap a system to see what it is set to.", variant = "caption", color = MUTED)) + rows)
+    return specNode("systems", "column", mapOf("gap" to 4, "padding" to 8), listOf(textNode("systems.hint", "Tap a system to see what it is set to, or a piece in the drawing.", variant = "caption", color = MUTED)) + rows)
 }
 
 private fun withVisible(node: JsonObject, path: String): JsonObject = JsonObject(node + ("visible" to JsonPrimitive("{$path}")))
@@ -103,7 +104,7 @@ fun buildLensPageSpec(
     val drawings = geometry?.let { listOf(withVisible(inDark(blueprintDrawingsNode(it, expansion)), "ui.blueprint")) }.orEmpty()
     val body = specNode(
         "dock.body", "column", mapOf("gap" to 10, "padding" to 12),
-        notes + drawings + selectedPanels(describing, file, drawn) + elsewhere(describing, file, expansion, solving, ranked),
+        listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + notes + drawings + selectedPanels(describing, file, drawn) + elsewhere(describing, file, expansion, solving, ranked),
     )
     val dock = specNode("dock", "column", mapOf("anchor" to "bottom", "sheet" to mapOf("closed_dp" to DOCK_CLOSED_DP, "open_dp" to DOCK_OPEN_DP), "background" to PANEL), listOf(systemButtons(drawn), body))
     val world = listOfNotNull(shaded, blueprint)

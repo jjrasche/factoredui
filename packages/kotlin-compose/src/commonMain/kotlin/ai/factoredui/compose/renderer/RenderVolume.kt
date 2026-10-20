@@ -235,6 +235,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     }
     val details = remember(resolvedProps["details"]) { readSelectionDetails(resolvedProps["details"]) }
     val selection = rememberDrawingSelection(node, resolvedProps["selected"], context)
+    PublishSelectionText(node, selection.ids, details, context)
     val span = volumeSpan(read.boxes)
     val fill = resolvedProps["fill"] == true
     val bottomInsetDp = (resolvedProps["bottom_inset_dp"] as? Number)?.toFloat() ?: 0f

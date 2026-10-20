@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,23 @@ internal fun rememberDrawingSelection(node: SpecNode, resolvedSelected: Any?, co
         val next = selectionAfterTapAmong(ids, candidates)
         if (path != null) context.setBinding(path, next) else local = next.toSet()
     }
+}
+
+/** The card of the single selected thing as plain lines: its title, then each heading, row and note; empty when nothing or several are selected. */
+internal fun selectionDetailText(selection: Set<String>, details: Map<String, SelectionDetail>): String {
+    val detail = selection.singleOrNull()?.let(details::get) ?: return ""
+    val lines = detail.sections.flatMap { section ->
+        listOfNotNull(section.heading) + section.rows.flatMap { row -> listOfNotNull("${row.label}: ${row.value ?: "–"}", row.note) }
+    }
+    return (listOf(detail.title) + lines).joinToString("\n")
+}
+
+/** Writes the selection's card text to the path `detail_text` binds, so any text bound to it, such as one in a dock, shows what was tapped. */
+@Composable
+internal fun PublishSelectionText(node: SpecNode, selection: Set<String>, details: Map<String, SelectionDetail>, context: RenderContext) {
+    val path = node.props["detail_text"]?.bindingPath() ?: return
+    val text = selectionDetailText(selection, details)
+    LaunchedEffect(path, text) { context.setBinding(path, text) }
 }
 
 /** A tap picks only what the host described when it gave `details`; with none given every drawn thing can be picked. */
