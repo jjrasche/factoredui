@@ -72,7 +72,7 @@ fun parseWindowArgs(args: Array<String>): WindowArgs? {
 fun main(args: Array<String>) {
     val parsed = parseWindowArgs(args)
     if (parsed == null) {
-        System.err.println("usage: spec-window <spec.json | world.json — path or http URL> [width=1280] [height=800] [--data data.json] [--state a.b=text|json|reports:file ...] [--control port] [--theme light|dark] [--title text] [--section key]")
+        System.err.println("usage: spec-window <spec.json — path or http URL> [width=1280] [height=800] [--data data.json] [--state a.b=text|json|reports:file ...] [--control port] [--theme light|dark] [--title text] [--section key]")
         kotlin.system.exitProcess(2)
     }
     val source = parsed.source
@@ -81,9 +81,9 @@ fun main(args: Array<String>) {
         System.err.println("spec-window: cannot read $source — ${failure.message ?: failure::class.simpleName}")
         kotlin.system.exitProcess(3)
     }
-    val spec = runCatching { windowSpecOf(sourceJson, source, parsed.section) }.getOrElse { failure ->
+    val spec = runCatching { windowSpecOf(sourceJson, parsed.section) }.getOrElse { failure ->
         val reason = failure.message ?: failure::class.simpleName
-        System.err.println(if (parsed.section != null) "spec-window: $source: $reason" else "spec-window: $source is neither a spec nor a world state — $reason")
+        System.err.println(if (parsed.section != null) "spec-window: $source: $reason" else "spec-window: $source is not a spec — $reason")
         kotlin.system.exitProcess(4)
     }
     val data = parsed.dataPath?.let { path ->
@@ -117,21 +117,5 @@ fun main(args: Array<String>) {
 private fun readSource(source: String): String =
     if (source.startsWith("http")) URI(source).toURL().readText() else File(source).readText()
 
-fun windowSpecOf(sourceJson: String, source: String, section: String?): Spec {
-    if (section != null) return decodeSpecFile(sourceJson, section)
-    val fields = specDecoder.parseToJsonElement(sourceJson) as JsonObject
-    val specJson = if (fields.containsKey("root")) sourceJson else sceneSpecAround(source)
-    return specDecoder.decodeFromString(Spec.serializer(), specJson)
-}
-
-private fun sceneSpecAround(worldStateUrl: String) = """
-    {
-      "spec_version": 1,
-      "renderer_min": 1,
-      "root": {
-        "id": "served-scene",
-        "type": "scene3d",
-        "props": { "world_state_url": "$worldStateUrl", "background": "neutral-gray" }
-      }
-    }
-""".trimIndent()
+fun windowSpecOf(sourceJson: String, section: String?): Spec =
+    if (section != null) decodeSpecFile(sourceJson, section) else specDecoder.decodeFromString(Spec.serializer(), sourceJson)
