@@ -1,5 +1,6 @@
 package ai.factoredui.compose.render
 
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.geometry.Offset
@@ -80,6 +81,7 @@ fun renderBodyStream(
     try {
         return decoder.parseToJsonElement(framesJson).jsonArray.map { frame ->
             context.setBinding(bodyStatePath, jsonToAny(frame))
+            Snapshot.sendApplyNotifications()
             scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes ?: ByteArray(0)
         }
     } finally {

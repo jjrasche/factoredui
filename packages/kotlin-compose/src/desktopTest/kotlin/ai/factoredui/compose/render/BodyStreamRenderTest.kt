@@ -4,6 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+private const val STREAM_RENDERS = 60
+
 class BodyStreamRenderTest {
 
     private val liveBodyScene = """
@@ -43,6 +45,16 @@ class BodyStreamRenderTest {
         val frames = renderBodyStream(liveBodyScene, "runtime.bodyState", stream, width = 400, height = 600)
         assertEquals(2, frames.size)
         assertTrue(frames[0].contentEquals(frames[1]), "identical body state must render identical pixels — the leaf is deterministic, motion comes only from the stream")
+    }
+
+    @Test
+    fun everyRenderOfAMovingStreamSeesTheMotionWhateverTheLoad() {
+        val stream = streamJson(0.0f, 0.4f, 0.8f)
+        val unmoved = (1..STREAM_RENDERS).count {
+            val frames = renderBodyStream(liveBodyScene, "runtime.bodyState", stream, width = 200, height = 300)
+            frames[0].contentEquals(frames[1]) || frames[1].contentEquals(frames[2])
+        }
+        assertEquals(0, unmoved, "renders where the skeleton did not move between frames, out of $STREAM_RENDERS")
     }
 
     private fun assertFalse(condition: Boolean, message: String) = assertTrue(!condition, message)
