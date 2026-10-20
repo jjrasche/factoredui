@@ -42,10 +42,10 @@ internal fun enginePinText(system: Path, runtime: Path): String {
     return pinText(pin, runtimePin(runtime))
 }
 
-/** The commit the config file is at, and a say when the file differs from it. */
+/** The commit that last changed the config file, and a say when the file differs from it. */
 internal fun configSource(system: Path): String {
     val directory = system.toAbsolutePath().parent
-    val commit = git(directory, "rev-parse", "--short", "HEAD") ?: return "not in a git checkout"
+    val commit = git(directory, "log", "-1", "--format=%h", "--", system.fileName.toString())?.takeIf { it.isNotEmpty() } ?: return "not in a git checkout"
     val changed = git(directory, "status", "--porcelain", "--", system.fileName.toString()).orEmpty().isNotEmpty()
     return if (changed) "$commit + uncommitted edits to ${system.fileName}" else commit
 }
