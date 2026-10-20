@@ -117,14 +117,34 @@ internal fun layerShapes(piece: GeoPiece, extent: Extent): List<Map<String, Any?
     return boundaries + words
 }
 
-/** The total thickness of a piece the section passes through, until the domain gives the layers it is built of. */
-private fun thicknessLabel(piece: GeoPiece): Map<String, Any?> {
+private const val SAME_LABEL_SPAN_MM = 1500.0
+
+private fun thicknessOf(piece: GeoPiece) = if (piece.dxMm <= piece.dzMm) piece.dxMm else piece.dzMm
+
+/** Pieces of one system and thickness standing close together, which one label names. */
+private fun repeatedRuns(pieces: List<GeoPiece>): List<List<GeoPiece>> =
+    pieces.groupBy { it.system to thicknessOf(it) }.values.flatMap { group ->
+        group.sortedBy { it.xMm }.fold(emptyList<List<GeoPiece>>()) { runs, piece ->
+            val last = runs.lastOrNull()
+            if (last != null && piece.xMm - last.last().xMm < SAME_LABEL_SPAN_MM) runs.dropLast(1) + listOf(last + piece) else runs + listOf(listOf(piece))
+        }
+    }
+
+private fun hasPieceBelow(piece: GeoPiece, passed: List<GeoPiece>) =
+    passed.any { it !== piece && it.zMm + it.dzMm in (piece.zMm - 1)..(piece.zMm + 1) && it.xMm < piece.xMm + piece.dxMm && it.xMm + it.dxMm > piece.xMm }
+
+/** The total thickness of a piece the section passes through, until the domain gives the layers it is built of; a run of the same piece is named once, centred under its middle one. */
+private fun thicknessLabel(run: List<GeoPiece>, passed: List<GeoPiece>): Map<String, Any?> {
+    val piece = run[run.size / 2]
     val isUpright = piece.dxMm <= piece.dzMm
-    val thickness = if (isUpright) piece.dxMm else piece.dzMm
-    val at = if (isUpright) (piece.xMm + piece.dxMm) to (piece.zMm + piece.dzMm / 2) else (piece.xMm + piece.dxMm / 2) to piece.zMm
+    val isRepeated = run.size > 1
+    val beside = isUpright && !isRepeated
+    val isAbove = !beside && hasPieceBelow(piece, passed)
+    val at = if (beside) (piece.xMm + piece.dxMm) to (piece.zMm + piece.dzMm / 2) else (piece.xMm + piece.dxMm / 2) to if (isAbove) piece.zMm + piece.dzMm else piece.zMm
+    val repeats = if (isRepeated) " (${run.size} alike)" else ""
     return mapOf(
         "id" to "size:thickness:${piece.id}", "kind" to "label", "style" to "dimension", "x_mm" to at.first, "y_mm" to at.second,
-        "text" to "thickness ${dimensionText(thickness)}", "align" to if (isUpright) "start" else "center", "dx_dp" to if (isUpright) 6 else 0, "dy_dp" to if (isUpright) 0 else 12,
+        "text" to "thickness ${dimensionText(thicknessOf(piece))}$repeats", "align" to if (beside) "start" else "center", "dx_dp" to if (beside) 6 else 0, "dy_dp" to if (beside) 0 else if (isAbove) -12 else 12,
     )
 }
 
@@ -142,7 +162,7 @@ internal fun sectionDrawing(geometry: Geometry): FlatDrawing? {
     val xBreaks = passed.flatMap { listOf(it.xMm, it.xMm + it.dxMm) }
     val zBreaks = listOf(extent.floor, extent.ceiling) + passed.flatMap { listOf(it.zMm, it.zMm + it.dzMm) }
     val chains = chainShapes("chain:x", xBreaks, ChainSide.BELOW, extent.floor - CHAIN_OFFSET_MM) + chainShapes("chain:z", zBreaks, ChainSide.LEFT, extent.west - CHAIN_OFFSET_MM)
-    val shapes = bodies + holes + passed.flatMap { piece -> if (piece.layers.isEmpty()) listOf(thicknessLabel(piece)) else layerShapes(piece, extent) } + chains + groundLine(extent.west, extent.east) + flatDimensions(extent.west, extent.east, extent.floor, extent.ceiling)
+    val shapes = bodies + holes + passed.filter { it.layers.isNotEmpty() }.flatMap { layerShapes(it, extent) } + repeatedRuns(passed.filter { it.layers.isEmpty() }).map { thicknessLabel(it, passed) } + chains + groundLine(extent.west, extent.east) + flatDimensions(extent.west, extent.east, extent.floor, extent.ceiling)
     return FlatDrawing("section", "Section through the middle of the depth (${dimensionText(planeMm)} from the south edge), looking north", shapes)
 }
 

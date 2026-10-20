@@ -34,6 +34,22 @@ class LayerTest {
     }
 
     @Test
+    fun seven_joists_close_together_are_named_by_one_label_and_two_far_walls_by_two() {
+        val joists = (0 until 7).joinToString(",") { """{ "id": "joist$it", "system": "joists", "x": ${1000 + it * 406}, "y": 0, "z": 2300, "dx": 38, "dy": 5000, "dz": 140 }""" }
+        val geometry = readGeometry(
+            """{ "pieces": [
+                { "id": "west", "system": "walls", "x": 0, "y": 0, "z": 0, "dx": 114, "dy": 5000, "dz": 2400 },
+                { "id": "east", "system": "walls", "x": 2886, "y": 0, "z": 0, "dx": 114, "dy": 5000, "dz": 2400 },
+                { "id": "deck", "system": "loft_floor", "x": 0, "y": 0, "z": 2440, "dx": 3000, "dy": 5000, "dz": 18 }, $joists ],
+              "contacts": [], "cuts": [], "unmeasured": [] }""",
+        )
+        val labels = sectionDrawing(geometry)!!.shapes.ids("size:thickness:")
+        assertEquals(listOf("size:thickness:deck", "size:thickness:east", "size:thickness:joist3", "size:thickness:west"), labels.map { it["id"] as String }.sorted())
+        assertTrue((labels.first { (it["id"] as String).endsWith("deck") }["dy_dp"] as Int) < 0)
+        assertTrue((labels.first { (it["id"] as String).endsWith("joist3") }["text"] as String).contains("7 alike"))
+    }
+
+    @Test
     fun the_section_draws_a_line_between_layers_and_a_label_for_each() {
         val shapes = sectionDrawing(geometryWith(SIP))!!.shapes
         assertEquals(2, shapes.ids("layer:west/boundary").size)
