@@ -90,12 +90,22 @@ class LensPageTest {
     }
 
     @Test
-    fun the_shaded_world_is_lit_by_the_sun_and_each_known_system_has_a_material() {
-        val volume = page().byId("volume").props()
-        assertEquals("sun", volume["lighting"]!!.jsonPrimitive.content)
-        assertEquals("panel", volume["styles"]!!.jsonObject.getValue("walls").jsonObject["material"]!!.jsonPrimitive.content)
-        assertEquals("glass", systemLook(listOf("walls"), "glazing")["material"])
-        assertEquals(null, systemLook(listOf("walls", "odd"), "odd")["material"])
+    fun the_shaded_world_is_lit_by_the_sun() {
+        assertEquals("sun", page().byId("volume").props()["lighting"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun a_piece_is_styled_by_the_material_the_engine_gives_it_and_by_its_system_when_it_gives_none() {
+        val geometry = readGeometry(
+            """{ "pieces": [
+                { "id": "a", "system": "walls", "x": 0, "y": 0, "z": 0, "dx": 1000, "dy": 100, "dz": 3000, "material": "SIP", "material_source": "research row r" },
+                { "id": "b", "system": "walls", "x": 1000, "y": 0, "z": 0, "dx": 1000, "dy": 100, "dz": 3000, "material": "SIP", "material_source": "research row r" },
+                { "id": "c", "system": "roof", "x": 0, "y": 0, "z": 3000, "dx": 2000, "dy": 100, "dz": 200, "material": null, "material_source": null } ],
+              "contacts": [], "cuts": [], "unmeasured": [] }""",
+        )
+        val volume = volumeNode(readSystemFile(SYSTEM_FILE), readExpansion(EXPANSION), geometry = geometry)!!["props"]!!.jsonObject
+        assertEquals(listOf("SIP", "SIP", "roof"), volume["boxes"]!!.jsonArray.map { it.jsonObject["style"]!!.jsonPrimitive.content })
+        assertEquals(setOf("SIP", "roof"), volume["styles"]!!.jsonObject.keys)
     }
 
     @Test

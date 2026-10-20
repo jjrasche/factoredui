@@ -64,7 +64,7 @@ private fun boxNode(placed: Placed, baseMm: Double): Map<String, Any?> {
 
 private fun measuredBoxes(geometry: Geometry): List<Map<String, Any?>> = geometry.pieces.map { piece ->
     mapOf(
-        "id" to piece.id, "style" to piece.system, "x_mm" to piece.xMm + piece.dxMm / 2, "y_mm" to piece.yMm + piece.dyMm / 2, "z_mm" to piece.zMm,
+        "id" to piece.id, "style" to (piece.material ?: piece.system), "x_mm" to piece.xMm + piece.dxMm / 2, "y_mm" to piece.yMm + piece.dyMm / 2, "z_mm" to piece.zMm,
         "width_mm" to piece.dxMm, "depth_mm" to piece.dyMm, "height_mm" to piece.dzMm, "rotation_deg" to 0.0, "estimate" to false,
     )
 }
@@ -76,6 +76,7 @@ private fun guessedUnmeasured(guessed: List<Map<String, Any?>>, geometry: Geomet
 }
 
 /** The boxes of the engine's geometry, with the hatched stand-ins the page gives pieces the engine could not measure; with no geometry, the expansion stacked by level, a size it does not give a stand-in of [NOMINAL_HEIGHT_MM]. */
+// split-audit-2026-10-20 item 3: stacking, guessed heights and grade at 0 wait for the engine
 internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay? = null, geometry: Geometry? = null, stages: Map<String, Int>? = null): JsonObject? {
     if (expansion.objects.isEmpty() && expansion.instances.isEmpty()) return null
     val order = systemOrder(file, expansion)
@@ -86,7 +87,9 @@ internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay
     val whole = (geometry?.let { measuredBoxes(it) + guessedUnmeasured(guessed, it) } ?: guessed).map { box -> if (overlay == null) box else box + ("style" to overlayStyleOf(overlay, box["id"] as String)) }
     val opened = geometry?.let { withCutsOpened(whole, it) } ?: whole
     val boxes = if (stages == null) opened else opened.map { box -> stages[(box["id"] as String).substringBeforeLast('#')]?.let { box + ("stage" to it) } ?: box }
-    val styled = order.filter { system -> boxes.any { it["style"] == system } }
+    val boxStyles = boxes.map { it["style"] as String }.toSet()
+    val palette = (order + boxStyles).distinct()
+    val styled = palette.filter { it in boxStyles }
     val hasEstimate = boxes.any { it["estimate"] == true }
     val boxIds = boxes.map { it["id"] as String }
     val keyed = if (overlay == null) styled.map { mapOf("label" to it, "style" to it) } else overlayLegend(overlay, boxIds)
@@ -96,7 +99,7 @@ internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay
         mapOf(
             "boxes" to boxes,
         ) + (if (hasEmbedment(expansion)) mapOf("grade_mm" to GRADE_MM) else emptyMap()) + (if (stages == null) emptyMap() else mapOf("step" to "{$STEP_PATH}")) + mapOf(
-            "styles" to if (overlay == null) styled.associateWith { systemLook(order, it) } else overlayStyles(overlay, boxIds) + stopStyles(overlay),
+            "styles" to if (overlay == null) styled.associateWith { mapOf("stroke" to colourOfSystem(palette, it)) } else overlayStyles(overlay, boxIds) + stopStyles(overlay),
             "legend" to legend,
             "empty_text" to "The expansion has nothing to draw.",
             "selected" to SELECTION_PATH,

@@ -11,9 +11,6 @@ private fun extentCaption(expansion: Expansion): String {
     return "Every length is in millimetres.$overall"
 }
 
-private fun hasUnknownSize(expansion: Expansion) = expansion.objects.any { it.widthMm == null || it.depthMm == null }
-
-private const val UNKNOWN_SIZE_NOTE = "A line or a square is drawn where the expansion gives only part of a size."
 private const val PLAN_NOTE = "Seen from above, north up."
 private const val VOLUME_NOTE = "Drag to turn. Two fingers, or a right-drag, slide it; pinch or scroll to zoom. Each level stands on the one below, and a size the expansion does not give is drawn as a hatched stand-in."
 private const val VIEW_PATH = "{view.index}"
@@ -24,24 +21,21 @@ private fun countBySystem(expansion: Expansion): Map<String, Int> =
 
 private fun noteNode(id: String, text: String) = textNode(id, text, variant = "caption", color = MUTED_INK)
 
-private fun planView(file: SystemFile, expansion: Expansion, overlay: Overlay?): JsonObject = specNode(
+private fun planView(file: SystemFile, expansion: Expansion, geometry: Geometry, overlay: Overlay?): JsonObject = specNode(
     "plan-view", "column", mapOf("gap" to 4),
-    listOfNotNull(
-        noteNode("plan-note", PLAN_NOTE),
-        planNode(file, expansion, overlay),
-        if (hasUnknownSize(expansion)) noteNode("unknown-size-note", UNKNOWN_SIZE_NOTE) else null,
-    ),
+    listOf(noteNode("plan-note", PLAN_NOTE), planNode(file, expansion, geometry, overlay)),
 )
 
 internal fun overlayNote(overlaying: Overlaying): JsonObject =
     noteNode("overlay-note", overlaying.overlay?.let(::overlayCaption) ?: "The overlay could not be run: ${overlaying.failure}")
 
-/** A plan and, when there is something to stand up, a solid view of the same expansion behind a switch. */
-private fun viewsNode(file: SystemFile, expansion: Expansion, overlay: Overlay?, geometry: Geometry?): JsonObject {
-    val plan = planView(file, expansion, overlay)
-    val volume = volumeNode(file, expansion, overlay, geometry) ?: return plan
-    val solid = specNode("volume-view", "column", mapOf("gap" to 4), listOf(volume, noteNode("volume-note", VOLUME_NOTE)))
-    return specNode("views", "tabs", mapOf("items" to listOf("Plan", "3D"), "selectedIndex" to VIEW_PATH), listOf(plan, solid))
+private fun solidView(volume: JsonObject): JsonObject = specNode("volume-view", "column", mapOf("gap" to 4), listOf(volume, noteNode("volume-note", VOLUME_NOTE)))
+
+/** The plan and the solid view, both from the engine's geometry, behind a switch; either alone when the other has nothing to show. */
+private fun viewsNode(file: SystemFile, expansion: Expansion, overlay: Overlay?, geometry: Geometry?): JsonObject? {
+    val plan = geometry?.let { planView(file, expansion, it, overlay) }
+    val solid = volumeNode(file, expansion, overlay, geometry)?.let(::solidView)
+    return if (plan != null && solid != null) specNode("views", "tabs", mapOf("items" to listOf("Plan", "3D"), "selectedIndex" to VIEW_PATH), listOf(plan, solid)) else plan ?: solid
 }
 
 /** The tables of every object, behind a switch that starts off. */

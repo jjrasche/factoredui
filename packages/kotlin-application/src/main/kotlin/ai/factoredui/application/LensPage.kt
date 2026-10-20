@@ -116,7 +116,7 @@ fun buildLensPageSpec(
     val notes = listOfNotNull(
         overlaying?.let(::overlayNote), geometried?.failure?.let { textNode("blueprint-failure", "The geometry could not be read: $it", variant = "caption", color = MUTED) },
     ).map(::inDark)
-    val drawings = geometry?.let { listOf(withVisible(inDark(blueprintDrawingsNode(it, expansion)), "ui.blueprint")) }.orEmpty()
+    val drawings = geometry?.let { listOf(withVisible(inDark(blueprintDrawingsNode(it)), "ui.blueprint")) }.orEmpty()
     val body = specNode(
         "dock.body", "column", mapOf("gap" to 10, "padding" to 12),
         listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + notes + drawings + selectedPanels(describing, file, drawn) + viewPanels(boarded, sampled, built) + elsewhere(describing, file, expansion, solving, ranked),

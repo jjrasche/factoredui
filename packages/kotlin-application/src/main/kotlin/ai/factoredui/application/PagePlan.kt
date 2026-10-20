@@ -1,13 +1,9 @@
 package ai.factoredui.application
 
 import kotlinx.serialization.json.JsonObject
-import kotlin.math.cos
-import kotlin.math.sin
 
 private val SYSTEM_COLOURS = listOf("#3b7dd8", "#c07a1f", "#2e8b57", "#a23b8c", "#c0392b", "#2a9d9d", "#7a6a2f", "#6b5bd2", "#6d4c41", "#d81b60")
 private const val FILL_ALPHA = "40"
-private const val LABEL_INSET_DP = 6
-private const val LABEL_ROW_DP = 14
 private const val LABEL_FIRST_ROW_DP = 12
 internal const val SELECTION_PATH = "{selection.ids}"
 private const val NORTH_STYLE = "north arrow"
@@ -28,57 +24,11 @@ internal fun systemOrder(file: SystemFile, expansion: Expansion): List<String> {
 
 internal fun colourOfSystem(order: List<String>, system: String): String = SYSTEM_COLOURS[order.indexOf(system) % SYSTEM_COLOURS.size]
 
-private fun isRect(item: ExpandedObject) = item.widthMm != null && item.depthMm != null
-
-/** A system whose footprints sit on a higher level than another footprint is seen over it, so its outline is dashed. */
-private fun overheadSystems(expansion: Expansion): Set<String> {
-    val rects = expansion.objects.filter(::isRect)
-    val lowest = rects.minOfOrNull { it.level ?: 0 } ?: return emptySet()
-    return rects.filter { (it.level ?: 0) > lowest }.map { it.system }.toSet()
-}
-
 private fun styleOf(colour: String, isOverhead: Boolean): Map<String, Any?> =
     mapOf("stroke" to colour, "fill" to colour + FILL_ALPHA, "dash" to isOverhead)
 
 private fun shape(id: String, kind: String, style: String?, vararg fields: Pair<String, Any?>): Map<String, Any?> =
     mapOf("id" to id, "kind" to kind, "style" to style) + fields
-
-private fun rectShape(item: ExpandedObject) =
-    shape(item.id, "rect", item.system, "x_mm" to item.xMm, "y_mm" to item.yMm, "width_mm" to item.widthMm, "depth_mm" to item.depthMm)
-
-private fun lineShape(item: ExpandedObject): Map<String, Any?> {
-    val reachesEast = item.widthMm != null
-    val toX = if (reachesEast) item.xMm + item.widthMm!! else item.xMm
-    val toY = if (reachesEast) item.yMm else item.yMm + item.depthMm!!
-    return shape(item.id, "line", item.system, "x_mm" to item.xMm, "y_mm" to item.yMm, "x2_mm" to toX, "y2_mm" to toY)
-}
-
-private fun markerShape(item: ExpandedObject) = shape(item.id, "marker", item.system, "x_mm" to item.xMm, "y_mm" to item.yMm)
-
-private fun instanceShape(item: ExpandedInstance): Map<String, Any?> {
-    val half = item.lengthMm / 2
-    val turn = Math.toRadians(item.rotationDeg)
-    val reachX = half * cos(turn)
-    val reachY = half * sin(turn)
-    return shape(
-        item.id, "line", item.system,
-        "x_mm" to item.xMm - reachX, "y_mm" to item.yMm - reachY, "x2_mm" to item.xMm + reachX, "y2_mm" to item.yMm + reachY,
-    )
-}
-
-private fun rectLabels(rects: List<ExpandedObject>): List<Map<String, Any?>> {
-    val seenAt = mutableMapOf<Pair<Double, Double>, Int>()
-    return rects.map { item ->
-        val corner = item.xMm to item.yMm + item.depthMm!!
-        val row = seenAt.merge(corner, 1, Int::plus)!! - 1
-        shape(
-            "label:${item.id}", "label", null,
-            "x_mm" to corner.first, "y_mm" to corner.second,
-            "text" to "${item.system} ${formatMm(item.widthMm!!)} × ${formatMm(item.depthMm)} mm",
-            "align" to "start", "dx_dp" to LABEL_INSET_DP, "dy_dp" to LABEL_FIRST_ROW_DP + LABEL_ROW_DP * row,
-        )
-    }
-}
 
 private fun northArrow(extent: Pair<Double, Double>?): List<Map<String, Any?>> {
     val (east, north) = extent ?: return emptyList()
@@ -97,18 +47,27 @@ private fun northArrow(extent: Pair<Double, Double>?): List<Map<String, Any?>> {
     )
 }
 
-internal fun planNode(file: SystemFile, expansion: Expansion, overlay: Overlay? = null): JsonObject {
+private fun covers(upper: GeoPiece, lower: GeoPiece) =
+    upper.zMm >= lower.zMm + lower.dzMm && upper.xMm <= lower.xMm && upper.yMm <= lower.yMm &&
+        upper.xMm + upper.dxMm >= lower.xMm + lower.dxMm && upper.yMm + upper.dyMm >= lower.yMm + lower.dyMm
+
+/** A style whose pieces sit over another piece's footprint is seen over it, so its outline is dashed. */
+private fun overheadStyles(pieces: List<GeoPiece>): Set<String> =
+    pieces.filter { upper -> pieces.any { lower -> lower !== upper && covers(upper, lower) } }.map { it.material ?: it.system }.toSet()
+
+/** The footprint of every piece the engine measured, the lowest first so what stands over it is drawn on top. */
+internal fun planNode(file: SystemFile, expansion: Expansion, geometry: Geometry, overlay: Overlay? = null): JsonObject {
     val order = systemOrder(file, expansion)
-    val overhead = overheadSystems(expansion)
-    val rects = expansion.objects.filter(::isRect).sortedByDescending { it.level ?: 0 }
-    val lines = expansion.objects.filter { !isRect(it) && (it.widthMm != null || it.depthMm != null) }
-    val markers = expansion.objects.filter { it.widthMm == null && it.depthMm == null }
-    val drawn = rects.map(::rectShape) + lines.map(::lineShape) + markers.map(::markerShape) + expansion.instances.map(::instanceShape)
+    val extent = extentOf(geometry.pieces)
+    val overhead = overheadStyles(geometry.pieces)
+    val drawn = geometry.pieces.sortedBy { it.zMm }.map { piece -> rectShape(piece.id, piece.material ?: piece.system, piece.xMm, piece.yMm, piece.dxMm, piece.dyMm) }
     val painted = if (overlay == null) drawn else drawn.map { it + ("style" to overlayStyleOf(overlay, it["id"] as String)) }
-    val shapes = painted + rectLabels(rects) + northArrow(expansion.extentMm)
-    val styled = order.filter { system -> drawn.any { it["style"] == system } }
+    val shapes = painted + northArrow(extent?.let { it.east to it.north })
+    val styleNames = drawn.map { it["style"] as String }.toSet()
+    val palette = (order + styleNames).distinct()
+    val styled = palette.filter { it in styleNames }
     val paintedIds = drawn.map { it["id"] as String }
-    val systemStyles = styled.associateWith { styleOf(colourOfSystem(order, it), it in overhead) }
+    val systemStyles = styled.associateWith { styleOf(colourOfSystem(palette, it), it in overhead) }
     val systemLegend = styled.map { mapOf("label" to it, "style" to it) }
     return specNode(
         "plan", "plan",
@@ -116,7 +75,7 @@ internal fun planNode(file: SystemFile, expansion: Expansion, overlay: Overlay? 
             "shapes" to shapes,
             "styles" to (if (overlay == null) systemStyles else overlayStyles(overlay, paintedIds) + stopStyles(overlay)) + (NORTH_STYLE to mapOf("stroke" to NORTH_INK, "weight" to 2)),
             "legend" to (if (overlay == null) systemLegend else overlayLegend(overlay, paintedIds)),
-            "empty_text" to "The expansion has nothing to draw.",
+            "empty_text" to "The geometry has nothing to draw.",
             "selected" to SELECTION_PATH,
             "details" to detailsOf(file, expansion, overlay),
         ),

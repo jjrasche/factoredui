@@ -3,6 +3,7 @@ package ai.factoredui.application
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
@@ -12,7 +13,7 @@ class GeometryFormatException(message: String) : IllegalArgumentException(messag
 /** One layer of a piece, outside to inside in [GeoPiece.layers], which sum to the piece's thickness. */
 data class GeoLayer(val name: String, val material: String, val thicknessMm: Double, val source: String?)
 
-data class GeoPiece(val id: String, val system: String, val xMm: Double, val yMm: Double, val zMm: Double, val dxMm: Double, val dyMm: Double, val dzMm: Double, val layers: List<GeoLayer> = emptyList())
+data class GeoPiece(val id: String, val system: String, val xMm: Double, val yMm: Double, val zMm: Double, val dxMm: Double, val dyMm: Double, val dzMm: Double, val layers: List<GeoLayer> = emptyList(), val material: String? = null, val materialSource: String? = null)
 
 data class GeoRegion(val minMm: List<Double>, val maxMm: List<Double>)
 
@@ -28,6 +29,8 @@ data class Geometried(val geometry: Geometry?, val failure: String? = null)
 
 private fun JsonObject.text(key: String, where: String): String =
     (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: throw GeometryFormatException("$where lacks a text $key")
+
+private fun JsonObject.optionalText(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
 
 private fun JsonObject.number(key: String, where: String): Double =
     (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull ?: throw GeometryFormatException("$where lacks a number $key")
@@ -47,11 +50,11 @@ private fun regionOf(entry: JsonObject, where: String): GeoRegion {
 private fun pieceOf(entry: JsonObject): GeoPiece {
     val id = entry.text("id", "a piece")
     val where = "piece '$id'"
-    return GeoPiece(id, entry.text("system", where), entry.number("x", where), entry.number("y", where), entry.number("z", where), entry.number("dx", where), entry.number("dy", where), entry.number("dz", where), layersOf(entry, where))
+    return GeoPiece(id, entry.text("system", where), entry.number("x", where), entry.number("y", where), entry.number("z", where), entry.number("dx", where), entry.number("dy", where), entry.number("dz", where), layersOf(entry, where), entry.optionalText("material"), entry.optionalText("material_source"))
 }
 
 private fun layersOf(entry: JsonObject, where: String): List<GeoLayer> {
-    val listed = entry["layers"] ?: return emptyList()
+    val listed = entry["layers"]?.takeIf { it !is JsonNull } ?: return emptyList()
     val layers = listed as? JsonArray ?: throw GeometryFormatException("$where has layers that are not a list")
     return layers.map { element ->
         val layer = element as? JsonObject ?: throw GeometryFormatException("$where has a layer that is not an object")

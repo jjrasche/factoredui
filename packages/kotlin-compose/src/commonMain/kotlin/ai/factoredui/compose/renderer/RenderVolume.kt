@@ -95,13 +95,6 @@ private const val EDGE_DARKEN = 0.55f
 private const val SHADOW_LAYERS = 4
 private const val SHADOW_SPREAD = 0.04f
 private const val SHADOW_ALPHA = 0.07f
-private const val GLASS_ALPHA = 0.4f
-private const val GLASS_WHITE_MIX = 0.5f
-private const val GLASS_EDGE_ALPHA = 0.7f
-private const val GRAIN_LINES = 6
-private const val GRAIN_DP = 0.6f
-private const val GRAIN_DARKEN = 0.8f
-private const val GRAIN_ALPHA = 0.35f
 private const val DASH_DP = 5f
 private const val LEGEND_SWATCH_DP = 14f
 private const val WHITE_MIX = 0.6f
@@ -235,28 +228,17 @@ private fun DrawScope.drawShadow(outline: List<Offset>) {
     }
 }
 
-private fun DrawScope.drawGrain(corners: List<Offset>, colour: Color) {
-    val isLongAlongFirst = (corners[1] - corners[0]).getDistance() >= (corners[3] - corners[0]).getDistance()
-    val (a, b, c, d) = if (isLongAlongFirst) listOf(corners[0], corners[1], corners[2], corners[3]) else listOf(corners[0], corners[3], corners[2], corners[1])
-    (1 until GRAIN_LINES).forEach { line ->
-        val t = line.toFloat() / GRAIN_LINES
-        drawLine(colour, a + (d - a) * t, b + (c - b) * t, strokeWidth = GRAIN_DP.dp.toPx())
-    }
-}
-
-/** A box lit from the sun in its material: glass is see-through with a bright edge, timber has grain along its length, anything else is plain; each with a thin edge in a deeper tone of its own colour. */
+/** A box lit from the sun in its style's colour, with a thin edge in a deeper tone of it. */
 private fun DrawScope.drawLitBox(projected: ProjectedBox, style: PlanStyle, ink: Color) {
     val stroke = planColour(style.stroke) ?: ink
     val body = lerp(stroke, Color.White, LIT_WHITE_MIX)
-    val isGlass = style.material == "glass"
     val effect = if (projected.box.isEstimate) PathEffect.dashPathEffect(floatArrayOf(DASH_DP.dp.toPx(), DASH_DP.dp.toPx())) else null
     projected.faces.forEach { face ->
         val path = pathOf(face.corners)
         val faceColour = shaded(body, face.shade)
-        drawPath(path, if (isGlass) lerp(faceColour, Color.White, GLASS_WHITE_MIX).copy(alpha = GLASS_ALPHA) else faceColour, style = Fill)
-        if (style.material == "timber" && !projected.box.isEstimate) drawGrain(face.corners, shaded(stroke, face.shade * GRAIN_DARKEN).copy(alpha = GRAIN_ALPHA))
+        drawPath(path, faceColour, style = Fill)
         if (projected.box.isEstimate) drawHatch(face.corners, stroke.copy(alpha = 0.55f))
-        val edge = if (isGlass) Color.White.copy(alpha = GLASS_EDGE_ALPHA) else shaded(stroke, EDGE_DARKEN)
+        val edge = shaded(stroke, EDGE_DARKEN)
         drawPath(path, edge, style = Stroke(width = (style.weight ?: LIT_OUTLINE_DP).dp.toPx(), pathEffect = effect))
     }
 }

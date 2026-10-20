@@ -25,6 +25,7 @@ private fun labelOffsets(side: ChainSide): Pair<Int, Int> = when (side) {
 }
 
 /** A chain of dimensions, one string in feet and inches for each stretch between consecutive breaks, drawn at [lineAt] on the given side; a stretch too short to hold its string has none. */
+// split-audit-2026-10-20 item 10: dimensions are worked out here; they wait for an engine view
 internal fun chainShapes(prefix: String, rawBreaks: List<Double>, side: ChainSide, lineAt: Double): List<Map<String, Any?>> {
     val breaks = distinctBreaks(rawBreaks)
     if (breaks.size < 2) return emptyList()

@@ -42,6 +42,7 @@ private fun holeOf(region: GeoRegion) = Bounds(region.minMm[0], region.minMm[1],
 internal fun fragmentId(host: String, index: Int) = if (index == 0) host else "$host#${index + 1}"
 
 /** Every box that is the host of a cut, drawn as the boxes around the opening, so the opening is a hole in it and not a box laid over it. */
+// split-audit-2026-10-20 item 2: openings are cut out of their hosts here; the engine should hand geometry over cut
 internal fun withCutsOpened(boxes: List<Map<String, Any?>>, geometry: Geometry): List<Map<String, Any?>> {
     val holesOf = geometry.cuts.groupBy { it.host }.mapValues { (_, cuts) -> cuts.map { holeOf(it.region) } }
     return boxes.flatMap { box ->

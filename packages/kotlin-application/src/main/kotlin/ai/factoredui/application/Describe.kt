@@ -85,6 +85,7 @@ private fun settingNode(prefix: String, setting: DescribedSetting): JsonObject {
         "$id.line", "row", mapOf("gap" to 8, "align" to "center", "justify" to "between"),
         listOf(textNode("$id.name", humanize(setting.id), flex = 1), valueNode("$id.value", setting)),
     )
+    // split-audit-2026-10-20 item 9: a reading is found by its reason text; it waits for a status field
     val reason = setting.reason?.removePrefix("reading:")?.trim()?.takeIf { it.isNotEmpty() }
     return specNode("$id.setting", "column", mapOf("gap" to 2), listOfNotNull(line, reason?.let { textNode("$id.reason", it, variant = "caption", color = MUTED_INK) }))
 }

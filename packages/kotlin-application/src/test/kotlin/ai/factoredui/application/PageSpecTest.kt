@@ -33,13 +33,26 @@ private val EXPANSION = """
   "supplied": { "stock": { "value": 630, "unit": "board_foot", "reason": "from a note" } } }
 """
 
+private val GEOMETRY = readGeometry(
+    """{ "pieces": [
+        { "id": "a1", "system": "alpha", "x": 100, "y": 200, "z": 0, "dx": 2000, "dy": 1000, "dz": 200 },
+        { "id": "b1", "system": "beta", "x": 0, "y": 0, "z": 300, "dx": 4000, "dy": 3000, "dz": 50 },
+        { "id": "g1", "system": "gamma", "x": 100, "y": 200, "z": 0, "dx": 2000, "dy": 10, "dz": 3000 },
+        { "id": "g2", "system": "gamma", "x": 100, "y": 200, "z": 0, "dx": 10, "dy": 1000, "dz": 3000 },
+        { "id": "g3", "system": "gamma", "x": 100, "y": 200, "z": 0, "dx": 10, "dy": 10, "dz": 10 },
+        { "id": "i1", "system": "gamma", "x": 1000, "y": -300, "z": 250, "dx": 10, "dy": 1000, "dz": 100 } ],
+      "contacts": [], "cuts": [], "unmeasured": [] }""",
+)
+
 private fun page(): JsonObject = buildPageSpec(readSystemFile(SYSTEM_FILE), readExpansion(EXPANSION))
+
+private fun pageDrawn(): JsonObject = buildPageSpec(readSystemFile(SYSTEM_FILE), readExpansion(EXPANSION), geometried = Geometried(GEOMETRY))
 
 private fun JsonObject.nodes(): List<JsonObject> = listOf(this) + this["children"]!!.jsonArray.flatMap { it.jsonObject.nodes() }
 
 private fun JsonObject.byId(id: String): JsonObject = nodes().first { it["id"]!!.jsonPrimitive.content == id }
 
-private fun planShapes(): List<JsonObject> = page()["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["shapes"]!!.jsonArray.map { it.jsonObject }
+private fun planShapes(): List<JsonObject> = pageDrawn()["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["shapes"]!!.jsonArray.map { it.jsonObject }
 
 private fun JsonObject.text(key: String) = this[key]!!.jsonPrimitive.content
 
@@ -55,49 +68,26 @@ class PageSpecTest {
     }
 
     @Test
-    fun a_size_known_both_ways_is_a_rect_one_way_a_line_and_neither_a_marker() {
-        val kinds = planShapes().associate { it.text("id") to it.text("kind") }
-        assertEquals("rect", kinds["a1"])
-        assertEquals("line", kinds["g1"])
-        assertEquals("line", kinds["g2"])
-        assertEquals("marker", kinds["g3"])
-        val along = planShapes().first { it.text("id") == "g2" }
-        assertEquals(1200.0, along.number("y2_mm"))
-        assertEquals(100.0, along.number("x2_mm"))
-    }
-
-    @Test
-    fun an_instance_is_a_line_centred_on_its_position_and_turned_by_its_rotation() {
-        val bar = planShapes().first { it.text("id") == "i1" }
-        assertEquals(1000.0, bar.number("x_mm"), 1e-6)
-        assertEquals(1000.0, bar.number("x2_mm"), 1e-6)
-        assertEquals(-300.0, bar.number("y_mm"), 1e-6)
-        assertEquals(700.0, bar.number("y2_mm"), 1e-6)
-    }
-
-    @Test
-    fun rects_are_painted_from_the_highest_level_down_and_before_lines_and_markers() {
-        val order = planShapes().filter { it.text("kind") != "label" && !it.text("id").startsWith("arrow:") }.map { it.text("id") }
-        assertEquals(listOf("b1", "a1", "g1", "g2", "g3", "i1"), order)
+    fun a_piece_is_a_rect_of_its_footprint_and_the_lowest_are_painted_first() {
+        val pieces = planShapes().filter { !it.text("id").startsWith("arrow:") }
+        assertEquals(setOf("rect"), pieces.map { it.text("kind") }.toSet())
+        assertEquals("b1", pieces.last().text("id"))
+        assertEquals(2000.0, pieces.first { it.text("id") == "a1" }.number("width_mm"))
     }
 
     @Test
     fun the_system_seen_over_another_is_dashed_and_each_system_has_its_own_colour_by_order() {
-        val styles = page()["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["styles"]!!.jsonObject
+        val styles = pageDrawn()["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["styles"]!!.jsonObject
         assertEquals("true", styles["beta"]!!.jsonObject.text("dash"))
         assertEquals("false", styles["alpha"]!!.jsonObject.text("dash"))
         assertEquals(3, styles.filterKeys { it != "north arrow" }.values.map { it.jsonObject.text("stroke") }.toSet().size)
     }
 
     @Test
-    fun a_rect_is_labelled_with_its_system_and_its_millimetres_and_north_is_drawn_as_an_arrow_not_a_glyph() {
+    fun north_is_drawn_as_an_arrow_not_a_glyph() {
         val labels = planShapes().filter { it.text("kind") == "label" }.associate { it.text("id") to it.text("text") }
-        assertEquals("alpha 2000 × 1000 mm", labels["label:a1"])
-        assertEquals("beta 4000 × 3000 mm", labels["label:b1"])
         assertEquals("N", labels["arrow:label"])
-        val arrowLines = planShapes().filter { it.text("id").startsWith("arrow:") && it.text("kind") == "line" }
-        assertEquals(listOf("arrow:shaft", "arrow:west", "arrow:east"), arrowLines.map { it.text("id") })
-        assertEquals(emptyList(), labels.values.filter { text -> text.any { it.code > 0x2000 } })
+        assertEquals(listOf("arrow:shaft", "arrow:west", "arrow:east"), planShapes().filter { it.text("id").startsWith("arrow:") && it.text("kind") == "line" }.map { it.text("id") })
     }
 
     @Test
@@ -129,7 +119,10 @@ class PageSpecTest {
                 { "id": "late", "system": "s10", "type": "t", "x_mm": 0, "y_mm": 0, "width_mm": 5, "depth_mm": 5, "level": 0, "fields": {} } ],
                "instances": [], "supplied": {} }""",
         )
-        val styles = buildPageSpec(file, expansion)["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["styles"]!!.jsonObject
+        val geometry = readGeometry(
+            """{ "pieces": [ { "id": "early", "system": "s2", "x": 0, "y": 0, "z": 0, "dx": 5, "dy": 5, "dz": 5 }, { "id": "late", "system": "s10", "x": 0, "y": 0, "z": 0, "dx": 5, "dy": 5, "dz": 5 } ], "contacts": [], "cuts": [], "unmeasured": [] }""",
+        )
+        val styles = buildPageSpec(file, expansion, geometried = Geometried(geometry))["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["styles"]!!.jsonObject
         assertEquals(2, listOf("s2", "s10").map { styles[it]!!.jsonObject.text("stroke") }.toSet().size)
     }
 
@@ -209,10 +202,10 @@ class PageSpecTest {
 
     @Test
     fun the_two_views_sit_behind_a_switch_and_neither_view_names_a_glyph() {
-        val views = page()["root"]!!.jsonObject.byId("views")
+        val views = pageDrawn()["root"]!!.jsonObject.byId("views")
         assertEquals("tabs", views.text("type"))
         assertEquals(listOf("plan-view", "volume-view"), views["children"]!!.jsonArray.map { it.jsonObject.text("id") })
-        val everyText = page()["root"]!!.jsonObject.nodes().mapNotNull { node -> (node["props"] as? JsonObject)?.get("value").let { it as? JsonPrimitive }?.takeIf { it.isString }?.content }
+        val everyText = pageDrawn()["root"]!!.jsonObject.nodes().mapNotNull { node -> (node["props"] as? JsonObject)?.get("value").let { it as? JsonPrimitive }?.takeIf { it.isString }?.content }
         assertEquals(emptyList(), everyText.filter { value -> value.any { it.code > 0x2000 } })
     }
 
@@ -220,7 +213,7 @@ class PageSpecTest {
     fun selecting_a_drawn_thing_shows_what_it_is_its_systems_settings_with_reasons_and_the_rules_naming_it() {
         val file = readSystemFile("""{ "id": "w", "title": "W", "binds": { "openings": ["alpha", "gamma"] }, "systems": {
             "alpha": { "solution": "plain", "settings": { "width_mm": 2000 }, "reasons": { "width_mm": "Jim measured it" } } } }""")
-        val details = buildPageSpec(file, readExpansion(EXPANSION))["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["details"]!!.jsonObject
+        val details = buildPageSpec(file, readExpansion(EXPANSION), geometried = Geometried(GEOMETRY))["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject["details"]!!.jsonObject
         val sections = details["a1"]!!.jsonObject["sections"]!!.jsonArray.map { it.jsonObject }
         val rows = sections.flatMap { it["rows"]!!.jsonArray.map { row -> row.jsonObject } }.associateBy { it.text("label") }
         assertEquals("alpha", rows.getValue("system")["value"]!!.jsonPrimitive.content)
@@ -233,7 +226,7 @@ class PageSpecTest {
 
     @Test
     fun the_plan_and_the_solid_view_share_one_selection_and_the_tables_wait_behind_a_switch_that_starts_off() {
-        val root = page()["root"]!!.jsonObject
+        val root = pageDrawn()["root"]!!.jsonObject
         assertEquals(root.byId("plan")["props"]!!.jsonObject.text("selected"), root.byId("volume")["props"]!!.jsonObject.text("selected"))
         assertEquals("toggle", root.byId("tables-switch").text("type"))
         assertEquals(root.byId("tables-switch")["props"]!!.jsonObject.text("value"), root.byId("tables").text("visible"))
@@ -247,7 +240,10 @@ class PageSpecTest {
                 { "id": "g", "system": "gamma", "type": "glazing", "x_mm": 1, "y_mm": 2, "rotation_deg": 0, "length_mm": 9, "elevation_mm": 2, "fields": {} } ] }""",
         )
         assertEquals(listOf("g", "g (2)"), expansion.instances.map { it.id })
-        val plan = buildPageSpec(readSystemFile(SYSTEM_FILE), expansion)["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject
+        val geometry = readGeometry(
+            """{ "pieces": [ { "id": "g", "system": "gamma", "x": 1, "y": 2, "z": 1, "dx": 9, "dy": 1, "dz": 1 }, { "id": "g (2)", "system": "gamma", "x": 1, "y": 2, "z": 2, "dx": 9, "dy": 1, "dz": 1 } ], "contacts": [], "cuts": [], "unmeasured": [] }""",
+        )
+        val plan = buildPageSpec(readSystemFile(SYSTEM_FILE), expansion, geometried = Geometried(geometry))["root"]!!.jsonObject.byId("plan")["props"]!!.jsonObject
         assertEquals(setOf("g", "g (2)"), plan["details"]!!.jsonObject.keys)
     }
 

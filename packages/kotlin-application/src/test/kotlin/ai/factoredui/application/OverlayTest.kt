@@ -33,8 +33,17 @@ private val OVERLAY = """
   "counts": { "numbers": 2, "not_applicable": 1, "unknown": 1 }, "unknown": [ { "id": "wall@1", "color": "#9a9a9a", "reason": "turn-not-square" } ] }
 """
 
+private val GEOMETRY = readGeometry(
+    """{ "pieces": [
+        { "id": "post@0,0", "system": "posts", "x": 0, "y": 0, "z": 0, "dx": 100, "dy": 100, "dz": 300 },
+        { "id": "post@9,9", "system": "posts", "x": 9, "y": 9, "z": 0, "dx": 100, "dy": 100, "dz": 300 },
+        { "id": "wall@0", "system": "walls", "x": 0, "y": 0, "z": 350, "dx": 2438, "dy": 100, "dz": 2400 },
+        { "id": "wall@1", "system": "walls", "x": 0, "y": 0, "z": 350, "dx": 100, "dy": 2438, "dz": 2400 } ],
+      "contacts": [], "cuts": [], "unmeasured": [] }""",
+)
+
 private fun page(): JsonObject =
-    buildPageSpec(readSystemFile(SYSTEM_FILE), readExpansion(EXPANSION), overlaying = Overlaying(readOverlay(OVERLAY)))
+    buildPageSpec(readSystemFile(SYSTEM_FILE), readExpansion(EXPANSION), overlaying = Overlaying(readOverlay(OVERLAY)), geometried = Geometried(GEOMETRY))
 
 private fun JsonObject.nodes(): List<JsonObject> = listOf(this) + this["children"]!!.jsonArray.flatMap { it.jsonObject.nodes() }
 

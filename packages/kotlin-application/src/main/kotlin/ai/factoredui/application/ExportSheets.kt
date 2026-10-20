@@ -53,6 +53,7 @@ internal fun configSource(system: Path): String {
 private fun unmeasuredNotes(geometry: Geometry): NoteGroup =
     NoteGroup("NOT MEASURED BY THE ENGINE", geometry.unmeasured.map { "${it.id}: ${it.field} is unknown (${it.why})" }.ifEmpty { listOf("none") })
 
+// split-audit-2026-10-20 item 9: an assumed setting is found by searching its reason text; it waits for a status field
 private fun isAssumed(setting: DescribedSetting) = setting.reason?.contains("assum", ignoreCase = true) == true
 
 private fun assumedNotes(described: List<DescribedSystem>): NoteGroup =
@@ -69,7 +70,7 @@ private fun slug(title: String) = title.lowercase().replace(Regex("[^a-z0-9]+"),
 internal class Drawn(val title: String, val shapes: List<Map<String, Any?>>)
 
 private fun drawingsOf(geometry: Geometry, expansion: Expansion): List<Drawn> =
-    listOf(Drawn("Plan", blueprintPlanShapes(geometry, expansion))) + elevationDrawings(geometry).map { Drawn(it.title, it.shapes) } +
+    listOf(Drawn("Plan", blueprintPlanShapes(geometry))) + elevationDrawings(geometry).map { Drawn(it.title, it.shapes) } +
         listOfNotNull(sectionDrawing(geometry)?.let { Drawn("Section through the middle of the depth", it.shapes) })
 
 /** Every sheet, named by file stem: the design summary, the drawings, and, when the notes do not fit the column of a drawing, the sheets that continue them, which each drawing points to. */

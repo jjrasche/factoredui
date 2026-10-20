@@ -101,7 +101,7 @@ private fun titleBlock(sheetName: String, sheetNumber: String, scaleText: String
     val half = TITLE_HEIGHT_MM / 2
     val cells = listOf(
         listOf("Project" to meta.project, "Sheet" to sheetName, "Sheet number" to sheetNumber, "Date" to meta.date),
-        listOf("Config commit" to meta.configSource, "Engine pin" to meta.enginePin, "Scale" to scaleText, "Source" to "world-engine geometry; no line is drawn by hand"),
+        listOf("Config commit" to meta.configSource, "Engine pin" to meta.enginePin, "Scale" to scaleText, "Source" to "we geometry"),
     )
     val marks = cells.flatMapIndexed { row, entries -> entries.flatMapIndexed { index, (label, value) -> cell(left + index * column, top + row * half, column, label, value, bold = label == "Sheet") } }
     val lines = listOf(Segment(left, top, left + width, top, Ink(BLACK, 0.7)), Segment(left, top + half, left + width, top + half, Ink(BLACK, 0.25))) +

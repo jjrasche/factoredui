@@ -30,7 +30,7 @@ private val SYSTEM_FILE = """{ "id": "pier", "title": "A pier", "systems": { "wa
 
 private fun volume(): JsonObject = blueprintVolumeNode(readGeometry(GEOMETRY), readExpansion(EXPANSION))["props"]!!.jsonObject
 
-private fun plan(): JsonObject = blueprintPlanNode(readGeometry(GEOMETRY), readExpansion(EXPANSION))["props"]!!.jsonObject
+private fun plan(): JsonObject = blueprintPlanNode(readGeometry(GEOMETRY))["props"]!!.jsonObject
 
 private fun JsonObject.entries(key: String) = this[key]!!.jsonArray.map { it.jsonObject }
 

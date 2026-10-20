@@ -27,6 +27,13 @@ class LayerTest {
     }
 
     @Test
+    fun a_piece_the_engine_gives_null_layers_and_null_material_has_neither() {
+        val piece = geometryWith(""", "layers": null, "material": null, "material_source": null""").pieces.first()
+        assertTrue(piece.layers.isEmpty())
+        assertEquals(null, piece.material)
+    }
+
+    @Test
     fun a_piece_with_no_layers_keeps_the_total_thickness_label() {
         val shapes = sectionDrawing(geometryWith(""))!!.shapes
         assertTrue(shapes.ids("size:thickness:west").isNotEmpty())

@@ -164,25 +164,21 @@ internal fun lineShape(id: String, style: String, x: Double, y: Double, x2: Doub
 
 private fun planDimension(extent: Extent) = flatDimensions(extent.west, extent.east, extent.south, extent.north)
 
-private fun planUnknown(item: ExpandedObject): Map<String, Any?>? =
-    if (hasFootprint(item)) rectShape("unknown:${item.id}", "unknown", item.xMm, item.yMm, item.widthMm!!, item.depthMm!!)
-    else mapOf("id" to "unknown:${item.id}", "kind" to "marker", "style" to "unknown", "x_mm" to item.xMm, "y_mm" to item.yMm)
-
 /** The footprints of the pieces seen from above, with the seams, the holes and the dimensions of the whole. */
-internal fun blueprintPlanShapes(geometry: Geometry, expansion: Expansion): List<Map<String, Any?>> {
+internal fun blueprintPlanShapes(geometry: Geometry): List<Map<String, Any?>> {
     val extent = extentOf(geometry.pieces)
     val seams = seamRegions(geometry).map { contact ->
         val (low, high) = contact.region.minMm to contact.region.maxMm
         lineShape("seam:${contact.a}|${contact.b}", "seam", low[0], low[1], high[0], high[1])
     }
     val holes = geometry.cuts.map { rectShape("hole:${it.host}|${it.opening}", "hole", it.region.minMm[0], it.region.minMm[1], it.region.maxMm[0] - it.region.minMm[0], it.region.maxMm[1] - it.region.minMm[1]) }
-    val unknown = unknownObjects(geometry, expansion).mapNotNull(::planUnknown)
-    return geometry.pieces.map { rectShape(it.id, "piece", it.xMm, it.yMm, it.dxMm, it.dyMm) } + seams + holes + unknown + extent?.let { planChains(geometry, it) }.orEmpty() + extent?.let(::planDimension).orEmpty()
+    return geometry.pieces.map { rectShape(it.id, "piece", it.xMm, it.yMm, it.dxMm, it.dyMm) } + seams + holes + extent?.let { planChains(geometry, it) }.orEmpty() + extent?.let(::planDimension).orEmpty()
 }
 
 private const val WALL_BAND_MM = 200.0
 
 /** A chain along each side of the plan: the panels of the walls on that side and the openings cut in them, each edge to the next. */
+// split-audit-2026-10-20 item 5: the walls on a side are picked with a band here; the engine should say
 private fun planChains(geometry: Geometry, extent: Extent): List<Map<String, Any?>> {
     fun alongX(onSide: (GeoPiece) -> Boolean): List<Double> {
         val band = geometry.pieces.filter(onSide)
@@ -200,8 +196,8 @@ private fun planChains(geometry: Geometry, extent: Extent): List<Map<String, Any
         chainShapes("chain:east", alongY { extent.east - (it.xMm + it.dxMm) <= WALL_BAND_MM && it.dxMm <= WALL_BAND_MM }, ChainSide.RIGHT, extent.east + CHAIN_OFFSET_MM)
 }
 
-internal fun blueprintPlanNode(geometry: Geometry, expansion: Expansion): JsonObject {
-    val shapes = blueprintPlanShapes(geometry, expansion)
+internal fun blueprintPlanNode(geometry: Geometry): JsonObject {
+    val shapes = blueprintPlanShapes(geometry)
     return specNode(
         "blueprint-plan", "plan",
         mapOf(
@@ -211,14 +207,12 @@ internal fun blueprintPlanNode(geometry: Geometry, expansion: Expansion): JsonOb
     )
 }
 
-private const val BLUEPRINT_NOTE = "Every line is the engine's geometry: edges in light blue, panel seams in cyan, holes cut for openings in white dashes, pieces with no measured size dashed, and dimensions in amber."
-
 /** The blueprint section: a note, the solid in lines and the plan. */
 internal fun blueprintNode(geometried: Geometried, expansion: Expansion): JsonObject {
     val geometry = geometried.geometry
     val failure = geometried.failure?.let { textNode("blueprint-failure", "The geometry could not be read: $it", variant = "caption", color = MUTED_INK) }
     val children = if (geometry == null) listOfNotNull(failure) else listOf(
-        textNode("blueprint-note", BLUEPRINT_NOTE, variant = "caption", color = MUTED_INK), blueprintVolumeNode(geometry, expansion), blueprintPlanNode(geometry, expansion),
+        blueprintVolumeNode(geometry, expansion), blueprintPlanNode(geometry),
     ) + blueprintElevationNodes(geometry) + listOfNotNull(blueprintSectionNode(geometry))
     return specNode("blueprint", "column", mapOf("gap" to 8), listOf(textNode("blueprint-title", "Blueprint", variant = "subheading", bold = true)) + children)
 }

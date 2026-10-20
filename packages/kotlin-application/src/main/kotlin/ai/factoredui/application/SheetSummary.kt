@@ -59,6 +59,7 @@ private fun rulesGroup(evaluation: JsonObject): NoteGroup = NoteGroup(
     },
 )
 
+// split-audit-2026-10-20 item 8: solver names, keys and units are hardcoded in the groups below
 private fun solverNamed(solving: JsonObject, function: String): JsonObject? = solving["solvers"].list().map { it.obj() }.firstOrNull { it["function"].words() == function }
 
 private fun gravityGroup(solving: JsonObject): NoteGroup {
@@ -92,6 +93,7 @@ private fun simulationGroup(simulation: JsonObject?): NoteGroup {
     )
 }
 
+// split-audit-2026-10-20 item 9: an assumed setting is found by searching its reason text; it waits for a status field
 private fun assumptionsGroup(describe: JsonObject): NoteGroup = NoteGroup(
     "ASSUMPTIONS, EVERY SETTING WHOSE REASON SAYS IT IS ASSUMED",
     describe["systems"].list().flatMap { entry ->

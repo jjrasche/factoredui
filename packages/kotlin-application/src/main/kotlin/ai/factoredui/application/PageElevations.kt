@@ -71,6 +71,7 @@ private fun elevationShapes(view: View, extent: Extent, geometry: Geometry): Lis
 internal class FlatDrawing(val id: String, val title: String, val shapes: List<Map<String, Any?>>)
 
 /** One elevation per side of the building: the pieces nearest the viewer, the holes cut in them, and the dimensions of the whole. */
+// split-audit-2026-10-20 item 1: elevations are worked out here; they wait for an engine view
 internal fun elevationDrawings(geometry: Geometry): List<FlatDrawing> {
     val extent = extentOf(geometry.pieces) ?: return emptyList()
     return VIEWS.map { view -> FlatDrawing(view.id, view.title, elevationShapes(view, extent, geometry)) }
@@ -89,6 +90,7 @@ private fun layerLabel(piece: GeoPiece, layer: GeoLayer, index: Int, anchor: Pai
 )
 
 /** A piece cut by the section as its layers, outside to inside: a line between each pair and a leader to words naming each, listed outermost first from the top, standing to the right of an upright piece and above a flat one. */
+// split-audit-2026-10-20 item 6: layer order and which pieces are alike are guessed here
 internal fun layerShapes(piece: GeoPiece, extent: Extent): List<Map<String, Any?>> {
     val isUpright = piece.dxMm <= piece.dzMm
     val total = piece.layers.sumOf { it.thicknessMm }
@@ -151,6 +153,7 @@ private fun thicknessLabel(run: List<GeoPiece>, passed: List<GeoPiece>): Map<Str
 private fun cutsPlane(piece: GeoPiece, southMm: Double) = piece.yMm <= southMm && southMm <= piece.yMm + piece.dyMm
 
 /** The building cut by a vertical plane through the middle of its depth, looking north: what the plane passes through is drawn heavy. */
+// split-audit-2026-10-20 item 1: the section is worked out here; it waits for an engine view
 internal fun sectionDrawing(geometry: Geometry): FlatDrawing? {
     val extent = extentOf(geometry.pieces) ?: return null
     val planeMm = (extent.south + extent.north) / 2
@@ -168,12 +171,12 @@ internal fun sectionDrawing(geometry: Geometry): FlatDrawing? {
 
 internal fun blueprintSectionNode(geometry: Geometry): JsonObject? = sectionDrawing(geometry)?.let { flatNode("blueprint-${it.id}", it.title, it.shapes, geometry) }
 
-private fun planView(geometry: Geometry, expansion: Expansion): JsonObject =
-    specNode("blueprint-plan-view", "column", mapOf("gap" to 4), listOf(textNode("blueprint-plan-title", "Plan", variant = "caption", color = MUTED_INK), blueprintPlanNode(geometry, expansion)))
+private fun planView(geometry: Geometry): JsonObject =
+    specNode("blueprint-plan-view", "column", mapOf("gap" to 4), listOf(textNode("blueprint-plan-title", "Plan", variant = "caption", color = MUTED_INK), blueprintPlanNode(geometry)))
 
 /** Every flat drawing of the building: the plan, the four elevations and the section. */
-internal fun blueprintDrawingsNode(geometry: Geometry, expansion: Expansion): JsonObject =
+internal fun blueprintDrawingsNode(geometry: Geometry): JsonObject =
     specNode(
         "drawings", "column", mapOf("gap" to 12),
-        listOf(textNode("drawings-title", "Drawings", variant = "subheading", bold = true), planView(geometry, expansion)) + blueprintElevationNodes(geometry) + listOfNotNull(blueprintSectionNode(geometry)),
+        listOf(textNode("drawings-title", "Drawings", variant = "subheading", bold = true), planView(geometry)) + blueprintElevationNodes(geometry) + listOfNotNull(blueprintSectionNode(geometry)),
     )

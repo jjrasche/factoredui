@@ -35,7 +35,7 @@ class DimensionChainTest {
 
     @Test
     fun the_plan_chains_each_side_with_the_openings_dimensioned_to_their_edges() {
-        val plan = blueprintPlanShapes(GEOMETRY, EXPANSION)
+        val plan = blueprintPlanShapes(GEOMETRY)
         listOf("chain:south", "chain:north", "chain:west", "chain:east").forEach { assertTrue(plan.any { shape -> (shape["id"] as String).startsWith(it) }, it) }
         assertTrue(plan.texts("chain:south/text").isNotEmpty())
     }

@@ -5,6 +5,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
+// split-audit-2026-10-20 item 9: a reading is found by its reason text; it waits for a status field
 private const val READING_PREFIX = "reading:"
 private const val MILLIMETRE_FORMAT_SUFFIX = " mm"
 private val MILLIMETRE_FORMAT = mapOf("scale" to 1, "decimals" to 0, "suffix" to MILLIMETRE_FORMAT_SUFFIX)

@@ -15,7 +15,7 @@ private val META = SheetMeta("A house", "2026-10-20", "abc1234", "we deadbee", 6
 
 private val NOTES = listOf(NoteGroup("NOT MEASURED BY THE ENGINE", listOf("roof: height_mm is unknown (size-unknown)")), NoteGroup("ASSUMED SETTINGS", listOf("floor.thickness_mm = 114 mm: assumed: a 4-1/2 in SIP panel")))
 
-private fun planSheet() = sheetOf("Plan", "A-1 of 6", blueprintPlanShapes(GEOMETRY, EXPANSION), NOTES, META)
+private fun planSheet() = sheetOf("Plan", "A-1 of 6", blueprintPlanShapes(GEOMETRY), NOTES, META)
 
 
 class SheetTest {
@@ -30,11 +30,11 @@ class SheetTest {
 
     @Test
     fun the_scale_is_the_largest_standard_one_at_which_the_house_fits_and_is_stated() {
-        val (scale, marks) = fitDrawing(blueprintPlanShapes(GEOMETRY, EXPANSION))
+        val (scale, marks) = fitDrawing(blueprintPlanShapes(GEOMETRY))
         assertTrue(scale in listOf(8, 12, 16, 24, 32, 48, 64, 96), "scale $scale")
         val bounds = boundsOfAll(marks)!!
         assertTrue(bounds.width < SHEET_WIDTH_MM && bounds.height < SHEET_HEIGHT_MM, "bounds ${bounds.width} x ${bounds.height}")
-        assertTrue(sheetSvg(sheetOf("Plan", "A-1 of 6", blueprintPlanShapes(GEOMETRY, EXPANSION), NOTES, META)).contains(scaleName(scale).replace("\"", "&quot;")), scaleName(scale))
+        assertTrue(sheetSvg(sheetOf("Plan", "A-1 of 6", blueprintPlanShapes(GEOMETRY), NOTES, META)).contains(scaleName(scale).replace("\"", "&quot;")), scaleName(scale))
     }
 
     @Test
@@ -57,7 +57,7 @@ class SheetTest {
 
     @Test
     fun every_sheet_of_the_house_is_made() {
-        val drawings = listOf(blueprintPlanShapes(GEOMETRY, EXPANSION)) + elevationDrawings(GEOMETRY).map { it.shapes } + listOfNotNull(sectionDrawing(GEOMETRY)?.shapes)
+        val drawings = listOf(blueprintPlanShapes(GEOMETRY)) + elevationDrawings(GEOMETRY).map { it.shapes } + listOfNotNull(sectionDrawing(GEOMETRY)?.shapes)
         assertEquals(6, drawings.size)
         drawings.forEach { shapes -> assertTrue(sheetSvg(sheetOf("Sheet", "A-n", shapes, NOTES, META)).startsWith("<svg")) }
     }
@@ -81,7 +81,7 @@ class SheetTest {
 
     @Test
     fun no_text_on_any_sheet_is_smaller_than_eight_points() {
-        val drawings = listOf(blueprintPlanShapes(GEOMETRY, EXPANSION)) + elevationDrawings(GEOMETRY).map { it.shapes } + listOfNotNull(sectionDrawing(GEOMETRY)?.shapes)
+        val drawings = listOf(blueprintPlanShapes(GEOMETRY)) + elevationDrawings(GEOMETRY).map { it.shapes } + listOfNotNull(sectionDrawing(GEOMETRY)?.shapes)
         val sheets = drawings.map { sheetOf("Sheet", "A-n", it, NOTES, META) } + textSheets("Summary", { page, pages -> "S-1 ($page of $pages)" }, listOf(NoteGroup("H", (1..400).map { "a line of the summary number $it" })), META)
         sheets.forEach { sheet -> sheet.marks.filterIsInstance<Words>().forEach { assertTrue(it.sizeMm * 72 / 25.4 >= 8.0, "'${it.text}' is ${it.sizeMm * 72 / 25.4} pt") } }
     }
@@ -95,7 +95,7 @@ class SheetTest {
 
     private fun assumptions(count: Int) = NoteGroup("ASSUMED SETTINGS", (1..count).map { "setting$it.value = $it unit: assumed, because this reason runs on over a few words so that it wraps onto a second line of the notes" })
 
-    private fun drawnSet() = listOf(Drawn("Plan", blueprintPlanShapes(GEOMETRY, EXPANSION)), Drawn("South elevation", elevationDrawings(GEOMETRY).first().shapes))
+    private fun drawnSet() = listOf(Drawn("Plan", blueprintPlanShapes(GEOMETRY)), Drawn("South elevation", elevationDrawings(GEOMETRY).first().shapes))
 
     private fun titleTop() = SHEET_HEIGHT_MM - 8.0 - 36.0
 
