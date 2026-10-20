@@ -8,8 +8,8 @@ private const val LINE_INK = "#d6e6ff"
 private const val SEAM_INK = "#6fd0ff"
 private const val HOLE_INK = "#ffffff"
 private const val DIMENSION_INK = "#ffd479"
-private const val DIMENSION_OFFSET_MM = 450.0
-private const val TICK_MM = 150.0
+internal const val DIMENSION_OFFSET_MM = 450.0
+internal const val TICK_MM = 150.0
 private const val MM_PER_INCH = 25.4
 private const val INCHES_PER_FOOT = 12
 private const val FRACTION_DENOMINATOR = 16
@@ -29,12 +29,13 @@ internal fun feetInches(mm: Double): String {
 
 internal fun dimensionText(mm: Double) = "${formatFigure(mm)} mm · ${feetInches(mm)}"
 
-private fun blueprintStyles(): Map<String, Map<String, Any?>> = mapOf(
+internal fun blueprintStyles(): Map<String, Map<String, Any?>> = mapOf(
     "piece" to mapOf("stroke" to LINE_INK, "weight" to 1.4),
     "seam" to mapOf("stroke" to SEAM_INK, "weight" to 1.0),
     "hole" to mapOf("stroke" to HOLE_INK, "weight" to 2.0, "dash" to true),
     "unknown" to mapOf("stroke" to LINE_INK, "weight" to 1.2, "dash" to true),
     "dimension" to mapOf("stroke" to DIMENSION_INK, "weight" to 1.0),
+    "cut" to mapOf("stroke" to LINE_INK, "weight" to 2.6),
 )
 
 private fun GeoPiece.centreXMm() = xMm + dxMm / 2
@@ -64,9 +65,9 @@ private fun isSeam(geometry: Geometry, contact: GeoContact): Boolean {
 
 private fun seamRegions(geometry: Geometry): List<GeoContact> = geometry.contacts.filter { isSeam(geometry, it) }
 
-private class Extent(val west: Double, val east: Double, val south: Double, val north: Double, val floor: Double, val ceiling: Double)
+internal class Extent(val west: Double, val east: Double, val south: Double, val north: Double, val floor: Double, val ceiling: Double)
 
-private fun extentOf(pieces: List<GeoPiece>): Extent? {
+internal fun extentOf(pieces: List<GeoPiece>): Extent? {
     if (pieces.isEmpty()) return null
     return Extent(pieces.minOf { it.xMm }, pieces.maxOf { it.xMm + it.dxMm }, pieces.minOf { it.yMm }, pieces.maxOf { it.yMm + it.dyMm }, pieces.minOf { it.zMm }, pieces.maxOf { it.zMm + it.dzMm })
 }
@@ -121,7 +122,7 @@ private fun unknownLines3d(item: ExpandedObject): List<Map<String, Any?>> {
     return corners.indices.map { lineOf("unknown:${item.id}/$it", "unknown", corners[it], corners[(it + 1) % 4]) }
 }
 
-private fun detailsOfBlueprint(geometry: Geometry): Map<String, Any?> {
+internal fun detailsOfBlueprint(geometry: Geometry): Map<String, Any?> {
     fun row(label: String, value: String) = mapOf("label" to label, "value" to value, "note" to null)
     val measured = geometry.pieces.associate { piece ->
         piece.id to mapOf(
@@ -155,30 +156,13 @@ internal fun blueprintVolumeNode(geometry: Geometry, expansion: Expansion): Json
     )
 }
 
-private fun rectShape(id: String, style: String, xMm: Double, yMm: Double, widthMm: Double, depthMm: Double): Map<String, Any?> =
+internal fun rectShape(id: String, style: String, xMm: Double, yMm: Double, widthMm: Double, depthMm: Double): Map<String, Any?> =
     mapOf("id" to id, "kind" to "rect", "style" to style, "x_mm" to xMm, "y_mm" to yMm, "width_mm" to widthMm, "depth_mm" to depthMm)
 
-private fun lineShape(id: String, style: String, x: Double, y: Double, x2: Double, y2: Double): Map<String, Any?> =
+internal fun lineShape(id: String, style: String, x: Double, y: Double, x2: Double, y2: Double): Map<String, Any?> =
     mapOf("id" to id, "kind" to "line", "style" to style, "x_mm" to x, "y_mm" to y, "x2_mm" to x2, "y2_mm" to y2)
 
-private fun planDimension(extent: Extent): List<Map<String, Any?>> {
-    val southY = extent.south - DIMENSION_OFFSET_MM
-    val westX = extent.west - DIMENSION_OFFSET_MM
-    val width = extent.east - extent.west
-    val depth = extent.north - extent.south
-    fun label(id: String, x: Double, y: Double, text: String, dxDp: Int, dyDp: Int) =
-        mapOf("id" to id, "kind" to "label", "style" to "dimension", "x_mm" to x, "y_mm" to y, "text" to text, "align" to "center", "dx_dp" to dxDp, "dy_dp" to dyDp)
-    return listOf(
-        lineShape("dim:width", "dimension", extent.west, southY, extent.east, southY),
-        lineShape("dim:width/start", "dimension", extent.west, southY - TICK_MM, extent.west, southY + TICK_MM),
-        lineShape("dim:width/end", "dimension", extent.east, southY - TICK_MM, extent.east, southY + TICK_MM),
-        label("dim:width/text", (extent.west + extent.east) / 2, southY, dimensionText(width), 0, 14),
-        lineShape("dim:depth", "dimension", westX, extent.south, westX, extent.north),
-        lineShape("dim:depth/start", "dimension", westX - TICK_MM, extent.south, westX + TICK_MM, extent.south),
-        lineShape("dim:depth/end", "dimension", westX - TICK_MM, extent.north, westX + TICK_MM, extent.north),
-        label("dim:depth/text", westX, (extent.south + extent.north) / 2, dimensionText(depth), -8, 0),
-    )
-}
+private fun planDimension(extent: Extent) = flatDimensions(extent.west, extent.east, extent.south, extent.north)
 
 private fun planUnknown(item: ExpandedObject): Map<String, Any?>? =
     if (hasFootprint(item)) rectShape("unknown:${item.id}", "unknown", item.xMm, item.yMm, item.widthMm!!, item.depthMm!!)
@@ -211,6 +195,6 @@ internal fun blueprintNode(geometried: Geometried, expansion: Expansion): JsonOb
     val failure = geometried.failure?.let { textNode("blueprint-failure", "The geometry could not be read: $it", variant = "caption", color = MUTED_INK) }
     val children = if (geometry == null) listOfNotNull(failure) else listOf(
         textNode("blueprint-note", BLUEPRINT_NOTE, variant = "caption", color = MUTED_INK), blueprintVolumeNode(geometry, expansion), blueprintPlanNode(geometry, expansion),
-    )
+    ) + blueprintElevationNodes(geometry) + listOfNotNull(blueprintSectionNode(geometry))
     return specNode("blueprint", "column", mapOf("gap" to 8), listOf(textNode("blueprint-title", "Blueprint", variant = "subheading", bold = true)) + children)
 }
