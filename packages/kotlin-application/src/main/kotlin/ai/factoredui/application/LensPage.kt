@@ -6,7 +6,7 @@ import kotlinx.serialization.json.JsonPrimitive
 
 private const val HUD = "#0b1220"
 private const val PANEL = "#162033"
-private const val WORLD_GROUND = "#14202e"
+private const val WORLD_GROUND = "#2b3c50"
 private const val INK = "#e6e8eb"
 private const val MUTED = "#9aa3ad"
 private const val DOCK_CLOSED_DP = 520
@@ -95,7 +95,7 @@ fun buildLensPageSpec(
     geometried: Geometried? = null,
 ): JsonObject {
     val geometry = geometried?.geometry
-    val shaded = volumeNode(file, expansion, overlaying?.overlay, geometry)?.let { fullWorld(it, mapOf("ground" to WORLD_GROUND)) }
+    val shaded = volumeNode(file, expansion, overlaying?.overlay, geometry)?.let { fullWorld(it, mapOf("ground" to WORLD_GROUND, "lighting" to "sun")) }
     val blueprint = geometry?.let { fullWorld(blueprintVolumeNode(it, expansion), visible = BLUEPRINT_PATH) }
     val drawn = systemOrder(file, expansion).filter { name -> expansion.objects.any { it.system == name } || expansion.instances.any { it.system == name } }
     val notes = listOfNotNull(

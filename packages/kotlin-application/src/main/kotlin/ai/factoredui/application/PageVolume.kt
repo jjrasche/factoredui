@@ -76,7 +76,7 @@ internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay
         "volume", "volume",
         mapOf(
             "boxes" to boxes,
-            "styles" to if (overlay == null) styled.associateWith { mapOf("stroke" to colourOfSystem(order, it)) } else overlayStyles(overlay, boxIds) + stopStyles(overlay),
+            "styles" to if (overlay == null) styled.associateWith { systemLook(order, it) } else overlayStyles(overlay, boxIds) + stopStyles(overlay),
             "legend" to legend,
             "empty_text" to "The expansion has nothing to draw.",
             "selected" to SELECTION_PATH,

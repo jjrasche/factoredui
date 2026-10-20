@@ -12,7 +12,11 @@ import ai.factoredui.compose.volume.VolumeBox
 import ai.factoredui.compose.volume.VolumeLegendEntry
 import ai.factoredui.compose.volume.VolumeRead
 import ai.factoredui.compose.volume.VolumeSpanMm
+import ai.factoredui.compose.volume.UP
 import ai.factoredui.compose.volume.footprintCorners
+import ai.factoredui.compose.volume.shadowOutline
+import ai.factoredui.compose.volume.sideNormal
+import ai.factoredui.compose.volume.sunShade
 import ai.factoredui.compose.volume.paintOnTop
 import ai.factoredui.compose.volume.readVolume
 import ai.factoredui.compose.volume.volumeSpan
@@ -78,6 +82,19 @@ private const val MM_PER_UNIT = 1000f
 private const val GROUND_MARGIN = 0.15f
 private const val HATCH_GAP_DP = 6f
 private const val OUTLINE_DP = 1.2f
+private const val LIT_OUTLINE_DP = 0.8f
+private const val LIT_WHITE_MIX = 0.35f
+private const val EDGE_DARKEN = 0.55f
+private const val SHADOW_LAYERS = 4
+private const val SHADOW_SPREAD = 0.04f
+private const val SHADOW_ALPHA = 0.07f
+private const val GLASS_ALPHA = 0.4f
+private const val GLASS_WHITE_MIX = 0.5f
+private const val GLASS_EDGE_ALPHA = 0.7f
+private const val GRAIN_LINES = 6
+private const val GRAIN_DP = 0.6f
+private const val GRAIN_DARKEN = 0.8f
+private const val GRAIN_ALPHA = 0.35f
 private const val DASH_DP = 5f
 private const val LEGEND_SWATCH_DP = 14f
 private const val WHITE_MIX = 0.6f
@@ -104,14 +121,18 @@ private class ProjectedLine(val from: Offset, val to: Offset, val style: String?
 
 private class ProjectedLabel(val at: Offset, val text: String, val style: String?)
 
-private class ProjectedScene(val ground: List<Offset>?, val boxes: List<ProjectedBox>, val north: Offset?, val lines: List<ProjectedLine>, val labels: List<ProjectedLabel>)
+private class ProjectedScene(val ground: List<Offset>?, val boxes: List<ProjectedBox>, val north: Offset?, val lines: List<ProjectedLine>, val labels: List<ProjectedLabel>, val shadows: List<List<Offset>>)
 
-private fun projectBox(box: VolumeBox, eye: Vec3, project: (Vec3) -> Offset?): Pair<Float, ProjectedBox>? {
+private fun faceShades(ground: List<Pair<Double, Double>>, isLit: Boolean): List<Float> =
+    if (!isLit) listOf(1f) + SIDE_SHADES.toList()
+    else listOf(sunShade(UP).toFloat()) + ground.indices.map { i -> sideNormal(ground[i], ground[(i + 1) % 4])?.let { sunShade(it).toFloat() } ?: 1f }
+
+private fun projectBox(box: VolumeBox, eye: Vec3, isLit: Boolean, project: (Vec3) -> Offset?): Pair<Float, ProjectedBox>? {
     val ground = footprintCorners(box)
     val low = ground.map { worldOf(it.first, it.second, box.zMm) }
     val high = ground.map { worldOf(it.first, it.second, box.zMm + box.heightMm) }
     val faceCorners = listOf(high) + low.indices.map { i -> listOf(low[i], low[(i + 1) % 4], high[(i + 1) % 4], high[i]) }
-    val shades = listOf(1f) + SIDE_SHADES.toList()
+    val shades = faceShades(ground, isLit)
     val projected = faceCorners.map { corners -> corners.map(project) }
     if (projected.any { face -> face.any { it == null } }) return null
     val centre = (low + high).reduce { sum, point -> sum + point } * (1f / 8f)
@@ -121,12 +142,20 @@ private fun projectBox(box: VolumeBox, eye: Vec3, project: (Vec3) -> Offset?): P
     return (centre - eye).length() to ProjectedBox(box, faces, points.minOf { it.x }, points.minOf { it.y }, points.maxOf { it.x }, points.maxOf { it.y })
 }
 
-private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, widthPx: Float, heightPx: Float): ProjectedScene {
+private fun groundLevelMm(span: VolumeSpanMm) = if (span.floor < 0 && span.ceiling > 0) 0.0 else span.floor
+
+private fun projectShadows(read: VolumeRead, span: VolumeSpanMm, project: (Vec3) -> Offset?): List<List<Offset>> =
+    read.boxes.filter { !it.isEstimate }.mapNotNull { box ->
+        val outline = shadowOutline(box, groundLevelMm(span)).map { (x, y) -> project(worldOf(x, y, groundLevelMm(span))) }
+        outline.takeIf { points -> points.size >= 3 && points.all { it != null } }?.map { it!! }
+    }
+
+private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, widthPx: Float, heightPx: Float, isLit: Boolean): ProjectedScene {
     val view = camera.viewMatrix()
     val lens = camera.projectionMatrix(widthPx / heightPx)
     val project = { point: Vec3 -> point.project(view, lens, widthPx, heightPx).takeIf { it.visible }?.let { Offset(it.x, it.y) } }
     val eye = camera.eyePosition()
-    val boxes = paintOnTop(read.boxes.mapNotNull { projectBox(it, eye, project) }.sortedByDescending { it.first }.map { it.second }) { it.box }
+    val boxes = paintOnTop(read.boxes.mapNotNull { projectBox(it, eye, isLit, project) }.sortedByDescending { it.first }.map { it.second }) { it.box }
     val marginX = (span.east - span.west) * GROUND_MARGIN
     val marginY = (span.north - span.south) * GROUND_MARGIN
     val groundCorners = listOf(
@@ -140,7 +169,7 @@ private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, w
         if (from != null && to != null) ProjectedLine(from, to, line.style) else null
     }
     val labels = read.labels.mapNotNull { label -> project(worldOf(label.at.xMm, label.at.yMm, label.at.zMm))?.let { ProjectedLabel(it, label.text, label.style) } }
-    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north, lines, labels)
+    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north, lines, labels, if (isLit) projectShadows(read, span, project) else emptyList())
 }
 
 private fun pathOf(corners: List<Offset>): Path = Path().apply {
@@ -175,6 +204,40 @@ private fun DrawScope.drawProjectedBox(projected: ProjectedBox, style: PlanStyle
         drawPath(path, shaded(body, face.shade), style = Fill)
         if (projected.box.isEstimate) drawHatch(face.corners, stroke.copy(alpha = 0.55f))
         drawPath(path, stroke, style = Stroke(width = (style.weight ?: OUTLINE_DP).dp.toPx(), pathEffect = effect))
+    }
+}
+
+private fun DrawScope.drawShadow(outline: List<Offset>) {
+    val centre = Offset(outline.sumOf { it.x.toDouble() }.toFloat() / outline.size, outline.sumOf { it.y.toDouble() }.toFloat() / outline.size)
+    (0 until SHADOW_LAYERS).forEach { layer ->
+        val spread = 1f + SHADOW_SPREAD * layer
+        drawPath(pathOf(outline.map { centre + (it - centre) * spread }), Color.Black.copy(alpha = SHADOW_ALPHA), style = Fill)
+    }
+}
+
+private fun DrawScope.drawGrain(corners: List<Offset>, colour: Color) {
+    val isLongAlongFirst = (corners[1] - corners[0]).getDistance() >= (corners[3] - corners[0]).getDistance()
+    val (a, b, c, d) = if (isLongAlongFirst) listOf(corners[0], corners[1], corners[2], corners[3]) else listOf(corners[0], corners[3], corners[2], corners[1])
+    (1 until GRAIN_LINES).forEach { line ->
+        val t = line.toFloat() / GRAIN_LINES
+        drawLine(colour, a + (d - a) * t, b + (c - b) * t, strokeWidth = GRAIN_DP.dp.toPx())
+    }
+}
+
+/** A box lit from the sun in its material: glass is see-through with a bright edge, timber has grain along its length, anything else is plain; each with a thin edge in a deeper tone of its own colour. */
+private fun DrawScope.drawLitBox(projected: ProjectedBox, style: PlanStyle, ink: Color) {
+    val stroke = planColour(style.stroke) ?: ink
+    val body = lerp(stroke, Color.White, LIT_WHITE_MIX)
+    val isGlass = style.material == "glass"
+    val effect = if (projected.box.isEstimate) PathEffect.dashPathEffect(floatArrayOf(DASH_DP.dp.toPx(), DASH_DP.dp.toPx())) else null
+    projected.faces.forEach { face ->
+        val path = pathOf(face.corners)
+        val faceColour = shaded(body, face.shade)
+        drawPath(path, if (isGlass) lerp(faceColour, Color.White, GLASS_WHITE_MIX).copy(alpha = GLASS_ALPHA) else faceColour, style = Fill)
+        if (style.material == "timber" && !projected.box.isEstimate) drawGrain(face.corners, shaded(stroke, face.shade * GRAIN_DARKEN).copy(alpha = GRAIN_ALPHA))
+        if (projected.box.isEstimate) drawHatch(face.corners, stroke.copy(alpha = 0.55f))
+        val edge = if (isGlass) Color.White.copy(alpha = GLASS_EDGE_ALPHA) else shaded(stroke, EDGE_DARKEN)
+        drawPath(path, edge, style = Stroke(width = (style.weight ?: LIT_OUTLINE_DP).dp.toPx(), pathEffect = effect))
     }
 }
 
@@ -246,7 +309,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, read, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground)
+            VolumeDrawing(node.id, read, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun")
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -254,7 +317,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean) {
     val theme = LocalSpecTheme.current
     val camera = remember(span) { Camera().also { frameCamera(it, span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -265,7 +328,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
         val density = LocalDensity.current
         val widthPx = with(density) { widthDp.toPx() }
         val heightPx = with(density) { heightDp.toPx() }
-        val scene = remember(revision, read, span, widthPx, heightPx) { projectScene(read, span, camera, widthPx, heightPx) }
+        val scene = remember(revision, read, span, widthPx, heightPx, isLit) { projectScene(read, span, camera, widthPx, heightPx, isLit) }
         val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
         Box(
             modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }.pointerInput(scene, selection.ids) {
@@ -275,9 +338,14 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
             Canvas(modifier = Modifier.fillMaxSize()) {
                 ground?.let { drawRect(it) }
                 if (!blueprint) scene.ground?.let { drawPath(pathOf(it), GROUND_FILL, style = Fill) }
+                scene.shadows.forEach { drawShadow(it) }
                 scene.boxes.forEach {
                     val style = read.styles[it.box.style] ?: PlanStyle()
-                    if (blueprint) drawBlueprintBox(it, style, ground ?: Color.Transparent, theme.ink) else drawProjectedBox(it, style, theme.ink)
+                    when {
+                        blueprint -> drawBlueprintBox(it, style, ground ?: Color.Transparent, theme.ink)
+                        isLit -> drawLitBox(it, style, theme.ink)
+                        else -> drawProjectedBox(it, style, theme.ink)
+                    }
                 }
                 scene.lines.forEach { drawProjectedLine(it, read.styles[it.style] ?: PlanStyle(), theme.ink) }
                 scene.boxes.filter { it.box.id in selection.ids }.forEach { drawSelectedBox(it, if (blueprint) Color.White else theme.ink) }

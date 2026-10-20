@@ -88,4 +88,13 @@ class LensPageTest {
         assertEquals(path, tapped.props()["value"]!!.jsonPrimitive.content)
         assertEquals(path, tapped["visible"]!!.jsonPrimitive.content)
     }
+
+    @Test
+    fun the_shaded_world_is_lit_by_the_sun_and_each_known_system_has_a_material() {
+        val volume = page().byId("volume").props()
+        assertEquals("sun", volume["lighting"]!!.jsonPrimitive.content)
+        assertEquals("panel", volume["styles"]!!.jsonObject.getValue("walls").jsonObject["material"]!!.jsonPrimitive.content)
+        assertEquals("glass", systemLook(listOf("walls"), "glazing")["material"])
+        assertEquals(null, systemLook(listOf("walls", "odd"), "odd")["material"])
+    }
 }
