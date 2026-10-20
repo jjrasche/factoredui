@@ -5,14 +5,13 @@ internal const val SHEET_WIDTH_MM = 432.0
 internal const val SHEET_HEIGHT_MM = 279.0
 private const val MARGIN_MM = 8.0
 private const val TITLE_HEIGHT_MM = 36.0
-private const val NOTES_WIDTH_MM = 120.0
+private const val NOTES_WIDTH_MM = 150.0
 private const val PAD_MM = 6.0
 private const val DP_MM = 0.26
 private const val HEIGHT_LABEL_GAP_MM = 3.0
-private const val DIMENSION_TEXT_MM = 2.4
-private const val SIZE_TEXT_MM = 1.8
-private const val NOTE_HEADING_MM = 2.8
-private val NOTE_SIZES_MM = listOf(2.2, 2.0, 1.8, 1.6)
+private const val DIMENSION_TEXT_MM = 2.9
+private const val NOTE_HEADING_MM = 3.4
+private const val NOTE_SIZE_MM = 2.9
 private val SCALES = listOf(8, 12, 16, 24, 32, 48, 64, 96, 128, 192)
 private const val BLACK = "#000000"
 
@@ -47,7 +46,7 @@ private fun markOf(shape: Map<String, Any?>, scale: Int, west: Double, north: Do
             val isHeight = (shape["id"] as? String)?.startsWith("dim:height/text") == true
             val align = if (isHeight) Anchor.END else when (shape["align"]) { "start" -> Anchor.START; "end" -> Anchor.END; else -> Anchor.MIDDLE }
             val beside = if (isHeight) -HEIGHT_LABEL_GAP_MM else 0.0
-            val size = if ((shape["id"] as? String)?.startsWith("size:") == true) SIZE_TEXT_MM else DIMENSION_TEXT_MM
+            val size = DIMENSION_TEXT_MM
             listOf(Words(x(number(shape, "x_mm")) + beside + number(shape, "dx_dp") * DP_MM, y(number(shape, "y_mm")) + number(shape, "dy_dp") * DP_MM + size / 2, shape["text"] as String, size, align))
         }
         "marker" -> {
@@ -90,8 +89,8 @@ internal fun fitDrawing(shapes: List<Map<String, Any?>>): Pair<Int, List<Mark>> 
 private fun frame(x: Double, y: Double, width: Double, height: Double, weight: Double = 0.35) = Frame(x, y, width, height, Ink(BLACK, weight))
 
 private fun cell(x: Double, y: Double, width: Double, label: String, value: String, bold: Boolean = false): List<Mark> = listOf(
-    Words(x + 2, y + 4, label.uppercase(), 1.8, colour = "#666666"),
-    Words(x + 2, y + 11, value, 3.2, isBold = bold),
+    Words(x + 2, y + 5, label.uppercase(), 2.9, colour = "#666666"),
+    Words(x + 2, y + 13, value, 3.4, isBold = bold),
 )
 
 private fun titleBlock(sheetName: String, sheetNumber: String, scaleText: String, meta: SheetMeta): List<Mark> {
@@ -116,16 +115,15 @@ private fun noteLines(groups: List<NoteGroup>, sizeMm: Double): List<Pair<String
 
 private fun notesBlock(groups: List<NoteGroup>): List<Mark> {
     val left = SHEET_WIDTH_MM - MARGIN_MM - NOTES_WIDTH_MM
-    val available = SHEET_HEIGHT_MM - 2 * MARGIN_MM - TITLE_HEIGHT_MM - 2 * PAD_MM
-    val size = NOTE_SIZES_MM.firstOrNull { noteLines(groups, it).sumOf { (_, height) -> height * 1.35 } <= available } ?: NOTE_SIZES_MM.last()
+    val size = NOTE_SIZE_MM
     var y = MARGIN_MM + PAD_MM + NOTE_HEADING_MM
     val words = noteLines(groups, size).map { (text, height) -> Words(left + PAD_MM, y, text, height, isBold = height == NOTE_HEADING_MM).also { y += height * 1.35 } }
     return words + Segment(left, MARGIN_MM, left, SHEET_HEIGHT_MM - MARGIN_MM - TITLE_HEIGHT_MM, Ink(BLACK, 0.35))
 }
 
-private const val TEXT_SIZE_MM = 1.9
+private const val TEXT_SIZE_MM = 2.9
 private const val TEXT_PITCH = 1.3
-private const val HEADING_SIZE_MM = 2.6
+private const val HEADING_SIZE_MM = 3.4
 private const val COLUMN_GAP_MM = 8.0
 private const val COLUMNS_PER_SHEET = 2
 

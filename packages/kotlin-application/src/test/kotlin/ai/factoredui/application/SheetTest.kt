@@ -71,4 +71,25 @@ class SheetTest {
         assertEquals("xref", text.substring(offset, offset + 4))
         assertTrue(text.contains("(A house) Tj"))
     }
+
+    @Test
+    fun the_title_block_states_the_worlds_engine_pin_and_the_checkout_only_when_it_differs() {
+        assertEquals("we 02d17b7", pinText("02d17b75af58653882c928803df4660d0a5c78e3", "02d17b7"))
+        assertEquals("we 02d17b7; rendered with we 073b001", pinText("02d17b75af58653882c928803df4660d0a5c78e3", "073b001"))
+        assertEquals("no engine.pin beside the world file; rendered with we 073b001", pinText(null, "073b001"))
+    }
+
+    @Test
+    fun no_text_on_any_sheet_is_smaller_than_eight_points() {
+        val drawings = listOf(blueprintPlanShapes(GEOMETRY, EXPANSION)) + elevationDrawings(GEOMETRY).map { it.shapes } + listOfNotNull(sectionDrawing(GEOMETRY)?.shapes)
+        val sheets = drawings.map { sheetOf("Sheet", "A-n", it, NOTES, META) } + textSheets("Summary", { page, pages -> "S-1 ($page of $pages)" }, listOf(NoteGroup("H", (1..400).map { "a line of the summary number $it" })), META)
+        sheets.forEach { sheet -> sheet.marks.filterIsInstance<Words>().forEach { assertTrue(it.sizeMm * 72 / 25.4 >= 8.0, "'${it.text}' is ${it.sizeMm * 72 / 25.4} pt") } }
+    }
+
+    @Test
+    fun the_summary_runs_to_as_many_sheets_as_it_needs() {
+        val sheets = textSheets("Summary", { page, pages -> "S-1 ($page of $pages)" }, listOf(NoteGroup("H", (1..400).map { "a line of the summary number $it" })), META)
+        assertTrue(sheets.size > 2, "sheets ${sheets.size}")
+        assertTrue(sheetSvg(sheets.last()).contains(">S-1 (${sheets.size} of ${sheets.size})<"))
+    }
 }

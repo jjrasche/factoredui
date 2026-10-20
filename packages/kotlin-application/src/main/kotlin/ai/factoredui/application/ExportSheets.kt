@@ -26,6 +26,22 @@ private fun git(directory: Path, vararg arguments: String): String? =
         if (process.waitFor() == 0) text else null
     }.getOrNull()
 
+private const val PIN_FILE = "engine.pin"
+private const val SHORT_SHA = 7
+
+/** The engine the world is proven against, from engine.pin; the checkout the sheets were rendered with is added only when it is another one. */
+internal fun pinText(pin: String?, checkout: String): String {
+    if (pin == null) return "no $PIN_FILE beside the world file; rendered with we $checkout"
+    val isSame = pin.startsWith(checkout) || checkout.startsWith(pin)
+    return "we ${pin.take(SHORT_SHA)}" + if (isSame) "" else "; rendered with we $checkout"
+}
+
+internal fun enginePinText(system: Path, runtime: Path): String {
+    val pinFile = system.toAbsolutePath().parent.resolve(PIN_FILE)
+    val pin = pinFile.takeIf { Files.isRegularFile(it) }?.let { Files.readString(it).trim() }?.takeIf { it.isNotEmpty() }
+    return pinText(pin, runtimePin(runtime))
+}
+
 /** The commit the config file is at, and a say when the file differs from it. */
 internal fun configSource(system: Path): String {
     val directory = system.toAbsolutePath().parent
@@ -64,7 +80,7 @@ fun exportSheets(options: ExportOptions): List<Path> {
     val expansion = readExpansion(loaded.textOf("expansion"))
     val notes = listOf(unmeasuredNotes(geometry), assumedNotes(readDescribed(loaded.textOf("describe"))))
     val drawings = drawingsOf(geometry, expansion)
-    val meta = SheetMeta(file.title, LocalDate.now().toString(), configSource(options.system), "we ${runtimePin(options.runtime)}", drawings.size)
+    val meta = SheetMeta(file.title, LocalDate.now().toString(), configSource(options.system), enginePinText(options.system, options.runtime), drawings.size)
     Files.createDirectories(options.out)
     val summaries = textSheets("Design summary", { page, pages -> "S-1 (page $page of $pages)" }, summaryGroups(loaded, geometry), meta)
     return summaries.flatMapIndexed { index, sheet ->

@@ -67,9 +67,9 @@ class SummarySheetTest {
     }
 
     @Test
-    fun the_summary_fills_one_or_two_sheets_each_with_a_title_block_and_nothing_off_the_page() {
+    fun the_summary_fills_the_sheets_it_needs_each_with_a_title_block_and_nothing_off_the_page() {
         val sheets = textSheets("Design summary", { page, pages -> "S-1 (page $page of $pages)" }, GROUPS, META)
-        assertTrue(sheets.size in 1..2, "sheets ${sheets.size}")
+        assertTrue(sheets.isNotEmpty(), "sheets ${sheets.size}")
         sheets.forEach { sheet ->
             val bounds = boundsOfAll(sheet.marks)!!
             assertTrue(bounds.left >= 0 && bounds.top >= 0 && bounds.right <= SHEET_WIDTH_MM && bounds.bottom <= SHEET_HEIGHT_MM)
