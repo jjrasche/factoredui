@@ -10,8 +10,8 @@ private val DETAILS = readSelectionDetails(
 
 class SelectionDetailTextTest {
     @Test
-    fun the_single_selected_thing_is_its_title_heading_rows_and_notes_as_lines() {
-        assertEquals("Window\nFields\nsill: 1219\nJim\nopen: –", selectionDetailText(setOf("w1"), DETAILS))
+    fun the_single_selected_thing_is_its_title_then_each_section_with_its_rows_indented() {
+        assertEquals("Window\n\nFields\n  sill: 1219\n    Jim\n  open: –", selectionDetailText(setOf("w1"), DETAILS))
     }
 
     @Test

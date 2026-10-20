@@ -46,13 +46,14 @@ internal fun rememberDrawingSelection(node: SpecNode, resolvedSelected: Any?, co
     }
 }
 
-/** The card of the single selected thing as plain lines: its title, then each heading, row and note; empty when nothing or several are selected. */
+/** The card of the single selected thing as plain text: its title, then each section as a heading with its rows indented under it and a blank line between; empty when nothing or several are selected. */
 internal fun selectionDetailText(selection: Set<String>, details: Map<String, SelectionDetail>): String {
     val detail = selection.singleOrNull()?.let(details::get) ?: return ""
-    val lines = detail.sections.flatMap { section ->
-        listOfNotNull(section.heading) + section.rows.flatMap { row -> listOfNotNull("${row.label}: ${row.value ?: "–"}", row.note) }
+    val sections = detail.sections.map { section ->
+        val rows = section.rows.flatMap { row -> listOfNotNull("  ${row.label}: ${row.value ?: "–"}", row.note?.let { "    $it" }) }
+        (listOfNotNull(section.heading) + rows).joinToString("\n")
     }
-    return (listOf(detail.title) + lines).joinToString("\n")
+    return (listOf(detail.title) + sections).joinToString("\n\n")
 }
 
 /** Writes the selection's card text to the path `detail_text` binds, so any text bound to it, such as one in a dock, shows what was tapped. */
