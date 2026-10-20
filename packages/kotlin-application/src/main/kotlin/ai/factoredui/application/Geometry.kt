@@ -9,7 +9,10 @@ import kotlinx.serialization.json.doubleOrNull
 
 class GeometryFormatException(message: String) : IllegalArgumentException(message)
 
-data class GeoPiece(val id: String, val system: String, val xMm: Double, val yMm: Double, val zMm: Double, val dxMm: Double, val dyMm: Double, val dzMm: Double)
+/** One layer of a piece, outside to inside in [GeoPiece.layers], which sum to the piece's thickness. */
+data class GeoLayer(val name: String, val material: String, val thicknessMm: Double, val source: String?)
+
+data class GeoPiece(val id: String, val system: String, val xMm: Double, val yMm: Double, val zMm: Double, val dxMm: Double, val dyMm: Double, val dzMm: Double, val layers: List<GeoLayer> = emptyList())
 
 data class GeoRegion(val minMm: List<Double>, val maxMm: List<Double>)
 
@@ -44,7 +47,16 @@ private fun regionOf(entry: JsonObject, where: String): GeoRegion {
 private fun pieceOf(entry: JsonObject): GeoPiece {
     val id = entry.text("id", "a piece")
     val where = "piece '$id'"
-    return GeoPiece(id, entry.text("system", where), entry.number("x", where), entry.number("y", where), entry.number("z", where), entry.number("dx", where), entry.number("dy", where), entry.number("dz", where))
+    return GeoPiece(id, entry.text("system", where), entry.number("x", where), entry.number("y", where), entry.number("z", where), entry.number("dx", where), entry.number("dy", where), entry.number("dz", where), layersOf(entry, where))
+}
+
+private fun layersOf(entry: JsonObject, where: String): List<GeoLayer> {
+    val listed = entry["layers"] ?: return emptyList()
+    val layers = listed as? JsonArray ?: throw GeometryFormatException("$where has layers that are not a list")
+    return layers.map { element ->
+        val layer = element as? JsonObject ?: throw GeometryFormatException("$where has a layer that is not an object")
+        GeoLayer(layer.text("name", "a layer of $where"), layer.text("material", "a layer of $where"), layer.number("thickness_mm", "a layer of $where"), (layer["source"] as? JsonPrimitive)?.takeIf { it.isString }?.content)
+    }
 }
 
 fun readGeometry(text: String): Geometry {

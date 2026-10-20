@@ -79,6 +79,44 @@ internal fun elevationDrawings(geometry: Geometry): List<FlatDrawing> {
 internal fun blueprintElevationNodes(geometry: Geometry): List<JsonObject> =
     elevationDrawings(geometry).map { flatNode("blueprint-${it.id}", it.title, it.shapes, geometry) }
 
+private const val LAYER_ROW_MM = 200.0
+private const val LAYER_LABEL_GAP_MM = 300.0
+
+/** A leader from a point in a layer to the words naming it. */
+private fun layerLabel(piece: GeoPiece, layer: GeoLayer, index: Int, anchor: Pair<Double, Double>, text: Pair<Double, Double>, align: String): List<Map<String, Any?>> = listOf(
+    lineShape("layer:${piece.id}/leader/$index", "dimension", anchor.first, anchor.second, text.first, text.second),
+    mapOf("id" to "size:layer:${piece.id}/$index", "kind" to "label", "style" to "dimension", "x_mm" to text.first, "y_mm" to text.second, "text" to "${layer.name}: ${layer.material} ${dimensionText(layer.thicknessMm)}", "align" to align, "dx_dp" to if (align == "end") -4 else if (align == "start") 4 else 0, "dy_dp" to 0),
+)
+
+/** A piece cut by the section as its layers, outside to inside: a line between each pair and a leader to words naming each, listed outermost first from the top, standing to the right of an upright piece and above a flat one. */
+internal fun layerShapes(piece: GeoPiece, extent: Extent): List<Map<String, Any?>> {
+    val isUpright = piece.dxMm <= piece.dzMm
+    val total = piece.layers.sumOf { it.thicknessMm }
+    val outsideIsLow = if (isUpright) piece.xMm + piece.dxMm / 2 < (extent.west + extent.east) / 2 else piece.zMm + piece.dzMm / 2 < (extent.floor + extent.ceiling) / 2
+    val start = if (isUpright) piece.xMm else piece.zMm
+    val thickness = if (isUpright) piece.dxMm else piece.dzMm
+    val scale = if (total > 0) thickness / total else 1.0
+    val offsets = piece.layers.runningFold(0.0) { sum, layer -> sum + layer.thicknessMm * scale }
+    fun at(distanceFromOutside: Double) = if (outsideIsLow) start + distanceFromOutside else start + thickness - distanceFromOutside
+    val boundaries = offsets.drop(1).dropLast(1).mapIndexed { index, distance ->
+        if (isUpright) lineShape("layer:${piece.id}/boundary/$index", "seam", at(distance), piece.zMm, at(distance), piece.zMm + piece.dzMm)
+        else lineShape("layer:${piece.id}/boundary/$index", "seam", piece.xMm, at(distance), piece.xMm + piece.dxMm, at(distance))
+    }
+    val count = piece.layers.size
+    val words = piece.layers.flatMapIndexed { index, layer ->
+        val middle = at((offsets[index] + offsets[index + 1]) / 2)
+        val fromTop = (count - 1) / 2.0 - index
+        if (isUpright) {
+            val row = piece.zMm + piece.dzMm / 2 + fromTop * LAYER_ROW_MM
+            layerLabel(piece, layer, index, middle to row, (piece.xMm + piece.dxMm + LAYER_LABEL_GAP_MM) to row, "start")
+        } else {
+            val centreX = piece.xMm + piece.dxMm / 2
+            layerLabel(piece, layer, index, (centreX + fromTop * LAYER_ROW_MM) to middle, centreX to (piece.zMm + piece.dzMm + LAYER_LABEL_GAP_MM + (count - 1 - index) * LAYER_ROW_MM), "center")
+        }
+    }
+    return boundaries + words
+}
+
 /** The total thickness of a piece the section passes through, until the domain gives the layers it is built of. */
 private fun thicknessLabel(piece: GeoPiece): Map<String, Any?> {
     val isUpright = piece.dxMm <= piece.dzMm
@@ -104,7 +142,7 @@ internal fun sectionDrawing(geometry: Geometry): FlatDrawing? {
     val xBreaks = passed.flatMap { listOf(it.xMm, it.xMm + it.dxMm) }
     val zBreaks = listOf(extent.floor, extent.ceiling) + passed.flatMap { listOf(it.zMm, it.zMm + it.dzMm) }
     val chains = chainShapes("chain:x", xBreaks, ChainSide.BELOW, extent.floor - CHAIN_OFFSET_MM) + chainShapes("chain:z", zBreaks, ChainSide.LEFT, extent.west - CHAIN_OFFSET_MM)
-    val shapes = bodies + holes + passed.map(::thicknessLabel) + chains + groundLine(extent.west, extent.east) + flatDimensions(extent.west, extent.east, extent.floor, extent.ceiling)
+    val shapes = bodies + holes + passed.flatMap { piece -> if (piece.layers.isEmpty()) listOf(thicknessLabel(piece)) else layerShapes(piece, extent) } + chains + groundLine(extent.west, extent.east) + flatDimensions(extent.west, extent.east, extent.floor, extent.ceiling)
     return FlatDrawing("section", "Section through the middle of the depth (${dimensionText(planeMm)} from the south edge), looking north", shapes)
 }
 
