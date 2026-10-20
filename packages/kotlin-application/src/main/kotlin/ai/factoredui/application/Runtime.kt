@@ -9,7 +9,7 @@ private const val RUNTIME_TIMEOUT_SECONDS = 60L
 
 private fun runtimeRoot(launcher: Path): Path = launcher.toAbsolutePath().parent.parent
 
-private fun runInRuntime(launcher: Path, vararg arguments: String): String {
+internal fun runInRuntime(launcher: Path, vararg arguments: String): String {
     val process = ProcessBuilder(listOf("sh", launcher.toAbsolutePath().toString()) + arguments)
         .directory(runtimeRoot(launcher).toFile())
         .redirectErrorStream(false)

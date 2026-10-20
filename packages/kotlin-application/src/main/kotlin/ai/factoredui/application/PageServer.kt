@@ -56,20 +56,20 @@ private fun respondFile(exchange: HttpExchange, file: Path) {
 
 private fun respondText(exchange: HttpExchange, status: Int, text: String) = respond(exchange, status, "text/plain; charset=utf-8", text.toByteArray())
 
-private fun solveOrSayWhy(options: Options): Solving =
-    runCatching { readSolving(solveSystem(options.runtime, options.system)) }
-        .getOrElse { Solving(emptyList(), failure = it.message ?: it::class.simpleName) }
+private fun failureOf(problem: Throwable): String = problem.message ?: problem::class.simpleName.orEmpty()
 
-private fun overlayOrSayWhy(options: Options): Overlaying? {
-    val chosen = options.overlay ?: return null
-    return runCatching { Overlaying(readOverlay(overlaySystem(options.runtime, options.system, chosen))) }
-        .getOrElse { Overlaying(null, failure = it.message ?: it::class.simpleName) }
+private fun solveOrSayWhy(loaded: Loaded): Solving =
+    runCatching { readSolving(loaded.textOf("solving")) }.getOrElse { Solving(emptyList(), failure = failureOf(it)) }
+
+private fun overlayOrSayWhy(options: Options, loaded: Loaded): Overlaying? {
+    if (options.overlay == null || loaded.isSkipped("overlay")) return null
+    return runCatching { Overlaying(readOverlay(loaded.textOf("overlay"))) }.getOrElse { Overlaying(null, failure = failureOf(it)) }
 }
 
 private fun rankOrSayWhy(options: Options): Ranked? {
     val chosen = options.rank ?: return null
     return runCatching { Ranked(readRanking(rankSystem(options.runtime, options.system, chosen))) }
-        .getOrElse { Ranked(null, failure = it.message ?: it::class.simpleName) }
+        .getOrElse { Ranked(null, failure = failureOf(it)) }
 }
 
 private fun hasRankingWeights(options: Options): Boolean =
@@ -78,19 +78,18 @@ private fun hasRankingWeights(options: Options): Boolean =
 private fun rankEach(options: Options, systems: List<DescribedSystem>): Map<String, Ranked> =
     systems.filter { it.alternatives.isNotEmpty() }.associate { system ->
         system.id to runCatching { Ranked(readRanking(rankSystem(options.runtime, options.system, system.id))) }
-            .getOrElse { Ranked(null, failure = it.message ?: it::class.simpleName) }
+            .getOrElse { Ranked(null, failure = failureOf(it)) }
     }
 
-private fun describeOrSayWhy(options: Options): Describing =
+private fun describeOrSayWhy(options: Options, loaded: Loaded): Describing =
     runCatching {
-        val systems = readDescribed(describeSystem(options.runtime, options.system))
+        val systems = readDescribed(loaded.textOf("describe"))
         val weighted = hasRankingWeights(options)
         Describing(systems, if (weighted) rankEach(options, systems) else emptyMap(), weighted)
-    }.getOrElse { Describing(emptyList(), failure = it.message ?: it::class.simpleName) }
+    }.getOrElse { Describing(emptyList(), failure = failureOf(it)) }
 
-private fun geometryOrSayWhy(options: Options): Geometried =
-    runCatching { Geometried(readGeometry(geometrySystem(options.runtime, options.system))) }
-        .getOrElse { Geometried(null, failure = it.message ?: it::class.simpleName) }
+private fun geometryOrSayWhy(loaded: Loaded): Geometried =
+    runCatching { Geometried(readGeometry(loaded.textOf("geometry"))) }.getOrElse { Geometried(null, failure = failureOf(it)) }
 
 private class BuiltSpec(val worldStamp: Pair<Long, Long>, val body: ByteArray)
 
@@ -98,7 +97,8 @@ private fun stampOf(system: Path): Pair<Long, Long> = Files.getLastModifiedTime(
 
 private fun buildSpecBody(options: Options): ByteArray {
     val file = readSystemFile(Files.readString(options.system))
-    return buildLensPageSpec(file, readExpansion(expandSystem(options.runtime, options.system)), solveOrSayWhy(options), overlayOrSayWhy(options), rankOrSayWhy(options), describeOrSayWhy(options), geometryOrSayWhy(options)).toString().toByteArray()
+    val loaded = readLoaded(loadSystem(options.runtime, options.system, options.overlay))
+    return buildLensPageSpec(file, readExpansion(loaded.textOf("expansion")), solveOrSayWhy(loaded), overlayOrSayWhy(options, loaded), rankOrSayWhy(options), describeOrSayWhy(options, loaded), geometryOrSayWhy(loaded)).toString().toByteArray()
 }
 
 private fun serveSpec(exchange: HttpExchange, options: Options, built: AtomicReference<BuiltSpec?>) {

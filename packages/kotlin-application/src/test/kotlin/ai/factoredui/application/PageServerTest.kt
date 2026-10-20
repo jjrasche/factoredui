@@ -45,21 +45,21 @@ class PageServerTest {
 
     private fun fakeRuntime(callLog: Path): Path {
         val launcher = Files.createDirectories(Files.createTempDirectory("runtime").resolve("bin")).resolve("we")
-        Files.writeString(launcher, "echo \"$1\" >> '$callLog'\necho '{\"extent_mm\": [10, 10], \"objects\": [], \"instances\": [], \"supplied\": {}}'\n")
+        Files.writeString(launcher, "echo \"$1\" >> '$callLog'\necho '{\"sections\": {\"expansion\": {\"ok\": true, \"asked\": true, \"extent_mm\": [10, 10], \"objects\": [], \"instances\": [], \"supplied\": {}}}}'\n")
         return launcher
     }
 
     @Test
-    fun the_page_is_built_once_per_state_of_the_world_file_not_once_per_load() {
+    fun the_page_is_built_from_one_load_per_state_of_the_world_file() {
         val callLog = Files.createTempFile("calls", ".log")
         val system = Files.createTempFile("system", ".json").also { Files.writeString(it, """{ "id": "w", "title": "W", "systems": {} }""") }
         val cached = startPageServer(Options(system, fakeRuntime(callLog), bundle, "127.0.0.1", 0))
         try {
             repeat(3) { assertEquals(200, fetchFrom(cached, "/spec.json").statusCode()) }
-            assertEquals(1, Files.readAllLines(callLog).count { it == "expand" })
+            assertEquals(1, Files.readAllLines(callLog).count { it == "load" })
             Files.writeString(system, """{ "id": "w", "title": "Changed", "systems": {} }""")
             assertEquals(200, fetchFrom(cached, "/spec.json").statusCode())
-            assertEquals(2, Files.readAllLines(callLog).count { it == "expand" })
+            assertEquals(2, Files.readAllLines(callLog).count { it == "load" })
         } finally {
             cached.stop(0)
         }
