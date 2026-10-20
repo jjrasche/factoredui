@@ -84,14 +84,14 @@ private const val LAYER_ROW_MM = 200.0
 private const val LAYER_LABEL_GAP_MM = 300.0
 
 /** A leader from a point in a layer to the words naming it. */
-private fun layerLabel(piece: GeoPiece, layer: GeoLayer, index: Int, anchor: Pair<Double, Double>, text: Pair<Double, Double>, align: String): List<Map<String, Any?>> = listOf(
+private fun layerLabel(piece: GeoPiece, layer: GeoLayer, index: Int, anchor: Pair<Double, Double>, text: Pair<Double, Double>, align: String, alike: Int): List<Map<String, Any?>> = listOf(
     lineShape("layer:${piece.id}/leader/$index", "dimension", anchor.first, anchor.second, text.first, text.second),
-    mapOf("id" to "size:layer:${piece.id}/$index", "kind" to "label", "style" to "dimension", "x_mm" to text.first, "y_mm" to text.second, "text" to "${layer.name}: ${layer.material} ${dimensionText(layer.thicknessMm)}", "align" to align, "dx_dp" to if (align == "end") -4 else if (align == "start") 4 else 0, "dy_dp" to 0),
+    mapOf("id" to "size:layer:${piece.id}/$index", "kind" to "label", "style" to "dimension", "x_mm" to text.first, "y_mm" to text.second, "text" to "${layer.name}: ${layer.material} ${dimensionText(layer.thicknessMm)}${if (index == 0 && alike > 1) " ($alike alike)" else ""}", "align" to align, "dx_dp" to if (align == "end") -4 else if (align == "start") 4 else 0, "dy_dp" to 0),
 )
 
-/** A piece cut by the section as its layers, outside to inside: a line between each pair and a leader to words naming each, listed outermost first from the top, standing to the right of an upright piece and above a flat one. */
+/** A piece cut by the section as its layers, outside to inside: a line between each pair and, when [alike] is above zero, a leader to words naming each, listed outermost first from the top, standing to the right of an upright piece and above a flat one. [alike] is how many pieces share these layers, all named by this one. */
 // split-audit-2026-10-20 item 6: layer order and which pieces are alike are guessed here
-internal fun layerShapes(piece: GeoPiece, extent: Extent): List<Map<String, Any?>> {
+internal fun layerShapes(piece: GeoPiece, extent: Extent, alike: Int): List<Map<String, Any?>> {
     val isUpright = piece.dxMm <= piece.dzMm
     val total = piece.layers.sumOf { it.thicknessMm }
     val outsideIsLow = if (isUpright) piece.xMm + piece.dxMm / 2 < (extent.west + extent.east) / 2 else piece.zMm + piece.dzMm / 2 < (extent.floor + extent.ceiling) / 2
@@ -105,15 +105,15 @@ internal fun layerShapes(piece: GeoPiece, extent: Extent): List<Map<String, Any?
         else lineShape("layer:${piece.id}/boundary/$index", "seam", piece.xMm, at(distance), piece.xMm + piece.dxMm, at(distance))
     }
     val count = piece.layers.size
-    val words = piece.layers.flatMapIndexed { index, layer ->
+    val words = if (alike == 0) emptyList() else piece.layers.flatMapIndexed { index, layer ->
         val middle = at((offsets[index] + offsets[index + 1]) / 2)
         val fromTop = (count - 1) / 2.0 - index
         if (isUpright) {
             val row = piece.zMm + piece.dzMm / 2 + fromTop * LAYER_ROW_MM
-            layerLabel(piece, layer, index, middle to row, (piece.xMm + piece.dxMm + LAYER_LABEL_GAP_MM) to row, "start")
+            layerLabel(piece, layer, index, middle to row, (piece.xMm + piece.dxMm + LAYER_LABEL_GAP_MM) to row, "start", alike)
         } else {
             val centreX = piece.xMm + piece.dxMm / 2
-            layerLabel(piece, layer, index, (centreX + fromTop * LAYER_ROW_MM) to middle, centreX to (piece.zMm + piece.dzMm + LAYER_LABEL_GAP_MM + (count - 1 - index) * LAYER_ROW_MM), "center")
+            layerLabel(piece, layer, index, (centreX + fromTop * LAYER_ROW_MM) to middle, centreX to (piece.zMm + piece.dzMm + LAYER_LABEL_GAP_MM + (count - 1 - index) * LAYER_ROW_MM), "center", alike)
         }
     }
     return boundaries + words
@@ -150,6 +150,17 @@ private fun thicknessLabel(run: List<GeoPiece>, passed: List<GeoPiece>): Map<Str
     )
 }
 
+private fun layerStackOf(piece: GeoPiece) = Triple(piece.dxMm <= piece.dzMm, piece.system, piece.layers)
+
+/** Each layered piece's shapes, the words only on the easternmost of the pieces built of the same layers. */
+private fun layeredShapes(layered: List<GeoPiece>, extent: Extent): List<Map<String, Any?>> {
+    val stacks = layered.groupBy { layerStackOf(it) }
+    return layered.flatMap { piece ->
+        val twins = stacks.getValue(layerStackOf(piece))
+        layerShapes(piece, extent, if (piece === twins.maxByOrNull { it.xMm }) twins.size else 0)
+    }
+}
+
 private fun cutsPlane(piece: GeoPiece, southMm: Double) = piece.yMm <= southMm && southMm <= piece.yMm + piece.dyMm
 
 /** The building cut by a vertical plane through the middle of its depth, looking north: what the plane passes through is drawn heavy. */
@@ -165,7 +176,7 @@ internal fun sectionDrawing(geometry: Geometry): FlatDrawing? {
     val xBreaks = passed.flatMap { listOf(it.xMm, it.xMm + it.dxMm) }
     val zBreaks = listOf(extent.floor, extent.ceiling) + passed.flatMap { listOf(it.zMm, it.zMm + it.dzMm) }
     val chains = chainShapes("chain:x", xBreaks, ChainSide.BELOW, extent.floor - CHAIN_OFFSET_MM) + chainShapes("chain:z", zBreaks, ChainSide.LEFT, extent.west - CHAIN_OFFSET_MM)
-    val shapes = bodies + holes + passed.filter { it.layers.isNotEmpty() }.flatMap { layerShapes(it, extent) } + repeatedRuns(passed.filter { it.layers.isEmpty() }).map { thicknessLabel(it, passed) } + chains + groundLine(extent.west, extent.east) + flatDimensions(extent.west, extent.east, extent.floor, extent.ceiling)
+    val shapes = bodies + holes + layeredShapes(passed.filter { it.layers.isNotEmpty() }, extent) + repeatedRuns(passed.filter { it.layers.isEmpty() }).map { thicknessLabel(it, passed) } + chains + groundLine(extent.west, extent.east) + flatDimensions(extent.west, extent.east, extent.floor, extent.ceiling)
     return FlatDrawing("section", "Section through the middle of the depth (${dimensionText(planeMm)} from the south edge), looking north", shapes)
 }
 

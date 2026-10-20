@@ -60,8 +60,15 @@ class LayerTest {
     fun the_section_draws_a_line_between_layers_and_a_label_for_each() {
         val shapes = sectionDrawing(geometryWith(SIP))!!.shapes
         assertEquals(2, shapes.ids("layer:west/boundary").size)
-        assertEquals(3, shapes.ids("size:layer:west/").size)
+        assertEquals(3, shapes.ids("size:layer:east/").size)
         assertTrue(shapes.ids("size:thickness:west").isEmpty())
+    }
+
+    @Test
+    fun two_pieces_built_of_the_same_layers_are_named_once_on_the_eastern_one() {
+        val shapes = sectionDrawing(geometryWith(SIP))!!.shapes
+        assertTrue(shapes.ids("size:layer:west/").isEmpty())
+        assertTrue((shapes.ids("size:layer:east/").first { (it["id"] as String).endsWith("/0") }["text"] as String).contains("2 alike"))
     }
 
     @Test
