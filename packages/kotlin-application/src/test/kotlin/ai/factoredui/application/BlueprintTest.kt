@@ -103,8 +103,9 @@ class BlueprintTest {
                 { "id": "wall-a", "system": "walls", "type": "wall", "x_mm": 0, "y_mm": 0, "width_mm": 1000, "depth_mm": 100, "level": 0, "elevation_mm": 0, "fields": { "height_mm": 3000 } } ] }""",
         )
         val boxes = volumeNode(readSystemFile(SYSTEM_FILE), expansion, geometry = readGeometry(GEOMETRY))!!["props"]!!.jsonObject.entries("boxes")
-        assertEquals(listOf("wall-a", "wall-a#2"), boxes.map { it.text("id") })
-        val area = boxes.sumOf { it.text("width_mm").toDouble() * it.text("height_mm").toDouble() }
+        val hostBoxes = boxes.filter { it.text("id").startsWith("wall-a") }
+        assertEquals(listOf("wall-a", "wall-a#2"), hostBoxes.map { it.text("id") })
+        val area = hostBoxes.sumOf { it.text("width_mm").toDouble() * it.text("height_mm").toDouble() }
         assertEquals(1000.0 * 3000.0 - 1000.0 * 1000.0, area)
     }
 }

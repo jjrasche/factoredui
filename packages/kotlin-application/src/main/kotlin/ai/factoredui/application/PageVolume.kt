@@ -58,14 +58,28 @@ private fun boxNode(placed: Placed, baseMm: Double): Map<String, Any?> {
     )
 }
 
-/** The expansion as stacked boxes: a level stands on the one below, a size the expansion does not give is a hatched stand-in of [NOMINAL_HEIGHT_MM]. */
+private fun measuredBoxes(geometry: Geometry): List<Map<String, Any?>> = geometry.pieces.map { piece ->
+    mapOf(
+        "id" to piece.id, "style" to piece.system, "x_mm" to piece.xMm + piece.dxMm / 2, "y_mm" to piece.yMm + piece.dyMm / 2, "z_mm" to piece.zMm,
+        "width_mm" to piece.dxMm, "depth_mm" to piece.dyMm, "height_mm" to piece.dzMm, "rotation_deg" to 0.0, "estimate" to false,
+    )
+}
+
+/** A piece the engine could not measure has no box of its own, so it is the page's hatched stand-in. */
+private fun guessedUnmeasured(guessed: List<Map<String, Any?>>, geometry: Geometry): List<Map<String, Any?>> {
+    val unmeasured = geometry.unmeasured.map { it.id }.toSet() - geometry.pieces.map { it.id }.toSet()
+    return guessed.filter { it["id"] in unmeasured }
+}
+
+/** The boxes of the engine's geometry, with the hatched stand-ins the page gives pieces the engine could not measure; with no geometry, the expansion stacked by level, a size it does not give a stand-in of [NOMINAL_HEIGHT_MM]. */
 internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay? = null, geometry: Geometry? = null): JsonObject? {
     if (expansion.objects.isEmpty() && expansion.instances.isEmpty()) return null
     val order = systemOrder(file, expansion)
     val bases = baseOfEachLevel(expansion.objects)
     val fromObjects = expansion.objects.map { placedObject(it) to (bases[it.level ?: 0] ?: 0.0) }
     val fromInstances = expansion.instances.map { placedInstance(it) to ((levelUnder(expansion, it)?.let { level -> bases[level] } ?: 0.0) + it.elevationMm) }
-    val whole = (fromObjects + fromInstances).map { (placed, base) -> boxNode(placed, base).let { box -> if (overlay == null) box else box + ("style" to overlayStyleOf(overlay, placed.id)) } }
+    val guessed = (fromObjects + fromInstances).map { (placed, base) -> boxNode(placed, base) }
+    val whole = (geometry?.let { measuredBoxes(it) + guessedUnmeasured(guessed, it) } ?: guessed).map { box -> if (overlay == null) box else box + ("style" to overlayStyleOf(overlay, box["id"] as String)) }
     val boxes = geometry?.let { withCutsOpened(whole, it) } ?: whole
     val styled = order.filter { system -> boxes.any { it["style"] == system } }
     val hasEstimate = boxes.any { it["estimate"] == true }
