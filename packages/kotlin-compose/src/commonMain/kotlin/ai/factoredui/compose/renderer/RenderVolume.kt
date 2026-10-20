@@ -83,6 +83,10 @@ private const val GROUND_MARGIN = 0.15f
 private const val HATCH_GAP_DP = 6f
 private const val OUTLINE_DP = 1.2f
 private const val LIT_OUTLINE_DP = 0.8f
+private const val GHOST_FILL_ALPHA = 0.08f
+private const val GHOST_EDGE_ALPHA = 0.3f
+private const val CURRENT_OUTLINE_DP = 2.5f
+private val CURRENT_INK = Color(0xFFFFD479)
 private const val LIT_WHITE_MIX = 0.35f
 private const val EDGE_DARKEN = 0.55f
 private const val SHADOW_LAYERS = 4
@@ -144,13 +148,26 @@ private fun projectBox(box: VolumeBox, eye: Vec3, isLit: Boolean, project: (Vec3
 
 private fun groundLevelMm(span: VolumeSpanMm) = if (span.floor < 0 && span.ceiling > 0) 0.0 else span.floor
 
-private fun projectShadows(read: VolumeRead, span: VolumeSpanMm, project: (Vec3) -> Offset?): List<List<Offset>> =
-    read.boxes.filter { !it.isEstimate }.mapNotNull { box ->
+private enum class Phase { PLACED, CURRENT, GHOST }
+
+/** In a stepped volume a box is a ghost until its stage, current at it, and placed after; a box with no stage is a ghost for ever. Without a step every box is placed. */
+private fun phaseOf(box: VolumeBox, step: Double?): Phase {
+    val stage = box.stage
+    return when {
+        step == null -> Phase.PLACED
+        stage == null || stage > step -> Phase.GHOST
+        stage == step -> Phase.CURRENT
+        else -> Phase.PLACED
+    }
+}
+
+private fun projectShadows(read: VolumeRead, span: VolumeSpanMm, step: Double?, project: (Vec3) -> Offset?): List<List<Offset>> =
+    read.boxes.filter { !it.isEstimate && phaseOf(it, step) != Phase.GHOST }.mapNotNull { box ->
         val outline = shadowOutline(box, groundLevelMm(span)).map { (x, y) -> project(worldOf(x, y, groundLevelMm(span))) }
         outline.takeIf { points -> points.size >= 3 && points.all { it != null } }?.map { it!! }
     }
 
-private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, widthPx: Float, heightPx: Float, isLit: Boolean): ProjectedScene {
+private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, widthPx: Float, heightPx: Float, isLit: Boolean, step: Double?): ProjectedScene {
     val view = camera.viewMatrix()
     val lens = camera.projectionMatrix(widthPx / heightPx)
     val project = { point: Vec3 -> point.project(view, lens, widthPx, heightPx).takeIf { it.visible }?.let { Offset(it.x, it.y) } }
@@ -169,7 +186,7 @@ private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, w
         if (from != null && to != null) ProjectedLine(from, to, line.style) else null
     }
     val labels = read.labels.mapNotNull { label -> project(worldOf(label.at.xMm, label.at.yMm, label.at.zMm))?.let { ProjectedLabel(it, label.text, label.style) } }
-    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north, lines, labels, if (isLit) projectShadows(read, span, project) else emptyList())
+    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north, lines, labels, if (isLit) projectShadows(read, span, step, project) else emptyList())
 }
 
 private fun pathOf(corners: List<Offset>): Path = Path().apply {
@@ -241,6 +258,19 @@ private fun DrawScope.drawLitBox(projected: ProjectedBox, style: PlanStyle, ink:
     }
 }
 
+private fun DrawScope.drawGhostBox(projected: ProjectedBox, style: PlanStyle, ink: Color) {
+    val stroke = planColour(style.stroke) ?: ink
+    projected.faces.forEach { face ->
+        val path = pathOf(face.corners)
+        drawPath(path, stroke.copy(alpha = GHOST_FILL_ALPHA), style = Fill)
+        drawPath(path, stroke.copy(alpha = GHOST_EDGE_ALPHA), style = Stroke(width = LIT_OUTLINE_DP.dp.toPx()))
+    }
+}
+
+private fun DrawScope.drawCurrentOutline(projected: ProjectedBox) {
+    projected.faces.forEach { face -> drawPath(pathOf(face.corners), CURRENT_INK, style = Stroke(width = CURRENT_OUTLINE_DP.dp.toPx())) }
+}
+
 /** A box as its edges only: each face is filled with the ground, so a nearer face hides the edges behind it, and the edges are stroked in the style's line. */
 private fun DrawScope.drawBlueprintBox(projected: ProjectedBox, style: PlanStyle, ground: Color, ink: Color) {
     val stroke = planColour(style.stroke) ?: ink
@@ -309,7 +339,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, read, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun")
+            VolumeDrawing(node.id, read, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun", (resolvedProps["step"] as? Number)?.toDouble())
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -317,7 +347,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean, step: Double?) {
     val theme = LocalSpecTheme.current
     val camera = remember(span) { Camera().also { frameCamera(it, span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -328,7 +358,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
         val density = LocalDensity.current
         val widthPx = with(density) { widthDp.toPx() }
         val heightPx = with(density) { heightDp.toPx() }
-        val scene = remember(revision, read, span, widthPx, heightPx, isLit) { projectScene(read, span, camera, widthPx, heightPx, isLit) }
+        val scene = remember(revision, read, span, widthPx, heightPx, isLit, step) { projectScene(read, span, camera, widthPx, heightPx, isLit, step) }
         val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
         Box(
             modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }.pointerInput(scene, selection.ids) {
@@ -341,11 +371,14 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                 scene.shadows.forEach { drawShadow(it) }
                 scene.boxes.forEach {
                     val style = read.styles[it.box.style] ?: PlanStyle()
+                    val phase = phaseOf(it.box, step)
                     when {
                         blueprint -> drawBlueprintBox(it, style, ground ?: Color.Transparent, theme.ink)
+                        phase == Phase.GHOST -> drawGhostBox(it, style, theme.ink)
                         isLit -> drawLitBox(it, style, theme.ink)
                         else -> drawProjectedBox(it, style, theme.ink)
                     }
+                    if (phase == Phase.CURRENT && !blueprint) drawCurrentOutline(it)
                 }
                 scene.lines.forEach { drawProjectedLine(it, read.styles[it.style] ?: PlanStyle(), theme.ink) }
                 scene.boxes.filter { it.box.id in selection.ids }.forEach { drawSelectedBox(it, if (blueprint) Color.White else theme.ink) }

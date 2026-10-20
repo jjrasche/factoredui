@@ -51,7 +51,7 @@ private fun topStrip(hasBlueprint: Boolean, title: String): JsonObject = specNod
 )
 
 private fun selectSystem(chosen: String, all: List<String>): Map<String, Any?> =
-    mapOf("action" to "set_binding", "params" to mapOf("values" to all.associate { systemPath(it) to (it == chosen) }))
+    mapOf("action" to "set_binding", "params" to mapOf("values" to all.associate { systemPath(it) to (it == chosen) } + (STEP_PATH to if (chosen == BUILD_VIEW) 0 else null)))
 
 private fun systemButtons(drawn: List<String>): JsonObject {
     val rows = drawn.chunked(SYSTEMS_PER_ROW).mapIndexed { index, names ->
@@ -67,10 +67,13 @@ private fun systemButtons(drawn: List<String>): JsonObject {
 
 private const val ODDS_VIEW = "odds"
 private const val BOARD_VIEW = "board"
+private const val BUILD_VIEW = "build"
 
-private fun views(boarded: Boarded?, sampled: Sampled?): List<String> = listOfNotNull(if (sampled != null) ODDS_VIEW else null, if (boarded != null) BOARD_VIEW else null)
+private fun views(boarded: Boarded?, sampled: Sampled?, built: Built?): List<String> =
+    listOfNotNull(if (built != null) BUILD_VIEW else null, if (sampled != null) ODDS_VIEW else null, if (boarded != null) BOARD_VIEW else null)
 
-private fun viewPanels(boarded: Boarded?, sampled: Sampled?): List<JsonObject> = listOfNotNull(
+private fun viewPanels(boarded: Boarded?, sampled: Sampled?, built: Built?): List<JsonObject> = listOfNotNull(
+    built?.let { withVisible(inDark(buildNode(it)), systemPath(BUILD_VIEW)) },
     sampled?.let { withVisible(inDark(oddsNode(it)), systemPath(ODDS_VIEW)) }, boarded?.let { withVisible(inDark(boardNode(it)), systemPath(BOARD_VIEW)) },
 )
 
@@ -104,9 +107,10 @@ fun buildLensPageSpec(
     geometried: Geometried? = null,
     boarded: Boarded? = null,
     sampled: Sampled? = null,
+    built: Built? = null,
 ): JsonObject {
     val geometry = geometried?.geometry
-    val shaded = volumeNode(file, expansion, overlaying?.overlay, geometry)?.let { fullWorld(it, mapOf("ground" to WORLD_GROUND, "lighting" to "sun")) }
+    val shaded = volumeNode(file, expansion, overlaying?.overlay, geometry, built?.build?.stageOf)?.let { fullWorld(it, mapOf("ground" to WORLD_GROUND, "lighting" to "sun")) }
     val blueprint = geometry?.let { fullWorld(blueprintVolumeNode(it, expansion), visible = BLUEPRINT_PATH) }
     val drawn = systemOrder(file, expansion).filter { name -> expansion.objects.any { it.system == name } || expansion.instances.any { it.system == name } }
     val notes = listOfNotNull(
@@ -115,9 +119,9 @@ fun buildLensPageSpec(
     val drawings = geometry?.let { listOf(withVisible(inDark(blueprintDrawingsNode(it, expansion)), "ui.blueprint")) }.orEmpty()
     val body = specNode(
         "dock.body", "column", mapOf("gap" to 10, "padding" to 12),
-        listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + notes + drawings + selectedPanels(describing, file, drawn) + viewPanels(boarded, sampled) + elsewhere(describing, file, expansion, solving, ranked),
+        listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + notes + drawings + selectedPanels(describing, file, drawn) + viewPanels(boarded, sampled, built) + elsewhere(describing, file, expansion, solving, ranked),
     )
-    val dock = specNode("dock", "column", mapOf("anchor" to "bottom", "sheet" to mapOf("closed_dp" to DOCK_CLOSED_DP, "open_dp" to DOCK_OPEN_DP), "background" to PANEL), listOf(systemButtons(drawn + views(boarded, sampled)), body))
+    val dock = specNode("dock", "column", mapOf("anchor" to "bottom", "sheet" to mapOf("closed_dp" to DOCK_CLOSED_DP, "open_dp" to DOCK_OPEN_DP), "background" to PANEL), listOf(systemButtons(drawn + views(boarded, sampled, built)), body))
     val world = listOfNotNull(shaded, blueprint)
     val root = specNode("root", "stack", mapOf("fill" to true, "background" to HUD), world + listOf(topStrip(blueprint != null, file.title), dock))
     return JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "root" to root))

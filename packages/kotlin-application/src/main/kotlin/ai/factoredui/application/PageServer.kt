@@ -92,6 +92,9 @@ private fun boardOrSayWhy(loaded: Loaded): Boarded? {
     return runCatching { if (loaded.isSkipped("simulation")) null else Boarded(readBoard(loaded.textOf("simulation"))) }.getOrElse { Boarded(null, failureOf(it)) }
 }
 
+private fun buildOrSayWhy(loaded: Loaded): Built? =
+    runCatching { if (loaded.isSkipped("simulation")) null else Built(readBuild(loaded.textOf("simulation"))) }.getOrElse { Built(null, failureOf(it)) }
+
 private fun sampleOrSayWhy(options: Options): Sampled? {
     val arguments = options.sampleArguments ?: return null
     return runCatching { Sampled(readSampling(sampleSystem(options.runtime, options.system, arguments))) }.getOrElse { Sampled(null, failureOf(it)) }
@@ -107,7 +110,7 @@ private fun stampOf(system: Path): Pair<Long, Long> = Files.getLastModifiedTime(
 private fun buildSpecBody(options: Options): ByteArray {
     val file = readSystemFile(Files.readString(options.system))
     val loaded = readLoaded(loadSystem(options.runtime, options.system, options.overlay))
-    return buildLensPageSpec(file, readExpansion(loaded.textOf("expansion")), solveOrSayWhy(loaded), overlayOrSayWhy(options, loaded), rankOrSayWhy(options), describeOrSayWhy(options, loaded), geometryOrSayWhy(loaded), boardOrSayWhy(loaded), sampleOrSayWhy(options)).toString().toByteArray()
+    return buildLensPageSpec(file, readExpansion(loaded.textOf("expansion")), solveOrSayWhy(loaded), overlayOrSayWhy(options, loaded), rankOrSayWhy(options), describeOrSayWhy(options, loaded), geometryOrSayWhy(loaded), boardOrSayWhy(loaded), sampleOrSayWhy(options), buildOrSayWhy(loaded)).toString().toByteArray()
 }
 
 private fun serveSpec(exchange: HttpExchange, options: Options, built: AtomicReference<BuiltSpec?>) {

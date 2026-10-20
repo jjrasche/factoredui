@@ -208,8 +208,34 @@ private fun setBindingValuesRefusal(nodeId: String, params: Map<String, Any?>): 
 private fun bindingWritesIn(params: Map<String, Any?>): Map<String, Any?> =
     (params[SET_BINDING_VALUES] as Map<*, *>).entries.associate { (path, value) -> path.toString() to value }
 
+private const val SET_BINDING_ADD = "add"
+
 private fun RenderContext.writeBindingFrom(nodeId: String, params: Map<String, Any?>) {
-    if (SET_BINDING_VALUES in params) writeBindingValuesFrom(nodeId, params) else writeOneBindingFrom(nodeId, params)
+    when {
+        SET_BINDING_VALUES in params -> writeBindingValuesFrom(nodeId, params)
+        SET_BINDING_ADD in params -> writeAddedBindingFrom(nodeId, params)
+        else -> writeOneBindingFrom(nodeId, params)
+    }
+}
+
+private fun addedBindingRefusal(nodeId: String, params: Map<String, Any?>): String? {
+    val refused = "set_binding on '$nodeId' was refused:"
+    val path = params["path"]
+    if (path !is String || path.isEmpty()) return "$refused 'path' must be non-empty text, not '$path'"
+    if (SET_BINDING_VALUE in params) return "$refused it gives 'add' and also 'value'; give one"
+    if (params[SET_BINDING_ADD] !is Number) return "$refused 'add' must be a number, not '${params[SET_BINDING_ADD]}'"
+    return listOf("min", "max").firstOrNull { it in params && params[it] !is Number }?.let { "$refused '$it' must be a number, not '${params[it]}'" }
+}
+
+/** Adds the number in `add` to the number at `path` (or `min`, else 0, when there is none), kept between `min` and `max` when they are given. */
+private fun RenderContext.writeAddedBindingFrom(nodeId: String, params: Map<String, Any?>) {
+    val refusal = addedBindingRefusal(nodeId, params)
+    if (refusal != null) return setBinding(RENDERER_ERROR_PATH, refusal)
+    val path = params["path"] as String
+    val low = (params["min"] as? Number)?.toDouble()
+    val high = (params["max"] as? Number)?.toDouble()
+    val current = (ai.factoredui.compose.schema.BindingResolver.resolveBinding("{$path}", data) as? Number)?.toDouble() ?: low ?: 0.0
+    setBinding(path, (current + (params[SET_BINDING_ADD] as Number).toDouble()).coerceIn(low ?: Double.NEGATIVE_INFINITY, high ?: Double.POSITIVE_INFINITY))
 }
 
 private fun RenderContext.writeOneBindingFrom(nodeId: String, params: Map<String, Any?>) {

@@ -85,4 +85,11 @@ class VolumeBoxesTest {
             read.notices,
         )
     }
+
+    @Test
+    fun a_box_carries_the_step_it_is_put_in_place_at_and_one_without_has_none() {
+        val sized = mapOf("x_mm" to 0, "y_mm" to 0, "z_mm" to 0, "width_mm" to 1, "depth_mm" to 1, "height_mm" to 1)
+        val read = readVolume(listOf(sized + mapOf("id" to "placed", "stage" to 3), sized + mapOf("id" to "never")), null, null, null, null)
+        assertEquals(listOf(3.0, null), read.boxes.map { it.stage })
+    }
 }

@@ -27,17 +27,17 @@ data class Board(val unit: String, val endedAs: String, val cards: List<FlowCard
 
 data class Boarded(val board: Board?, val failure: String? = null)
 
-private fun JsonElement?.objectOrEmpty(): JsonObject = this as? JsonObject ?: JsonObject(emptyMap())
+internal fun JsonElement?.objectOrEmpty(): JsonObject = this as? JsonObject ?: JsonObject(emptyMap())
 
-private fun JsonElement?.listOrEmpty(): List<JsonElement> = (this as? JsonArray).orEmpty()
+internal fun JsonElement?.listOrEmpty(): List<JsonElement> = (this as? JsonArray).orEmpty()
 
-private fun JsonElement?.textsOrEmpty(): List<String> = listOrEmpty().mapNotNull { (it as? JsonPrimitive)?.takeIf { text -> text.isString }?.content }
+internal fun JsonElement?.textsOrEmpty(): List<String> = listOrEmpty().mapNotNull { (it as? JsonPrimitive)?.takeIf { text -> text.isString }?.content }
 
-private fun JsonElement?.numberOrNull(): Double? = (this as? JsonPrimitive)?.takeIf { it !is JsonNull && !it.isString }?.doubleOrNull
+internal fun JsonElement?.numberOrNull(): Double? = (this as? JsonPrimitive)?.takeIf { it !is JsonNull && !it.isString }?.doubleOrNull
 
-private class Step(val t: Double, val assignments: List<JsonObject>, val flows: JsonObject)
+internal class Step(val t: Double, val assignments: List<JsonObject>, val flows: JsonObject)
 
-private fun stepsOf(root: JsonObject): List<Step> = root["steps"].listOrEmpty().mapNotNull { element ->
+internal fun stepsOf(root: JsonObject): List<Step> = root["steps"].listOrEmpty().mapNotNull { element ->
     val step = element as? JsonObject ?: return@mapNotNull null
     val t = step["t"].numberOrNull() ?: return@mapNotNull null
     Step(t, step["assignments"].listOrEmpty().mapNotNull { it as? JsonObject }, step["flows"].objectOrEmpty())

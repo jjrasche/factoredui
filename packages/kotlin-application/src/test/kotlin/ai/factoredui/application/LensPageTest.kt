@@ -97,4 +97,19 @@ class LensPageTest {
         assertEquals("glass", systemLook(listOf("walls"), "glazing")["material"])
         assertEquals(null, systemLook(listOf("walls", "odd"), "odd")["material"])
     }
+
+    @Test
+    fun a_built_simulation_steps_the_shaded_world_and_its_button_starts_at_the_first_moment() {
+        val root = buildLensPageSpec(
+            readSystemFile(SYSTEM_FILE), readExpansion(EXPANSION),
+            built = Built(Build("hour", listOf(Keyframe(0.0, emptyList(), emptyMap(), emptyMap()), Keyframe(1.0, emptyList(), emptyMap(), emptyMap())), mapOf("wall-a" to 1))),
+        )["root"]!!.jsonObject
+        val volume = root.byId("volume").props()
+        assertEquals("{ui.step}", volume["step"]!!.jsonPrimitive.content)
+        assertEquals("1", volume["boxes"]!!.jsonArray.first().jsonObject["stage"]!!.jsonPrimitive.content)
+        val values = root.byId("systems.build")["action"]!!.jsonObject["params"]!!.jsonObject["values"]!!.jsonObject
+        assertEquals("0", values["ui.step"]!!.jsonPrimitive.content)
+        val others = root.byId("systems.walls")["action"]!!.jsonObject["params"]!!.jsonObject["values"]!!.jsonObject
+        assertEquals("null", others["ui.step"]!!.jsonPrimitive.content)
+    }
 }
