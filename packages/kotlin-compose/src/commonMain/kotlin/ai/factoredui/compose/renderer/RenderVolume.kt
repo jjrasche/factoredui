@@ -83,6 +83,9 @@ private const val GROUND_MARGIN = 0.15f
 private const val HATCH_GAP_DP = 6f
 private const val OUTLINE_DP = 1.2f
 private const val LIT_OUTLINE_DP = 0.8f
+private const val BURIED_TOLERANCE_MM = 1.0
+private const val SOIL_ALPHA = 0.5f
+private val SOIL = Color(0xFF6B5A48)
 private const val GHOST_FILL_ALPHA = 0.08f
 private const val GHOST_EDGE_ALPHA = 0.3f
 private const val CURRENT_OUTLINE_DP = 2.5f
@@ -146,7 +149,7 @@ private fun projectBox(box: VolumeBox, eye: Vec3, isLit: Boolean, project: (Vec3
     return (centre - eye).length() to ProjectedBox(box, faces, points.minOf { it.x }, points.minOf { it.y }, points.maxOf { it.x }, points.maxOf { it.y })
 }
 
-private fun groundLevelMm(span: VolumeSpanMm) = if (span.floor < 0 && span.ceiling > 0) 0.0 else span.floor
+private fun groundLevelMm(span: VolumeSpanMm, gradeMm: Double?) = gradeMm ?: if (span.floor < 0 && span.ceiling > 0) 0.0 else span.floor
 
 private enum class Phase { PLACED, CURRENT, GHOST }
 
@@ -161,13 +164,13 @@ private fun phaseOf(box: VolumeBox, step: Double?): Phase {
     }
 }
 
-private fun projectShadows(read: VolumeRead, span: VolumeSpanMm, step: Double?, project: (Vec3) -> Offset?): List<List<Offset>> =
+private fun projectShadows(read: VolumeRead, span: VolumeSpanMm, step: Double?, gradeMm: Double?, project: (Vec3) -> Offset?): List<List<Offset>> =
     read.boxes.filter { !it.isEstimate && phaseOf(it, step) != Phase.GHOST }.mapNotNull { box ->
-        val outline = shadowOutline(box, groundLevelMm(span)).map { (x, y) -> project(worldOf(x, y, groundLevelMm(span))) }
+        val outline = shadowOutline(box, groundLevelMm(span, gradeMm)).map { (x, y) -> project(worldOf(x, y, groundLevelMm(span, gradeMm))) }
         outline.takeIf { points -> points.size >= 3 && points.all { it != null } }?.map { it!! }
     }
 
-private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, widthPx: Float, heightPx: Float, isLit: Boolean, step: Double?): ProjectedScene {
+private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, widthPx: Float, heightPx: Float, isLit: Boolean, step: Double?, gradeMm: Double?): ProjectedScene {
     val view = camera.viewMatrix()
     val lens = camera.projectionMatrix(widthPx / heightPx)
     val project = { point: Vec3 -> point.project(view, lens, widthPx, heightPx).takeIf { it.visible }?.let { Offset(it.x, it.y) } }
@@ -178,7 +181,7 @@ private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, w
     val groundCorners = listOf(
         span.west - marginX to span.south - marginY, span.east + marginX to span.south - marginY,
         span.east + marginX to span.north + marginY, span.west - marginX to span.north + marginY,
-    ).map { project(worldOf(it.first, it.second, span.floor)) }
+    ).map { project(worldOf(it.first, it.second, gradeMm ?: span.floor)) }
     val north = project(worldOf((span.west + span.east) / 2, span.north + marginY, span.floor))
     val lines = read.lines.mapNotNull { line ->
         val from = project(worldOf(line.from.xMm, line.from.yMm, line.from.zMm))
@@ -186,7 +189,7 @@ private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, w
         if (from != null && to != null) ProjectedLine(from, to, line.style) else null
     }
     val labels = read.labels.mapNotNull { label -> project(worldOf(label.at.xMm, label.at.yMm, label.at.zMm))?.let { ProjectedLabel(it, label.text, label.style) } }
-    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north, lines, labels, if (isLit) projectShadows(read, span, step, project) else emptyList())
+    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north, lines, labels, if (isLit) projectShadows(read, span, step, gradeMm, project) else emptyList())
 }
 
 private fun pathOf(corners: List<Offset>): Path = Path().apply {
@@ -339,7 +342,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, read, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun", (resolvedProps["step"] as? Number)?.toDouble())
+            VolumeDrawing(node.id, read, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun", (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble())
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -347,7 +350,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean, step: Double?) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean, step: Double?, gradeMm: Double?) {
     val theme = LocalSpecTheme.current
     val camera = remember(span) { Camera().also { frameCamera(it, span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -358,7 +361,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
         val density = LocalDensity.current
         val widthPx = with(density) { widthDp.toPx() }
         val heightPx = with(density) { heightDp.toPx() }
-        val scene = remember(revision, read, span, widthPx, heightPx, isLit, step) { projectScene(read, span, camera, widthPx, heightPx, isLit, step) }
+        val scene = remember(revision, read, span, widthPx, heightPx, isLit, step, gradeMm) { projectScene(read, span, camera, widthPx, heightPx, isLit, step, gradeMm) }
         val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
         Box(
             modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }.pointerInput(scene, selection.ids) {
@@ -368,8 +371,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
             Canvas(modifier = Modifier.fillMaxSize()) {
                 ground?.let { drawRect(it) }
                 if (!blueprint) scene.ground?.let { drawPath(pathOf(it), GROUND_FILL, style = Fill) }
-                scene.shadows.forEach { drawShadow(it) }
-                scene.boxes.forEach {
+                fun drawBox(it: ProjectedBox) {
                     val style = read.styles[it.box.style] ?: PlanStyle()
                     val phase = phaseOf(it.box, step)
                     when {
@@ -380,6 +382,11 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                     }
                     if (phase == Phase.CURRENT && !blueprint) drawCurrentOutline(it)
                 }
+                val isBuried = { projected: ProjectedBox -> gradeMm != null && !blueprint && projected.box.zMm + projected.box.heightMm < gradeMm - BURIED_TOLERANCE_MM }
+                scene.boxes.filter(isBuried).forEach(::drawBox)
+                if (gradeMm != null && !blueprint) scene.ground?.let { drawPath(pathOf(it), SOIL.copy(alpha = SOIL_ALPHA), style = Fill) }
+                scene.shadows.forEach { drawShadow(it) }
+                scene.boxes.filterNot(isBuried).forEach(::drawBox)
                 scene.lines.forEach { drawProjectedLine(it, read.styles[it.style] ?: PlanStyle(), theme.ink) }
                 scene.boxes.filter { it.box.id in selection.ids }.forEach { drawSelectedBox(it, if (blueprint) Color.White else theme.ink) }
             }

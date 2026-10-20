@@ -6,6 +6,10 @@ internal const val NOMINAL_HEIGHT_MM = 400.0
 private const val ON_FOOTPRINT_TOLERANCE_MM = 1.0
 private const val ESTIMATE_STYLE_NOTE = "height unknown"
 
+internal const val GRADE_MM = 0.0
+
+private fun hasEmbedment(expansion: Expansion) = expansion.objects.any { it.fields["embedment_mm"] != null } || expansion.instances.any { it.fields["embedment_mm"] != null }
+
 private class Placed(val id: String, val system: String, val xMm: Double, val yMm: Double, val widthMm: Double, val depthMm: Double, val rotationDeg: Double, val level: Int?, val fields: Map<String, Double?>, val isFootprintRect: Boolean)
 
 private class Sized(val heightMm: Double, val isEstimate: Boolean)
@@ -76,7 +80,7 @@ internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay
     if (expansion.objects.isEmpty() && expansion.instances.isEmpty()) return null
     val order = systemOrder(file, expansion)
     val bases = baseOfEachLevel(expansion.objects)
-    val fromObjects = expansion.objects.map { placedObject(it) to (bases[it.level ?: 0] ?: 0.0) }
+    val fromObjects = expansion.objects.map { placedObject(it) to (it.elevationMm?.takeIf { elevation -> elevation != 0.0 } ?: bases[it.level ?: 0] ?: 0.0) }
     val fromInstances = expansion.instances.map { placedInstance(it) to ((levelUnder(expansion, it)?.let { level -> bases[level] } ?: 0.0) + it.elevationMm) }
     val guessed = (fromObjects + fromInstances).map { (placed, base) -> boxNode(placed, base) }
     val whole = (geometry?.let { measuredBoxes(it) + guessedUnmeasured(guessed, it) } ?: guessed).map { box -> if (overlay == null) box else box + ("style" to overlayStyleOf(overlay, box["id"] as String)) }
@@ -91,7 +95,7 @@ internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay
         "volume", "volume",
         mapOf(
             "boxes" to boxes,
-        ) + (if (stages == null) emptyMap() else mapOf("step" to "{$STEP_PATH}")) + mapOf(
+        ) + (if (hasEmbedment(expansion)) mapOf("grade_mm" to GRADE_MM) else emptyMap()) + (if (stages == null) emptyMap() else mapOf("step" to "{$STEP_PATH}")) + mapOf(
             "styles" to if (overlay == null) styled.associateWith { systemLook(order, it) } else overlayStyles(overlay, boxIds) + stopStyles(overlay),
             "legend" to legend,
             "empty_text" to "The expansion has nothing to draw.",

@@ -67,4 +67,14 @@ class GlazingPlacementTest {
             assertTrue(hosts.contains(pane), "$opening sticks out of its walls")
         }
     }
+
+    @Test
+    fun a_world_with_embedded_pieces_has_a_grade_plane_and_its_posts_stand_below_it() {
+        val volume = buildLensPageSpec(SYSTEM_FILE, readExpansion(recorded("live-expansion.json")), geometried = Geometried(GEOMETRY))["root"]!!.jsonObject
+        fun find(node: JsonObject): JsonObject? = if (node["id"]!!.jsonPrimitive.content == "volume") node else node["children"]!!.jsonArray.firstNotNullOfOrNull { find(it.jsonObject) }
+        val props = find(volume)!!["props"]!!.jsonObject
+        assertEquals("0.0", props["grade_mm"]!!.jsonPrimitive.content)
+        val post = props["boxes"]!!.jsonArray.map { it.jsonObject }.first { it["id"]!!.jsonPrimitive.content.startsWith("post@") }
+        assertEquals(-1219.0, post.number("z_mm"))
+    }
 }
