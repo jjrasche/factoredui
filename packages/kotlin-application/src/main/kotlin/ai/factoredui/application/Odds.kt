@@ -15,7 +15,7 @@ data class Threshold(val path: String, val value: Double, val fraction: Double)
 
 data class Joint(val paths: List<String>, val fraction: Double)
 
-data class Sampling(val runs: Int, val seed: Long, val spreads: Map<String, Spread>, val thresholds: List<Threshold>, val joint: Joint?, val failedRuns: Int)
+data class Sampling(val runs: Int, val seed: Long, val spreads: Map<String, Spread>, val thresholds: List<Threshold>, val joint: Joint?, val failedRuns: Int, val quality: Map<String, Int> = emptyMap())
 
 data class Sampled(val sampling: Sampling?, val failure: String? = null)
 
@@ -42,6 +42,9 @@ private fun jointOf(element: kotlinx.serialization.json.JsonElement?): Joint? {
     return Joint(paths, entry.number("fraction", "the joint"))
 }
 
+private fun qualityOf(element: kotlinx.serialization.json.JsonElement?): Map<String, Int> =
+    (element as? JsonObject).orEmpty().mapNotNull { (label, tally) -> ((tally as? JsonObject)?.get("inputs") as? JsonPrimitive)?.intOrNull?.let { label to it } }.toMap()
+
 fun readSampling(text: String): Sampling {
     val root = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject ?: throw OddsFormatException("the sample is not a JSON object")
     (root["refused"] as? JsonObject)?.let { throw OddsFormatException((it["message"] as? JsonPrimitive)?.content ?: "the sample was refused") }
@@ -50,6 +53,6 @@ fun readSampling(text: String): Sampling {
     val failed = ((root["failed"] as? JsonObject)?.get("count") as? JsonPrimitive)?.intOrNull ?: 0
     return Sampling(
         root.number("runs", "the sample").toInt(), root.number("seed", "the sample").toLong(),
-        outputs.mapValues { (path, element) -> spreadOf(path, element) }, below.map { (path, element) -> thresholdOf(path, element) }, jointOf(root["joint"]), failed,
+        outputs.mapValues { (path, element) -> spreadOf(path, element) }, below.map { (path, element) -> thresholdOf(path, element) }, jointOf(root["joint"]), failed, qualityOf(root["quality"]),
     )
 }

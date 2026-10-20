@@ -24,7 +24,24 @@ private fun withThresholds(): Sampling = readSampling(
     ),
 )
 
+private fun withQuality(): Sampling = readSampling(
+    recorded().replaceFirst("{", """{"quality":{"assumed":{"inputs":9,"draws":4500},"inferred":{"inputs":5,"draws":2500},"published":{"inputs":15,"draws":7500}},"""),
+)
+
 class OddsTest {
+    @Test
+    fun the_quality_of_the_inputs_is_read_and_said_as_a_count_of_each() {
+        val sampling = withQuality()
+        assertEquals(mapOf("assumed" to 9, "inferred" to 5, "published" to 15), sampling.quality)
+        assertTrue("inputs: 15 published, 5 inferred, 9 assumed" in oddsNode(Sampled(sampling)).texts())
+    }
+
+    @Test
+    fun the_outputs_with_a_threshold_are_drawn_before_the_others() {
+        val ids = oddsNode(Sampled(withThresholds())).nodes().map { it["id"]!!.jsonPrimitive.content }.filter { it.endsWith(".strip") }
+        assertEquals(setOf("odds.simulation.objective_total.labour_hours.strip", "odds.simulation.objective_total.finish_time.strip"), ids.take(2).toSet())
+    }
+
     @Test
     fun an_output_is_read_with_its_percentiles_and_its_range() {
         val spread = readSampling(recorded()).spreads.getValue("simulation.objective_total.labour_hours")

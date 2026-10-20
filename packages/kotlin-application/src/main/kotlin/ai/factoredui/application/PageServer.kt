@@ -111,7 +111,11 @@ private fun boardOrSayWhy(loaded: Loaded): Boarded? {
 private fun buildOrSayWhy(loaded: Loaded): Built? =
     runCatching { if (loaded.isSkipped("simulation")) null else Built(readBuild(loaded.textOf("simulation"))) }.getOrElse { Built(null, failureOf(it)) }
 
+private fun traceOrSayWhy(loaded: Loaded): Traced? =
+    runCatching { if (loaded.isSkipped("simulation")) null else Traced(readTrace(loaded.textOf("simulation"))) }.getOrElse { Traced(null, failureOf(it)) }
+
 private fun sampleOrSayWhy(options: Options): Sampled? {
+    options.sampleFile?.let { file -> return runCatching { Sampled(readSampling(Files.readString(file))) }.getOrElse { Sampled(null, failureOf(it)) } }
     val arguments = options.sampleArguments ?: return null
     return runCatching { Sampled(readSampling(sampleSystem(options.runtime, options.system, arguments))) }.getOrElse { Sampled(null, failureOf(it)) }
 }
@@ -147,7 +151,7 @@ private fun buildSpecBody(options: Options, timings: Timings): ByteArray {
     return timings.timed("spec") {
         buildLensPageSpec(
             file, readExpansion(loaded.textOf("expansion")), solveOrSayWhy(loaded), overlayOrSayWhy(options, loaded), ranked, gathered.described, geometryOrSayWhy(loaded),
-            boardOrSayWhy(loaded), awaited(sampling), buildOrSayWhy(loaded),
+            boardOrSayWhy(loaded), awaited(sampling), buildOrSayWhy(loaded), traceOrSayWhy(loaded),
         ).toString().toByteArray()
     }
 }

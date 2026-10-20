@@ -65,6 +65,14 @@ private fun stripNode(path: String, spread: Spread, thresholds: List<Threshold>)
         ),
     )
 
+private val QUALITY_ORDER = listOf("published", "inferred", "assumed", "observed")
+
+private fun qualitySentence(quality: Map<String, Int>): String? {
+    if (quality.isEmpty()) return null
+    val ordered = QUALITY_ORDER.filter { it in quality } + quality.keys.filter { it !in QUALITY_ORDER }.sorted()
+    return "inputs: " + ordered.joinToString(", ") { "${quality.getValue(it)} $it" }
+}
+
 /** The odds of a sample: a strip for each output that varied (range, p5 to p95, p25 to p75, the median, and any threshold), then what the thresholds say. */
 internal fun oddsNode(sampled: Sampled): JsonObject {
     val sampling = sampled.sampling
@@ -72,7 +80,9 @@ internal fun oddsNode(sampled: Sampled): JsonObject {
     if (sampling == null) return specNode("odds", "column", mapOf("gap" to 8), listOf(title, textNode("odds.failure", "The sample could not be run: ${sampled.failure}", variant = "caption", color = MUTED_INK)))
     val note = textNode("odds.note", "${sampling.runs} runs, seed ${sampling.seed}${if (sampling.failedRuns > 0) ", ${sampling.failedRuns} refused" else ""}. Bar: p5 to p95; thick: p25 to p75; white: median; thin line: min to max; dashed: threshold.", variant = "caption", color = MUTED_INK)
     val varied = sampling.spreads.filter { (_, spread) -> spread.min != spread.max }
-    val strips = varied.map { (path, spread) -> stripNode(path, spread, sampling.thresholds.filter { it.path == path }) }
+    val (drawnToTarget, otherwise) = varied.entries.partition { (path, _) -> sampling.thresholds.any { it.path == path } }
+    val strips = (drawnToTarget + otherwise).map { (path, spread) -> stripNode(path, spread, sampling.thresholds.filter { it.path == path }) }
+    val quality = qualitySentence(sampling.quality)?.let { listOf(textNode("odds.quality", it, variant = "caption", color = MUTED_INK)) }.orEmpty()
     val sentences = oddsSentences(sampling).mapIndexed { index, text -> textNode("odds.sentence.$index", text, bold = true) }
-    return specNode("odds", "column", mapOf("gap" to 8), listOf(title, note) + sentences + strips)
+    return specNode("odds", "column", mapOf("gap" to 8), listOf(title, note) + sentences + quality + strips)
 }

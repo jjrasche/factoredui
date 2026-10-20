@@ -5,9 +5,9 @@ import java.nio.file.Paths
 
 class UsageException(message: String) : IllegalArgumentException(message)
 
-data class Options(val system: Path, val runtime: Path, val bundle: Path, val bind: String, val port: Int, val overlay: String? = null, val rank: String? = null, val sampleArguments: List<String>? = null, val cacheDirectory: Path? = defaultCacheDirectory())
+data class Options(val system: Path, val runtime: Path, val bundle: Path, val bind: String, val port: Int, val overlay: String? = null, val rank: String? = null, val sampleArguments: List<String>? = null, val sampleFile: Path? = null, val cacheDirectory: Path? = defaultCacheDirectory())
 
-private val FLAGS = setOf("--system", "--runtime", "--bundle", "--bind", "--port", "--overlay", "--rank", "--sample-args")
+private val FLAGS = setOf("--system", "--runtime", "--bundle", "--bind", "--port", "--overlay", "--rank", "--sample-args", "--sample-file")
 
 private fun flagValues(args: List<String>): Map<String, String> {
     val pairs = args.chunked(2)
@@ -22,5 +22,5 @@ fun parseOptions(args: List<String>): Options {
     val values = flagValues(args)
     fun required(flag: String) = values[flag] ?: throw UsageException("$flag is required")
     val port = required("--port").toIntOrNull()?.takeIf { it in 1..65535 } ?: throw UsageException("--port must be a number from 1 to 65535, not '${values["--port"]}'")
-    return Options(Paths.get(required("--system")), Paths.get(required("--runtime")), Paths.get(required("--bundle")), required("--bind"), port, values["--overlay"], values["--rank"], values["--sample-args"]?.split(" ")?.filter { it.isNotEmpty() })
+    return Options(Paths.get(required("--system")), Paths.get(required("--runtime")), Paths.get(required("--bundle")), required("--bind"), port, values["--overlay"], values["--rank"], values["--sample-args"]?.split(" ")?.filter { it.isNotEmpty() }, values["--sample-file"]?.let { Paths.get(it) })
 }

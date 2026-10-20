@@ -58,7 +58,7 @@ fun specCacheKey(options: Options): String {
     val engineBuild = options.runtime.toAbsolutePath().parent.resolve("build/cli.classpath")
     val parts = listOf(
         stampOf(options.system), usedFilesOf(options.system).joinToString(",") { stampOf(it) }, runtimePin(options.runtime), stampOf(engineBuild),
-        newestSourceStamp(options.runtime), applicationStamp(), options.overlay.orEmpty(), options.rank.orEmpty(), options.sampleArguments.orEmpty().joinToString(" "),
+        newestSourceStamp(options.runtime), applicationStamp(), options.overlay.orEmpty(), options.rank.orEmpty(), options.sampleArguments.orEmpty().joinToString(" "), options.sampleFile?.let { stampOf(it) }.toString(),
     )
     return MessageDigest.getInstance("SHA-256").digest(parts.joinToString("|").toByteArray()).joinToString("") { "%02x".format(it) }
 }
