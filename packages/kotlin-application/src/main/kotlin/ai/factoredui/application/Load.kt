@@ -19,6 +19,8 @@ class Loaded(private val sections: JsonObject) {
 
     fun isSkipped(name: String): Boolean = sectionOf(name)["ok"] is JsonNull
 
+    fun objectOf(name: String): JsonObject = Json.parseToJsonElement(textOf(name)) as JsonObject
+
     fun textOf(name: String): String {
         val section = sectionOf(name)
         if (section["ok"] == JsonPrimitive(true)) return section.toString()

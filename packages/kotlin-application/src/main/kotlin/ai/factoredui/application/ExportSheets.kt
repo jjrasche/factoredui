@@ -66,7 +66,14 @@ fun exportSheets(options: ExportOptions): List<Path> {
     val drawings = drawingsOf(geometry, expansion)
     val meta = SheetMeta(file.title, LocalDate.now().toString(), configSource(options.system), "we ${runtimePin(options.runtime)}", drawings.size)
     Files.createDirectories(options.out)
-    return drawings.flatMapIndexed { index, drawn ->
+    val summaries = textSheets("Design summary", { page, pages -> "S-1 (page $page of $pages)" }, summaryGroups(loaded, geometry), meta)
+    return summaries.flatMapIndexed { index, sheet ->
+        val stem = "S-1-design-summary-p${index + 1}"
+        listOf(
+            options.out.resolve("$stem.svg").also { Files.writeString(it, sheetSvg(sheet)) },
+            options.out.resolve("$stem.pdf").also { Files.write(it, sheetPdf(sheet)) },
+        )
+    } + drawings.flatMapIndexed { index, drawn ->
         val number = "A-${index + 1} of ${drawings.size}"
         val sheet = sheetOf(drawn.title, number, drawn.shapes, notes, meta)
         val stem = "A-${index + 1}-${slug(drawn.title)}"

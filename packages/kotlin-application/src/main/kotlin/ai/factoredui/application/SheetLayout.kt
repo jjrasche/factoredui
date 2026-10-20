@@ -94,7 +94,7 @@ private fun cell(x: Double, y: Double, width: Double, label: String, value: Stri
     Words(x + 2, y + 11, value, 3.2, isBold = bold),
 )
 
-private fun titleBlock(sheetName: String, sheetNumber: String, scale: Int, meta: SheetMeta): List<Mark> {
+private fun titleBlock(sheetName: String, sheetNumber: String, scaleText: String, meta: SheetMeta): List<Mark> {
     val left = MARGIN_MM
     val top = SHEET_HEIGHT_MM - MARGIN_MM - TITLE_HEIGHT_MM
     val width = SHEET_WIDTH_MM - 2 * MARGIN_MM
@@ -102,7 +102,7 @@ private fun titleBlock(sheetName: String, sheetNumber: String, scale: Int, meta:
     val half = TITLE_HEIGHT_MM / 2
     val cells = listOf(
         listOf("Project" to meta.project, "Sheet" to sheetName, "Sheet number" to sheetNumber, "Date" to meta.date),
-        listOf("Config commit" to meta.configSource, "Engine pin" to meta.enginePin, "Scale" to scaleName(scale), "Source" to "world-engine geometry; no line is drawn by hand"),
+        listOf("Config commit" to meta.configSource, "Engine pin" to meta.enginePin, "Scale" to scaleText, "Source" to "world-engine geometry; no line is drawn by hand"),
     )
     val marks = cells.flatMapIndexed { row, entries -> entries.flatMapIndexed { index, (label, value) -> cell(left + index * column, top + row * half, column, label, value, bold = label == "Sheet") } }
     val lines = listOf(Segment(left, top, left + width, top, Ink(BLACK, 0.7)), Segment(left, top + half, left + width, top + half, Ink(BLACK, 0.25))) +
@@ -123,10 +123,44 @@ private fun notesBlock(groups: List<NoteGroup>): List<Mark> {
     return words + Segment(left, MARGIN_MM, left, SHEET_HEIGHT_MM - MARGIN_MM - TITLE_HEIGHT_MM, Ink(BLACK, 0.35))
 }
 
+private const val TEXT_SIZE_MM = 1.9
+private const val TEXT_PITCH = 1.3
+private const val HEADING_SIZE_MM = 2.6
+private const val COLUMN_GAP_MM = 8.0
+private const val COLUMNS_PER_SHEET = 2
+
+private class TextRow(val text: String, val sizeMm: Double, val isBold: Boolean)
+
+private fun rowsOf(groups: List<NoteGroup>, widthMm: Double): List<TextRow> = groups.flatMap { group ->
+    listOf(TextRow(group.heading, HEADING_SIZE_MM, true)) +
+        group.lines.flatMap { line -> wrapWords(line, TEXT_SIZE_MM, widthMm).mapIndexed { index, text -> TextRow(if (index == 0) text else "      $text", TEXT_SIZE_MM, false) } } + TextRow("", TEXT_SIZE_MM, false)
+}
+
+/** Text flowed down columns and over sheets, each with the title block; a sheet holds [COLUMNS_PER_SHEET] columns. */
+internal fun textSheets(sheetName: String, numberOf: (page: Int, pages: Int) -> String, groups: List<NoteGroup>, meta: SheetMeta): List<Sheet> {
+    val left = MARGIN_MM + PAD_MM
+    val width = (SHEET_WIDTH_MM - 2 * MARGIN_MM - 2 * PAD_MM - COLUMN_GAP_MM * (COLUMNS_PER_SHEET - 1)) / COLUMNS_PER_SHEET
+    val height = SHEET_HEIGHT_MM - 2 * MARGIN_MM - TITLE_HEIGHT_MM - 2 * PAD_MM
+    val columns = mutableListOf<MutableList<Words>>()
+    var y = height
+    rowsOf(groups, width).forEach { row ->
+        val pitch = row.sizeMm * TEXT_PITCH
+        if (columns.isEmpty() || y + pitch > height) { columns.add(mutableListOf()); y = 0.0 }
+        y += pitch
+        val index = columns.size - 1
+        columns[index].add(Words(left + (index % COLUMNS_PER_SHEET) * (width + COLUMN_GAP_MM), MARGIN_MM + PAD_MM + y, row.text, row.sizeMm, isBold = row.isBold))
+    }
+    val pages = columns.chunked(COLUMNS_PER_SHEET)
+    return pages.mapIndexed { page, group ->
+        val border = frame(MARGIN_MM, MARGIN_MM, SHEET_WIDTH_MM - 2 * MARGIN_MM, SHEET_HEIGHT_MM - 2 * MARGIN_MM, 0.7)
+        Sheet(SHEET_WIDTH_MM, SHEET_HEIGHT_MM, listOf<Mark>(border) + group.flatten() + titleBlock(sheetName, numberOf(page + 1, pages.size), "not to scale", meta))
+    }
+}
+
 /** A sheet: the drawing to scale, a notes column, and a title block, inside a border. */
 internal fun sheetOf(sheetName: String, sheetNumber: String, shapes: List<Map<String, Any?>>, notes: List<NoteGroup>, meta: SheetMeta): Sheet {
     val (scale, drawing) = fitDrawing(shapes)
     val border = frame(MARGIN_MM, MARGIN_MM, SHEET_WIDTH_MM - 2 * MARGIN_MM, SHEET_HEIGHT_MM - 2 * MARGIN_MM, 0.7)
-    return Sheet(SHEET_WIDTH_MM, SHEET_HEIGHT_MM, listOf<Mark>(border) + drawing + notesBlock(notes) + titleBlock(sheetName, sheetNumber, scale, meta))
+    return Sheet(SHEET_WIDTH_MM, SHEET_HEIGHT_MM, listOf<Mark>(border) + drawing + notesBlock(notes) + titleBlock(sheetName, sheetNumber, scaleName(scale), meta))
 }
 
