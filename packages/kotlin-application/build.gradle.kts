@@ -27,3 +27,7 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
 }
+
+tasks.withType<Test>().configureEach {
+    systemProperty("factoredui.buildLock", layout.buildDirectory.file("test-engine.lock").get().asFile.absolutePath)
+}
