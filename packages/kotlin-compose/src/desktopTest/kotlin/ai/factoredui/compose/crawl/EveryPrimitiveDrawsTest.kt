@@ -40,6 +40,7 @@ private val minimalNodeOf: Map<SpecNodeType, String> = mapOf(
     SpecNodeType.SCENE to """{ "id": "n", "type": "scene", "props": {} }""",
     SpecNodeType.TABLE to """{ "id": "n", "type": "table", "props": {} }""",
     SpecNodeType.PLAN to """{ "id": "n", "type": "plan", "props": { "shapes": [ { "id": "a", "kind": "rect", "x_mm": 0, "y_mm": 0, "width_mm": 1000, "depth_mm": 600 } ] } }""",
+    SpecNodeType.CHART to """{ "id": "n", "type": "chart", "props": { "rows": [ { "t": 0, "v": 1 }, { "t": 1, "v": 3 } ], "x": "t", "series": [ { "id": "v", "path": "v" } ] } }""",
     SpecNodeType.VOLUME to """{ "id": "n", "type": "volume", "props": { "boxes": [ { "id": "a", "x_mm": 0, "y_mm": 0, "z_mm": 0, "width_mm": 1000, "depth_mm": 600, "height_mm": 500 } ] } }""",
 )
 

@@ -294,6 +294,7 @@ private fun RenderNodeByType(
         SpecNodeType.GEOMAP -> RenderGeomap(node, resolvedProps, context)
         SpecNodeType.GRAPH -> RenderGraph(node, resolvedProps, context)
         SpecNodeType.PLAN -> RenderPlan(node, resolvedProps, context)
+        SpecNodeType.CHART -> RenderChart(node, resolvedProps, context)
         SpecNodeType.VOLUME -> RenderVolume(node, resolvedProps, context)
         SpecNodeType.SCENE -> RenderScene(node, resolvedProps, context)
         SpecNodeType.TABLE -> RenderTable(node, resolvedProps, context)

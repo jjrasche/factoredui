@@ -41,6 +41,7 @@ Eyes:
 - A node that paints colour says which, in the values the drawing used. A `text` gives its `ink`, and its `fill` when it has a `background_ramp`. A `card`, `column` or `row` with a background gives its `fill`. Colours are `#rrggbb`, or `#rrggbbaa` when translucent.
 - A `select` gives `options` (`value` and `label`) and its current `value` in `props`. While its menu is open, the items are its children, with ids `<select id>/option/<value>`, `text`, `selected` and `bounds`. A `modal`'s children are ordinary nodes.
 - A `stacked_scene` adds `scene` with these fields (the test `ControlPortDocTest` keeps this list equal to the fields a scene record carries): <!-- scene-record-fields -->`view, focus, hide_top, show_lower, y_axis, north, active_scheme, quarter_turns, zoom, pan_x, pan_y, legend, notices, parts, popup`<!-- /scene-record-fields -->.
+- A `chart` adds `chart` with these fields (kept equal to the record by `ControlPortDocTest`): <!-- chart-record-fields -->`x, axes, series, hover`<!-- /chart-record-fields -->. `x` is `{low, high}`, the span of the plotted rows; `axes` lists each drawn axis as `{side, unit, label, low, high, ticks}`; `series` lists each as `{id, label, kind, axis, color, runs}` where `runs` is its unbroken stretches, each a list of `[x, value, from, to]`; `hover` is null or `{x, values: [{id, text}]}`, what the pointer is reading.
   - `quarter_turns`, `zoom`, `pan_x` and `pan_y` are the values the drawing was made with: `quarter_turns` 0 to 3, `zoom` held between 0.25 and 16.
   - Each part has `{id, type_id, level, fill, outline, value, bounds, centre, covered_by}`. `outline` is `normal`, `highlight`, `selected` or `faded`.
   - `fill` is the colour painted at the part's centre (the top face in the iso).
@@ -106,7 +107,7 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume.
+column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart.
 
 - There is no table and no ratio-against-a-limit widget.
 - A table of the engine's views is a `table` (see Tables). Any other table is a `list` with an `itemTemplate`.
@@ -304,6 +305,18 @@ A `volume` draws boxes in millimetres as one solid scene the person turns, slide
 - One finger or the left button turns the view; two fingers, a right-drag or Ctrl-drag slide it; a pinch or the wheel zooms. A "Reset view" line under the drawing returns to the first framing, from the south-west looking north-east.
 - The drawing is at most 560 dp wide and 1.15 times its width tall. Boxes are painted far to near by their centres, so two boxes that interpenetrate may overlap wrongly.
 - `/tree` has a node `<volume id>/<box id>` for each box with its projected bounds (so a drag shows as bounds that moved), `<volume id>/north`, `<volume id>/reset` and `<volume id>/legend/<i>`. A box that cannot be drawn is named in a notice and not drawn; a `style` not in `styles` is drawn plain and named.
+
+## Chart
+
+A `chart` draws series of numbers against a numeric x: lines, or areas stacked about zero, on a left and a right axis. It computes nothing about the data: it reads each series' value from each row by a path and draws it. The host names every series, axis and unit.
+
+- `rows`: a list of objects, usually a binding (`"{season.steps}"`). `x`: the dotted path in each row to its x (time or any number). A row with no number at `x` is not drawn and one notice counts them. Rows are drawn in the order given.
+- `window`: `{ from, to }`, either optional; only rows whose x is inside it, ends included, are drawn.
+- `series`: a list of `{ id, path, label, kind, axis, color, stack }`. `path` is the dotted path to the value in each row (`stocks.water_temperature_f`). `kind` is `line` (default) or `area`; `axis` is `left` (default) or `right`; `color` is `#rrggbb` (a series without one takes the next of a fixed palette); `label` defaults to `id`. A row with no number at a series' path breaks that series into two runs. A series that cannot be drawn (no id or path, a `kind` or `axis` it does not know, no number at its path in any row) is not drawn and a notice names it.
+- `areas`: positive values stack upward from zero and negative values downward, in series order, among the areas on one axis with the same `stack` name (default `stack`). Each area fills the band between its stack's edges; a zero value is a band of no height. Lines are never stacked.
+- `axes`: `{ left: { unit, label }, right: { unit, label } }`. An axis is drawn only when a series is on its side; it spans round tick values that enclose its series (and zero when it holds an area), with `unit` and `label` printed at its top and `unit` after each value read from a series on it. `x_label` is printed before the x end values and the hover's x.
+- Hover: a pointer over the drawing (or a touch pressed on it) reads the row nearest it: a crosshair, a dot on each series, and under the drawing each series' own value, not the edge it is stacked to. `/tree` has `<id>/readout`, `<id>/readout/x` and `<id>/readout/<series id>` while it reads, `<id>/legend/<i>`, `<id>/axis/<left|right>/<i>` and `.../unit`, `<id>/axis/x/first` and `/last`; the plotted values are in the node's `chart` field.
+- `empty_text` is drawn when no series can be drawn.
 
 ## Reports data
 
