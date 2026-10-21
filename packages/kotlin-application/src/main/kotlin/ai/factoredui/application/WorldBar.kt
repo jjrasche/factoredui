@@ -45,17 +45,10 @@ private fun childrenOf(node: JsonObject): List<JsonObject> = (node["children"] a
 
 private fun withChildren(node: JsonObject, children: List<JsonObject>): JsonObject = JsonObject(node + ("children" to JsonArray(children)))
 
-private fun barUnderStrip(strip: JsonObject, bar: JsonObject): JsonObject {
-    val props = strip["props"] as JsonObject
-    val placed = mapOf("gap" to 4, "padding" to 8, "anchor" to props.getValue("anchor"), "background" to props.getValue("background"))
-    val plain = JsonObject(strip + ("props" to JsonObject(props - "anchor" - "background")))
-    return specNode("lens.top", "column", placed, listOf(plain, bar))
-}
-
 internal fun withWorldBar(spec: JsonObject, bar: JsonObject): JsonObject {
     val root = spec["root"] as JsonObject
     val children = childrenOf(root)
-    val strip = children.firstOrNull { (it["id"] as JsonPrimitive).content == "lens" }
-    val barred = if (strip == null) listOf(bar) + children else children.map { if (it === strip) barUnderStrip(strip, bar) else it }
+    val dock = children.firstOrNull { (it["id"] as JsonPrimitive).content == "dock" }
+    val barred = if (dock == null) listOf(bar) + children else children.map { if (it === dock) withChildren(dock, listOf(bar) + childrenOf(dock)) else it }
     return JsonObject(spec + ("root" to withChildren(root, barred)))
 }

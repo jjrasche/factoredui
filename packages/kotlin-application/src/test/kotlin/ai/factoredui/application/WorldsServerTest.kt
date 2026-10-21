@@ -138,6 +138,14 @@ class WorldsServerTest {
     }
 
     @Test
+    fun on_an_overview_the_bar_is_the_first_thing_in_the_dock_and_the_lens_strip_is_left_alone() {
+        val spec = Json.parseToJsonElement(fetch(twoWorlds(), "/spec.json?world=small-house").body()) as JsonObject
+        val dock = nodesIn(spec).single { it.idText() == "dock" }
+        assertEquals("bar", ((dock["children"] as JsonArray).first() as JsonObject).idText())
+        assertEquals(listOf("lens.title"), nodesIn(spec).single { it.idText() == "lens" }.let { strip -> (strip["children"] as JsonArray).map { (it as JsonObject).idText() }.filter { it.startsWith("lens.t") } })
+    }
+
+    @Test
     fun the_worlds_wrap_two_to_a_row_so_that_many_worlds_fit_a_narrow_screen() {
         val worlds = listOf("a", "b", "c", "d", "e").map { it to addWorld(it, it) }
         engineLists(*worlds.toTypedArray())

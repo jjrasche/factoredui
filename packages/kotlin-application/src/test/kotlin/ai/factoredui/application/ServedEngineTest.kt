@@ -67,6 +67,13 @@ class ServedEngineTest {
     }
 
     @Test
+    fun a_world_entry_with_no_path_fails_the_listing_instead_of_being_left_out() {
+        engine.worldsAnswer = """{"worlds": [{"id": "van"}]}"""
+        val malformed = assertFailsWith<RuntimeFailedException> { ServedEngine(engine.address).worlds() }
+        assertTrue(malformed.message!!.contains("path"), malformed.message)
+    }
+
+    @Test
     fun a_command_is_posted_with_its_config_and_arguments_and_the_engines_text_comes_back() {
         engine.runAnswer = { """{"sections": {}}""" }
         val answer = ServedEngine(engine.address).answer(listOf("load", "/w/small/world.json", "--include", "describe,geometry"))

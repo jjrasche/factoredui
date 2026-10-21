@@ -63,10 +63,11 @@ class ServedEngine(private val address: URI) : EngineRuntime {
 private fun worldsIn(answer: JsonElement): List<EngineWorld> {
     val listed = (answer as? JsonObject)?.get("worlds") ?: answer
     val entries = listed as? JsonArray ?: throw RuntimeFailedException("the engine's list of worlds is not a list")
-    return entries.mapNotNull { entry ->
-        val world = entry as? JsonObject ?: return@mapNotNull null
-        val id = (world["id"] as? JsonPrimitive)?.content ?: return@mapNotNull null
-        val path = (world["path"] as? JsonPrimitive)?.content ?: return@mapNotNull null
-        EngineWorld(id, Path.of(path))
+    return entries.map { entry ->
+        val world = entry as? JsonObject ?: throw RuntimeFailedException("the engine listed a world that is not an object: $entry")
+        EngineWorld(textOf(world, "id"), Path.of(textOf(world, "path")))
     }
 }
+
+private fun textOf(world: JsonObject, key: String): String =
+    (world[key] as? JsonPrimitive)?.content ?: throw RuntimeFailedException("the engine listed a world with no $key: $world")
