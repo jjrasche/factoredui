@@ -61,8 +61,9 @@ class PageServerTest {
         try {
             repeat(3) { assertEquals(200, fetchFrom(cached, "/spec.json").statusCode()) }
             assertEquals(2, calls(callLog))
+            val before = versionOf(cached)
             Files.writeString(system, """{ "id": "w", "title": "Changed", "systems": {} }""")
-            assertEquals(200, fetchFrom(cached, "/spec.json").statusCode())
+            waitForNewVersion(cached, before)
             assertEquals(4, calls(callLog))
         } finally {
             cached.stop(0)
@@ -100,6 +101,46 @@ class PageServerTest {
             assertEquals(4, calls(callLog))
         } finally {
             restarted.stop(0)
+        }
+    }
+
+    private fun versionOf(running: com.sun.net.httpserver.HttpServer) = String(fetchFrom(running, "/spec.version").body())
+
+    private fun waitForNewVersion(running: com.sun.net.httpserver.HttpServer, old: String) {
+        val deadline = System.nanoTime() + 20_000_000_000L
+        while (versionOf(running) == old) {
+            check(System.nanoTime() < deadline) { "the version never moved from $old" }
+            Thread.sleep(100)
+        }
+    }
+
+    private fun slowRuntime(callLog: Path, gate: Path): Path {
+        val launcher = Files.createDirectories(Files.createTempDirectory("runtime").resolve("bin")).resolve("we")
+        Files.writeString(launcher, "echo \"$1\" >> '$callLog'\nif [ -f '$gate' ]; then sleep 3; fi\necho '{\"sections\": {\"expansion\": {\"ok\": true, \"asked\": true, \"extent_mm\": [10, 10], \"objects\": [], \"instances\": [], \"supplied\": {}}}}'\n")
+        return launcher
+    }
+
+    @Test
+    fun the_page_already_served_keeps_being_served_while_a_changed_world_is_rebuilt_and_the_version_moves_when_it_is_ready() {
+        val callLog = Files.createTempFile("calls", ".log")
+        val gate = Files.createTempFile("gate", ".flag").also { Files.delete(it) }
+        val system = Files.createTempFile("system", ".json").also { Files.writeString(it, """{ "id": "w", "title": "First title", "systems": {} }""") }
+        val live = startPageServer(Options(system, slowRuntime(callLog, gate), bundle, "127.0.0.1", 0, cacheDirectory = null))
+        try {
+            assertEquals(200, fetchFrom(live, "/spec.json").statusCode())
+            val before = versionOf(live)
+            Files.createFile(gate)
+            Files.writeString(system, """{ "id": "w", "title": "Second title", "systems": {} }""")
+            Thread.sleep(2500)
+            val started = System.nanoTime()
+            val duringRebuild = fetchFrom(live, "/spec.json")
+            assertEquals(true, (System.nanoTime() - started) < 1_000_000_000L, "the old page waited for the rebuild")
+            assertEquals(true, String(duringRebuild.body()).contains("First title"))
+            assertEquals(before, versionOf(live))
+            waitForNewVersion(live, before)
+            assertEquals(true, String(fetchFrom(live, "/spec.json").body()).contains("Second title"))
+        } finally {
+            live.stop(0)
         }
     }
 

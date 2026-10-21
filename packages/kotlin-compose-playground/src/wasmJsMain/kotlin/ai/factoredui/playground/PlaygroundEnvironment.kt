@@ -35,6 +35,12 @@ fun parseSpec(text: String): Result<Spec> =
 suspend fun loadSpecText(url: String): String =
     HttpClient().get(url).bodyAsText()
 
+const val SPEC_POLL_MS = 3000L
+
+/** Where a server that serves its spec at .../spec.json says which version of it is current. */
+fun specVersionUrl(specUrl: String): String? =
+    specUrl.takeIf { it == "spec.json" || it.endsWith("/spec.json") }?.removeSuffix("spec.json")?.plus("spec.version")
+
 fun specUrlParam(): String? =
     rawSpecParam().ifEmpty { null }
 

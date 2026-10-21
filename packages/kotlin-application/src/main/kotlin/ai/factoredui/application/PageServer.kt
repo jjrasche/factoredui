@@ -14,6 +14,9 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.GZIPOutputStream
 
 private const val SPEC_PATH = "/spec.json"
+private const val VERSION_PATH = "/spec.version"
+private const val WATCH_SECONDS = 2L
+private const val NO_VERSION = "none"
 private const val ENTRY_PATH = "/index.html"
 private const val ENTRY_QUERY = "spec=$SPEC_PATH&full=1"
 
@@ -184,6 +187,7 @@ private fun serveFromMemoryOrDiskOrBuild(options: Options, built: AtomicReferenc
 }
 
 private fun serveSpec(exchange: HttpExchange, options: Options, built: AtomicReference<BuiltSpec?>) {
+    built.get()?.let { return respond(exchange, 200, CONTENT_TYPES.getValue("json"), it.body) }
     val served = runCatching { synchronized(built) { serveFromMemoryOrDiskOrBuild(options, built) } }
     served.fold(
         onSuccess = {
@@ -192,6 +196,22 @@ private fun serveSpec(exchange: HttpExchange, options: Options, built: AtomicRef
         },
         onFailure = { respondText(exchange, 502, "cannot build the page: ${it.message}") },
     )
+}
+
+private fun versionOf(built: BuiltSpec?): String = built?.let { "${it.worldStamp.first}-${it.worldStamp.second}" } ?: NO_VERSION
+
+/** Rebuilds the page when the world file has changed since the one served, keeping the old page for requests until the new one is ready; a stamp that failed to build is not tried again until the file changes. */
+private fun rebuildIfWorldChanged(options: Options, built: AtomicReference<BuiltSpec?>, failedStamp: AtomicReference<Pair<Long, Long>?>) {
+    val served = built.get() ?: return
+    val stamp = runCatching { stampOf(options.system) }.getOrNull() ?: return
+    if (stamp == served.worldStamp || stamp == failedStamp.get()) return
+    runCatching { synchronized(built) { serveFromMemoryOrDiskOrBuild(options, built) } }.onFailure { failedStamp.set(stamp) }
+}
+
+private fun watchWorld(options: Options, built: AtomicReference<BuiltSpec?>) {
+    val failedStamp = AtomicReference<Pair<Long, Long>?>(null)
+    val watcher = Executors.newSingleThreadScheduledExecutor { task -> Thread(task, "world-watcher").also { it.isDaemon = true } }
+    watcher.scheduleWithFixedDelay({ rebuildIfWorldChanged(options, built, failedStamp) }, WATCH_SECONDS, WATCH_SECONDS, java.util.concurrent.TimeUnit.SECONDS)
 }
 
 private fun serveBundleFile(exchange: HttpExchange, bundle: Path) {
@@ -215,9 +235,11 @@ fun startPageServer(options: Options): HttpServer {
         when (exchange.requestURI.path) {
             "/" -> redirectToEntry(exchange)
             SPEC_PATH -> serveSpec(exchange, options, builtSpec)
+            VERSION_PATH -> respondText(exchange, 200, versionOf(builtSpec.get()))
             else -> serveBundleFile(exchange, bundle)
         }
     }
+    watchWorld(options, builtSpec)
     server.start()
     return server
 }

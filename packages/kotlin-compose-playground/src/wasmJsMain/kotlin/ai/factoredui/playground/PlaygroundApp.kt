@@ -19,8 +19,19 @@ import ai.factoredui.compose.net.startSseSubscription
 import ai.factoredui.compose.observability.LoggingObservability
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.scene3d.Scene3dWorldState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.Json
+
+private suspend fun followSpecVersion(specUrl: String, versionUrl: String, onNewSpec: (String) -> Unit) {
+    var shown = runCatching { loadSpecText(versionUrl) }.getOrNull()
+    while (true) {
+        delay(SPEC_POLL_MS)
+        val latest = runCatching { loadSpecText(versionUrl) }.getOrNull() ?: continue
+        if (latest == shown) continue
+        runCatching { loadSpecText(specUrl) }.onSuccess { text -> onNewSpec(text); shown = latest }
+    }
+}
 
 @Composable
 fun PlaygroundApp() {
@@ -76,6 +87,7 @@ fun PlaygroundApp() {
             onSuccess = { text -> editorText = text; applySpec(text) },
             onFailure = { failure -> parseError = "fetch failed for $url — ${failure.message}" },
         )
+        specVersionUrl(url)?.let { versionUrl -> followSpecVersion(url, versionUrl) { text -> editorText = text; applySpec(text) } }
     }
 
     val fullscreen = remember { fullscreenParam() }
