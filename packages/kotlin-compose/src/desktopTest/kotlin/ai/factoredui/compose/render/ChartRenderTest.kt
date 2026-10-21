@@ -103,6 +103,14 @@ class ChartRenderTest {
     }
 
     @Test
+    fun the_x_axis_ticks_read_back_with_their_clock_labels_and_replace_the_end_labels() {
+        val node = chartAfter(TEMPERATURES.replace(""""x_label":"hour",""", """"x_label":"hour","x_axis":{"every":3,"as":"hour_of_day"},"""))
+        val ticks = node.getValue("chart").jsonObject.getValue("x").jsonObject.getValue("ticks").jsonArray.map { it.jsonObject }
+        assertEquals((0..7).map { it * 3.0 }, ticks.map { it.getValue("x").jsonPrimitive.double })
+        assertEquals((0..7).map { "%02d:00".format(it * 3) }, ticks.map { it.getValue("label").jsonPrimitive.content })
+    }
+
+    @Test
     fun a_chart_with_nothing_to_draw_says_so_in_its_notices_and_draws_no_series() {
         val node = chartAfter(TEMPERATURES, rows = emptyList())
         assertEquals(JsonArray(emptyList()), node.getValue("chart").jsonObject.getValue("series"))

@@ -80,6 +80,15 @@ class ChartScreenTest {
     }
 
     @Test
+    fun the_greenhouse_day_screen_reads_with_two_stacks_and_three_lines() {
+        val screen = readChartScreen(checkNotNull(ChartScreenTest::class.java.getResource("/greenhouse-day.screen.json")).readText())
+        val series = screen.chart["series"]!!.jsonArray.map { it.jsonObject }
+        assertEquals(mapOf("gains" to 5, "losses" to 6), series.mapNotNull { it["stack"]?.jsonPrimitive?.content }.groupingBy { it }.eachCount())
+        assertEquals(3, series.count { it["kind"]!!.jsonPrimitive.content == "line" })
+        assertEquals(listOf(2757.0, 23.0, 24.0), listOf(screen.dayFrom!!, screen.dayLength, screen.dayStep))
+    }
+
+    @Test
     fun a_season_with_no_rows_says_so_instead_of_drawing_a_chart() {
         val empty = chartScreenSpec(readChartScreen(SCREEN), kotlinx.serialization.json.Json.parseToJsonElement("""{"steps":[]}""").jsonObject)
         val words = empty["root"]!!.jsonObject.nodes().filter { it["type"]!!.jsonPrimitive.content == "text" }.map { it["props"]!!.jsonObject["value"]!!.jsonPrimitive.content }

@@ -7,9 +7,11 @@ import ai.factoredui.compose.chart.ChartSeriesKind
 import ai.factoredui.compose.chart.ChartSide
 import ai.factoredui.compose.chart.PlottedPoint
 import ai.factoredui.compose.chart.PlottedSeries
+import ai.factoredui.compose.chart.chartAreaPieces
 import ai.factoredui.compose.chart.chartRange
 import ai.factoredui.compose.chart.chartReadout
 import ai.factoredui.compose.chart.chartXRange
+import ai.factoredui.compose.chart.chartXTicks
 import ai.factoredui.compose.chart.formatChartValue
 import ai.factoredui.compose.chart.plotChart
 import ai.factoredui.compose.plan.PlanLabelAlign
@@ -49,6 +51,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.ceil
 
 private const val CHART_HEIGHT_PER_WIDTH = 0.55f
 private const val CHART_MIN_HEIGHT_DP = 200f
@@ -62,6 +65,7 @@ private const val GRID_ALPHA = 0.18f
 private const val HOVER_DOT_DP = 3.5f
 private const val LEGEND_SWATCH_DP = 12f
 private const val LABEL_GAP_DP = 6f
+private const val TICK_LABEL_GAP_DP = 44f
 private val SERIES_COLOURS = listOf(0xFF4C9BE8, 0xFFE8A33D, 0xFF3DB88A, 0xFFE2625B, 0xFFB58AE0, 0xFF63C7D9, 0xFFC9C25A, 0xFFA0A0A0)
 private val CHART_TEXT = TextStyle(fontSize = 11.sp, lineHeight = 13.sp)
 private val READOUT_TEXT = TextStyle(fontSize = 12.sp, lineHeight = 15.sp)
@@ -170,6 +174,7 @@ private fun ChartDrawing(nodeId: String, plot: ChartPlot, readout: ChartReadout?
 
 private fun DrawScope.drawChart(plot: ChartPlot, frame: ChartFrame, readout: ChartReadout?, ink: Color) {
     drawGrid(frame, ink)
+    chartXTicks(plot).forEach { tick -> frame.xOf(tick.x).let { x -> drawLine(ink.copy(alpha = GRID_ALPHA), Offset(x, frame.top), Offset(x, frame.bottom), strokeWidth = 1.dp.toPx()) } }
     plot.series.filter { it.def.kind == ChartSeriesKind.AREA }.forEach { drawArea(it, frame, colourOf(plot, it)) }
     plot.series.filter { it.def.kind == ChartSeriesKind.LINE }.forEach { drawLineSeries(it, frame, colourOf(plot, it)) }
     readout?.let { drawHover(plot, frame, it, ink) }
@@ -186,11 +191,11 @@ private fun DrawScope.drawGrid(frame: ChartFrame, ink: Color) {
 }
 
 private fun DrawScope.drawArea(series: PlottedSeries, frame: ChartFrame, colour: Color) {
-    series.runs.forEach { run ->
+    series.runs.flatMap { chartAreaPieces(it) }.filter { it.size > 1 }.forEach { piece ->
         val outline = Path().apply {
-            moveTo(frame.xOf(run.first().x), frame.yOf(series.def.side, run.first().to))
-            run.drop(1).forEach { lineTo(frame.xOf(it.x), frame.yOf(series.def.side, it.to)) }
-            run.reversed().forEach { lineTo(frame.xOf(it.x), frame.yOf(series.def.side, it.from)) }
+            moveTo(frame.xOf(piece.first().x), frame.yOf(series.def.side, piece.first().to))
+            piece.drop(1).forEach { lineTo(frame.xOf(it.x), frame.yOf(series.def.side, it.to)) }
+            piece.reversed().forEach { lineTo(frame.xOf(it.x), frame.yOf(series.def.side, it.from)) }
             close()
         }
         drawPath(outline, colour.copy(alpha = AREA_FILL_ALPHA), style = Fill)
@@ -241,6 +246,13 @@ private fun ChartAxisLabels(nodeId: String, plot: ChartPlot, frame: ChartFrame, 
             }
         }
     }
+    val ticks = chartXTicks(plot)
+    val spacingPx = if (ticks.size > 1) frame.xOf(ticks[1].x) - frame.xOf(ticks[0].x) else Float.MAX_VALUE
+    val stride = ceil(with(LocalDensity.current) { TICK_LABEL_GAP_DP.dp.toPx() } / spacingPx).toInt().coerceAtLeast(1)
+    ticks.filterIndexed { index, _ -> index % stride == 0 }.forEachIndexed { index, tick ->
+        PlanPlaced(frame.xOf(tick.x), frame.bottom + gapPx * 2, PlanLabelAlign.CENTER, null) { Text(text = tick.label, style = CHART_TEXT, color = muted, modifier = Modifier.nodeTag("$nodeId/axis/x/$index")) }
+    }
+    if (ticks.isNotEmpty()) return
     val xName = xLabel?.let { "$it " }.orEmpty()
     PlanPlaced(frame.left, frame.bottom + gapPx * 2, PlanLabelAlign.START, null) { Text(text = xName + formatChartValue(frame.xLow), style = CHART_TEXT, color = muted, modifier = Modifier.nodeTag("$nodeId/axis/x/first")) }
     PlanPlaced(frame.right, frame.bottom + gapPx * 2, PlanLabelAlign.END, null) { Text(text = xName + formatChartValue(frame.xHigh), style = CHART_TEXT, color = muted, modifier = Modifier.nodeTag("$nodeId/axis/x/last")) }
@@ -257,7 +269,7 @@ private fun seriesRecordOf(plot: ChartPlot, series: PlottedSeries): ChartSeriesR
 internal fun chartRecordOf(plot: ChartPlot, readout: ChartReadout?): ChartRecord {
     val xRange = chartXRange(plot)
     return ChartRecord(
-        xRange?.first, xRange?.second, ChartSide.entries.mapNotNull { axisRecordOf(plot, it) }, plot.series.map { seriesRecordOf(plot, it) },
+        xRange?.first, xRange?.second, chartXTicks(plot).map { it.x to it.label }, ChartSide.entries.mapNotNull { axisRecordOf(plot, it) }, plot.series.map { seriesRecordOf(plot, it) },
         readout?.let { found -> ChartHoverRecord(found.x, found.entries.map { it.id to it.text }) },
     )
 }

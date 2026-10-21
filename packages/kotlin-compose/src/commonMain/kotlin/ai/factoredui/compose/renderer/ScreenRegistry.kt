@@ -72,7 +72,7 @@ data class ChartSeriesRecord(val id: String, val label: String, val kind: String
 
 data class ChartHoverRecord(val x: Double, val values: List<Pair<String, String>>)
 
-data class ChartRecord(val xLow: Double?, val xHigh: Double?, val axes: List<ChartAxisRecord>, val series: List<ChartSeriesRecord>, val hover: ChartHoverRecord?)
+data class ChartRecord(val xLow: Double?, val xHigh: Double?, val xTicks: List<Pair<Double, String>>, val axes: List<ChartAxisRecord>, val series: List<ChartSeriesRecord>, val hover: ChartHoverRecord?)
 
 /** Where a scene's canvas sits in the window, in the units the window's pointer uses. */
 data class CanvasPlacement(val originX: Float, val originY: Float, val pixelsPerUnit: Float)

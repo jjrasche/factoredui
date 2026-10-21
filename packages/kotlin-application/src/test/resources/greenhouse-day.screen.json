@@ -4,25 +4,26 @@
   "chart": {
     "x": "t",
     "x_label": "hour",
+    "x_axis": { "every": 3, "as": "hour_of_day" },
     "axes": {
       "left": { "unit": "W per foot", "label": "Heat flow" },
       "right": { "unit": "°F", "label": "Temperature" }
     },
     "series": [
-      { "id": "w_gain_sun", "label": "Sun", "path": "stocks.w_gain_sun", "kind": "area", "axis": "left", "stack": "gains" },
-      { "id": "w_gain_heat_into_air", "label": "Heat into air", "path": "stocks.w_gain_heat_into_air", "kind": "area", "axis": "left", "stack": "gains" },
-      { "id": "w_gain_compost_trench", "label": "Compost trench", "path": "stocks.w_gain_compost_trench", "kind": "area", "axis": "left", "stack": "gains" },
-      { "id": "w_gain_heat_into_water", "label": "Heat into water", "path": "stocks.w_gain_heat_into_water", "kind": "area", "axis": "left", "stack": "gains" },
-      { "id": "w_gain_heat_into_soil", "label": "Heat into soil", "path": "stocks.w_gain_heat_into_soil", "kind": "area", "axis": "left", "stack": "gains" },
-      { "id": "w_loss_glazing", "label": "Glazing", "path": "stocks.w_loss_glazing", "kind": "area", "axis": "left", "stack": "losses" },
-      { "id": "w_loss_air_exchange", "label": "Air exchange", "path": "stocks.w_loss_air_exchange", "kind": "area", "axis": "left", "stack": "losses" },
-      { "id": "w_loss_deep_ground", "label": "Deep ground", "path": "stocks.w_loss_deep_ground", "kind": "area", "axis": "left", "stack": "losses" },
-      { "id": "w_loss_battery_edge", "label": "Battery edge", "path": "stocks.w_loss_battery_edge", "kind": "area", "axis": "left", "stack": "losses" },
-      { "id": "w_loss_evaporation", "label": "Evaporation", "path": "stocks.w_loss_evaporation", "kind": "area", "axis": "left", "stack": "losses" },
-      { "id": "w_loss_vents", "label": "Vents", "path": "stocks.w_loss_vents", "kind": "area", "axis": "left", "stack": "losses" },
-      { "id": "outside_air_f", "label": "Outside air", "path": "series.outside_air_f", "kind": "line", "axis": "right" },
-      { "id": "air_temperature_f", "label": "Air", "path": "stocks.air_temperature_f", "kind": "line", "axis": "right" },
-      { "id": "water_temperature_f", "label": "Water", "path": "stocks.water_temperature_f", "kind": "line", "axis": "right" }
+      { "id": "w_gain_sun", "label": "Sun", "path": "stocks.w_gain_sun", "kind": "area", "axis": "left", "stack": "gains", "color": "#f6c445" },
+      { "id": "w_gain_heat_into_air", "label": "Heat into air", "path": "stocks.w_gain_heat_into_air", "kind": "area", "axis": "left", "stack": "gains", "color": "#f08c3a" },
+      { "id": "w_gain_compost_trench", "label": "Compost trench", "path": "stocks.w_gain_compost_trench", "kind": "area", "axis": "left", "stack": "gains", "color": "#d9602e" },
+      { "id": "w_gain_heat_into_water", "label": "Heat into water", "path": "stocks.w_gain_heat_into_water", "kind": "area", "axis": "left", "stack": "gains", "color": "#e8784a" },
+      { "id": "w_gain_heat_into_soil", "label": "Heat into soil", "path": "stocks.w_gain_heat_into_soil", "kind": "area", "axis": "left", "stack": "gains", "color": "#b9803a" },
+      { "id": "w_loss_glazing", "label": "Glazing", "path": "stocks.w_loss_glazing", "kind": "area", "axis": "left", "stack": "losses", "color": "#4c9be8" },
+      { "id": "w_loss_air_exchange", "label": "Air exchange", "path": "stocks.w_loss_air_exchange", "kind": "area", "axis": "left", "stack": "losses", "color": "#63c7d9" },
+      { "id": "w_loss_deep_ground", "label": "Deep ground", "path": "stocks.w_loss_deep_ground", "kind": "area", "axis": "left", "stack": "losses", "color": "#5a6fd6" },
+      { "id": "w_loss_battery_edge", "label": "Battery edge", "path": "stocks.w_loss_battery_edge", "kind": "area", "axis": "left", "stack": "losses", "color": "#8a7be0" },
+      { "id": "w_loss_evaporation", "label": "Evaporation", "path": "stocks.w_loss_evaporation", "kind": "area", "axis": "left", "stack": "losses", "color": "#3fb3c4" },
+      { "id": "w_loss_vents", "label": "Vents", "path": "stocks.w_loss_vents", "kind": "area", "axis": "left", "stack": "losses", "color": "#4fa38f" },
+      { "id": "outside_air_f", "label": "Outside air", "path": "series.outside_air_f", "kind": "line", "axis": "right", "color": "#ffffff" },
+      { "id": "air_temperature_f", "label": "Air", "path": "stocks.air_temperature_f", "kind": "line", "axis": "right", "color": "#9be37a" },
+      { "id": "water_temperature_f", "label": "Water", "path": "stocks.water_temperature_f", "kind": "line", "axis": "right", "color": "#e86cc8" }
     ]
   },
   "scrub": { "length": 23, "from": 2757, "step": 24 }

@@ -40,6 +40,94 @@ class ChartPlotTest {
     }
 
     @Test
+    fun a_zero_between_two_negatives_stays_on_the_negative_edge_of_its_stack() {
+        val rows = listOf(row(0, "a" to -2, "b" to -1), row(1, "a" to -2, "b" to 0.0), row(2, "a" to -2, "b" to -1))
+        val plot = plotChart(mapOf("rows" to rows, "x" to "t", "series" to listOf(areaDef("a"), areaDef("b"))))
+        assertEquals(listOf(-2.0 to -3.0, -2.0 to -2.0, -2.0 to -3.0), plot.band("b"))
+    }
+
+    @Test
+    fun a_zero_between_two_positives_stays_on_the_positive_edge_of_its_stack() {
+        val rows = listOf(row(0, "a" to 2, "b" to 1), row(1, "a" to 2, "b" to 0.0), row(2, "a" to 2, "b" to 1))
+        val plot = plotChart(mapOf("rows" to rows, "x" to "t", "series" to listOf(areaDef("a"), areaDef("b"))))
+        assertEquals(listOf(2.0 to 3.0, 2.0 to 2.0, 2.0 to 3.0), plot.band("b"))
+    }
+
+    @Test
+    fun a_zero_at_the_start_takes_the_side_of_the_next_value_and_a_series_of_zeros_stays_above_zero() {
+        val rows = listOf(row(0, "a" to -2, "b" to 0.0, "c" to 0.0), row(1, "a" to -2, "b" to -1, "c" to 0.0))
+        val plot = plotChart(mapOf("rows" to rows, "x" to "t", "series" to listOf(areaDef("a"), areaDef("b"), areaDef("c"))))
+        assertEquals(listOf(-2.0 to -2.0, -2.0 to -3.0), plot.band("b"))
+        assertEquals(listOf(0.0 to 0.0, 0.0 to 0.0), plot.band("c"))
+    }
+
+    @Test
+    fun a_zero_does_not_change_the_value_the_readout_gives() {
+        val rows = listOf(row(0, "a" to -2), row(1, "a" to 0.0), row(2, "a" to -2))
+        val readout = chartReadout(plotChart(mapOf("rows" to rows, "x" to "t", "series" to listOf(areaDef("a")))), 1.0)!!
+        assertEquals(0.0, readout.entries.single().value)
+    }
+
+    @Test
+    fun an_area_that_changes_sign_is_drawn_as_two_pieces_meeting_at_the_crossing() {
+        val rows = listOf(row(0, "a" to 2), row(1, "a" to 4), row(2, "a" to -4), row(3, "a" to -2))
+        val run = plotChart(mapOf("rows" to rows, "x" to "t", "series" to listOf(areaDef("a")))).series.single().runs.single()
+        val pieces = chartAreaPieces(run)
+        assertEquals(2, pieces.size)
+        assertEquals(listOf(0.0, 1.0, 1.5), pieces[0].map { it.x })
+        assertEquals(listOf(1.5, 2.0, 3.0), pieces[1].map { it.x })
+        assertEquals(0.0, pieces[0].last().value)
+        assertEquals(0.0, pieces[1].first().value)
+    }
+
+    @Test
+    fun the_crossing_sits_where_the_straight_line_between_the_two_values_meets_zero() {
+        val rows = listOf(row(0, "a" to 1), row(10, "a" to -3))
+        val run = plotChart(mapOf("rows" to rows, "x" to "t", "series" to listOf(areaDef("a")))).series.single().runs.single()
+        assertEquals(2.5, chartAreaPieces(run).first().last().x)
+    }
+
+    @Test
+    fun an_area_that_keeps_its_sign_through_a_zero_is_one_piece() {
+        val rows = listOf(row(0, "a" to -2), row(1, "a" to 0.0), row(2, "a" to -2))
+        val run = plotChart(mapOf("rows" to rows, "x" to "t", "series" to listOf(areaDef("a")))).series.single().runs.single()
+        assertEquals(listOf(run), chartAreaPieces(run))
+    }
+
+    @Test
+    fun the_x_axis_has_a_tick_at_each_multiple_of_its_step_inside_the_rows_with_the_label_the_axis_asks_for() {
+        val rows = (2757..2780).map { row(it, "a" to it) }
+        val props = mapOf("rows" to rows, "x" to "t", "x_axis" to mapOf("every" to 3, "as" to "hour_of_day"), "series" to listOf(mapOf("id" to "a", "path" to "values.a")))
+        val ticks = chartXTicks(plotChart(props))
+        assertEquals(listOf(2757.0, 2760.0, 2763.0, 2766.0, 2769.0, 2772.0, 2775.0, 2778.0), ticks.map { it.x })
+        assertEquals(listOf("21:00", "00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00"), ticks.map { it.label })
+    }
+
+    @Test
+    fun a_number_axis_labels_its_ticks_with_the_figure_and_no_axis_gives_no_ticks() {
+        val rows = (0..6).map { row(it, "a" to it) }
+        val series = listOf(mapOf("id" to "a", "path" to "values.a"))
+        assertEquals(listOf("0", "2", "4", "6"), chartXTicks(plotChart(mapOf("rows" to rows, "x" to "t", "x_axis" to mapOf("every" to 2), "series" to series))).map { it.label })
+        assertEquals(emptyList(), chartXTicks(plotChart(mapOf("rows" to rows, "x" to "t", "series" to series))))
+    }
+
+    @Test
+    fun a_tick_label_kind_it_does_not_know_falls_back_to_numbers_and_is_named() {
+        val rows = (0..4).map { row(it, "a" to it) }
+        val plot = plotChart(mapOf("rows" to rows, "x" to "t", "x_axis" to mapOf("every" to 2, "as" to "roman"), "series" to listOf(mapOf("id" to "a", "path" to "values.a"))))
+        assertEquals(listOf("0", "2", "4"), chartXTicks(plot).map { it.label })
+        assertEquals(listOf("chart x_axis: as must be number or hour_of_day, not 'roman'; ticks are labelled as numbers."), plot.notices)
+    }
+
+    @Test
+    fun a_tick_step_that_is_not_a_positive_number_gives_no_ticks_and_a_notice() {
+        val rows = (0..6).map { row(it, "a" to it) }
+        val plot = plotChart(mapOf("rows" to rows, "x" to "t", "x_axis" to mapOf("every" to 0), "series" to listOf(mapOf("id" to "a", "path" to "values.a"))))
+        assertEquals(emptyList(), chartXTicks(plot))
+        assertEquals(listOf("chart x_axis: every must be a number above zero; no ticks are drawn."), plot.notices)
+    }
+
+    @Test
     fun areas_with_different_stack_names_do_not_stack_on_each_other() {
         val props = stackedProps() + ("series" to listOf(areaDef("a", "first"), areaDef("b", "second")))
         val plot = plotChart(props)

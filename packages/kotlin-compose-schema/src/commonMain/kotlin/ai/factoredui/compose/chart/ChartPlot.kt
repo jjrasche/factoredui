@@ -23,13 +23,19 @@ data class ChartSeriesDef(
 
 data class ChartAxis(val unit: String?, val label: String?)
 
-/** A value at an x. A line has [from] and [to] equal to [value]; an area has the band it fills, where the stack puts it. */
-data class PlottedPoint(val x: Double, val value: Double, val from: Double, val to: Double)
+/** A value at an x. A line has [from] and [to] equal to [value]; an area has the band it fills, where the stack puts it, below the zero line when [isBelow]. */
+data class PlottedPoint(val x: Double, val value: Double, val from: Double, val to: Double, val isBelow: Boolean = false)
 
 /** A series as unbroken runs of points: a row with no number at the series' path ends a run. */
 data class PlottedSeries(val def: ChartSeriesDef, val runs: List<List<PlottedPoint>>)
 
-data class ChartPlot(val series: List<PlottedSeries>, val axes: Map<ChartSide, ChartAxis>, val notices: List<String>)
+enum class ChartXLabel(val wire: String) { NUMBER("number"), HOUR_OF_DAY("hour_of_day") }
+
+data class ChartXAxis(val every: Double, val label: ChartXLabel)
+
+data class ChartXTick(val x: Double, val label: String)
+
+data class ChartPlot(val series: List<PlottedSeries>, val axes: Map<ChartSide, ChartAxis>, val notices: List<String>, val xAxis: ChartXAxis? = null)
 
 data class ChartRange(val low: Double, val high: Double, val ticks: List<Double>)
 
@@ -79,34 +85,81 @@ private fun windowed(rows: List<Pair<Double, Map<*, *>>>, window: Any?): List<Pa
 
 private class StackEdges(var up: Double = 0.0, var down: Double = 0.0)
 
-/** The band an area fills at one step: a value stacks above the positive edge of its group or below the negative one, then moves that edge. */
-private fun bandOf(value: Double, edges: StackEdges): Pair<Double, Double> =
-    if (value >= 0) (edges.up to edges.up + value).also { edges.up += value } else (edges.down to edges.down + value).also { edges.down += value }
+private fun bandOf(value: Double, isBelow: Boolean, edges: StackEdges): Pair<Double, Double> =
+    if (isBelow) (edges.down to edges.down + value).also { edges.down += value } else (edges.up to edges.up + value).also { edges.up += value }
 
-private fun valuesAt(defs: List<ChartSeriesDef>, row: Map<*, *>): Map<String, Double?> = defs.associate { it.id to numberAt(row, it.path) }
+private fun signsUpTo(values: List<Double?>): List<Boolean?> {
+    var sign: Boolean? = null
+    return values.map { value ->
+        sign = when {
+            value == null -> null
+            value < 0 -> true
+            value > 0 -> false
+            else -> sign
+        }
+        sign
+    }
+}
+
+/** Whether each value stacks below zero: by its own sign, and for a zero by the nearest nonzero value before it in its run, else after it, else above. */
+private fun belowOf(values: List<Double?>): List<Boolean?> {
+    val before = signsUpTo(values)
+    val after = signsUpTo(values.asReversed()).asReversed()
+    return values.indices.map { index -> values[index]?.let { value -> if (value != 0.0) value < 0 else before[index] ?: after[index] ?: false } }
+}
+
+private fun plottedPoint(def: ChartSeriesDef, x: Double, value: Double, isBelow: Boolean, edges: StackEdges): PlottedPoint =
+    if (def.kind == ChartSeriesKind.AREA) bandOf(value, isBelow, edges).let { (from, to) -> PlottedPoint(x, value, from, to, isBelow) } else PlottedPoint(x, value, value, value)
 
 private fun pointsOf(defs: List<ChartSeriesDef>, rows: List<Pair<Double, Map<*, *>>>): Map<String, List<PlottedPoint?>> {
+    val values = defs.associate { def -> def.id to rows.map { (_, row) -> numberAt(row, def.path) } }
+    val below = values.mapValues { (_, series) -> belowOf(series) }
     val points = defs.associate { it.id to mutableListOf<PlottedPoint?>() }
-    rows.forEach { (x, row) ->
-        val values = valuesAt(defs, row)
+    rows.forEachIndexed { index, (x, _) ->
         val edges = mutableMapOf<Pair<ChartSide, String>, StackEdges>()
         defs.forEach { def ->
-            val value = values.getValue(def.id)
-            val point = value?.let { plottedPoint(def, x, it, edges.getOrPut(def.side to def.stack) { StackEdges() }) }
-            points.getValue(def.id).add(point)
+            val value = values.getValue(def.id)[index]
+            val isBelow = below.getValue(def.id)[index] ?: false
+            points.getValue(def.id).add(value?.let { plottedPoint(def, x, it, isBelow, edges.getOrPut(def.side to def.stack) { StackEdges() }) })
         }
     }
     return points
 }
 
-private fun plottedPoint(def: ChartSeriesDef, x: Double, value: Double, edges: StackEdges): PlottedPoint =
-    if (def.kind == ChartSeriesKind.AREA) bandOf(value, edges).let { (from, to) -> PlottedPoint(x, value, from, to) } else PlottedPoint(x, value, value, value)
+private fun runsOf(points: List<PlottedPoint?>): List<List<PlottedPoint>> {
+    val runs = mutableListOf<MutableList<PlottedPoint>>()
+    var current: MutableList<PlottedPoint>? = null
+    points.forEach { point ->
+        if (point == null) {
+            current = null
+        } else {
+            val run = current ?: mutableListOf<PlottedPoint>().also { runs.add(it); current = it }
+            run.add(point)
+        }
+    }
+    return runs
+}
 
-private fun runsOf(points: List<PlottedPoint?>): List<List<PlottedPoint>> =
-    points.fold(listOf(emptyList<PlottedPoint>())) { runs, point ->
-        if (point == null) (if (runs.last().isEmpty()) runs else runs + listOf(emptyList())) else runs.dropLast(1) + listOf(runs.last() + point)
-    }.filter { it.isNotEmpty() }
+private fun crossingBetween(before: PlottedPoint, after: PlottedPoint): Pair<PlottedPoint, PlottedPoint> {
+    val share = abs(before.value) / (abs(before.value) + abs(after.value))
+    val x = before.x + (after.x - before.x) * share
+    return PlottedPoint(x, 0.0, before.from, before.from, before.isBelow) to PlottedPoint(x, 0.0, after.from, after.from, after.isBelow)
+}
 
+/** A run of an area as the pieces to fill: where it goes from above zero to below, a piece ends at the straight-line crossing and the next begins there. */
+fun chartAreaPieces(run: List<PlottedPoint>): List<List<PlottedPoint>> {
+    val pieces = mutableListOf(mutableListOf<PlottedPoint>())
+    run.forEachIndexed { index, point ->
+        val before = run.getOrNull(index - 1)
+        if (before != null && before.isBelow != point.isBelow) {
+            val (ending, beginning) = crossingBetween(before, point)
+            pieces.last().add(ending)
+            pieces.add(mutableListOf(beginning))
+        }
+        pieces.last().add(point)
+    }
+    return pieces
+}
 private fun noRowsNotice(): String = "chart: rows must be a list of objects."
 
 private fun noXNotice(): String = "chart: x must name the path of each row's x value."
@@ -128,7 +181,36 @@ fun plotChart(props: Map<String, Any?>): ChartPlot {
     val absentNotices = defs.filter { it !in drawn }.associate { it.id to "chart series '${it.id}': no row has a number at '${it.path}'; it is not drawn." }
     val seriesNotices = entries.mapNotNull { entry -> entry.second ?: entry.first?.let { absentNotices[it.id] } }
     val plotted = drawn.map { PlottedSeries(it, runsOf(points.getValue(it.id))) }
-    return ChartPlot(plotted, axes, listOfNotNull(skippedRowsNotice(rawRows.size - positioned.size, xPath)) + seriesNotices)
+    val (xAxis, xAxisNotices) = xAxisOf(props["x_axis"])
+    return ChartPlot(plotted, axes, listOfNotNull(skippedRowsNotice(rawRows.size - positioned.size, xPath)) + seriesNotices + xAxisNotices, xAxis)
+}
+
+private fun xAxisOf(raw: Any?): Pair<ChartXAxis?, List<String>> {
+    val fields = raw as? Map<*, *> ?: return null to emptyList()
+    val every = numberIn(fields, "every")?.takeIf { it > 0 } ?: return null to listOf("chart x_axis: every must be a number above zero; no ticks are drawn.")
+    val label = if (fields["as"] == null) ChartXLabel.NUMBER else ChartXLabel.entries.firstOrNull { it.wire == fields["as"] }
+    if (label == null) return ChartXAxis(every, ChartXLabel.NUMBER) to listOf("chart x_axis: as must be number or hour_of_day, not '${fields["as"]}'; ticks are labelled as numbers.")
+    return ChartXAxis(every, label) to emptyList()
+}
+
+private fun twoDigits(value: Int): String = if (value < 10) "0$value" else value.toString()
+
+private fun clockOf(x: Double): String {
+    val hours = ((x % 24) + 24) % 24
+    val whole = floor(hours).toInt()
+    return "${twoDigits(whole)}:${twoDigits(round((hours - whole) * 60).toInt() % 60)}"
+}
+
+/** The labelled marks along the x axis: one at each multiple of the axis step inside the rows drawn. */
+fun chartXTicks(plot: ChartPlot): List<ChartXTick> {
+    val axis = plot.xAxis ?: return emptyList()
+    val (low, high) = chartXRange(plot) ?: return emptyList()
+    val first = ceil(low / axis.every).toLong()
+    val last = floor(high / axis.every).toLong()
+    return (first..last).map { step ->
+        val x = step * axis.every
+        ChartXTick(x, if (axis.label == ChartXLabel.HOUR_OF_DAY) clockOf(x) else formatChartValue(x))
+    }
 }
 
 private fun valuesOnSide(plot: ChartPlot, side: ChartSide): List<Double> =
