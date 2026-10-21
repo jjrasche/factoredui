@@ -117,6 +117,7 @@ fun RenderSpec(root: SpecNode, context: RenderContext) {
  */
 @Composable
 fun RenderSpec(spec: Spec, context: RenderContext) {
+    remember(spec) { context.startBindings(spec.state.mapValues { (_, value) -> BindingResolver.resolveValue(value, emptyMap()) }) }
     context.screen.root = spec.root
     ThemeScope(context.theme) {
         CompositionLocalProvider(LocalScreenRegistry provides context.screen) {

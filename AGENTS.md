@@ -99,6 +99,7 @@ Write JSON; never HTML or canvas code.
   "root": { "id": "root", "type": "column", "props": {}, "children": [] } }
 ```
 
+- `state` (optional): dotted binding paths to the values they start at, `{ "day.from": 2757 }`. The first frame already shows them; a path that already has a value (set by the host or by a person) keeps it.
 - A node is `{ id, type, props, children, visible, action }`.
 - `id` is unique in the spec.
 - `props` values are literals, binding refs, or nested nodes.
@@ -311,7 +312,8 @@ A `volume` draws boxes in millimetres as one solid scene the person turns, slide
 A `chart` draws series of numbers against a numeric x: lines, or areas stacked about zero, on a left and a right axis. It computes nothing about the data: it reads each series' value from each row by a path and draws it. The host names every series, axis and unit.
 
 - `rows`: a list of objects, usually a binding (`"{season.steps}"`). `x`: the dotted path in each row to its x (time or any number). A row with no number at `x` is not drawn and one notice counts them. Rows are drawn in the order given.
-- `window`: `{ from, to }`, either optional; only rows whose x is inside it, ends included, are drawn.
+- `window`: `{ from, to }` or `{ from, length }` (`to` is `from + length`); either bound may be missing; only rows whose x is inside it, ends included, are drawn. A `from` bound to a path with no value yet leaves every row in.
+- `ink` and `muted`: `#rrggbb` for the axis numbers, legend and readout text and the grid (muted for the numbers), for a page whose ground the theme's ink does not suit; each defaults to the theme's.
 - `series`: a list of `{ id, path, label, kind, axis, color, stack }`. `path` is the dotted path to the value in each row (`stocks.water_temperature_f`). `kind` is `line` (default) or `area`; `axis` is `left` (default) or `right`; `color` is `#rrggbb` (a series without one takes the next of a fixed palette); `label` defaults to `id`. A row with no number at a series' path breaks that series into two runs. A series that cannot be drawn (no id or path, a `kind` or `axis` it does not know, no number at its path in any row) is not drawn and a notice names it.
 - `areas`: positive values stack upward from zero and negative values downward, in series order, among the areas on one axis with the same `stack` name (default `stack`). Each area fills the band between its stack's edges; a zero value is a band of no height. Lines are never stacked.
 - `axes`: `{ left: { unit, label }, right: { unit, label } }`. An axis is drawn only when a series is on its side; it spans round tick values that enclose its series (and zero when it holds an area), with `unit` and `label` printed at its top and `unit` after each value read from a series on it. `x_label` is printed before the x end values and the hover's x.

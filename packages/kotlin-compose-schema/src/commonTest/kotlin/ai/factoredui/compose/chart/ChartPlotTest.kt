@@ -70,6 +70,20 @@ class ChartPlotTest {
     }
 
     @Test
+    fun a_window_may_give_its_start_and_its_length_instead_of_its_end() {
+        val rows = (0 until 10).map { row(it, "a" to it) }
+        val plot = plotChart(mapOf("rows" to rows, "x" to "t", "window" to mapOf("from" to 3, "length" to 2), "series" to listOf(mapOf("id" to "a", "path" to "values.a"))))
+        assertEquals(listOf(3.0, 4.0, 5.0), plot.series.single().runs.single().map { it.x })
+    }
+
+    @Test
+    fun a_window_whose_start_is_not_a_number_yet_leaves_every_row_in() {
+        val rows = (0 until 4).map { row(it, "a" to it) }
+        val plot = plotChart(mapOf("rows" to rows, "x" to "t", "window" to mapOf("from" to null, "length" to 1), "series" to listOf(mapOf("id" to "a", "path" to "values.a"))))
+        assertEquals(4, plot.series.single().runs.single().size)
+    }
+
+    @Test
     fun a_series_that_cannot_be_drawn_is_dropped_and_named() {
         val plot = plotChart(
             mapOf(

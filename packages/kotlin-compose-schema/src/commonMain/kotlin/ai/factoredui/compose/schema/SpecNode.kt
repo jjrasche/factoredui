@@ -34,6 +34,7 @@ data class Spec(
      * overlay than per-node bindings.
      */
     val keybindings: Map<ShortcutKey, ActionRef> = emptyMap(),
+    val state: Map<String, SpecValue> = emptyMap(),
 )
 
 /**

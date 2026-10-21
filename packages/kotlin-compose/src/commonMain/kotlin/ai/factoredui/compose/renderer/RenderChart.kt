@@ -28,6 +28,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,6 +67,10 @@ private val CHART_TEXT = TextStyle(fontSize = 11.sp, lineHeight = 13.sp)
 private val READOUT_TEXT = TextStyle(fontSize = 12.sp, lineHeight = 15.sp)
 private val NOTICE_INK = Color(0xFFB3261E)
 
+private class ChartInks(val ink: Color, val muted: Color)
+
+private val LocalChartInks = compositionLocalOf { ChartInks(Color.Black, Color.Gray) }
+
 private fun colourOf(plot: ChartPlot, series: PlottedSeries): Color =
     planColour(series.def.colour) ?: Color(SERIES_COLOURS[plot.series.indexOf(series) % SERIES_COLOURS.size])
 
@@ -95,13 +101,20 @@ internal fun RenderChart(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     var hoverX by remember(plot) { mutableStateOf<Double?>(null) }
     val readout = hoverX?.let { chartReadout(plot, it) }
     RecordDrawn { notices = plot.notices; chart = chartRecordOf(plot, readout) }
+    val theme = LocalSpecTheme.current
+    val inks = ChartInks(planColour(resolvedProps["ink"] as? String) ?: theme.ink, planColour(resolvedProps["muted"] as? String) ?: theme.muted)
+    CompositionLocalProvider(LocalChartInks provides inks) { ChartBody(node, resolvedProps, plot, readout) { hoverX = it } }
+}
+
+@Composable
+private fun ChartBody(node: SpecNode, resolvedProps: Map<String, Any?>, plot: ChartPlot, readout: ChartReadout?, onHover: (Double?) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().nodeTag(node.id)) {
         plot.notices.forEach { Text(text = it, style = READOUT_TEXT, color = NOTICE_INK) }
         if (plot.series.isEmpty()) {
-            Text(text = resolvedProps["empty_text"] as? String ?: "", style = READOUT_TEXT, color = LocalSpecTheme.current.muted)
+            Text(text = resolvedProps["empty_text"] as? String ?: "", style = READOUT_TEXT, color = LocalChartInks.current.muted)
         } else {
             ChartLegend(node.id, plot)
-            ChartDrawing(node.id, plot, readout, resolvedProps["x_label"] as? String) { hoverX = it }
+            ChartDrawing(node.id, plot, readout, resolvedProps["x_label"] as? String, onHover)
             ChartReadoutLines(node.id, plot, readout, resolvedProps["x_label"] as? String)
         }
     }
@@ -110,7 +123,7 @@ internal fun RenderChart(node: SpecNode, resolvedProps: Map<String, Any?>, conte
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ChartLegend(nodeId: String, plot: ChartPlot) {
-    val ink = LocalSpecTheme.current.ink
+    val ink = LocalChartInks.current.ink
     FlowRow(modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         plot.series.forEachIndexed { index, series ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -126,7 +139,7 @@ private fun ChartLegend(nodeId: String, plot: ChartPlot) {
 
 @Composable
 private fun ChartDrawing(nodeId: String, plot: ChartPlot, readout: ChartReadout?, xLabel: String?, onHover: (Double?) -> Unit) {
-    val theme = LocalSpecTheme.current
+    val inks = LocalChartInks.current
     val density = LocalDensity.current
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val heightDp = (maxWidth * CHART_HEIGHT_PER_WIDTH).coerceIn(CHART_MIN_HEIGHT_DP.dp, CHART_MAX_HEIGHT_DP.dp)
@@ -148,7 +161,7 @@ private fun ChartDrawing(nodeId: String, plot: ChartPlot, readout: ChartReadout?
                     }
                 },
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) { drawChart(plot, frame, readout, theme.ink) }
+                Canvas(modifier = Modifier.fillMaxSize()) { drawChart(plot, frame, readout, inks.ink) }
                 ChartAxisLabels(nodeId, plot, frame, xLabel)
             }
         }
@@ -210,7 +223,7 @@ private fun DrawScope.drawHover(plot: ChartPlot, frame: ChartFrame, readout: Cha
 
 @Composable
 private fun ChartAxisLabels(nodeId: String, plot: ChartPlot, frame: ChartFrame, xLabel: String?) {
-    val muted = LocalSpecTheme.current.muted
+    val muted = LocalChartInks.current.muted
     val gapPx = with(LocalDensity.current) { LABEL_GAP_DP.dp.toPx() }
     ChartSide.entries.forEach { side ->
         val range = frame.ranges[side] ?: return@forEach
@@ -252,7 +265,7 @@ internal fun chartRecordOf(plot: ChartPlot, readout: ChartReadout?): ChartRecord
 @Composable
 private fun ChartReadoutLines(nodeId: String, plot: ChartPlot, readout: ChartReadout?, xLabel: String?) {
     if (readout == null) return
-    val ink = LocalSpecTheme.current.ink
+    val ink = LocalChartInks.current.ink
     Column(modifier = Modifier.padding(top = 6.dp).nodeTag("$nodeId/readout")) {
         Text(text = listOfNotNull(xLabel, formatChartValue(readout.x)).joinToString(" "), style = READOUT_TEXT, color = ink, modifier = Modifier.nodeTag("$nodeId/readout/x"))
         readout.entries.forEach { entry ->

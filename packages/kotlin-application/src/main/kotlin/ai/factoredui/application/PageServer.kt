@@ -207,17 +207,30 @@ private fun redirectToEntry(exchange: HttpExchange) {
     exchange.close()
 }
 
-fun startPageServer(options: Options): HttpServer {
-    val bundle = options.bundle.toAbsolutePath().normalize()
-    val builtSpec = AtomicReference<BuiltSpec?>(null)
-    val server = HttpServer.create(InetSocketAddress(options.bind, options.port), 0)
+private fun startServing(bind: String, port: Int, bundle: Path, serveSpecRequest: (HttpExchange) -> Unit): HttpServer {
+    val bundleRoot = bundle.toAbsolutePath().normalize()
+    val server = HttpServer.create(InetSocketAddress(bind, port), 0)
     server.createContext("/") { exchange ->
         when (exchange.requestURI.path) {
             "/" -> redirectToEntry(exchange)
-            SPEC_PATH -> serveSpec(exchange, options, builtSpec)
-            else -> serveBundleFile(exchange, bundle)
+            SPEC_PATH -> serveSpecRequest(exchange)
+            else -> serveBundleFile(exchange, bundleRoot)
         }
     }
     server.start()
     return server
 }
+
+fun startPageServer(options: Options): HttpServer {
+    val builtSpec = AtomicReference<BuiltSpec?>(null)
+    return startServing(options.bind, options.port, options.bundle) { exchange -> serveSpec(exchange, options, builtSpec) }
+}
+
+private fun serveScreen(exchange: HttpExchange, options: ScreenOptions) {
+    runCatching { buildScreenSpec(options) }.fold(
+        onSuccess = { respond(exchange, 200, CONTENT_TYPES.getValue("json"), it) },
+        onFailure = { respondText(exchange, 502, "cannot build the screen: ${it.message}") },
+    )
+}
+
+fun startScreenServer(options: ScreenOptions): HttpServer = startServing(options.bind, options.port, options.bundle) { exchange -> serveScreen(exchange, options) }

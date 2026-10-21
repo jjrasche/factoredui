@@ -81,6 +81,13 @@ class RenderContext private constructor(
         store.update { current -> writeAtPath(current, path.split("."), value) }
     }
 
+    fun startBindings(starts: Map<String, Any?>) {
+        store.update { current ->
+            starts.entries.filter { (path, _) -> path.isNotEmpty() && ai.factoredui.compose.schema.BindingResolver.resolveBinding("{$path}", current) == null }
+                .fold(current) { written, (path, value) -> writeAtPath(written, path.split("."), value) }
+        }
+    }
+
     fun setBindings(writes: Map<String, Any?>) {
         val writable = writes.filterKeys { it.isNotEmpty() }
         store.update { current -> writable.entries.fold(current) { written, (path, value) -> writeAtPath(written, path.split("."), value) } }

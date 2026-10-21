@@ -71,8 +71,9 @@ private fun axesOf(raw: Any?): Map<ChartSide, ChartAxis> =
 
 private fun windowed(rows: List<Pair<Double, Map<*, *>>>, window: Any?): List<Pair<Double, Map<*, *>>> {
     val bounds = window as? Map<*, *> ?: return rows
-    val from = numberIn(bounds, "from") ?: Double.NEGATIVE_INFINITY
-    val to = numberIn(bounds, "to") ?: Double.POSITIVE_INFINITY
+    val start = numberIn(bounds, "from")
+    val from = start ?: Double.NEGATIVE_INFINITY
+    val to = numberIn(bounds, "to") ?: start?.let { first -> numberIn(bounds, "length")?.let { first + it } } ?: Double.POSITIVE_INFINITY
     return rows.filter { (x, _) -> x in from..to }
 }
 
