@@ -1,6 +1,7 @@
 package ai.factoredui.application
 
 import java.nio.file.Path
+import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 
 class RuntimeFailedException(message: String) : RuntimeException(message)
@@ -8,11 +9,23 @@ class RuntimeFailedException(message: String) : RuntimeException(message)
 private const val RUNTIME_TIMEOUT_SECONDS = 60L
 private const val SAMPLE_TIMEOUT_SECONDS = 600L
 
+private val engineSlot = Semaphore(1, true)
+
 private fun runtimeRoot(launcher: Path): Path = launcher.toAbsolutePath().parent.parent
 
 internal fun runInRuntime(launcher: Path, vararg arguments: String): String = runInRuntimeWithin(launcher, RUNTIME_TIMEOUT_SECONDS, *arguments)
 
+/** One engine process runs at a time, whoever asks; the others wait their turn, and the timeout counts only the run. */
 private fun runInRuntimeWithin(launcher: Path, timeoutSeconds: Long, vararg arguments: String): String {
+    engineSlot.acquire()
+    try {
+        return runEngine(launcher, timeoutSeconds, *arguments)
+    } finally {
+        engineSlot.release()
+    }
+}
+
+private fun runEngine(launcher: Path, timeoutSeconds: Long, vararg arguments: String): String {
     val process = ProcessBuilder(listOf("sh", launcher.toAbsolutePath().toString()) + arguments)
         .directory(runtimeRoot(launcher).toFile())
         .redirectErrorStream(false)
