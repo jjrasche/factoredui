@@ -11,9 +11,6 @@ class ChartScreenFormatException(message: String) : IllegalArgumentException(mes
 data class ChartScreen(val title: String, val rowsKey: String, val chart: JsonObject, val xPath: String, val dayLength: Double, val dayFrom: Double?, val dayStep: Double)
 
 private const val DAY_PATH = "day.from"
-private const val HUD = "#0b1220"
-private const val INK = "#e6e8eb"
-private const val MUTED = "#9aa3ad"
 
 private fun objectIn(root: JsonObject, key: String): JsonObject = root[key] as? JsonObject ?: throw ChartScreenFormatException("the screen has no '$key' object")
 

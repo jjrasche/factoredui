@@ -9,6 +9,10 @@ import kotlinx.serialization.json.JsonPrimitive
 /** A text colour reads only hex, so the quiet ink is a mid grey that holds on a light and a dark page. */
 internal const val MUTED_INK = "#7b8089"
 
+internal const val HUD = "#0b1220"
+internal const val INK = "#e6e8eb"
+internal const val MUTED = "#9aa3ad"
+
 internal fun jsonOf(value: Any?): JsonElement = when (value) {
     null -> JsonNull
     is JsonElement -> value

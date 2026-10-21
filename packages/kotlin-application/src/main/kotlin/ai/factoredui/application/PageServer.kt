@@ -17,7 +17,7 @@ private const val SPEC_PATH = "/spec.json"
 private const val ENTRY_PATH = "/index.html"
 private const val ENTRY_QUERY = "spec=$SPEC_PATH&full=1"
 
-private val CONTENT_TYPES = mapOf(
+internal val CONTENT_TYPES = mapOf(
     "html" to "text/html; charset=utf-8",
     "js" to "text/javascript; charset=utf-8",
     "wasm" to "application/wasm",
@@ -28,7 +28,7 @@ private val CONTENT_TYPES = mapOf(
 
 private fun contentTypeOf(file: Path): String = CONTENT_TYPES[file.fileName.toString().substringAfterLast('.', "")] ?: "application/octet-stream"
 
-private fun respond(exchange: HttpExchange, status: Int, contentType: String, body: ByteArray) {
+internal fun respond(exchange: HttpExchange, status: Int, contentType: String, body: ByteArray) {
     exchange.responseHeaders.add("Content-Type", contentType)
     exchange.responseHeaders.add("Cache-Control", "no-store")
     exchange.sendResponseHeaders(status, body.size.toLong())
@@ -58,25 +58,25 @@ private fun respondFile(exchange: HttpExchange, file: Path) {
     respond(exchange, 200, contentTypeOf(file), compressedBytesOf(file))
 }
 
-private fun respondText(exchange: HttpExchange, status: Int, text: String) = respond(exchange, status, "text/plain; charset=utf-8", text.toByteArray())
+internal fun respondText(exchange: HttpExchange, status: Int, text: String) = respond(exchange, status, "text/plain; charset=utf-8", text.toByteArray())
 
 private fun failureOf(problem: Throwable): String = problem.message ?: problem::class.simpleName.orEmpty()
 
 private fun solveOrSayWhy(loaded: Loaded): Solving =
     runCatching { readSolving(loaded.textOf("solving")) }.getOrElse { Solving(emptyList(), failure = failureOf(it)) }
 
-private fun overlayOrSayWhy(options: Options, loaded: Loaded): Overlaying? {
+private fun overlayOrSayWhy(options: PageSource, loaded: Loaded): Overlaying? {
     if (options.overlay == null || loaded.isSkipped("overlay")) return null
     return runCatching { Overlaying(readOverlay(loaded.textOf("overlay"))) }.getOrElse { Overlaying(null, failure = failureOf(it)) }
 }
 
-private fun rankOrSayWhy(options: Options): Ranked? {
+private fun rankOrSayWhy(options: PageSource): Ranked? {
     val chosen = options.rank ?: return null
     return runCatching { Ranked(readRanking(rankSystem(options.runtime, options.system, chosen))) }
         .getOrElse { Ranked(null, failure = failureOf(it)) }
 }
 
-private fun hasRankingWeights(options: Options): Boolean =
+private fun hasRankingWeights(options: PageSource): Boolean =
     (kotlinx.serialization.json.Json.parseToJsonElement(Files.readString(options.system)) as? kotlinx.serialization.json.JsonObject)?.get("ranking") is kotlinx.serialization.json.JsonObject
 
 private val workers: ExecutorService = Executors.newCachedThreadPool { task -> Thread(task).apply { isDaemon = true } }
@@ -90,14 +90,14 @@ private fun <T> awaited(future: CompletableFuture<T>): T =
 
 private fun <T> inWorker(block: () -> T): CompletableFuture<T> = CompletableFuture.supplyAsync({ block() }, workers)
 
-private fun rankEach(options: Options, systems: List<DescribedSystem>, timings: Timings): Map<String, Ranked> = timings.timed("rank") {
+private fun rankEach(options: PageSource, systems: List<DescribedSystem>, timings: Timings): Map<String, Ranked> = timings.timed("rank") {
     val asked = systems.filter { it.alternatives.isNotEmpty() }.associate { system ->
         system.id to inWorker { runCatching { Ranked(readRanking(rankSystem(options.runtime, options.system, system.id))) }.getOrElse { Ranked(null, failure = failureOf(it)) } }
     }
     asked.mapValues { (_, future) -> awaited(future) }
 }
 
-private fun describeOrSayWhy(options: Options, loaded: Loaded, timings: Timings): Describing =
+private fun describeOrSayWhy(options: PageSource, loaded: Loaded, timings: Timings): Describing =
     runCatching {
         val systems = readDescribed(loaded.textOf("describe"))
         val weighted = hasRankingWeights(options)
@@ -114,7 +114,7 @@ private fun buildOrSayWhy(loaded: Loaded): Built? =
 private fun traceOrSayWhy(loaded: Loaded): Traced? =
     runCatching { if (loaded.isSkipped("simulation")) null else Traced(readTrace(loaded.textOf("simulation"))) }.getOrElse { Traced(null, failureOf(it)) }
 
-private fun sampleOrSayWhy(options: Options): Sampled? {
+private fun sampleOrSayWhy(options: PageSource): Sampled? {
     options.sampleFile?.let { file -> return runCatching { Sampled(readSampling(Files.readString(file))) }.getOrElse { Sampled(null, failureOf(it)) } }
     val arguments = options.sampleArguments ?: return null
     return runCatching { Sampled(readSampling(sampleSystem(options.runtime, options.system, arguments))) }.getOrElse { Sampled(null, failureOf(it)) }
@@ -122,6 +122,10 @@ private fun sampleOrSayWhy(options: Options): Sampled? {
 
 private fun geometryOrSayWhy(loaded: Loaded): Geometried =
     runCatching { Geometried(readGeometry(loaded.textOf("geometry"))) }.getOrElse { Geometried(null, failure = failureOf(it)) }
+
+internal class PageSource(val system: Path, val runtime: EngineRuntime, val overlay: String?, val rank: String?, val sampleArguments: List<String>?, val sampleFile: Path?)
+
+private fun Options.source() = PageSource(system, ProcessRuntime(runtime), overlay, rank, sampleArguments, sampleFile)
 
 private class BuiltSpec(val worldStamp: Pair<Long, Long>, val body: ByteArray)
 
@@ -134,7 +138,7 @@ private val SIMULATION_SECTIONS = listOf("simulation")
 private class Gathered(val loaded: Loaded, val described: Describing)
 
 /** The sections the page reads, asked for as two loads at once because the simulation is most of the time; the rankings start as soon as the core sections are in, while the simulation is still running. */
-private fun gather(options: Options, timings: Timings): Gathered {
+private fun gather(options: PageSource, timings: Timings): Gathered {
     val core = inWorker { timings.timed("load") { readLoaded(loadSystem(options.runtime, options.system, options.overlay, CORE_SECTIONS)) } }
     val simulation = inWorker { timings.timed("simulation") { readLoaded(loadSystem(options.runtime, options.system, null, SIMULATION_SECTIONS)) } }
     val coreLoaded = awaited(core)
@@ -142,7 +146,7 @@ private fun gather(options: Options, timings: Timings): Gathered {
     return Gathered(runCatching { coreLoaded.merged(awaited(simulation)) }.getOrDefault(coreLoaded), described)
 }
 
-private fun buildSpecBody(options: Options, timings: Timings): ByteArray {
+internal fun buildLensSpecBody(options: PageSource, timings: Timings): ByteArray {
     val file = readSystemFile(Files.readString(options.system))
     val sampling = inWorker { timings.timed("sample") { sampleOrSayWhy(options) } }
     val gathered = gather(options, timings)
@@ -164,7 +168,7 @@ private fun keyOrNull(options: Options): String? = runCatching { specCacheKey(op
 
 private fun buildAndKeep(options: Options, built: AtomicReference<BuiltSpec?>, stamp: Pair<Long, Long>, started: Long): Served {
     val timings = Timings()
-    val body = buildSpecBody(options, timings)
+    val body = buildLensSpecBody(options.source(), timings)
     runCatching { keyOrNull(options)?.let { cacheOf(options)?.write(it, body) } }
     built.set(BuiltSpec(stamp, body))
     return Served(body, timings.header((System.nanoTime() - started) / 1_000_000))
@@ -207,7 +211,7 @@ private fun redirectToEntry(exchange: HttpExchange) {
     exchange.close()
 }
 
-private fun startServing(bind: String, port: Int, bundle: Path, serveSpecRequest: (HttpExchange) -> Unit): HttpServer {
+internal fun startServing(bind: String, port: Int, bundle: Path, serveSpecRequest: (HttpExchange) -> Unit): HttpServer {
     val bundleRoot = bundle.toAbsolutePath().normalize()
     val server = HttpServer.create(InetSocketAddress(bind, port), 0)
     server.createContext("/") { exchange ->

@@ -4,11 +4,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-private const val HUD = "#0b1220"
 private const val PANEL = "#162033"
 private const val WORLD_GROUND = "#2b3c50"
-private const val INK = "#e6e8eb"
-private const val MUTED = "#9aa3ad"
 private const val DOCK_CLOSED_DP = 520
 private const val DOCK_OPEN_DP = 840
 private const val SYSTEMS_PER_ROW = 4

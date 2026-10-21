@@ -40,8 +40,8 @@ fun readLoaded(text: String): Loaded {
     return Loaded(root["sections"] as? JsonObject ?: throw LoadFormatException("the load answer has no sections"))
 }
 
-fun loadSystem(launcher: Path, systemFile: Path, overlayId: String?, include: List<String>? = null): String =
+fun loadSystem(runtime: EngineRuntime, systemFile: Path, overlayId: String?, include: List<String>? = null): String =
     runInRuntime(
-        launcher,
+        runtime,
         *listOfNotNull("load", systemFile.toAbsolutePath().toString(), overlayId?.let { "--overlay" }, overlayId, include?.let { "--include" }, include?.joinToString(",")).toTypedArray(),
     )

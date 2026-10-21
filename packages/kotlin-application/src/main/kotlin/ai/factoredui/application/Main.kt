@@ -24,9 +24,21 @@ private fun serveScreenCommand(args: List<String>) {
     println("screen http://${options.bind}:${options.port}/  season ${options.season}  screen ${options.screen}")
 }
 
+private fun serveWorldsCommand(args: List<String>) {
+    val options = try {
+        parseWorldsOptions(args)
+    } catch (failure: UsageException) {
+        System.err.println(failure.message)
+        exitProcess(2)
+    }
+    startWorldsServer(options)
+    println("worlds http://${options.bind}:${options.port}/  engine ${options.engine}")
+}
+
 fun main(args: Array<String>) {
     if (args.firstOrNull() == "export-sheets") return exportSheetsCommand(args.drop(1))
     if (args.firstOrNull() == "serve-screen") return serveScreenCommand(args.drop(1))
+    if (args.firstOrNull() == "serve-worlds") return serveWorldsCommand(args.drop(1))
     val options = try {
         parseOptions(args.toList())
     } catch (failure: UsageException) {

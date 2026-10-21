@@ -84,8 +84,14 @@ private fun persistDialAction(): ActionHandler = handler@{ params ->
     Unit
 }
 
+private fun openSpecAction(): ActionHandler = handler@{ params ->
+    val spec = params["spec"] as? String ?: return@handler
+    reloadWithSpec(spec)
+}
+
 fun playgroundActions(actionUrl: String? = null): ActionRegistry {
     val base = mapOf<String, ActionHandler>(
+        "open_spec" to openSpecAction(),
         "submit" to { params -> println("[playground] submit($params)") },
         "persist-dial" to persistDialAction(),
         "on-focus-change" to { params ->
@@ -117,6 +123,10 @@ fun placeholderSpec(message: String): Spec = Spec(
 
 private fun rawSpecParam(): String =
     js("(new URLSearchParams(window.location.search).get('spec')) || ''")
+
+private fun reloadWithSpec(spec: String) {
+    js("window.location.assign(window.location.pathname + '?spec=' + encodeURIComponent(spec) + '&full=1')")
+}
 
 fun fullscreenParam(): Boolean =
     js("(new URLSearchParams(window.location.search).get('full')) ? true : false")

@@ -85,7 +85,7 @@ internal fun buildSheets(drawings: List<Drawn>, notes: List<NoteGroup>, summary:
 
 /** Writes each sheet as SVG and PDF under the out directory and returns the files, named by sheet number and title. */
 fun exportSheets(options: ExportOptions): List<Path> {
-    val loaded = readLoaded(loadSystem(options.runtime, options.system, null))
+    val loaded = readLoaded(loadSystem(ProcessRuntime(options.runtime), options.system, null))
     val file = readSystemFile(Files.readString(options.system))
     val geometry = readGeometry(loaded.textOf("geometry"))
     val expansion = readExpansion(loaded.textOf("expansion"))

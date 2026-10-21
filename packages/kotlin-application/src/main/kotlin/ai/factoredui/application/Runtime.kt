@@ -5,43 +5,53 @@ import java.util.concurrent.TimeUnit
 
 class RuntimeFailedException(message: String) : RuntimeException(message)
 
-private const val RUNTIME_TIMEOUT_SECONDS = 60L
-private const val SAMPLE_TIMEOUT_SECONDS = 600L
+internal const val RUNTIME_TIMEOUT_SECONDS = 60L
+internal const val SAMPLE_TIMEOUT_SECONDS = 600L
+internal const val SIMULATE_TIMEOUT_SECONDS = 600L
+
+interface EngineRuntime {
+    fun answer(arguments: List<String>, timeoutSeconds: Long = RUNTIME_TIMEOUT_SECONDS): String
+}
 
 private fun runtimeRoot(launcher: Path): Path = launcher.toAbsolutePath().parent.parent
 
-internal fun runInRuntime(launcher: Path, vararg arguments: String): String = runInRuntimeWithin(launcher, RUNTIME_TIMEOUT_SECONDS, *arguments)
-
-private fun runInRuntimeWithin(launcher: Path, timeoutSeconds: Long, vararg arguments: String): String {
-    val process = ProcessBuilder(listOf("sh", launcher.toAbsolutePath().toString()) + arguments)
-        .directory(runtimeRoot(launcher).toFile())
-        .redirectErrorStream(false)
-        .start()
-    val answer = process.inputStream.bufferedReader().readText()
-    if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
-        process.destroyForcibly()
-        throw RuntimeFailedException("the runtime did not answer within $timeoutSeconds seconds")
+class ProcessRuntime(private val launcher: Path) : EngineRuntime {
+    override fun answer(arguments: List<String>, timeoutSeconds: Long): String {
+        val process = ProcessBuilder(listOf("sh", launcher.toAbsolutePath().toString()) + arguments)
+            .directory(runtimeRoot(launcher).toFile())
+            .redirectErrorStream(false)
+            .start()
+        val answer = process.inputStream.bufferedReader().readText()
+        if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
+            process.destroyForcibly()
+            throw RuntimeFailedException("the runtime did not answer within $timeoutSeconds seconds")
+        }
+        return answer.ifBlank { throw RuntimeFailedException("the runtime answered nothing: " + process.errorStream.bufferedReader().readText().trim()) }
     }
-    return answer.ifBlank { throw RuntimeFailedException("the runtime answered nothing: " + process.errorStream.bufferedReader().readText().trim()) }
 }
 
+internal fun runInRuntime(runtime: EngineRuntime, vararg arguments: String): String = runtime.answer(arguments.toList())
+
 /** The runtime's answer to `expand` on a system file, as the text it printed. */
-fun expandSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "expand", systemFile.toAbsolutePath().toString())
+fun expandSystem(runtime: EngineRuntime, systemFile: Path): String = runInRuntime(runtime, "expand", systemFile.toAbsolutePath().toString())
 
-fun overlaySystem(launcher: Path, systemFile: Path, overlayId: String): String =
-    runInRuntime(launcher, "overlay", systemFile.toAbsolutePath().toString(), "--overlay", overlayId)
+fun overlaySystem(runtime: EngineRuntime, systemFile: Path, overlayId: String): String =
+    runInRuntime(runtime, "overlay", systemFile.toAbsolutePath().toString(), "--overlay", overlayId)
 
-fun rankSystem(launcher: Path, systemFile: Path, systemId: String): String =
-    runInRuntime(launcher, "rank", systemFile.toAbsolutePath().toString(), "--system", systemId)
+fun rankSystem(runtime: EngineRuntime, systemFile: Path, systemId: String): String =
+    runInRuntime(runtime, "rank", systemFile.toAbsolutePath().toString(), "--system", systemId)
 
-fun describeSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "describe", systemFile.toAbsolutePath().toString())
+fun describeSystem(runtime: EngineRuntime, systemFile: Path): String = runInRuntime(runtime, "describe", systemFile.toAbsolutePath().toString())
 
-fun geometrySystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "geometry", systemFile.toAbsolutePath().toString())
+fun geometrySystem(runtime: EngineRuntime, systemFile: Path): String = runInRuntime(runtime, "geometry", systemFile.toAbsolutePath().toString())
 
-fun sampleSystem(launcher: Path, systemFile: Path, arguments: List<String>): String =
-    runInRuntimeWithin(launcher, SAMPLE_TIMEOUT_SECONDS, *(listOf("sample", systemFile.toAbsolutePath().toString()) + arguments).toTypedArray())
+fun sampleSystem(runtime: EngineRuntime, systemFile: Path, arguments: List<String>): String =
+    runtime.answer(listOf("sample", systemFile.toAbsolutePath().toString()) + arguments, SAMPLE_TIMEOUT_SECONDS)
 
-fun solveSystem(launcher: Path, systemFile: Path): String = runInRuntime(launcher, "solve", systemFile.toAbsolutePath().toString())
+fun simulateSystem(runtime: EngineRuntime, systemFile: Path): String =
+    runtime.answer(listOf("simulate", systemFile.toAbsolutePath().toString()), SIMULATE_TIMEOUT_SECONDS)
+
+fun solveSystem(runtime: EngineRuntime, systemFile: Path): String = runInRuntime(runtime, "solve", systemFile.toAbsolutePath().toString())
 
 /** The short commit the runtime's checkout is at, or "unknown" when it is not a checkout. */
 fun runtimePin(launcher: Path): String {
