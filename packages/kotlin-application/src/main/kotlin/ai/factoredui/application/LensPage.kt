@@ -4,25 +4,24 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-private const val PANEL = "#162033"
+private const val CARD = "raised"
+private const val DOCK = "surface"
 private const val WORLD_GROUND = "#2b3c50"
-private const val DOCK_CLOSED_DP = 520
+private const val DOCK_CLOSED_DP = 260
 private const val DOCK_OPEN_DP = 840
-private const val SYSTEMS_PER_ROW = 4
+private const val GUTTER_DP = 16
 private const val RESET_VIEW_GAP_DP = 100
 private const val BLUEPRINT_PATH = "{ui.blueprint}"
 private const val SELECTION_CARD = "selection.card"
 
 private fun systemPath(system: String) = "ui.sys.${system.replace(Regex("[^A-Za-z0-9_]"), "_")}"
 
-/** The same node with its words, toggles and cards in the inks of a dark page. */
 internal fun inDark(node: JsonObject): JsonObject {
     val type = (node["type"] as JsonPrimitive).content
     val props = (node["props"] as JsonObject).toMutableMap()
     when (type) {
         "text" -> props["color"] = JsonPrimitive(if ((props["variant"] as? JsonPrimitive)?.content == "caption") MUTED else INK)
-        "toggle" -> props["color"] = JsonPrimitive(INK)
-        "card" -> props["background"] = JsonPrimitive(PANEL)
+        "card" -> props["background"] = JsonPrimitive(CARD)
     }
     val children = (node["children"] as JsonArray).map { inDark(it as JsonObject) }
     return JsonObject(node + mapOf("props" to JsonObject(props), "children" to JsonArray(children)))
@@ -40,11 +39,11 @@ private fun fullWorld(node: JsonObject, extra: Map<String, Any?> = emptyMap(), v
     return if (visible == null) placed else JsonObject(placed + ("visible" to JsonPrimitive(visible)))
 }
 
-private fun topStrip(hasBlueprint: Boolean, title: String): JsonObject = specNode(
-    "lens", "row", mapOf("gap" to 8, "align" to "center", "padding" to 8, "background" to "${HUD}d9", "anchor" to "top"),
+private fun topStrip(hasBlueprint: Boolean): JsonObject = specNode(
+    "lens", "row", mapOf("gap" to 8, "align" to "center", "padding" to GUTTER_DP, "anchor" to "top"),
     listOfNotNull(
-        textNode("lens.title", title, variant = "subheading", bold = true, color = INK, flex = 1),
-        if (hasBlueprint) specNode("lens.blueprint", "toggle", mapOf("label" to "Blueprint", "value" to BLUEPRINT_PATH, "color" to INK, "width" to 170)) else null,
+        specNode("lens.title", "text", mapOf("value" to "", "flex" to 1)),
+        if (hasBlueprint) specNode("lens.blueprint", "toggle", mapOf("label" to "Blueprint", "value" to BLUEPRINT_PATH, "width" to 170)) else null,
         specNode("lens.reset-gap", "column", mapOf("width" to RESET_VIEW_GAP_DP)),
     ),
 )
@@ -52,16 +51,24 @@ private fun topStrip(hasBlueprint: Boolean, title: String): JsonObject = specNod
 private fun selectSystem(chosen: String, all: List<String>): Map<String, Any?> =
     mapOf("action" to "set_binding", "params" to mapOf("values" to all.associate { systemPath(it) to (it == chosen) } + (STEP_PATH to if (chosen == BUILD_VIEW) 0 else null)))
 
-private fun systemButtons(drawn: List<String>): JsonObject {
-    val rows = drawn.chunked(SYSTEMS_PER_ROW).mapIndexed { index, names ->
+private fun systemRow(name: String, caption: String?, drawn: List<String>): JsonObject =
+    JsonObject(
         specNode(
-            "systems.row.$index", "row", mapOf("gap" to 4),
-            names.map { name ->
-                JsonObject(specNode("systems.$name", "button", mapOf("label" to humanize(name), "variant" to "secondary", "size" to "sm", "flex" to 1)) + ("action" to jsonOf(selectSystem(name, drawn))))
-            },
-        )
-    }
-    return specNode("systems", "column", mapOf("gap" to 4, "padding" to 8), listOf(textNode("systems.hint", "Tap a system to see what it is set to, or a piece in the drawing.", variant = "caption", color = MUTED)) + rows)
+            "systems.$name", "card", mapOf("background" to CARD, "padding" to 12, "cornerRadius" to 12),
+            listOf(
+                specNode(
+                    "systems.$name.row", "row", mapOf("gap" to 8),
+                    listOfNotNull(textNode("systems.$name.name", humanize(name), flex = 1), caption?.let { textNode("systems.$name.caption", it, variant = "caption", color = MUTED) }),
+                ),
+            ),
+        ) + ("action" to jsonOf(selectSystem(name, drawn))),
+    )
+
+private fun systemList(drawn: List<String>, viewNames: List<String>, describing: Describing?): JsonObject {
+    val solutions = describing?.takeIf { it.failure == null }?.systems.orEmpty().associate { it.id to it.solution.takeIf { solution -> solution.isNotEmpty() } }
+    val all = drawn + viewNames
+    val rows = drawn.map { systemRow(it, solutions[it], all) } + viewNames.map { systemRow(it, "view", all) }
+    return specNode("systems", "column", mapOf("gap" to 8), listOf(textNode("systems.hint", "Tap a system to see what it is set to, or a piece in the drawing.", variant = "caption", color = MUTED)) + rows)
 }
 
 private const val ODDS_VIEW = "odds"
@@ -96,7 +103,12 @@ private fun elsewhere(describing: Describing?, file: SystemFile, expansion: Expa
     ).map(::inDark) + oldCards.map(::inDark)
 }
 
-/** The page as one world that fills the screen: lens strip on top, a draggable dock below holding the system buttons and what each system is set to, and a switch between the shaded solid and the blueprint. */
+private fun pageSpec(root: JsonObject): JsonObject =
+    JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "root" to root))
+
+private fun noDrawingPage(body: List<JsonObject>, note: String): JsonObject =
+    specNode("root", "scrollview", mapOf("background" to HUD), listOf(specNode("page", "column", mapOf("gap" to GUTTER_DP, "padding" to GUTTER_DP), listOf(textNode("drawing.none", note, variant = "caption", color = MUTED)) + body)))
+
 fun buildLensPageSpec(
     file: SystemFile,
     expansion: Expansion,
@@ -118,12 +130,13 @@ fun buildLensPageSpec(
         overlaying?.let(::overlayNote), geometried?.failure?.let { textNode("blueprint-failure", "The geometry could not be read: $it", variant = "caption", color = MUTED) },
     ).map(::inDark)
     val drawings = geometry?.let { listOf(withVisible(inDark(blueprintDrawingsNode(it)), "ui.blueprint")) }.orEmpty()
+    val bodyContent = notes + drawings + selectedPanels(describing, file, drawn) + viewPanels(boarded, sampled, built, traced) + systemList(drawn, views(boarded, sampled, built, traced), describing) + elsewhere(describing, file, expansion, solving, ranked)
+    if (shaded == null && blueprint == null) return pageSpec(noDrawingPage(bodyContent, geometried?.failure?.let { "No drawing: the geometry could not be read." } ?: "This world has no drawing."))
     val body = specNode(
-        "dock.body", "column", mapOf("gap" to 10, "padding" to 12),
-        listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + notes + drawings + selectedPanels(describing, file, drawn) + viewPanels(boarded, sampled, built, traced) + elsewhere(describing, file, expansion, solving, ranked),
+        "dock.body", "column", mapOf("gap" to 12, "padding" to GUTTER_DP),
+        listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + bodyContent,
     )
-    val dock = specNode("dock", "column", mapOf("anchor" to "bottom", "sheet" to mapOf("closed_dp" to DOCK_CLOSED_DP, "open_dp" to DOCK_OPEN_DP), "background" to PANEL), listOf(systemButtons(drawn + views(boarded, sampled, built, traced)), body))
+    val dock = specNode("dock", "column", mapOf("anchor" to "bottom", "sheet" to mapOf("closed_dp" to DOCK_CLOSED_DP, "open_dp" to DOCK_OPEN_DP), "background" to DOCK), listOf(body))
     val world = listOfNotNull(shaded, blueprint)
-    val root = specNode("root", "stack", mapOf("fill" to true, "background" to HUD), world + listOf(topStrip(blueprint != null, file.title), dock))
-    return JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "root" to root))
+    return pageSpec(specNode("root", "stack", mapOf("fill" to true, "background" to HUD), world + listOf(topStrip(blueprint != null), dock)))
 }

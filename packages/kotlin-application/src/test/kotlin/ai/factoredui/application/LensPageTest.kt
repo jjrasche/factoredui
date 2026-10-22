@@ -42,7 +42,7 @@ class LensPageTest {
         assertEquals("true", root.props()["fill"]!!.jsonPrimitive.content)
         assertEquals("top", root.byId("lens").props()["anchor"]!!.jsonPrimitive.content)
         val sheet = root.byId("dock").props()["sheet"]!!.jsonObject
-        assertEquals(listOf("520", "840"), listOf("closed_dp", "open_dp").map { sheet[it]!!.jsonPrimitive.content })
+        assertEquals(listOf("260", "840"), listOf("closed_dp", "open_dp").map { sheet[it]!!.jsonPrimitive.content })
     }
 
     @Test
@@ -73,10 +73,35 @@ class LensPageTest {
     }
 
     @Test
+    fun a_system_is_a_card_row_that_names_its_solution_and_the_chosen_systems_panel_comes_above_the_list() {
+        val root = page()
+        assertEquals("card", root.byId("systems.walls")["type"]!!.jsonPrimitive.content)
+        assertEquals("panels", root.byId("systems.walls.caption").props()["value"]!!.jsonPrimitive.content)
+        val order = root.byId("dock.body")["children"]!!.jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.content }
+        assertTrue(order.indexOf("describe.walls.card") in 0 until order.indexOf("systems"), order.toString())
+    }
+
+    @Test
+    fun a_world_with_no_drawing_is_one_scrolling_page_with_a_note_and_its_systems_and_no_dock() {
+        val empty = readExpansion("""{ "extent_mm": [1000, 100], "supplied": {}, "instances": [], "objects": [] }""")
+        val root = buildLensPageSpec(readSystemFile(SYSTEM_FILE), empty, describing = Describing(readDescribed(DESCRIBED)))["root"]!!.jsonObject
+        assertEquals("scrollview", root["type"]!!.jsonPrimitive.content)
+        assertEquals("This world has no drawing.", root.byId("drawing.none").props()["value"]!!.jsonPrimitive.content)
+        assertTrue(root.nodes().none { it["id"]!!.jsonPrimitive.content == "dock" })
+        assertTrue(root.nodes().any { it["id"]!!.jsonPrimitive.content == "systems" })
+    }
+
+    @Test
+    fun the_page_declares_the_dark_theme() {
+        val spec = buildLensPageSpec(readSystemFile(SYSTEM_FILE), readExpansion(EXPANSION))
+        assertEquals("dark", spec["theme"]!!.jsonPrimitive.content)
+    }
+
+    @Test
     fun the_words_are_light_on_the_dark_dock() {
         val root = page()
-        assertEquals("#e6e8eb", root.byId("describe.walls.name").props()["color"]!!.jsonPrimitive.content)
-        assertEquals("#162033", root.byId("describe.walls.card").props()["background"]!!.jsonPrimitive.content)
+        assertEquals("ink", root.byId("describe.walls.name").props()["color"]!!.jsonPrimitive.content)
+        assertEquals("raised", root.byId("describe.walls.card").props()["background"]!!.jsonPrimitive.content)
     }
 
     @Test

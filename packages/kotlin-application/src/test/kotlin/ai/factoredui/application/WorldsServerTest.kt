@@ -25,6 +25,8 @@ private const val SEASON = """{"clock": {"step": 1.0, "unit": "hour", "until": 3
     {"t": 2758, "stocks": {"air_temperature_f": 61.0}, "series": {"outside_air_f": 31.0}},
     {"t": 2759, "stocks": {"air_temperature_f": 62.0}, "series": {"outside_air_f": 32.0}}]}"""
 
+private const val LOADED_DRAWN = """{"sections": {"expansion": {"ok": true, "asked": true, "extent_mm": [1000, 100], "objects": [{"id": "wall-a", "system": "walls", "type": "wall", "x_mm": 0, "y_mm": 0, "width_mm": 1000, "depth_mm": 100, "level": 0, "elevation_mm": 0, "fields": {"height_mm": 3000}}], "instances": [], "supplied": {}}}}"""
+
 private const val LOADED = """{"sections": {"expansion": {"ok": true, "asked": true, "extent_mm": [10, 10], "objects": [], "instances": [], "supplied": {}}}}"""
 
 private fun nodesIn(element: JsonElement): List<JsonObject> = when (element) {
@@ -100,7 +102,7 @@ class WorldsServerTest {
     @Test
     fun a_request_for_a_world_with_no_screen_draws_its_overview() {
         val nodes = specFetched(twoWorlds(), "?world=small-house")
-        assertTrue(nodes.any { it.idText() == "lens" })
+        assertTrue(nodes.any { it.idText() == "systems" })
         assertTrue(nodes.none { it.idText() == "chart" })
     }
 
@@ -125,7 +127,7 @@ class WorldsServerTest {
     @Test
     fun a_view_named_in_the_request_is_the_one_drawn() {
         val nodes = specFetched(twoWorlds(), "?world=greenhouse-world&view=overview")
-        assertTrue(nodes.any { it.idText() == "lens" })
+        assertTrue(nodes.any { it.idText() == "systems" })
         assertTrue(nodes.none { it.idText() == "chart" })
     }
 
@@ -158,13 +160,21 @@ class WorldsServerTest {
     }
 
     @Test
-    fun on_an_overview_the_bar_is_the_first_thing_in_the_dock_and_the_lens_strip_is_left_alone() {
-        val spec = Json.parseToJsonElement(fetch(twoWorlds(), "/spec.json?world=small-house").body()) as JsonObject
+    fun on_an_overview_with_a_drawing_the_bar_is_the_first_thing_in_the_dock() {
+        val port = twoWorlds()
+        engine.runAnswer = { LOADED_DRAWN }
+        val spec = Json.parseToJsonElement(fetch(port, "/spec.json?world=small-house").body()) as JsonObject
         val dock = nodesIn(spec).single { it.idText() == "dock" }
         assertEquals("bar", ((dock["children"] as JsonArray).first() as JsonObject).idText())
-        assertEquals(listOf("lens.title"), nodesIn(spec).single { it.idText() == "lens" }.let { strip -> (strip["children"] as JsonArray).map { (it as JsonObject).idText() }.filter { it.startsWith("lens.t") } })
     }
 
+    @Test
+    fun on_an_overview_with_no_drawing_the_bar_is_the_first_thing_on_the_scrolling_page() {
+        val spec = Json.parseToJsonElement(fetch(twoWorlds(), "/spec.json?world=small-house").body()) as JsonObject
+        val root = spec["root"] as JsonObject
+        assertEquals(JsonPrimitive("scrollview"), root["type"])
+        assertEquals("bar", ((root["children"] as JsonArray).first() as JsonObject).idText())
+    }
     @Test
     fun many_worlds_stay_one_select_and_do_not_grow_the_bar() {
         val worlds = listOf("a", "b", "c", "d", "e").map { it to addWorld(it, it) }
@@ -209,7 +219,7 @@ class WorldsServerTest {
         val select = specFetched(port).single { it.idText() == "bar.world" }
         val target = ((((select["props"] as JsonObject)["options"]) as JsonArray).single() as JsonObject)["value"] as JsonPrimitive
         assertEquals("/spec.json?world=" + URLEncoder.encode("folder/odd world", Charsets.UTF_8), target.content)
-        assertTrue(specFetched(port, "?world=" + URLEncoder.encode("folder/odd world", Charsets.UTF_8)).any { it.idText() == "lens" })
+        assertTrue(specFetched(port, "?world=" + URLEncoder.encode("folder/odd world", Charsets.UTF_8)).any { it.idText() == "systems" })
     }
 
     @Test

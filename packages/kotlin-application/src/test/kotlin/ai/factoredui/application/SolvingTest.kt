@@ -44,13 +44,21 @@ class SolvingTest {
     }
 
     @Test
-    fun a_known_solver_is_a_card_with_its_domain_status_and_every_number_to_three_places() {
+    fun a_known_solver_is_a_card_with_its_domain_status_and_every_number_to_three_places_with_its_unit() {
         val page = pageWith(readSolving(SOLVE_ANSWER))
-        assertEquals("average daylight factor", page.valueOf("solver.light.average-daylight-factor.title"))
-        assertEquals("light", page.valueOf("solver.light.average-daylight-factor.domain"))
-        assertEquals("known", page.byId("solver.light.average-daylight-factor.status")["props"]!!.jsonObject["label"]!!.jsonPrimitive.content)
-        assertEquals("daylight factor percent", page.valueOf("solver.light.average-daylight-factor.daylight_factor_percent.name"))
-        assertEquals("7.365", page.valueOf("solver.light.average-daylight-factor.daylight_factor_percent.value"))
+        assertEquals("Average daylight factor", page.valueOf("solver.light.average-daylight-factor.title"))
+        assertEquals("Light", page.valueOf("solver.light.average-daylight-factor.domain"))
+        assertEquals("known", page.valueOf("solver.light.average-daylight-factor.status"))
+        assertEquals("Daylight factor", page.valueOf("solver.light.average-daylight-factor.daylight_factor_percent.name"))
+        assertEquals("7.365 %", page.valueOf("solver.light.average-daylight-factor.daylight_factor_percent.value"))
+    }
+
+    @Test
+    fun a_solvers_figures_stay_hidden_until_its_switch_is_turned_on() {
+        val page = pageWith(readSolving(SOLVE_ANSWER))
+        val figures = page.byId("solver.light.average-daylight-factor.figures")
+        assertEquals("{ui.solver.light.average_daylight_factor}", figures["visible"]!!.jsonPrimitive.content)
+        assertEquals("{ui.solver.light.average_daylight_factor}", page.byId("solver.light.average-daylight-factor.figures.switch")["props"]!!.jsonObject["value"]!!.jsonPrimitive.content)
     }
 
     @Test
