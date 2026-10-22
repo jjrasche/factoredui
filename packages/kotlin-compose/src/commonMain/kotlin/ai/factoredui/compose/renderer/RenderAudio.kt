@@ -59,7 +59,7 @@ internal fun RenderAudio(node: SpecNode, resolvedProps: Map<String, Any?>, conte
 private fun AudioSurface(id: String, props: AudioProps, controller: AudioController) {
     val shown = controller.snapshot
     Column(modifier = Modifier.fillMaxWidth().nodeTag(id), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        props.title?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
+        props.title?.takeIf { props.showsTitle }?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
         when {
             !controller.canPlay -> Text("Audio is not available on this target.", style = MaterialTheme.typography.bodySmall)
             props.hasControls -> AudioControls(id, props, controller, shown)

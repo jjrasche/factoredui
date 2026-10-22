@@ -99,6 +99,7 @@ Write JSON; never HTML or canvas code.
   "root": { "id": "root", "type": "column", "props": {}, "children": [] } }
 ```
 
+- `theme` (optional): `light` or `dark`. It sets the ink and surfaces of every node that takes them from the theme (text, buttons, sliders, the `audio` and `voice` controls) and the window's ground when the root names no `background`. It overrides the host's choice; a name it does not know is written to `renderer.error` and the host's theme is used. The stock browser host takes `?theme=dark` or `?theme=light`, else the browser's `prefers-color-scheme`, else light. A node that names its own colour keeps it. A root `background` alone does not change the theme: a dark ground with the light theme draws dark ink on it.
 - `state` (optional): dotted binding paths to the values they start at, `{ "day.from": 2757 }`. The first frame already shows them; a path that already has a value (set by the host or by a person) keeps it.
 - A node is `{ id, type, props, children, visible, action }`.
 - `id` is unique in the spec.
@@ -332,6 +333,7 @@ Both run only where the host gives the renderer a media engine: the browser (was
 - `markers`: `[{ at, label }]` in seconds, kept in time order and read back; with markers the lock screen's previous and next go to the start of the passage being heard (or the one before it, within 3 seconds of its start) and the next one; without them they seek by `seek_step` (default 15 seconds, as seekbackward and seekforward do).
 - `on_position`: an action told, with `position`, `rate`, `playing`, `duration` and `reason` (`play`, `pause`, `seek`, `rate`, `ended` or `tick`) added to its params, on each of those and every `report_every` seconds of narration while it plays (default 5).
 - `media_actions`: `{ <lock-screen action>: { action, params } }` for `play`, `pause`, `previoustrack`, `nexttrack`, `seekbackward`, `seekforward`, `seekto`, `stop`. A named one is dispatched instead of its default, with its params resolved then (`"position": "{book.position}"`), so a spec can make a lock-screen button a reaction such as "lost me". A name it does not know is named in a notice.
+- `show_title`: false hides the on-page title; `title` is still what the lock screen shows.
 - `controls`: true (default) draws a play and pause button, minus and plus `seek_step` buttons, a seek bar, the time and a rate button (0.75 to 2). Browsers start sound only after a tap, and a page that sets `playing` before one is refused: the node reads back `blocked`, writes `playing` false and says to tap play.
 - `/tree` node `audio` field: `source, status, position, duration, playing, rate, markers, media_actions`; `status` is `idle`, `loading`, `ready`, `blocked`, `failed` or `unsupported`.
 

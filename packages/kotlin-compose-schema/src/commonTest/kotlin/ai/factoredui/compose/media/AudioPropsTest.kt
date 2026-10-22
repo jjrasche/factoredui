@@ -24,6 +24,12 @@ class AudioPropsTest {
     }
 
     @Test
+    fun the_title_is_shown_on_the_page_unless_the_spec_says_not_to() {
+        assertTrue(readFrom("""{"source":"a.mp3","title":"Chapter 1"}""").showsTitle)
+        assertEquals(false, readFrom("""{"source":"a.mp3","title":"Chapter 1","show_title":false}""").showsTitle)
+    }
+
+    @Test
     fun a_node_with_no_source_says_so_in_its_notices() {
         assertEquals(listOf("audio has no source; there is nothing to play."), readFrom("{}").notices)
     }

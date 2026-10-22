@@ -28,6 +28,7 @@ fun PlaygroundApp() {
         RenderContext(
             actions = playgroundActions(actionUrlParam()),
             observability = LoggingObservability(),
+            theme = hostTheme(),
         )
     }
     val specFlow = remember { MutableStateFlow(placeholderSpec("Loading spec…")) }

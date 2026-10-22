@@ -35,6 +35,7 @@ data class Spec(
      */
     val keybindings: Map<ShortcutKey, ActionRef> = emptyMap(),
     val state: Map<String, SpecValue> = emptyMap(),
+    val theme: String? = null,
 )
 
 /**

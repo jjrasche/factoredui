@@ -2,6 +2,8 @@ package ai.factoredui.playground
 
 import ai.factoredui.compose.adapter.ActionHandler
 import ai.factoredui.compose.adapter.ActionRegistry
+import ai.factoredui.compose.renderer.SpecTheme
+import ai.factoredui.compose.renderer.themeNamed
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
@@ -150,6 +152,14 @@ private fun rawSpecParam(): String =
 private fun reloadWithSpec(spec: String) {
     js("window.location.assign(window.location.pathname + '?spec=' + encodeURIComponent(spec) + '&full=1')")
 }
+
+private fun themeParam(): String =
+    js("(new URLSearchParams(window.location.search).get('theme')) || ''")
+
+private fun prefersDark(): Boolean =
+    js("(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? true : false")
+
+fun hostTheme(): SpecTheme = themeNamed(themeParam().ifEmpty { null }) ?: if (prefersDark()) SpecTheme.DARK else SpecTheme.LIGHT
 
 fun fullscreenParam(): Boolean =
     js("(new URLSearchParams(window.location.search).get('full')) ? true : false")

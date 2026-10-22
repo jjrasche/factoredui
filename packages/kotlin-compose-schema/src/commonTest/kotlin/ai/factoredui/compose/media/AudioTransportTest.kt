@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
 private val MARKERS = listOf(AudioMarker(0.0, "One"), AudioMarker(600.0, "Two"), AudioMarker(1200.0, "Three"))
 
 private fun propsWith(markers: List<AudioMarker> = emptyList(), mediaActions: Map<MediaAction, ActionRef> = emptyMap()) = AudioProps(
-    "a.mp3", null, null, null, null, markers, 15.0, 5.0, true, mediaActions, null, emptyList(),
+    "a.mp3", null, null, null, null, markers, 15.0, 5.0, true, true, mediaActions, null, emptyList(),
 )
 
 private fun stateAt(position: Double, duration: Double? = 3600.0, isPlaying: Boolean = true, rate: Double = 1.0) = AudioState(position, duration, isPlaying, rate)

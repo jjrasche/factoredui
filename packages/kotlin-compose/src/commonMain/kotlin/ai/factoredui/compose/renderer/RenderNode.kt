@@ -113,6 +113,11 @@ fun RenderSpec(root: SpecNode, context: RenderContext) {
     }
 }
 
+private fun themeOf(spec: Spec, context: RenderContext): SpecTheme {
+    val named = spec.theme ?: return context.theme
+    return themeNamed(named) ?: context.theme.also { context.setBinding(RENDERER_ERROR_PATH, "spec theme must be light or dark, not '$named'; the host's theme is used.") }
+}
+
 private fun windowGroundOf(root: SpecNode, theme: SpecTheme): Color {
     val named = (root.props["background"] as? SpecValue.StringValue)?.value?.takeUnless { it.startsWith("{") }
     return named?.let { theme.tokenColor(it) ?: it.parseColor() } ?: theme.ground
@@ -127,7 +132,7 @@ private fun windowGroundOf(root: SpecNode, theme: SpecTheme): Color {
 fun RenderSpec(spec: Spec, context: RenderContext) {
     remember(spec) { context.startBindings(spec.state.mapValues { (_, value) -> BindingResolver.resolveValue(value, emptyMap()) }) }
     context.screen.root = spec.root
-    ThemeScope(context.theme) {
+    ThemeScope(remember(spec.theme, context.theme) { themeOf(spec, context) }) {
         CompositionLocalProvider(LocalScreenRegistry provides context.screen) {
             ScreenFrameCounter(context.screen)
             Box(modifier = Modifier.fillMaxSize().background(windowGroundOf(spec.root, LocalSpecTheme.current))) {
