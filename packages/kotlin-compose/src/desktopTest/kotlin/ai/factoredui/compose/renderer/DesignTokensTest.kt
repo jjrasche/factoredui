@@ -68,7 +68,7 @@ class DesignTokensTest {
 
     @Test
     fun the_type_scale_steps_down_and_never_goes_below_a_readable_size() {
-        val type = TypeScale()
+        val type = SpecTheme.DARK.type
         assertEquals(type.let { listOf(it.display.size, it.heading.size, it.subheading.size, it.body.size, it.caption.size) }.sortedDescending(), type.let { listOf(it.display.size, it.heading.size, it.subheading.size, it.body.size, it.caption.size) })
         assertTrue(type.body.size >= 16 && type.caption.size >= 12)
         listOf(type.display, type.heading, type.subheading, type.body, type.caption, type.label, type.mono).forEach { assertTrue(it.line >= it.size * 1.2, "line height of ${it.size}") }
@@ -76,16 +76,16 @@ class DesignTokensTest {
 
     @Test
     fun the_spacing_and_radius_steps_grow_and_the_phone_gutter_is_16() {
-        val space = SpaceScale()
+        val space = SpecTheme.DARK.space
         assertEquals(listOf(space.xs, space.sm, space.md, space.lg, space.xl, space.xxl).sorted(), listOf(space.xs, space.sm, space.md, space.lg, space.xl, space.xxl))
         assertEquals(16, space.gutter)
-        val radius = RadiusScale()
+        val radius = SpecTheme.DARK.radius
         assertEquals(listOf(radius.sm, radius.md, radius.lg, radius.xl).sorted(), listOf(radius.sm, radius.md, radius.lg, radius.xl))
     }
 
     @Test
     fun control_heights_grow_by_size_and_the_default_meets_a_48_dp_touch_target() {
-        val control = ControlHeights()
+        val control = SpecTheme.DARK.control
         assertEquals(listOf(control.sm, control.md, control.lg, control.xl).sorted(), listOf(control.sm, control.md, control.lg, control.xl))
         assertTrue(control.md >= 48 && control.xl >= 72)
     }

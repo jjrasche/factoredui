@@ -72,7 +72,7 @@ private val NOTICE_INK = Color(0xFFB3261E)
 
 private class ChartInks(val ink: Color, val muted: Color, val palette: List<Color>)
 
-private val LocalChartInks = compositionLocalOf { ChartInks(Color.Black, Color.Gray, DARK_SERIES) }
+private val LocalChartInks = compositionLocalOf { ChartInks(Color.Black, Color.Gray, SpecTheme.DARK.series) }
 
 private fun colourOf(plot: ChartPlot, series: PlottedSeries, palette: List<Color>): Color =
     planColour(series.def.colour) ?: palette[plot.series.indexOf(series) % palette.size]

@@ -1,5 +1,12 @@
 package ai.factoredui.compose.renderer
 
+import ai.factoredui.compose.tokens.ColorValue
+import ai.factoredui.compose.tokens.DimensionValue
+import ai.factoredui.compose.tokens.NumberValue
+import ai.factoredui.compose.tokens.TokenSet
+import ai.factoredui.compose.tokens.TypographyValue
+import ai.factoredui.compose.tokens.defaultTokens
+import ai.factoredui.compose.tokens.mixColours
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -9,39 +16,56 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 data class SpecTheme(
     val ground: Color,
     val ink: Color,
     val muted: Color,
-    val accent: Color = Color(0xFF5AB0FF),
-    val onAccent: Color = Color(0xFF06111F),
-    val pass: Color = Color(0xFF3DD68C),
-    val warn: Color = Color(0xFFF5B83D),
-    val fail: Color = Color(0xFFFF7A7A),
-    val series: List<Color> = DARK_SERIES,
-    val type: TypeScale = TypeScale(),
-    val space: SpaceScale = SpaceScale(),
-    val radius: RadiusScale = RadiusScale(),
-    val control: ControlHeights = ControlHeights(),
-    val elevation: ElevationSteps = ElevationSteps(),
+    val accent: Color,
+    val onAccent: Color,
+    val pass: Color,
+    val warn: Color,
+    val fail: Color,
+    val series: List<Color>,
+    val type: TypeScale,
+    val space: SpaceScale,
+    val radius: RadiusScale,
+    val control: ControlHeights,
+    val elevation: ElevationSteps,
 ) {
     val isDark: Boolean get() = 0.2126f * ground.red + 0.7152f * ground.green + 0.0722f * ground.blue < 0.5f
 
-    val surface: Color get() = lerp(ground, ink, elevation.surface)
-    val raised: Color get() = lerp(ground, ink, elevation.raised)
-    val overlay: Color get() = lerp(ground, ink, elevation.overlay)
+    val surface: Color get() = stepToward(elevation.surface)
+    val raised: Color get() = stepToward(elevation.raised)
+    val overlay: Color get() = stepToward(elevation.overlay)
+
+    private fun stepToward(step: Float): Color = Color(mixColours(ground.toArgbLong(), ink.toArgbLong(), step.toDouble()).toInt())
 
     companion object {
-        val LIGHT = SpecTheme(
-            ground = Color(0xFFFFFFFF), ink = Color(0xFF111827), muted = Color(0xFF4B5563),
-            accent = Color(0xFF0B5FCC), onAccent = Color(0xFFFFFFFF), pass = Color(0xFF0F6F41), warn = Color(0xFF8A5A00), fail = Color(0xFFB3261E),
-            series = LIGHT_SERIES,
-        )
-        val DARK = SpecTheme(ground = Color(0xFF0B1220), ink = Color(0xFFE8EAEE), muted = Color(0xFFA3ACB9))
+        val DARK = from(defaultTokens("dark"))
+        val LIGHT = from(defaultTokens("light"))
+
+        fun from(tokens: TokenSet): SpecTheme {
+            fun colour(name: String) = Color((tokens.getValue(name) as ColorValue).argb.toInt())
+            fun pixels(name: String) = (tokens.getValue(name) as DimensionValue).px.roundToInt()
+            fun number(name: String) = (tokens.getValue(name) as NumberValue).value.toFloat()
+            fun text(name: String) = (tokens.getValue(name) as TypographyValue).let { TextToken(it.sizePx.roundToInt(), (it.sizePx * it.lineMultiplier).roundToInt(), it.weight) }
+            return SpecTheme(
+                ground = colour("color.ground"), ink = colour("color.ink"), muted = colour("color.muted"), accent = colour("color.accent"), onAccent = colour("color.on-accent"),
+                pass = colour("color.status.pass"), warn = colour("color.status.warn"), fail = colour("color.status.fail"),
+                series = (1..8).map { colour("color.series.$it") },
+                type = TypeScale(text("type.display"), text("type.heading"), text("type.subheading"), text("type.body"), text("type.caption"), text("type.label"), text("type.mono")),
+                space = SpaceScale(pixels("dimension.space.xs"), pixels("dimension.space.sm"), pixels("dimension.space.md"), pixels("dimension.space.lg"), pixels("dimension.space.xl"), pixels("dimension.space.xxl"), pixels("dimension.space.gutter")),
+                radius = RadiusScale(pixels("dimension.radius.sm"), pixels("dimension.radius.md"), pixels("dimension.radius.lg"), pixels("dimension.radius.xl")),
+                control = ControlHeights(pixels("dimension.control.sm"), pixels("dimension.control.md"), pixels("dimension.control.lg"), pixels("dimension.control.xl")),
+                elevation = ElevationSteps(number("elevation.surface"), number("elevation.raised"), number("elevation.overlay")),
+            )
+        }
     }
 }
 
+private fun Color.toArgbLong(): Long = toArgb().toLong() and 0xFFFFFFFFL
 private const val SURFACE_STEP = 0.06f
 
 private const val EVEN_CONTRAST_LUMINANCE = 0.179f
@@ -70,7 +94,7 @@ private const val LOW_SURFACE_STEP = 0.03f
 private const val HIGH_SURFACE_STEP = 0.08f
 private const val HIGHEST_SURFACE_STEP = 0.10f
 
-private fun SpecTheme.surfaceAt(step: Float): Color = lerp(ground, ink, step)
+private fun SpecTheme.surfaceAt(step: Float): Color = Color(mixColours(ground.toArgbLong(), ink.toArgbLong(), step.toDouble()).toInt())
 
 private fun isSchemeDark(scheme: ColorScheme): Boolean = scheme.background.luminance() < 0.5f
 
