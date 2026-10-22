@@ -260,4 +260,54 @@ class ChartPlotTest {
         assertEquals("-0.5", formatChartValue(-0.5))
         assertEquals("1200", formatChartValue(1200.0))
     }
-}
+
+    private fun legendOf(extra: Map<String, Any?> = emptyMap()): List<ChartLegendEntry> {
+        val series = listOf(
+            mapOf("id" to "sun", "label" to "Sun", "path" to "a", "kind" to "area", "stack" to "gains"),
+            mapOf("id" to "heat", "label" to "Heat into air", "path" to "b", "kind" to "area", "stack" to "gains"),
+            mapOf("id" to "glass", "label" to "Glazing", "path" to "c", "kind" to "area", "stack" to "losses"),
+            mapOf("id" to "air", "label" to "Air", "path" to "d", "kind" to "line"),
+        )
+        val rows = listOf(mapOf("t" to 0.0, "a" to 1.0, "b" to 2.0, "c" to -1.0, "d" to 60.0), mapOf("t" to 1.0, "a" to 2.0, "b" to 1.0, "c" to -2.0, "d" to 61.0))
+        return chartLegend(plotChart(mapOf("rows" to rows, "x" to "t", "series" to series) + extra))
+    }
+
+    @Test
+    fun with_no_stack_labels_the_legend_has_an_entry_for_each_series_in_order() {
+        assertEquals(listOf("Sun", "Heat into air", "Glazing", "Air"), legendOf().map { it.label })
+    }
+
+    @Test
+    fun a_labelled_stack_is_one_legend_entry_standing_for_all_its_series() {
+        val legend = legendOf(mapOf("stack_labels" to mapOf("gains" to "Heat in", "losses" to "Heat out")))
+        assertEquals(listOf("Heat in", "Heat out", "Air"), legend.map { it.label })
+        assertEquals(listOf(listOf("sun", "heat"), listOf("glass"), listOf("air")), legend.map { it.seriesIds })
+    }
+
+    @Test
+    fun a_stack_with_no_label_keeps_an_entry_for_each_of_its_series() {
+        assertEquals(listOf("Heat in", "Glazing", "Air"), legendOf(mapOf("stack_labels" to mapOf("gains" to "Heat in"))).map { it.label })
+    }
+    private val LABELLED_ROWS = listOf(
+        mapOf("t" to 2757.0, "at" to "Tue 3 Nov, 21:00", "v" to 1.0),
+        mapOf("t" to 2758.0, "at" to "Tue 3 Nov, 22:00", "v" to 2.0),
+        mapOf("t" to 2781.0, "at" to "Wed 4 Nov, 21:00", "v" to 3.0),
+    )
+
+    @Test
+    fun the_window_label_is_the_label_of_the_first_row_in_the_window() {
+        val props = mapOf("rows" to LABELLED_ROWS, "x" to "t", "row_label" to "at", "window" to mapOf("from" to 2758.0, "length" to 23.0))
+        assertEquals("Tue 3 Nov, 22:00", chartWindowLabel(props))
+    }
+
+    @Test
+    fun with_no_window_the_label_is_the_first_rows() {
+        assertEquals("Tue 3 Nov, 21:00", chartWindowLabel(mapOf("rows" to LABELLED_ROWS, "x" to "t", "row_label" to "at")))
+    }
+
+    @Test
+    fun a_window_with_no_rows_or_rows_with_no_label_have_no_window_label() {
+        assertEquals(null, chartWindowLabel(mapOf("rows" to LABELLED_ROWS, "x" to "t", "row_label" to "at", "window" to mapOf("from" to 9000.0, "length" to 5.0))))
+        assertEquals(null, chartWindowLabel(mapOf("rows" to LABELLED_ROWS, "x" to "t")))
+        assertEquals(null, chartWindowLabel(mapOf("rows" to LABELLED_ROWS, "x" to "t", "row_label" to "nowhere")))
+    }}

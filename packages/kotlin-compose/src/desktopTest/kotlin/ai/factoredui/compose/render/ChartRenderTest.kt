@@ -116,4 +116,27 @@ class ChartRenderTest {
         assertEquals(JsonArray(emptyList()), node.getValue("chart").jsonObject.getValue("series"))
         assertTrue(node.getValue("notices").jsonArray.isNotEmpty())
     }
-}
+
+    @Test
+    fun a_labelled_stack_is_one_legend_entry_in_the_drawn_legend() {
+        val spec = HEAT.replace(""""series":[""", """"stack_labels":{"stack":"Heat flow"},"series":[""")
+        val context = RenderContext(initialData = mapOf("season" to mapOf("steps" to DAY)))
+        SceneSurface(specOf(spec), context, 600, 500, ticking = false).use { surface ->
+            val tree = surface.onScreenThread { screenJson(screenNodes(context.screen)!!) }
+            val legend = nodeById(tree, "chart")!!.getValue("chart").jsonObject.getValue("legend").jsonArray.map { it.jsonObject }
+            assertEquals(listOf("Heat flow"), legend.map { it.getValue("label").jsonPrimitive.content })
+            assertEquals(listOf("gain", "wall", "glass"), legend.single().getValue("series").jsonArray.map { it.jsonPrimitive.content })
+        }
+    }
+
+    @Test
+    fun the_chart_writes_the_label_of_the_first_row_in_its_window_into_the_binding_it_names() {
+        val rows = DAY.map { it + ("at" to "Hour ${it["t"]}") }
+        val spec = TEMPERATURES.replace(""""x":"t",""", """"x":"t","row_label":"at","window_label":"{day.label}","window":{"from":5,"length":3},""")
+        val context = RenderContext(initialData = mapOf("season" to mapOf("steps" to rows)))
+        SceneSurface(specOf(spec), context, 600, 500, ticking = false).use { surface ->
+            surface.onScreenThread { }
+            surface.onScreenThread { }
+            assertEquals("Hour 5", ai.factoredui.compose.schema.BindingResolver.resolveBinding("{day.label}", context.data))
+        }
+    }}

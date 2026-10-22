@@ -72,7 +72,9 @@ data class ChartSeriesRecord(val id: String, val label: String, val kind: String
 
 data class ChartHoverRecord(val x: Double, val values: List<Pair<String, String>>)
 
-data class ChartRecord(val xLow: Double?, val xHigh: Double?, val xTicks: List<Pair<Double, String>>, val axes: List<ChartAxisRecord>, val series: List<ChartSeriesRecord>, val hover: ChartHoverRecord?)
+data class ChartLegendRecord(val label: String, val series: List<String>)
+
+data class ChartRecord(val xLow: Double?, val xHigh: Double?, val xTicks: List<Pair<Double, String>>, val axes: List<ChartAxisRecord>, val series: List<ChartSeriesRecord>, val hover: ChartHoverRecord?, val legend: List<ChartLegendRecord>)
 
 data class AudioMarkerRecord(val at: Double, val label: String)
 

@@ -1,6 +1,10 @@
 package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.chart.ChartPlot
+import ai.factoredui.compose.chart.chartLegend
+import ai.factoredui.compose.chart.chartWindowLabel
+import ai.factoredui.compose.schema.bindingPath
+import androidx.compose.runtime.LaunchedEffect
 import ai.factoredui.compose.chart.ChartRange
 import ai.factoredui.compose.chart.ChartReadout
 import ai.factoredui.compose.chart.ChartSeriesKind
@@ -104,6 +108,9 @@ internal fun RenderChart(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     var hoverX by remember(plot) { mutableStateOf<Double?>(null) }
     val readout = hoverX?.let { chartReadout(plot, it) }
     val theme = LocalSpecTheme.current
+    val windowLabelPath = node.props["window_label"]?.bindingPath()
+    val windowLabel = remember(resolvedProps) { chartWindowLabel(resolvedProps) }
+    if (windowLabelPath != null) LaunchedEffect(windowLabelPath, windowLabel) { context.setBinding(windowLabelPath, windowLabel) }
     RecordDrawn { notices = plot.notices; chart = chartRecordOf(plot, readout, theme.series) }
     val inks = ChartInks(planColour(resolvedProps["ink"] as? String) ?: theme.ink, planColour(resolvedProps["muted"] as? String) ?: theme.muted, theme.series)
     CompositionLocalProvider(LocalChartInks provides inks) { ChartBody(node, resolvedProps, plot, readout) { hoverX = it } }
@@ -129,13 +136,14 @@ private fun ChartLegend(nodeId: String, plot: ChartPlot) {
     val ink = LocalChartInks.current.ink
     val palette = LocalChartInks.current.palette
     FlowRow(modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        plot.series.forEachIndexed { index, series ->
+        chartLegend(plot).forEachIndexed { index, entry ->
+            val series = plot.series.first { it.def.id == entry.seriesIds.first() }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 val colour = colourOf(plot, series, palette)
                 Canvas(modifier = Modifier.size(LEGEND_SWATCH_DP.dp)) {
                     if (series.def.kind == ChartSeriesKind.AREA) drawRect(colour.copy(alpha = AREA_FILL_ALPHA * 2)) else drawLine(colour, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = SERIES_LINE_DP.dp.toPx())
                 }
-                Text(text = series.def.label, style = READOUT_TEXT, color = ink, modifier = Modifier.nodeTag("$nodeId/legend/$index"))
+                Text(text = entry.label, style = READOUT_TEXT, color = ink, modifier = Modifier.nodeTag("$nodeId/legend/$index"))
             }
         }
     }
@@ -271,6 +279,7 @@ internal fun chartRecordOf(plot: ChartPlot, readout: ChartReadout?, palette: Lis
     return ChartRecord(
         xRange?.first, xRange?.second, chartXTicks(plot).map { it.x to it.label }, ChartSide.entries.mapNotNull { axisRecordOf(plot, it) }, plot.series.map { seriesRecordOf(plot, it, palette) },
         readout?.let { found -> ChartHoverRecord(found.x, found.entries.map { it.id to it.text }) },
+        chartLegend(plot).map { ChartLegendRecord(it.label, it.seriesIds) },
     )
 }
 

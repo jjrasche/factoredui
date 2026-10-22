@@ -35,7 +35,7 @@ data class ChartXAxis(val every: Double, val label: ChartXLabel)
 
 data class ChartXTick(val x: Double, val label: String)
 
-data class ChartPlot(val series: List<PlottedSeries>, val axes: Map<ChartSide, ChartAxis>, val notices: List<String>, val xAxis: ChartXAxis? = null)
+data class ChartPlot(val series: List<PlottedSeries>, val axes: Map<ChartSide, ChartAxis>, val notices: List<String>, val xAxis: ChartXAxis? = null, val stackLabels: Map<String, String> = emptyMap())
 
 data class ChartRange(val low: Double, val high: Double, val ticks: List<Double>)
 
@@ -182,7 +182,30 @@ fun plotChart(props: Map<String, Any?>): ChartPlot {
     val seriesNotices = entries.mapNotNull { entry -> entry.second ?: entry.first?.let { absentNotices[it.id] } }
     val plotted = drawn.map { PlottedSeries(it, runsOf(points.getValue(it.id))) }
     val (xAxis, xAxisNotices) = xAxisOf(props["x_axis"])
-    return ChartPlot(plotted, axes, listOfNotNull(skippedRowsNotice(rawRows.size - positioned.size, xPath)) + seriesNotices + xAxisNotices, xAxis)
+    return ChartPlot(plotted, axes, listOfNotNull(skippedRowsNotice(rawRows.size - positioned.size, xPath)) + seriesNotices + xAxisNotices, xAxis, stackLabelsOf(props["stack_labels"]))
+}
+
+private fun stackLabelsOf(raw: Any?): Map<String, String> =
+    (raw as? Map<*, *>).orEmpty().mapNotNull { (stack, label) -> (stack as? String)?.let { name -> (label as? String)?.takeIf { it.isNotEmpty() }?.let { name to it } } }.toMap()
+
+fun chartWindowLabel(props: Map<String, Any?>): String? {
+    val labelPath = props["row_label"] as? String ?: return null
+    val xPath = props["x"] as? String ?: return null
+    val rows = (props["rows"] as? List<*>)?.filterIsInstance<Map<*, *>>() ?: return null
+    val first = windowed(rows.mapNotNull { row -> numberAt(row, xPath)?.let { it to row } }, props["window"]).firstOrNull() ?: return null
+    return labelPath.split('.').fold(first.second as Any?) { current, key -> (current as? Map<*, *>)?.get(key) }.let { it as? String }
+}
+
+data class ChartLegendEntry(val label: String, val seriesIds: List<String>)
+
+fun chartLegend(plot: ChartPlot): List<ChartLegendEntry> {
+    val entries = mutableListOf<ChartLegendEntry>()
+    plot.series.forEach { series ->
+        val group = plot.stackLabels[series.def.stack]?.takeIf { series.def.kind == ChartSeriesKind.AREA }
+        val at = group?.let { label -> entries.indexOfFirst { it.label == label } } ?: -1
+        if (at >= 0) entries[at] = entries[at].copy(seriesIds = entries[at].seriesIds + series.def.id) else entries += ChartLegendEntry(group ?: series.def.label, listOf(series.def.id))
+    }
+    return entries
 }
 
 private fun xAxisOf(raw: Any?): Pair<ChartXAxis?, List<String>> {

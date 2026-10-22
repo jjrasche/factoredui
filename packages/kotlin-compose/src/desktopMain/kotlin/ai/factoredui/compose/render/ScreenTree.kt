@@ -177,6 +177,7 @@ private fun chartJson(chart: ChartRecord): JsonObject = buildJsonObject {
     put("x", buildJsonObject { put("low", valueJson(chart.xLow)); put("high", valueJson(chart.xHigh)); put("ticks", buildJsonArray { chart.xTicks.forEach { (x, label) -> add(buildJsonObject { put("x", x); put("label", label) }) } }) })
     put("axes", JsonArray(chart.axes.map(::chartAxisJson)))
     put("series", JsonArray(chart.series.map(::chartSeriesJson)))
+    put("legend", buildJsonArray { chart.legend.forEach { entry -> add(buildJsonObject { put("label", entry.label); put("series", JsonArray(entry.series.map(::JsonPrimitive))) }) } })
     put("hover", chart.hover?.let { hover -> buildJsonObject { put("x", hover.x); put("values", buildJsonArray { hover.values.forEach { (id, text) -> add(buildJsonObject { put("id", id); put("text", text) }) } }) } } ?: JsonNull)
 }
 
