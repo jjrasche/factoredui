@@ -4,6 +4,8 @@ import ai.factoredui.compose.adapter.ActionHandler
 import ai.factoredui.compose.adapter.ActionRegistry
 import ai.factoredui.compose.renderer.SpecTheme
 import ai.factoredui.compose.schema.ActionAnswer
+import ai.factoredui.compose.tokens.applyUserTokens
+import ai.factoredui.compose.tokens.readTokenFile
 import ai.factoredui.compose.schema.readActionAnswer
 import ai.factoredui.compose.renderer.themeNamed
 import ai.factoredui.compose.schema.Spec
@@ -164,7 +166,29 @@ private fun themeParam(): String =
 private fun prefersDark(): Boolean =
     js("(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? true : false")
 
-fun hostTheme(): SpecTheme = themeNamed(themeParam().ifEmpty { null }) ?: if (prefersDark()) SpecTheme.DARK else SpecTheme.LIGHT
+class HostTheme(val theme: SpecTheme, val themes: Map<String, SpecTheme>, val notices: List<String>)
 
+private fun tokensParam(): String =
+    js("(new URLSearchParams(window.location.search).get('tokens')) || ''")
+
+private fun fetchedText(url: String): String =
+    js("(() => { try { const request = new XMLHttpRequest(); request.open('GET', url, false); request.send(); return request.status >= 200 && request.status < 300 ? request.responseText : ''; } catch (e) { return ''; } })()")
+
+private fun storedTokens(): String =
+    js("(() => { try { return window.localStorage.getItem('factoredui.theme') || ''; } catch (e) { return ''; } })()")
+
+private fun userTokensText(param: String): String? = (if (param.isNotEmpty()) fetchedText(param) else storedTokens()).ifEmpty { null }
+
+fun hostTheme(): HostTheme {
+    val param = tokensParam()
+    val text = userTokensText(param)
+    val notices = mutableListOf<String>()
+    if (param.isNotEmpty() && text == null) notices += "the theme file '$param' could not be read; the default theme is used."
+    val fileMode = text?.let { readTokenFile(it).mode }
+    val explicit = themeParam().takeIf { it == "dark" || it == "light" }
+    val mode = explicit ?: fileMode ?: if (prefersDark()) "dark" else "light"
+    val users = if (text == null) emptyMap() else (fileMode ?: mode).let { forMode -> applyUserTokens(forMode, text).also { notices += it.notices }.let { mapOf(forMode to SpecTheme.from(it.tokens)) } }
+    return HostTheme(users[mode] ?: checkNotNull(themeNamed(mode)), users, notices)
+}
 fun fullscreenParam(): Boolean =
     js("(new URLSearchParams(window.location.search).get('full')) ? true : false")

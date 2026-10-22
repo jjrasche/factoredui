@@ -115,7 +115,7 @@ fun RenderSpec(root: SpecNode, context: RenderContext) {
 
 private fun themeOf(spec: Spec, context: RenderContext): SpecTheme {
     val named = spec.theme ?: return context.theme
-    return themeNamed(named) ?: context.theme.also { context.setBinding(RENDERER_ERROR_PATH, "spec theme must be light or dark, not '$named'; the host's theme is used.") }
+    return context.themes[named] ?: themeNamed(named) ?: context.theme.also { context.setBinding(RENDERER_ERROR_PATH, "spec theme must be light or dark, not '$named'; the host's theme is used.") }
 }
 
 private fun windowGroundOf(root: SpecNode, theme: SpecTheme): Color {

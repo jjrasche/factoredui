@@ -27,10 +27,13 @@ import kotlinx.serialization.json.Json
 fun PlaygroundApp() {
     val context = remember {
         val answered = arrayOfNulls<RenderContext>(1)
+        val host = hostTheme()
         RenderContext(
             actions = playgroundActions(actionUrlParam()) { answer -> answered[0]?.applyActionAnswer(answer) },
             observability = LoggingObservability(),
-            theme = hostTheme(),
+            theme = host.theme,
+            themes = host.themes,
+            initialData = mapOf("theme" to mapOf("notices" to host.notices)),
         ).also { answered[0] = it }
     }
     val specFlow = remember { MutableStateFlow(placeholderSpec("Loading spec…")) }

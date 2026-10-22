@@ -81,6 +81,16 @@ class SpecThemeRenderTest {
     }
 
     @Test
+    fun a_spec_that_names_dark_gets_the_users_dark_theme_when_the_host_carries_one() {
+        val users = SpecTheme.DARK.copy(ground = androidx.compose.ui.graphics.Color(0xFF102030))
+        val context = RenderContext(themes = mapOf("dark" to users), mediaHost = MediaHost({ FakeAudioEngine() }, null))
+        val spec = json.decodeFromString(Spec.serializer(), """{"spec_version":1,"renderer_min":1,"theme":"dark","root":{"id":"narration","type":"audio","props":{"source":"a.mp3","controls":false}}}""")
+        val file = File.createTempFile("users", ".png")
+        SceneSurface(spec, context, 100, 100, ticking = false).use { surface -> surface.shot(file) }
+        assertEquals(0x102030, ImageIO.read(file).getRGB(90, 90) and 0xFFFFFF)
+    }
+
+    @Test
     fun an_audio_node_that_hides_its_title_and_its_controls_takes_no_room() {
         val page = drawn(pageOf("", narration(""","show_title":false""")))
         assertEquals(0, page.titleBounds[3])

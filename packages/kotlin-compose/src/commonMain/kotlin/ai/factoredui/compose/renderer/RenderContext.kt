@@ -43,6 +43,7 @@ class RenderContext private constructor(
     private val overlay: Map<String, Any?>,
     val screen: ScreenRegistry,
     val mediaHost: MediaHost,
+    val themes: Map<String, SpecTheme>,
 ) {
     constructor(
         actions: ActionRegistry = emptyMap(),
@@ -52,6 +53,7 @@ class RenderContext private constructor(
         hostDataSource: HostDataSource? = null,
         theme: SpecTheme = SpecTheme.LIGHT,
         mediaHost: MediaHost = platformMediaHost(),
+        themes: Map<String, SpecTheme> = emptyMap(),
     ) : this(
         actions = actions,
         observability = observability,
@@ -62,6 +64,7 @@ class RenderContext private constructor(
         overlay = emptyMap(),
         screen = ScreenRegistry(),
         mediaHost = mediaHost,
+        themes = themes,
     )
 
     /** Reactive flow of the merged (overlay + store) data map. */
@@ -115,6 +118,7 @@ class RenderContext private constructor(
         overlay = overlay + extra,
         screen = screen,
         mediaHost = mediaHost,
+        themes = themes,
     )
 
     /** Recursively rebuild a nested map structure with [value] placed at [segments]. */
