@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.GZIPOutputStream
 
 private const val SPEC_PATH = "/spec.json"
+internal const val ACTION_PATH = "/action"
 private const val ENTRY_PATH = "/index.html"
 private const val ENTRY_QUERY = "spec=$SPEC_PATH&full=1"
 
@@ -211,13 +212,14 @@ private fun redirectToEntry(exchange: HttpExchange) {
     exchange.close()
 }
 
-internal fun startServing(bind: String, port: Int, bundle: Path, serveSpecRequest: (HttpExchange) -> Unit): HttpServer {
+internal fun startServing(bind: String, port: Int, bundle: Path, serveActionRequest: ((HttpExchange) -> Unit)? = null, serveSpecRequest: (HttpExchange) -> Unit): HttpServer {
     val bundleRoot = bundle.toAbsolutePath().normalize()
     val server = HttpServer.create(InetSocketAddress(bind, port), 0)
     server.createContext("/") { exchange ->
-        when (exchange.requestURI.path) {
-            "/" -> redirectToEntry(exchange)
-            SPEC_PATH -> serveSpecRequest(exchange)
+        when {
+            exchange.requestURI.path == "/" -> redirectToEntry(exchange)
+            exchange.requestURI.path == SPEC_PATH -> serveSpecRequest(exchange)
+            exchange.requestURI.path == ACTION_PATH && serveActionRequest != null -> serveActionRequest(exchange)
             else -> serveBundleFile(exchange, bundleRoot)
         }
     }

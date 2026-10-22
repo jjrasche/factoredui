@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.net.URI
 import java.net.URLDecoder
 import java.nio.file.Files
@@ -66,7 +67,25 @@ private fun serveWorldSpec(exchange: HttpExchange, engine: ServedEngine) {
     )
 }
 
+private fun respondJson(exchange: HttpExchange, status: Int, body: JsonObject) = respond(exchange, status, CONTENT_TYPES.getValue("json"), body.toString().toByteArray())
+
+private fun actionNameOf(exchange: HttpExchange): String? {
+    val sent = runCatching { Json.parseToJsonElement(exchange.requestBody.readBytes().toString(Charsets.UTF_8)) as? JsonObject }.getOrNull()
+    return (sent?.get("action") as? JsonPrimitive)?.takeIf { it.isString }?.content
+}
+
+private fun serveAction(exchange: HttpExchange) {
+    if (exchange.requestMethod != "POST") {
+        exchange.responseHeaders.add("Allow", "POST")
+        return respondJson(exchange, 405, JsonObject(mapOf("reason" to JsonPrimitive("actions are sent with POST"))))
+    }
+    val name = actionNameOf(exchange)
+        ?: return respondJson(exchange, 400, JsonObject(mapOf("reason" to JsonPrimitive("expected a JSON object with an 'action' name and optionally 'params'"))))
+    val reason = "serve-worlds draws the engine's worlds and takes no actions; '$name' was not acted on"
+    respondJson(exchange, 200, JsonObject(mapOf("handled" to JsonPrimitive(false), "action" to JsonPrimitive(name), "reason" to JsonPrimitive(reason))))
+}
+
 fun startWorldsServer(options: WorldsOptions): HttpServer {
     val engine = ServedEngine(options.engine)
-    return startServing(options.bind, options.port, options.bundle) { exchange -> serveWorldSpec(exchange, engine) }
+    return startServing(options.bind, options.port, options.bundle, ::serveAction) { exchange -> serveWorldSpec(exchange, engine) }
 }

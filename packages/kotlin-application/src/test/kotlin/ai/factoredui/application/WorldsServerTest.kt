@@ -225,6 +225,34 @@ class WorldsServerTest {
         assertNotNull(nodes.firstOrNull { it.propText("value")?.contains("steps") == true })
     }
 
+    private fun post(port: Int, path: String, body: String): HttpResponse<String> =
+        client.send(HttpRequest.newBuilder(URI("http://127.0.0.1:$port$path")).POST(HttpRequest.BodyPublishers.ofString(body)).header("Content-Type", "application/json").build(), HttpResponse.BodyHandlers.ofString())
+
+    @Test
+    fun an_action_the_page_sends_is_acknowledged_as_not_acted_on_and_says_why_instead_of_a_404() {
+        val answer = post(twoWorlds(), "/action", """{"action":"react","params":{"kind":"lost_me"}}""")
+        assertEquals(200, answer.statusCode())
+        val body = Json.parseToJsonElement(answer.body()) as JsonObject
+        assertEquals(JsonPrimitive(false), body["handled"])
+        assertEquals(JsonPrimitive("react"), body["action"])
+        assertTrue((body["reason"] as JsonPrimitive).content.contains("takes no actions"), answer.body())
+    }
+
+    @Test
+    fun an_action_request_that_is_not_an_object_with_an_action_name_is_a_400_that_says_what_it_expected() {
+        val port = twoWorlds()
+        listOf("not json", """{"params":{}}""", """["react"]""").forEach { body ->
+            val answer = post(port, "/action", body)
+            assertEquals(400, answer.statusCode(), body)
+            assertTrue((Json.parseToJsonElement(answer.body()) as JsonObject).getValue("reason").toString().contains("action"), answer.body())
+        }
+    }
+
+    @Test
+    fun a_get_of_the_action_route_is_refused_as_the_wrong_method() {
+        assertEquals(405, fetch(twoWorlds(), "/action").statusCode())
+    }
+
     @Test
     fun the_wasm_bundle_is_served_beside_the_spec() {
         val port = twoWorlds()
