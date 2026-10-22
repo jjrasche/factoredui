@@ -176,6 +176,15 @@ class AudioRenderTest {
     }
 
     @Test
+    fun the_length_arriving_after_a_refused_start_does_not_clear_blocked() = AudioPage().use { page ->
+        page.settle()
+        page.onScreen { page.engine!!.listener.onBlocked() }
+        page.onScreen { page.engine!!.listener.onReady(120.0) }
+        assertEquals("blocked", page.audio().getValue("status").jsonPrimitive.content)
+        assertEquals(120.0, page.audio().getValue("duration").jsonPrimitive.double)
+    }
+
+    @Test
     fun a_source_that_changes_is_opened_again() = AudioPage(NARRATION.replace(""""/media/ch1.mp3"""", """"{book.source}""""), mapOf("book" to mapOf("source" to "/media/ch1.mp3"))).use { page ->
         page.settle()
         page.onScreen { page.context.setBinding("book.source", "/media/ch2.mp3") }

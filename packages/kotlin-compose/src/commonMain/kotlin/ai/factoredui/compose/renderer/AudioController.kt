@@ -81,7 +81,7 @@ internal class AudioController(
     }
 
     override fun onReady(durationSeconds: Double) {
-        snapshot = snapshot.copy(status = "ready", duration = durationSeconds)
+        snapshot = snapshot.copy(status = if (snapshot.status == "loading") "ready" else snapshot.status, duration = durationSeconds)
         write(paths.duration, durationSeconds)
         pendingSeek?.takeIf { it > 0.0 }?.let { seekTo(clamped(it)) }
         pendingSeek = null
