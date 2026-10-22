@@ -14,6 +14,7 @@ private val json = Json { ignoreUnknownKeys = true }
 
 private const val BUTTONS = """
     {"id":"root","type":"column","props":{"gap":8},"children":[
+      {"id":"small","type":"button","props":{"label":"Small","size":"sm"}},
       {"id":"plain","type":"button","props":{"label":"Plain"}},
       {"id":"large","type":"button","props":{"label":"Large","size":"lg"}},
       {"id":"huge","type":"button","props":{"label":"Lost me","size":"xl"}}]}
@@ -24,21 +25,22 @@ private fun heightsOfButtons(): Map<String, Int> {
     val context = RenderContext()
     SceneSurface(spec, context, 400, 600, ticking = false).use { surface ->
         return surface.onScreenThread {
-            listOf("plain", "large", "huge").associateWith { id -> nodeById(screenJson(screenNodes(context.screen)!!), id)!!.getValue("bounds").jsonObject.getValue("h").jsonPrimitive.int }
+            listOf("small", "plain", "large", "huge").associateWith { id -> nodeById(screenJson(screenNodes(context.screen)!!), id)!!.getValue("bounds").jsonObject.getValue("h").jsonPrimitive.int }
         }
     }
 }
 
 class ButtonSizeRenderTest {
     @Test
-    fun an_xl_button_is_at_least_72_dp_tall_for_a_thumb() {
-        assertTrue(heightsOfButtons().getValue("huge") >= 72)
+    fun the_sizes_md_lg_and_xl_are_48_56_and_72_dp_tall() {
+        val heights = heightsOfButtons()
+        assertEquals(listOf(48, 56, 72), listOf("plain", "large", "huge").map { heights.getValue(it) })
     }
 
     @Test
-    fun the_other_sizes_are_drawn_as_they_were_before() {
+    fun a_small_button_keeps_the_48_dp_touch_target_the_platform_gives_every_button() {
         val heights = heightsOfButtons()
-        assertEquals(heights.getValue("plain"), heights.getValue("large"))
-        assertTrue(heights.getValue("plain") < 72, heights.toString())
+        assertEquals(48, heights.getValue("small"))
+        assertTrue(heights.getValue("plain") < heights.getValue("large") && heights.getValue("large") < heights.getValue("huge"), heights.toString())
     }
 }

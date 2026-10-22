@@ -242,7 +242,7 @@ private fun boundPropsOf(node: SpecNode, resolvedProps: Map<String, Any?>): Map<
 
 @Composable
 private fun ThemeScope(theme: SpecTheme, content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = theme.colorScheme(MaterialTheme.colorScheme)) {
+    MaterialTheme(colorScheme = theme.colorScheme(MaterialTheme.colorScheme), typography = theme.typography(), shapes = theme.shapes()) {
         CompositionLocalProvider(LocalSpecTheme provides theme, LocalContentColor provides theme.ink, content = content)
     }
 }
@@ -792,12 +792,15 @@ private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: Re
 
 @Composable
 private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
-    val props = resolvedProps.asResolvedTextProps()
+    val theme = LocalSpecTheme.current
+    val props = resolvedProps.asResolvedTextProps().let { read -> read.copy(colorValue = read.colorName?.let { named -> theme.tokenColor(named) ?: named.parseColor() }) }
     val style = when (props.variant) {
+        "display" -> MaterialTheme.typography.displayMedium
         "heading" -> MaterialTheme.typography.headlineMedium
         "subheading" -> MaterialTheme.typography.titleMedium
         "caption" -> MaterialTheme.typography.bodySmall
         "label" -> MaterialTheme.typography.labelMedium
+        "mono" -> theme.monoStyle()
         else -> MaterialTheme.typography.bodyMedium
     }
     val paint = textPaint(props, LocalSpecTheme.current.ink)
@@ -878,7 +881,7 @@ private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, conte
         }
     }
 
-    val sized = Modifier.nodeTag(node.id).then(if (props.size == ButtonSize.XL) Modifier.heightIn(min = XL_BUTTON_HEIGHT) else Modifier)
+    val sized = Modifier.nodeTag(node.id).heightIn(min = LocalSpecTheme.current.control.dpOf(props.size.name.lowercase()))
     when (props.variant) {
         ButtonVariant.OUTLINE -> OutlinedButton(
             onClick = onClickHandler,
@@ -906,8 +909,6 @@ private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, conte
         ) { ButtonContent(icon, label, props.size) }
     }
 }
-
-private val XL_BUTTON_HEIGHT = 72.dp
 
 @Composable
 private fun RenderImage(node: SpecNode, resolvedProps: Map<String, Any?>) {
@@ -1080,6 +1081,7 @@ private data class ResolvedTextProps(
     val variant: String,
     val align: String,
     val colorValue: Color?,
+    val colorName: String?,
     val bold: Boolean,
     val numberOfLines: Int?,
     val colorRamp: Any?,
@@ -1092,7 +1094,8 @@ private fun Map<String, Any?>.asResolvedTextProps(): ResolvedTextProps = Resolve
     value = displayedTextValue(),
     variant = (get("variant") as? String) ?: "body",
     align = (get("align") as? String) ?: "left",
-    colorValue = (get("color") as? String)?.parseColor(),
+    colorValue = null,
+    colorName = get("color") as? String,
     bold = (get("bold") as? Boolean) ?: false,
     numberOfLines = (get("numberOfLines") as? Double)?.toInt(),
     colorRamp = get("color_ramp"),

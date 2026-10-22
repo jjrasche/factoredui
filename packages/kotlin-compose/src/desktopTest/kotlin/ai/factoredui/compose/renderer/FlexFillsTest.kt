@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 private val json = Json { ignoreUnknownKeys = true }
 
@@ -70,10 +71,7 @@ class FlexFillsTest {
             300,
             theme = SpecTheme.DARK,
         )
-        assertEquals(
-            SpecTheme.DARK.ground.toRgbInt(),
-            cornerColours(screen.png).last(),
-            "a container that asked for no flex must not grow to fill the screen",
-        )
+        val root = screen.nodes.single { it.id == "root" }.bounds!!
+        assertTrue((root.bottom - root.top).value < 300f, "a container that asked for no flex must not grow to fill the screen: ${root.bottom - root.top}")
     }
 }

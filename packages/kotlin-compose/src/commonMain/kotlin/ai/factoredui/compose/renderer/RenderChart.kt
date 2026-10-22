@@ -66,17 +66,16 @@ private const val HOVER_DOT_DP = 3.5f
 private const val LEGEND_SWATCH_DP = 12f
 private const val LABEL_GAP_DP = 6f
 private const val TICK_LABEL_GAP_DP = 44f
-private val SERIES_COLOURS = listOf(0xFF4C9BE8, 0xFFE8A33D, 0xFF3DB88A, 0xFFE2625B, 0xFFB58AE0, 0xFF63C7D9, 0xFFC9C25A, 0xFFA0A0A0)
 private val CHART_TEXT = TextStyle(fontSize = 11.sp, lineHeight = 13.sp)
 private val READOUT_TEXT = TextStyle(fontSize = 12.sp, lineHeight = 15.sp)
 private val NOTICE_INK = Color(0xFFB3261E)
 
-private class ChartInks(val ink: Color, val muted: Color)
+private class ChartInks(val ink: Color, val muted: Color, val palette: List<Color>)
 
-private val LocalChartInks = compositionLocalOf { ChartInks(Color.Black, Color.Gray) }
+private val LocalChartInks = compositionLocalOf { ChartInks(Color.Black, Color.Gray, DARK_SERIES) }
 
-private fun colourOf(plot: ChartPlot, series: PlottedSeries): Color =
-    planColour(series.def.colour) ?: Color(SERIES_COLOURS[plot.series.indexOf(series) % SERIES_COLOURS.size])
+private fun colourOf(plot: ChartPlot, series: PlottedSeries, palette: List<Color>): Color =
+    planColour(series.def.colour) ?: palette[plot.series.indexOf(series) % palette.size]
 
 /** Where the plotted area sits in the chart's own pixels, and what data range it spans. */
 private class ChartFrame(val left: Float, val top: Float, val right: Float, val bottom: Float, val xLow: Double, val xHigh: Double, val ranges: Map<ChartSide, ChartRange>) {
@@ -104,9 +103,9 @@ internal fun RenderChart(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     val plot = remember(resolvedProps) { plotChart(resolvedProps) }
     var hoverX by remember(plot) { mutableStateOf<Double?>(null) }
     val readout = hoverX?.let { chartReadout(plot, it) }
-    RecordDrawn { notices = plot.notices; chart = chartRecordOf(plot, readout) }
     val theme = LocalSpecTheme.current
-    val inks = ChartInks(planColour(resolvedProps["ink"] as? String) ?: theme.ink, planColour(resolvedProps["muted"] as? String) ?: theme.muted)
+    RecordDrawn { notices = plot.notices; chart = chartRecordOf(plot, readout, theme.series) }
+    val inks = ChartInks(planColour(resolvedProps["ink"] as? String) ?: theme.ink, planColour(resolvedProps["muted"] as? String) ?: theme.muted, theme.series)
     CompositionLocalProvider(LocalChartInks provides inks) { ChartBody(node, resolvedProps, plot, readout) { hoverX = it } }
 }
 
@@ -128,10 +127,11 @@ private fun ChartBody(node: SpecNode, resolvedProps: Map<String, Any?>, plot: Ch
 @Composable
 private fun ChartLegend(nodeId: String, plot: ChartPlot) {
     val ink = LocalChartInks.current.ink
+    val palette = LocalChartInks.current.palette
     FlowRow(modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         plot.series.forEachIndexed { index, series ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val colour = colourOf(plot, series)
+                val colour = colourOf(plot, series, palette)
                 Canvas(modifier = Modifier.size(LEGEND_SWATCH_DP.dp)) {
                     if (series.def.kind == ChartSeriesKind.AREA) drawRect(colour.copy(alpha = AREA_FILL_ALPHA * 2)) else drawLine(colour, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = SERIES_LINE_DP.dp.toPx())
                 }
@@ -165,19 +165,19 @@ private fun ChartDrawing(nodeId: String, plot: ChartPlot, readout: ChartReadout?
                     }
                 },
             ) {
-                Canvas(modifier = Modifier.fillMaxSize()) { drawChart(plot, frame, readout, inks.ink) }
+                Canvas(modifier = Modifier.fillMaxSize()) { drawChart(plot, frame, readout, inks.ink, inks.palette) }
                 ChartAxisLabels(nodeId, plot, frame, xLabel)
             }
         }
     }
 }
 
-private fun DrawScope.drawChart(plot: ChartPlot, frame: ChartFrame, readout: ChartReadout?, ink: Color) {
+private fun DrawScope.drawChart(plot: ChartPlot, frame: ChartFrame, readout: ChartReadout?, ink: Color, palette: List<Color>) {
     drawGrid(frame, ink)
     chartXTicks(plot).forEach { tick -> frame.xOf(tick.x).let { x -> drawLine(ink.copy(alpha = GRID_ALPHA), Offset(x, frame.top), Offset(x, frame.bottom), strokeWidth = 1.dp.toPx()) } }
-    plot.series.filter { it.def.kind == ChartSeriesKind.AREA }.forEach { drawArea(it, frame, colourOf(plot, it)) }
-    plot.series.filter { it.def.kind == ChartSeriesKind.LINE }.forEach { drawLineSeries(it, frame, colourOf(plot, it)) }
-    readout?.let { drawHover(plot, frame, it, ink) }
+    plot.series.filter { it.def.kind == ChartSeriesKind.AREA }.forEach { drawArea(it, frame, colourOf(plot, it, palette)) }
+    plot.series.filter { it.def.kind == ChartSeriesKind.LINE }.forEach { drawLineSeries(it, frame, colourOf(plot, it, palette)) }
+    readout?.let { drawHover(plot, frame, it, ink, palette) }
 }
 
 private fun DrawScope.drawGrid(frame: ChartFrame, ink: Color) {
@@ -216,13 +216,13 @@ private fun DrawScope.drawLineSeries(series: PlottedSeries, frame: ChartFrame, c
 
 private fun pointAt(series: PlottedSeries, x: Double): PlottedPoint? = series.runs.flatten().firstOrNull { it.x == x }
 
-private fun DrawScope.drawHover(plot: ChartPlot, frame: ChartFrame, readout: ChartReadout, ink: Color) {
+private fun DrawScope.drawHover(plot: ChartPlot, frame: ChartFrame, readout: ChartReadout, ink: Color, palette: List<Color>) {
     val x = frame.xOf(readout.x)
     drawLine(ink.copy(alpha = 0.5f), Offset(x, frame.top), Offset(x, frame.bottom), strokeWidth = 1.dp.toPx())
     plot.series.forEach { series ->
         val point = pointAt(series, readout.x) ?: return@forEach
         val edge = if (series.def.kind == ChartSeriesKind.AREA) point.to else point.value
-        drawCircle(colourOf(plot, series), radius = HOVER_DOT_DP.dp.toPx(), center = Offset(x, frame.yOf(series.def.side, edge)))
+        drawCircle(colourOf(plot, series, palette), radius = HOVER_DOT_DP.dp.toPx(), center = Offset(x, frame.yOf(series.def.side, edge)))
     }
 }
 
@@ -263,13 +263,13 @@ private fun argbOf(colour: Color): Long = colour.toArgb().toLong() and 0xFFFFFFF
 private fun axisRecordOf(plot: ChartPlot, side: ChartSide): ChartAxisRecord? =
     chartRange(plot, side)?.let { ChartAxisRecord(side.wire, plot.axes[side]?.unit, plot.axes[side]?.label, it.low, it.high, it.ticks) }
 
-private fun seriesRecordOf(plot: ChartPlot, series: PlottedSeries): ChartSeriesRecord =
-    ChartSeriesRecord(series.def.id, series.def.label, series.def.kind.wire, series.def.side.wire, argbOf(colourOf(plot, series)), series.runs.map { run -> run.map { listOf(it.x, it.value, it.from, it.to) } })
+private fun seriesRecordOf(plot: ChartPlot, series: PlottedSeries, palette: List<Color>): ChartSeriesRecord =
+    ChartSeriesRecord(series.def.id, series.def.label, series.def.kind.wire, series.def.side.wire, argbOf(colourOf(plot, series, palette)), series.runs.map { run -> run.map { listOf(it.x, it.value, it.from, it.to) } })
 
-internal fun chartRecordOf(plot: ChartPlot, readout: ChartReadout?): ChartRecord {
+internal fun chartRecordOf(plot: ChartPlot, readout: ChartReadout?, palette: List<Color>): ChartRecord {
     val xRange = chartXRange(plot)
     return ChartRecord(
-        xRange?.first, xRange?.second, chartXTicks(plot).map { it.x to it.label }, ChartSide.entries.mapNotNull { axisRecordOf(plot, it) }, plot.series.map { seriesRecordOf(plot, it) },
+        xRange?.first, xRange?.second, chartXTicks(plot).map { it.x to it.label }, ChartSide.entries.mapNotNull { axisRecordOf(plot, it) }, plot.series.map { seriesRecordOf(plot, it, palette) },
         readout?.let { found -> ChartHoverRecord(found.x, found.entries.map { it.id to it.text }) },
     )
 }
@@ -278,11 +278,12 @@ internal fun chartRecordOf(plot: ChartPlot, readout: ChartReadout?): ChartRecord
 private fun ChartReadoutLines(nodeId: String, plot: ChartPlot, readout: ChartReadout?, xLabel: String?) {
     if (readout == null) return
     val ink = LocalChartInks.current.ink
+    val palette = LocalChartInks.current.palette
     Column(modifier = Modifier.padding(top = 6.dp).nodeTag("$nodeId/readout")) {
         Text(text = listOfNotNull(xLabel, formatChartValue(readout.x)).joinToString(" "), style = READOUT_TEXT, color = ink, modifier = Modifier.nodeTag("$nodeId/readout/x"))
         readout.entries.forEach { entry ->
             val series = plot.series.first { it.def.id == entry.id }
-            Text(text = "${entry.label}: ${entry.text}", style = READOUT_TEXT, color = colourOf(plot, series), modifier = Modifier.nodeTag("$nodeId/readout/${entry.id}"))
+            Text(text = "${entry.label}: ${entry.text}", style = READOUT_TEXT, color = colourOf(plot, series, palette), modifier = Modifier.nodeTag("$nodeId/readout/${entry.id}"))
         }
     }
 }
