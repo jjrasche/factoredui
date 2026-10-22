@@ -52,6 +52,10 @@ internal fun noticePage(bar: JsonObject, message: String, state: Map<String, Any
 
 private fun childrenOf(node: JsonObject): List<JsonObject> = (node["children"] as JsonArray).map { it as JsonObject }
 
+private const val GUTTER_DP = 16
+
+private fun guttered(bar: JsonObject): JsonObject = JsonObject(bar + ("props" to JsonObject((bar["props"] as JsonObject) + ("padding" to JsonPrimitive(GUTTER_DP)))))
+
 private fun withChildren(node: JsonObject, children: List<JsonObject>): JsonObject = JsonObject(node + ("children" to JsonArray(children)))
 
 private fun mergedState(spec: JsonObject, state: Map<String, Any?>): JsonObject = JsonObject((spec["state"] as? JsonObject ?: JsonObject(emptyMap())) + (jsonOf(state) as JsonObject))
@@ -60,6 +64,7 @@ internal fun withWorldBar(spec: JsonObject, bar: JsonObject, state: Map<String, 
     val root = spec["root"] as JsonObject
     val children = childrenOf(root)
     val dock = children.firstOrNull { (it["id"] as JsonPrimitive).content == "dock" }
-    val barred = if (dock == null) listOf(bar) + children else children.map { if (it === dock) withChildren(dock, listOf(bar) + childrenOf(dock)) else it }
+    val padded = if (dock != null || (root["type"] as? JsonPrimitive)?.content == "scrollview") guttered(bar) else bar
+    val barred = if (dock == null) listOf(padded) + children else children.map { if (it === dock) withChildren(dock, listOf(padded) + childrenOf(dock)) else it }
     return JsonObject(spec + mapOf("root" to withChildren(root, barred), "state" to mergedState(spec, state)))
 }

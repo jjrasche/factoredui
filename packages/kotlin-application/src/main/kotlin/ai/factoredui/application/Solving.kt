@@ -70,7 +70,7 @@ private fun solverCard(answer: SolverAnswer): JsonObject {
         ),
     )
     val switch = specNode("$prefix.figures.switch", "toggle", mapOf("label" to "Show figures", "value" to path))
-    val detail = answer.detail.takeIf { it.isNotEmpty() }?.let { textNode("$prefix.detail", it, variant = "caption", color = MUTED_INK) }
+    val detail = answer.detail.takeIf { it.isNotEmpty() }?.let { textNode("$prefix.detail", readableText(it), variant = "caption", color = MUTED_INK) }
     val figures = specNode("$prefix.figures", "column", mapOf("gap" to 8), answer.values.map { (name, value) -> quantityLine(prefix, name, value) }, visible = path)
     val body = listOfNotNull(heading, textNode("$prefix.domain", sentenceCase(answer.domain), variant = "caption", color = MUTED_INK), detail, switch, figures)
     return specNode("$prefix.card", "card", mapOf("padding" to 16), listOf(specNode("$prefix.body", "column", mapOf("gap" to 8), body)))

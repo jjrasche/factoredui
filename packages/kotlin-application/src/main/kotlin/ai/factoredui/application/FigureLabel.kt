@@ -31,3 +31,7 @@ fun figureText(value: Double, unit: String?): String = when (unit) {
     "$" -> "$" + groupedFigure(value)
     else -> "${groupedFigure(value)} $unit"
 }
+
+private val SNAKE_WORD = Regex("[a-z][a-z0-9]*(?:_[a-z0-9]+)+")
+
+fun readableText(text: String): String = SNAKE_WORD.replace(text) { it.value.replace('_', ' ') }

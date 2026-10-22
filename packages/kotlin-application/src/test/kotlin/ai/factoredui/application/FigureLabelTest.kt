@@ -39,4 +39,11 @@ class FigureLabelTest {
         assertEquals("1,163 lb", figureText(1163.0, "lb"))
         assertEquals("34.5", figureText(34.5, null))
     }
+
+    @Test
+    fun snake_case_names_inside_a_sentence_read_as_words_and_other_text_is_left_alone() {
+        assertEquals("not counted: sheet load, board load, stick load", readableText("not counted: sheet_load, board_load, stick_load"))
+        assertEquals("no glazing area is given (see row 14)", readableText("no glazing area is given (see row 14)"))
+        assertEquals("U-value 0.2 and R_value", readableText("U-value 0.2 and R_value"))
+    }
 }

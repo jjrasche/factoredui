@@ -62,6 +62,12 @@ class SolvingTest {
     }
 
     @Test
+    fun a_detail_that_names_a_snake_case_input_reads_it_as_words() {
+        val page = pageWith(readSolving("""{ "solvers": [ { "function": "cargo-fit", "domain": "vehicles", "status": "unknown", "detail": "not counted: sheet_load, board_load", "values": {} } ] }"""))
+        assertEquals("not counted: sheet load, board load", page.valueOf("solver.vehicles.cargo-fit.detail"))
+    }
+
+    @Test
     fun an_unknown_solver_shows_its_detail_and_a_dash_for_each_number() {
         val page = pageWith(readSolving(SOLVE_ANSWER))
         assertEquals("no glazing area is given", page.valueOf("solver.thermal.glazing-balance.detail"))

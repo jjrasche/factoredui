@@ -125,6 +125,14 @@ class WorldsServerTest {
     }
 
     @Test
+    fun a_spec_answer_says_in_server_timing_where_its_time_went() {
+        val port = twoWorlds()
+        engine.runAnswer = { LOADED_DRAWN }
+        val timing = fetch(port, "/spec.json?world=small-house").headers().firstValue("Server-Timing").get()
+        assertTrue(timing.contains("load") && timing.contains("total"), timing)
+    }
+
+    @Test
     fun a_view_named_in_the_request_is_the_one_drawn() {
         val nodes = specFetched(twoWorlds(), "?world=greenhouse-world&view=overview")
         assertTrue(nodes.any { it.idText() == "systems" })
@@ -166,6 +174,16 @@ class WorldsServerTest {
         val spec = Json.parseToJsonElement(fetch(port, "/spec.json?world=small-house").body()) as JsonObject
         val dock = nodesIn(spec).single { it.idText() == "dock" }
         assertEquals("bar", ((dock["children"] as JsonArray).first() as JsonObject).idText())
+    }
+
+    @Test
+    fun the_bar_keeps_the_16_dp_gutter_in_the_dock_and_on_a_scrolling_page_and_has_none_added_on_a_padded_column() {
+        val port = twoWorlds()
+        fun barPadding(query: String): JsonPrimitive? = ((specFetched(port, query).single { it.idText() == "bar" }["props"] as JsonObject)["padding"]) as? JsonPrimitive
+        assertEquals(JsonPrimitive(16), barPadding("?world=small-house"))
+        engine.runAnswer = { LOADED_DRAWN }
+        assertEquals(JsonPrimitive(16), barPadding("?world=small-house"))
+        assertEquals(null, barPadding("?world=greenhouse-world"))
     }
 
     @Test

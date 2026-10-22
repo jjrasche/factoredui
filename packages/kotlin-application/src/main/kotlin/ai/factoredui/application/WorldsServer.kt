@@ -31,23 +31,23 @@ private fun queryOf(exchange: HttpExchange): Map<String, String> =
         URLDecoder.decode(pair.substringBefore('='), Charsets.UTF_8) to URLDecoder.decode(pair.substringAfter('=', ""), Charsets.UTF_8)
     }
 
-private fun seasonOf(engine: EngineRuntime, world: EngineWorld): JsonObject {
-    val text = simulateSystem(engine, world.path)
+private fun seasonOf(engine: EngineRuntime, world: EngineWorld, timings: Timings): JsonObject {
+    val text = timings.timed("simulate") { simulateSystem(engine, world.path) }
     return Json.parseToJsonElement(text.substring(text.indexOf('{').coerceAtLeast(0))) as? JsonObject ?: throw ChartScreenFormatException("the simulation is not a JSON object")
 }
 
-private fun screenSpec(engine: EngineRuntime, world: EngineWorld, screenFile: Path): JsonObject =
-    chartScreenSpec(readChartScreen(Files.readString(screenFile)), seasonOf(engine, world))
+private fun screenSpec(engine: EngineRuntime, world: EngineWorld, screenFile: Path, timings: Timings): JsonObject =
+    timings.timed("spec") { chartScreenSpec(readChartScreen(Files.readString(screenFile)), seasonOf(engine, world, timings)) }
 
-private fun overviewSpec(engine: EngineRuntime, world: EngineWorld): JsonObject =
-    Json.parseToJsonElement(buildLensSpecBody(PageSource(world.path, engine, null, null, null, null), Timings()).toString(Charsets.UTF_8)) as JsonObject
+private fun overviewSpec(engine: EngineRuntime, world: EngineWorld, timings: Timings): JsonObject =
+    Json.parseToJsonElement(buildLensSpecBody(PageSource(world.path, engine, null, null, null, null), timings).toString(Charsets.UTF_8)) as JsonObject
 
-private fun specOfView(engine: EngineRuntime, world: EngineWorld, view: WorldView): JsonObject =
-    view.screen?.let { screenSpec(engine, world, it) } ?: overviewSpec(engine, world)
+private fun specOfView(engine: EngineRuntime, world: EngineWorld, view: WorldView, timings: Timings): JsonObject =
+    view.screen?.let { screenSpec(engine, world, it, timings) } ?: overviewSpec(engine, world, timings)
 
 private fun drawFailure(problem: Throwable, subject: String): String = "Cannot draw $subject: ${problem.message ?: problem::class.simpleName}"
 
-private fun pageOf(engine: ServedEngine, worldId: String?, viewId: String?): JsonObject {
+private fun pageOf(engine: ServedEngine, worldId: String?, viewId: String?, timings: Timings): JsonObject {
     val worlds = engine.worlds()
     val labels = worlds.map(::labelOf)
     if (worlds.isEmpty()) return noticePage(worldBar(labels, null, emptyList(), null), "The engine serves no worlds.")
@@ -58,13 +58,18 @@ private fun pageOf(engine: ServedEngine, worldId: String?, viewId: String?): Jso
     val bar = worldBar(labels, chosen, views, view)
     val state = barState(chosen)
     if (view == null) return noticePage(bar, if (viewId == null) "${chosen.id} has no view to draw." else "${chosen.id} has no view named '$viewId'.", state)
-    return runCatching { withWorldBar(specOfView(engine, chosen, view), bar, state) }.getOrElse { noticePage(bar, drawFailure(it, "${view.label} of ${chosen.id}"), state) }
+    return runCatching { withWorldBar(specOfView(engine, chosen, view, timings), bar, state) }.getOrElse { noticePage(bar, drawFailure(it, "${view.label} of ${chosen.id}"), state) }
 }
 
 private fun serveWorldSpec(exchange: HttpExchange, engine: ServedEngine) {
     val asked = queryOf(exchange)
-    runCatching { pageOf(engine, asked["world"], asked["view"]) }.fold(
-        onSuccess = { respond(exchange, 200, CONTENT_TYPES.getValue("json"), it.toString().toByteArray()) },
+    val timings = Timings()
+    val started = System.nanoTime()
+    runCatching { pageOf(engine, asked["world"], asked["view"], timings) }.fold(
+        onSuccess = {
+            exchange.responseHeaders.add("Server-Timing", timings.header((System.nanoTime() - started) / 1_000_000))
+            respond(exchange, 200, CONTENT_TYPES.getValue("json"), it.toString().toByteArray())
+        },
         onFailure = { respondText(exchange, 502, "cannot build the page: ${it.message}") },
     )
 }
