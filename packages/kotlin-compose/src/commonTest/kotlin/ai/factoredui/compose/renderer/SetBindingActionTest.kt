@@ -124,7 +124,7 @@ private val VIEW_BEFORE = mapOf("turns" to 2.0, "zoom" to 3.0, "pan_x" to 0.5, "
 
 private fun viewIn(store: Map<String, Any?>): Map<*, *> = store["view"] as Map<*, *>
 
-private fun withoutRendererError(store: Map<String, Any?>): Map<String, Any?> = store - "renderer"
+private fun withoutRendererError(store: Map<String, Any?>): Map<String, Any?> = store - "renderer" - "window"
 
 private class RecordedInteraction(val action: String, val params: Map<String, Any?>)
 
@@ -184,7 +184,7 @@ class SetBindingActionTest {
         waitForIdle()
         val refusal = "set_binding on 'no-path' was refused: 'path' must be non-empty text, not ''"
         assertEquals(refusal, rendererErrorIn(context.data))
-        assertEquals(setOf("renderer"), context.data.keys)
+        assertEquals(setOf("renderer"), context.data.keys - "window")
         onNodeWithTag("error").assertTextEquals(refusal)
     }
 

@@ -136,6 +136,7 @@ fun RenderSpec(spec: Spec, context: RenderContext) {
         CompositionLocalProvider(LocalScreenRegistry provides context.screen) {
             ScreenFrameCounter(context.screen)
             Box(modifier = Modifier.fillMaxSize().background(windowGroundOf(spec.root, LocalSpecTheme.current))) {
+                WindowSizeBindings(context)
                 if (spec.keybindings.isEmpty()) {
                     RenderNode(node = spec.root, context = context)
                 } else {
@@ -309,6 +310,7 @@ private fun RenderNodeByType(
         SpecNodeType.GRAPH -> RenderGraph(node, resolvedProps, context)
         SpecNodeType.PLAN -> RenderPlan(node, resolvedProps, context)
         SpecNodeType.CHART -> RenderChart(node, resolvedProps, context)
+        SpecNodeType.STAT -> RenderStat(node, resolvedProps)
         SpecNodeType.VOLUME -> RenderVolume(node, resolvedProps, context)
         SpecNodeType.SCENE -> RenderScene(node, resolvedProps, context)
         SpecNodeType.TABLE -> RenderTable(node, resolvedProps, context)

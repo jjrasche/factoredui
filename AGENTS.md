@@ -109,7 +109,7 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart.
+column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart, stat.
 
 - There is no table and no ratio-against-a-limit widget.
 - A table of the engine's views is a `table` (see Tables). Any other table is a `list` with an `itemTemplate`.
@@ -347,6 +347,27 @@ Both run only where the host gives the renderer a media engine: the browser (was
 
 A `button` with `size: "xl"` is at least 72 dp tall with a large label, for a thumb. In the stock browser host, an action the host does not know is POSTed as `{ action, params }` (numbers and booleans kept) to `/action` beside the spec URL (`/spec.json` becomes `/action`), or to the `action` query parameter. The server's JSON answer can write bindings: `{ "set": { "pushback.guide": "…", "pushback.audio": "/x.mp3" } }` writes each path in one step, as `set_binding` with `values` does, except that a text is stored as it is and never read as a binding. An empty answer writes nothing. A status outside 200 to 299, an answer that is not a JSON object, a `set` that is not an object or has an empty path, or a server that cannot be reached writes the reason to `renderer.error` and changes nothing else. There is one route per spec: a server branches on the action name.
 
+## Stat
+
+A `stat` is a card for one figure: a label, a big monospaced number, a unit and an optional status.
+
+- `label`, `value`, `unit`: text. `value` is formatted as a `text` node formats its value (`format`, `missing`), so a figure the engine gave as null reads as the missing mark and the card is never empty.
+- `status`: `pass`, `warn` or `fail` draws a bar in the status colour down the card's left edge and says the word under the figure ("Pass", "Warn", "Fail"), so colour is never the only signal. `status_text` words it differently ("Fits"). Any other status is named in a notice and the card is drawn without one.
+- It reads back in `/tree` as one line of `text` (`label value unit`), `props.status_shown` and its `notices`.
+
+## Theme and tokens
+
+Every colour, size and step a node draws with comes from a theme, and a theme is a set of design tokens in the W3C Design Tokens format (DTCG): `design/dark.tokens.json` and `design/light.tokens.json` are the defaults, written by the code, and a test fails if they drift.
+
+- Tokens: `color.ground`, `ink`, `muted`, `accent`, `on-accent`, `status.pass`, `status.warn`, `status.fail`, `series.1` to `series.8`; `elevation.surface`, `raised`, `overlay` (how far each surface steps from the ground toward the ink); `dimension.space.xs` to `xxl` and `gutter`; `dimension.radius.sm` to `xl`; `dimension.control.sm` (36), `md` (48), `lg` (56), `xl` (72); `type.display`, `heading`, `subheading`, `body`, `caption`, `label`, `mono` (DTCG typography: fontSize, fontWeight, lineHeight as a multiplier).
+- Names for a colour in a spec (`background`, a text's `color`): `ground`, `surface`, `raised`, `overlay`, `ink`, `muted`, `accent`, `on_accent`, `pass`, `warn`, `fail`, or `#rrggbb`. A text `variant` is `display`, `heading`, `subheading`, `body`, `caption`, `label` or `mono`.
+- A `button` is `size` `sm`, `md` (default), `lg` or `xl`: 36, 48, 56 and 72 dp, the first drawn that tall inside the platform's 48 dp touch target.
+- A chart takes the series colours from `color.series` (eight, colour-blind safe, 3:1 on every ground in both themes) unless a series names its own.
+- A user brings a theme as a DTCG file: `?tokens=<url>` or `localStorage["factoredui.theme"]` in the browser host. It declares `$extensions["ai.factoredui"].mode` (`dark` or `light`) and overrides only the tokens it names. A token with no type, the wrong type, a translucent colour, a value the renderer does not read, a text colour under 4.5:1 or a series colour under 3:1 on the ground, the surface or the raised surface, or one that would make a default colour unreadable, keeps its default; each reason is in `theme.notices`. A colour is a DTCG colour object (`colorSpace`, `components`, `hex`) or a bare hex string.
+
+## Window size
+
+The renderer writes the window's size class as bindings, so one spec lays out for a phone, a tablet and a desktop with `visible`: `window.class` (`compact` under 600 dp wide, `medium` from 600, `expanded` from 840), `window.is_compact`, `window.is_medium`, `window.is_expanded`, `window.is_at_least_medium`, `window.height_class` (`compact` under 480 dp, `medium` from 480, `expanded` from 900), `window.width` and `window.height` in dp.
 ## Reports data
 
 The engine answers with its views response: `{ "views": [ { "id", "label", "columns": [ { "id", "label", "unit" } ], "rows": [ { "id", "label", "object_ids": [...], "values": { ... } } ] } ] }`. These named tables are not the stacked_scene's `view` prop. An older engine answered `{ "reports": [...] }`, which is still read; when both keys are present, `views` is used. This guide calls each table a report.
