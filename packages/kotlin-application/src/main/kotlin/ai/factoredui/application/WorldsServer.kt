@@ -49,14 +49,16 @@ private fun drawFailure(problem: Throwable, subject: String): String = "Cannot d
 
 private fun pageOf(engine: ServedEngine, worldId: String?, viewId: String?): JsonObject {
     val worlds = engine.worlds()
-    if (worlds.isEmpty()) return noticePage(worldBar(worlds, null, emptyList(), null), "The engine serves no worlds.")
+    val labels = worlds.map(::labelOf)
+    if (worlds.isEmpty()) return noticePage(worldBar(labels, null, emptyList(), null), "The engine serves no worlds.")
     val chosen = if (worldId == null) worlds.first() else worlds.firstOrNull { it.id == worldId }
-    if (chosen == null) return noticePage(worldBar(worlds, null, emptyList(), null), "The engine serves no world named '$worldId'.")
+    if (chosen == null) return noticePage(worldBar(labels, null, emptyList(), null), "The engine serves no world named '$worldId'.")
     val views = viewsOf(chosen)
     val view = if (viewId == null) views.firstOrNull() else views.firstOrNull { it.id == viewId }
-    val bar = worldBar(worlds, chosen, views, view)
-    if (view == null) return noticePage(bar, if (viewId == null) "${chosen.id} has no view to draw." else "${chosen.id} has no view named '$viewId'.")
-    return runCatching { withWorldBar(specOfView(engine, chosen, view), bar) }.getOrElse { noticePage(bar, drawFailure(it, "${view.label} of ${chosen.id}")) }
+    val bar = worldBar(labels, chosen, views, view)
+    val state = barState(chosen)
+    if (view == null) return noticePage(bar, if (viewId == null) "${chosen.id} has no view to draw." else "${chosen.id} has no view named '$viewId'.", state)
+    return runCatching { withWorldBar(specOfView(engine, chosen, view), bar, state) }.getOrElse { noticePage(bar, drawFailure(it, "${view.label} of ${chosen.id}"), state) }
 }
 
 private fun serveWorldSpec(exchange: HttpExchange, engine: ServedEngine) {

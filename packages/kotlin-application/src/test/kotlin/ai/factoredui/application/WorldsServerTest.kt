@@ -130,11 +130,31 @@ class WorldsServerTest {
     }
 
     @Test
-    fun the_bar_lists_every_world_and_fills_the_chosen_one() {
+    fun the_bar_is_one_select_that_lists_every_world_by_a_short_name_and_holds_the_chosen_one() {
+        val spec = Json.parseToJsonElement(fetch(twoWorlds(), "/spec.json?world=small-house").body()) as JsonObject
+        val select = nodesIn(spec).single { it.idText() == "bar.world" }
+        val options = ((select["props"] as JsonObject)["options"] as JsonArray).map { it as JsonObject }
+        assertEquals(listOf("Greenhouse", "Small house"), options.map { (it["label"] as JsonPrimitive).content })
+        assertEquals(JsonPrimitive("{nav.world}"), (select["props"] as JsonObject)["value"])
+        assertEquals(JsonPrimitive("/spec.json?world=small-house"), (spec["state"] as JsonObject)["nav.world"])
+    }
+
+    @Test
+    fun the_page_names_the_current_world_by_its_own_title_once() {
         val nodes = specFetched(twoWorlds(), "?world=small-house")
-        val chips = nodes.filter { it.idText().startsWith("worlds.") }
-        assertEquals(listOf("worlds.greenhouse-world", "worlds.small-house"), chips.map { it.idText() })
-        assertEquals(listOf("outline", "primary"), chips.map { it.propText("variant") })
+        assertEquals(listOf("small-house"), nodes.filter { it.idText() == "bar.title" }.map { it.propText("value") })
+    }
+
+    @Test
+    fun a_world_that_gives_a_short_title_is_listed_by_it() {
+        val file = addWorld("van", "van-world")
+        Files.writeString(file, """{ "id": "van-world", "short_title": "The van", "title": "Which vehicle replaces the Civic", "systems": {}, "uses": [] }""")
+        engineLists("van-world" to file)
+        answeringAsTheEngineDoes()
+        val port = serving()
+        val select = specFetched(port).single { it.idText() == "bar.world" }
+        assertEquals(listOf("The van"), ((select["props"] as JsonObject)["options"] as JsonArray).map { ((it as JsonObject)["label"] as JsonPrimitive).content })
+        assertEquals(listOf("Which vehicle replaces the Civic"), specFetched(port).filter { it.idText() == "bar.title" }.map { it.propText("value") })
     }
 
     @Test
@@ -146,22 +166,24 @@ class WorldsServerTest {
     }
 
     @Test
-    fun the_worlds_wrap_two_to_a_row_so_that_many_worlds_fit_a_narrow_screen() {
+    fun many_worlds_stay_one_select_and_do_not_grow_the_bar() {
         val worlds = listOf("a", "b", "c", "d", "e").map { it to addWorld(it, it) }
         engineLists(*worlds.toTypedArray())
         answeringAsTheEngineDoes()
-        val rows = specFetched(serving()).filter { it.idText().startsWith("bar.worlds.") }
-        assertEquals(listOf("bar.worlds.0", "bar.worlds.1", "bar.worlds.2"), rows.map { it.idText() })
-        assertEquals(listOf(2, 2, 1), rows.map { (it["children"] as JsonArray).size })
+        val nodes = specFetched(serving())
+        assertEquals(1, nodes.count { it.idText() == "bar.world" })
+        assertEquals(5, (((nodes.single { it.idText() == "bar.world" }["props"] as JsonObject)["options"]) as JsonArray).size)
     }
 
     @Test
-    fun a_chip_opens_the_spec_of_its_world_through_the_hosts_open_spec_action() {
+    fun choosing_a_world_opens_the_spec_whose_address_is_the_options_value_through_the_hosts_open_spec_action() {
         val nodes = specFetched(twoWorlds(), "?world=small-house")
-        val chip = nodes.single { it.idText() == "worlds.greenhouse-world" }
-        val action = chip["action"] as JsonObject
+        val select = nodes.single { it.idText() == "bar.world" }
+        val action = select["action"] as JsonObject
         assertEquals(JsonPrimitive("open_spec"), action["action"])
-        assertEquals(JsonPrimitive("/spec.json?world=greenhouse-world"), (action["params"] as JsonObject)["spec"])
+        assertEquals(JsonPrimitive("{nav.world}"), (action["params"] as JsonObject)["spec"])
+        val values = (((select["props"] as JsonObject)["options"]) as JsonArray).map { ((it as JsonObject)["value"] as JsonPrimitive).content }
+        assertEquals(listOf("/spec.json?world=greenhouse-world", "/spec.json?world=small-house"), values)
     }
 
     @Test
@@ -179,21 +201,21 @@ class WorldsServerTest {
     }
 
     @Test
-    fun a_world_id_with_a_slash_is_encoded_in_the_chip_and_found_again() {
+    fun a_world_id_with_a_slash_is_encoded_in_the_option_and_found_again() {
         val file = addWorld("odd", "folder/odd world")
         engineLists("folder/odd world" to file)
         answeringAsTheEngineDoes()
         val port = serving()
-        val chip = specFetched(port).single { it.idText() == "worlds.folder/odd world" }
-        val target = (((chip["action"] as JsonObject)["params"] as JsonObject)["spec"] as JsonPrimitive).content
-        assertEquals("/spec.json?world=" + URLEncoder.encode("folder/odd world", Charsets.UTF_8), target)
+        val select = specFetched(port).single { it.idText() == "bar.world" }
+        val target = ((((select["props"] as JsonObject)["options"]) as JsonArray).single() as JsonObject)["value"] as JsonPrimitive
+        assertEquals("/spec.json?world=" + URLEncoder.encode("folder/odd world", Charsets.UTF_8), target.content)
         assertTrue(specFetched(port, "?world=" + URLEncoder.encode("folder/odd world", Charsets.UTF_8)).any { it.idText() == "lens" })
     }
 
     @Test
     fun a_world_the_engine_does_not_list_is_named_on_a_page_that_still_has_the_bar() {
         val nodes = specFetched(twoWorlds(), "?world=nowhere")
-        assertTrue(nodes.any { it.idText() == "worlds.small-house" })
+        assertTrue(nodes.any { it.idText() == "bar.world" })
         val words = nodes.mapNotNull { it.propText("value") }
         assertTrue(words.any { it.contains("nowhere") }, words.toString())
     }
@@ -220,7 +242,7 @@ class WorldsServerTest {
         val port = twoWorlds()
         engine.runAnswer = { """{"clock": {}}""" }
         val nodes = specFetched(port, "?world=greenhouse-world")
-        assertTrue(nodes.any { it.idText() == "worlds.small-house" })
+        assertTrue(nodes.any { it.idText() == "bar.world" })
         assertTrue(nodes.none { it.idText() == "chart" })
         assertNotNull(nodes.firstOrNull { it.propText("value")?.contains("steps") == true })
     }
