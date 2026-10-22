@@ -186,6 +186,11 @@ suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
     handler(resolvedParams)
 }
 
+fun RenderContext.applyActionAnswer(answer: ai.factoredui.compose.schema.ActionAnswer) {
+    if (answer.error != null) return setBinding(RENDERER_ERROR_PATH, answer.error)
+    if (answer.writes.isNotEmpty()) setBindings(answer.writes)
+}
+
 const val SET_BINDING_ACTION = "set_binding"
 
 const val RENDERER_ERROR_PATH = "renderer.error"

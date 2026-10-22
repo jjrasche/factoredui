@@ -345,7 +345,7 @@ Both run only where the host gives the renderer a media engine: the browser (was
 - Bindings written: `listening` (bool) and `transcript` (the last words heard).
 - `/tree` node `voice` field: `label, mode, capture, status, listening, transcript`; `status` is `ready`, `listening`, `failed` or `unsupported`, and a failure (a refused mic, no HTTPS, no recognition) is in the node's notices.
 
-A `button` with `size: "xl"` is at least 72 dp tall with a large label, for a thumb. In the stock browser host, an action the host does not know is POSTed as `{ action, params }` (numbers and booleans kept) to `/action` beside the spec URL (`/spec.json` becomes `/action`), or to the `action` query parameter.
+A `button` with `size: "xl"` is at least 72 dp tall with a large label, for a thumb. In the stock browser host, an action the host does not know is POSTed as `{ action, params }` (numbers and booleans kept) to `/action` beside the spec URL (`/spec.json` becomes `/action`), or to the `action` query parameter. The server's JSON answer can write bindings: `{ "set": { "pushback.guide": "…", "pushback.audio": "/x.mp3" } }` writes each path in one step, as `set_binding` with `values` does, except that a text is stored as it is and never read as a binding. An empty answer writes nothing. A status outside 200 to 299, an answer that is not a JSON object, a `set` that is not an object or has an empty path, or a server that cannot be reached writes the reason to `renderer.error` and changes nothing else. There is one route per spec: a server branches on the action name.
 
 ## Reports data
 

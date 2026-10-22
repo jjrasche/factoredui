@@ -3,6 +3,8 @@ package ai.factoredui.playground
 import ai.factoredui.compose.adapter.ActionHandler
 import ai.factoredui.compose.adapter.ActionRegistry
 import ai.factoredui.compose.renderer.SpecTheme
+import ai.factoredui.compose.schema.ActionAnswer
+import ai.factoredui.compose.schema.readActionAnswer
 import ai.factoredui.compose.renderer.themeNamed
 import ai.factoredui.compose.schema.Spec
 import ai.factoredui.compose.schema.SpecNode
@@ -57,18 +59,21 @@ private fun jsonOfParam(value: Any?): JsonElement = when (value) {
     else -> JsonPrimitive(value.toString())
 }
 
-private fun forwardAction(name: String, actionUrl: String): ActionHandler = handler@{ params ->
+private suspend fun answerOf(name: String, body: String, actionUrl: String): ActionAnswer =
+    runCatching {
+        val response = composerHttp.post(actionUrl) {
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }
+        readActionAnswer(name, response.status.value, response.bodyAsText())
+    }.getOrElse { ActionAnswer(emptyMap(), "action '$name' could not reach the server: ${it.message ?: it::class.simpleName}") }
+
+private fun forwardAction(name: String, actionUrl: String, onAnswer: (ActionAnswer) -> Unit): ActionHandler = handler@{ params ->
     val body = buildJsonObject {
         put("action", name)
         put("params", jsonOfParam(params))
     }.toString()
-    runCatching {
-        composerHttp.post(actionUrl) {
-            contentType(ContentType.Application.Json)
-            setBody(body)
-        }
-    }
-    Unit
+    onAnswer(answerOf(name, body, actionUrl))
 }
 
 // The scene-composer manipulation verbs the server (:8765) registers in actions.py.
@@ -102,7 +107,7 @@ private fun openSpecAction(): ActionHandler = handler@{ params ->
     reloadWithSpec(spec)
 }
 
-fun playgroundActions(actionUrl: String? = null): ActionRegistry {
+fun playgroundActions(actionUrl: String? = null, onAnswer: (ActionAnswer) -> Unit = {}): ActionRegistry {
     val base = mapOf<String, ActionHandler>(
         "open_spec" to openSpecAction(),
         "submit" to { params -> println("[playground] submit($params)") },
@@ -112,7 +117,7 @@ fun playgroundActions(actionUrl: String? = null): ActionRegistry {
         },
     )
     if (actionUrl == null) return base
-    return ForwardingActions(base + SCENE3D_VERBS.associateWith { verb -> forwardAction(verb, actionUrl) }) { name -> forwardAction(name, actionUrl) }
+    return ForwardingActions(base + SCENE3D_VERBS.associateWith { verb -> forwardAction(verb, actionUrl, onAnswer) }) { name -> forwardAction(name, actionUrl, onAnswer) }
 }
 
 private class ForwardingActions(private val known: Map<String, ActionHandler>, private val forward: (String) -> ActionHandler) : Map<String, ActionHandler> by known {
