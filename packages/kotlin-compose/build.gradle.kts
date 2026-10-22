@@ -241,6 +241,17 @@ tasks.register<JavaExec>("renderSpecCli") {
     mainClass.set("ai.factoredui.compose.render.RenderSpecCliKt")
 }
 
+tasks.register<JavaExec>("designSpecimen") {
+    group = "render"
+    description = "Write the design system specimen (a spec and a screenshot for each theme) into design/specimen."
+    val desktopCompilation = kotlin.jvm("desktop").compilations.getByName("main")
+    classpath(
+        desktopCompilation.output.allOutputs,
+        desktopCompilation.runtimeDependencyFiles,
+        desktopNativeRuntime,
+    )
+    mainClass.set("ai.factoredui.compose.design.DesignSpecimenKt")
+}
 tasks.register<JavaExec>("specWindow") {
     group = "render"
     description = "Open a real window on a spec — drag to orbit, scroll to zoom."

@@ -1,0 +1,1792 @@
+{
+    "spec_version": 1,
+    "renderer_min": 1,
+    "theme": "light",
+    "root": {
+        "id": "root",
+        "type": "column",
+        "props": {
+            "gap": 16,
+            "padding": 16,
+            "background": "ground"
+        },
+        "children": [
+            {
+                "id": "title",
+                "type": "text",
+                "props": {
+                    "value": "factored-ui design system",
+                    "variant": "display"
+                },
+                "children": []
+            },
+            {
+                "id": "subtitle",
+                "type": "text",
+                "props": {
+                    "value": "The light theme. Tokens are in design/light.tokens.json (W3C Design Tokens); a file a user brings overrides them token by token.",
+                    "variant": "caption",
+                    "color": "muted"
+                },
+                "children": []
+            },
+            {
+                "id": "palette",
+                "type": "column",
+                "props": {
+                    "gap": 12
+                },
+                "children": [
+                    {
+                        "id": "palette.rule",
+                        "type": "divider",
+                        "props": {},
+                        "children": []
+                    },
+                    {
+                        "id": "palette.title",
+                        "type": "text",
+                        "props": {
+                            "value": "Palette",
+                            "variant": "heading"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "palette.note",
+                        "type": "text",
+                        "props": {
+                            "value": "Every text colour is at least 4.5:1 on the ground, the surface and the raised surface.",
+                            "variant": "caption",
+                            "color": "muted"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "pal.ladder",
+                        "type": "column",
+                        "props": {
+                            "gap": 0
+                        },
+                        "children": [
+                            {
+                                "id": "pal.ground",
+                                "type": "card",
+                                "props": {
+                                    "background": "#ffffff",
+                                    "padding": 12,
+                                    "cornerRadius": 0
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.ground.t",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "Ground  #ffffff  the page",
+                                            "variant": "caption",
+                                            "color": "ink"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "pal.surface",
+                                "type": "card",
+                                "props": {
+                                    "background": "#efeff1",
+                                    "padding": 12,
+                                    "cornerRadius": 0
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.surface.t",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "Surface  #efeff1  cards · +6% toward ink",
+                                            "variant": "caption",
+                                            "color": "ink"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "pal.raised",
+                                "type": "card",
+                                "props": {
+                                    "background": "#e4e5e7",
+                                    "padding": 12,
+                                    "cornerRadius": 0
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.raised.t",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "Raised  #e4e5e7  controls, hover · +10%",
+                                            "variant": "caption",
+                                            "color": "ink"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "pal.overlay",
+                                "type": "card",
+                                "props": {
+                                    "background": "#d9dadd",
+                                    "padding": 12,
+                                    "cornerRadius": 0
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.overlay.t",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "Overlay  #d9dadd  menus, sheets · +14%",
+                                            "variant": "caption",
+                                            "color": "ink"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "pal.ink",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "pal.ink.chip",
+                                "type": "card",
+                                "props": {
+                                    "background": "#111827",
+                                    "padding": 0,
+                                    "cornerRadius": 8,
+                                    "width": 64
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.ink.chip.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 40
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "pal.ink.words",
+                                "type": "column",
+                                "props": {
+                                    "gap": 2
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.ink.name",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "Ink",
+                                            "variant": "label"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "pal.ink.detail",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "#111827 · 17.7:1 on ground · AA text",
+                                            "variant": "caption",
+                                            "color": "muted"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "pal.muted",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "pal.muted.chip",
+                                "type": "card",
+                                "props": {
+                                    "background": "#4b5563",
+                                    "padding": 0,
+                                    "cornerRadius": 8,
+                                    "width": 64
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.muted.chip.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 40
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "pal.muted.words",
+                                "type": "column",
+                                "props": {
+                                    "gap": 2
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.muted.name",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "Muted",
+                                            "variant": "label"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "pal.muted.detail",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "#4b5563 · 7.6:1 on ground · AA text",
+                                            "variant": "caption",
+                                            "color": "muted"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "pal.accent",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "pal.accent.chip",
+                                "type": "card",
+                                "props": {
+                                    "background": "#0b5fcc",
+                                    "padding": 0,
+                                    "cornerRadius": 8,
+                                    "width": 64
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.accent.chip.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 40
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "pal.accent.words",
+                                "type": "column",
+                                "props": {
+                                    "gap": 2
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.accent.name",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "Accent",
+                                            "variant": "label"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "pal.accent.detail",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "#0b5fcc · 6.0:1 on ground · AA text · 6.0:1 for its ink",
+                                            "variant": "caption",
+                                            "color": "muted"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "pal.pass",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "pal.pass.chip",
+                                "type": "card",
+                                "props": {
+                                    "background": "#0f6f41",
+                                    "padding": 0,
+                                    "cornerRadius": 8,
+                                    "width": 64
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.pass.chip.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 40
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "pal.pass.words",
+                                "type": "column",
+                                "props": {
+                                    "gap": 2
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.pass.name",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "Pass",
+                                            "variant": "label"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "pal.pass.detail",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "#0f6f41 · 6.2:1 on ground · AA text",
+                                            "variant": "caption",
+                                            "color": "muted"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "pal.warn",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "pal.warn.chip",
+                                "type": "card",
+                                "props": {
+                                    "background": "#8a5a00",
+                                    "padding": 0,
+                                    "cornerRadius": 8,
+                                    "width": 64
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.warn.chip.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 40
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "pal.warn.words",
+                                "type": "column",
+                                "props": {
+                                    "gap": 2
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.warn.name",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "Warn",
+                                            "variant": "label"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "pal.warn.detail",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "#8a5a00 · 5.9:1 on ground · AA text",
+                                            "variant": "caption",
+                                            "color": "muted"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "pal.fail",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "pal.fail.chip",
+                                "type": "card",
+                                "props": {
+                                    "background": "#b3261e",
+                                    "padding": 0,
+                                    "cornerRadius": 8,
+                                    "width": 64
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.fail.chip.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 40
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "pal.fail.words",
+                                "type": "column",
+                                "props": {
+                                    "gap": 2
+                                },
+                                "children": [
+                                    {
+                                        "id": "pal.fail.name",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "Fail",
+                                            "variant": "label"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "id": "pal.fail.detail",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "#b3261e · 6.5:1 on ground · AA text",
+                                            "variant": "caption",
+                                            "color": "muted"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "id": "type",
+                "type": "column",
+                "props": {
+                    "gap": 12
+                },
+                "children": [
+                    {
+                        "id": "type.rule",
+                        "type": "divider",
+                        "props": {},
+                        "children": []
+                    },
+                    {
+                        "id": "type.title",
+                        "type": "text",
+                        "props": {
+                            "value": "Type scale",
+                            "variant": "heading"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "type.note",
+                        "type": "text",
+                        "props": {
+                            "value": "Numbers are mono so columns of figures line up.",
+                            "variant": "caption",
+                            "color": "muted"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "type.display",
+                        "type": "column",
+                        "props": {
+                            "gap": 2
+                        },
+                        "children": [
+                            {
+                                "id": "type.display.sample",
+                                "type": "text",
+                                "props": {
+                                    "value": "1,842 W",
+                                    "variant": "display"
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "type.display.token",
+                                "type": "text",
+                                "props": {
+                                    "value": "display · 40/48 · weight 600",
+                                    "variant": "caption",
+                                    "color": "muted"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "type.heading",
+                        "type": "column",
+                        "props": {
+                            "gap": 2
+                        },
+                        "children": [
+                            {
+                                "id": "type.heading.sample",
+                                "type": "text",
+                                "props": {
+                                    "value": "Heat loss by the hour",
+                                    "variant": "heading"
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "type.heading.token",
+                                "type": "text",
+                                "props": {
+                                    "value": "heading · 24/32 · weight 600",
+                                    "variant": "caption",
+                                    "color": "muted"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "type.subheading",
+                        "type": "column",
+                        "props": {
+                            "gap": 2
+                        },
+                        "children": [
+                            {
+                                "id": "type.subheading.sample",
+                                "type": "text",
+                                "props": {
+                                    "value": "What the house is made of",
+                                    "variant": "subheading"
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "type.subheading.token",
+                                "type": "text",
+                                "props": {
+                                    "value": "subheading · 18/24 · weight 600",
+                                    "variant": "caption",
+                                    "color": "muted"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "type.body",
+                        "type": "column",
+                        "props": {
+                            "gap": 2
+                        },
+                        "children": [
+                            {
+                                "id": "type.body.sample",
+                                "type": "text",
+                                "props": {
+                                    "value": "The north wall is a 6 in SIP with an R-value of 24.",
+                                    "variant": "body"
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "type.body.token",
+                                "type": "text",
+                                "props": {
+                                    "value": "body · 16/24 · weight 400",
+                                    "variant": "caption",
+                                    "color": "muted"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "type.caption",
+                        "type": "column",
+                        "props": {
+                            "gap": 2
+                        },
+                        "children": [
+                            {
+                                "id": "type.caption.sample",
+                                "type": "text",
+                                "props": {
+                                    "value": "Source: published row 14, inferred for the loft",
+                                    "variant": "caption"
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "type.caption.token",
+                                "type": "text",
+                                "props": {
+                                    "value": "caption · 13/18 · weight 400",
+                                    "variant": "caption",
+                                    "color": "muted"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "type.mono",
+                        "type": "column",
+                        "props": {
+                            "gap": 2
+                        },
+                        "children": [
+                            {
+                                "id": "type.mono.sample",
+                                "type": "text",
+                                "props": {
+                                    "value": "0.30 kWh   1,842 W   68.4 °F",
+                                    "variant": "mono"
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "type.mono.token",
+                                "type": "text",
+                                "props": {
+                                    "value": "mono (numbers) · 16/24 · weight 500",
+                                    "variant": "caption",
+                                    "color": "muted"
+                                },
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "id": "space",
+                "type": "column",
+                "props": {
+                    "gap": 12
+                },
+                "children": [
+                    {
+                        "id": "space.rule",
+                        "type": "divider",
+                        "props": {},
+                        "children": []
+                    },
+                    {
+                        "id": "space.title",
+                        "type": "text",
+                        "props": {
+                            "value": "Spacing, radius",
+                            "variant": "heading"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "space.note",
+                        "type": "text",
+                        "props": {
+                            "value": "Steps of the 4 dp grid; a phone page keeps a 16 dp gutter.",
+                            "variant": "caption",
+                            "color": "muted"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "space.xs",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "space.xs.name",
+                                "type": "text",
+                                "props": {
+                                    "value": "xs · 4",
+                                    "variant": "caption",
+                                    "color": "muted",
+                                    "flex": 1
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "space.xs.bar",
+                                "type": "card",
+                                "props": {
+                                    "background": "#0b5fcc",
+                                    "padding": 0,
+                                    "cornerRadius": 4,
+                                    "width": 12
+                                },
+                                "children": [
+                                    {
+                                        "id": "space.xs.bar.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 12
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "space.sm",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "space.sm.name",
+                                "type": "text",
+                                "props": {
+                                    "value": "sm · 8",
+                                    "variant": "caption",
+                                    "color": "muted",
+                                    "flex": 1
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "space.sm.bar",
+                                "type": "card",
+                                "props": {
+                                    "background": "#0b5fcc",
+                                    "padding": 0,
+                                    "cornerRadius": 4,
+                                    "width": 24
+                                },
+                                "children": [
+                                    {
+                                        "id": "space.sm.bar.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 12
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "space.md",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "space.md.name",
+                                "type": "text",
+                                "props": {
+                                    "value": "md · 12",
+                                    "variant": "caption",
+                                    "color": "muted",
+                                    "flex": 1
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "space.md.bar",
+                                "type": "card",
+                                "props": {
+                                    "background": "#0b5fcc",
+                                    "padding": 0,
+                                    "cornerRadius": 4,
+                                    "width": 36
+                                },
+                                "children": [
+                                    {
+                                        "id": "space.md.bar.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 12
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "space.lg",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "space.lg.name",
+                                "type": "text",
+                                "props": {
+                                    "value": "lg · 16",
+                                    "variant": "caption",
+                                    "color": "muted",
+                                    "flex": 1
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "space.lg.bar",
+                                "type": "card",
+                                "props": {
+                                    "background": "#0b5fcc",
+                                    "padding": 0,
+                                    "cornerRadius": 4,
+                                    "width": 48
+                                },
+                                "children": [
+                                    {
+                                        "id": "space.lg.bar.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 12
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "space.xl",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "space.xl.name",
+                                "type": "text",
+                                "props": {
+                                    "value": "xl · 24",
+                                    "variant": "caption",
+                                    "color": "muted",
+                                    "flex": 1
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "space.xl.bar",
+                                "type": "card",
+                                "props": {
+                                    "background": "#0b5fcc",
+                                    "padding": 0,
+                                    "cornerRadius": 4,
+                                    "width": 72
+                                },
+                                "children": [
+                                    {
+                                        "id": "space.xl.bar.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 12
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "space.xxl",
+                        "type": "row",
+                        "props": {
+                            "gap": 12
+                        },
+                        "children": [
+                            {
+                                "id": "space.xxl.name",
+                                "type": "text",
+                                "props": {
+                                    "value": "xxl · 32",
+                                    "variant": "caption",
+                                    "color": "muted",
+                                    "flex": 1
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "space.xxl.bar",
+                                "type": "card",
+                                "props": {
+                                    "background": "#0b5fcc",
+                                    "padding": 0,
+                                    "cornerRadius": 4,
+                                    "width": 96
+                                },
+                                "children": [
+                                    {
+                                        "id": "space.xxl.bar.fill",
+                                        "type": "spacer",
+                                        "props": {
+                                            "size": 12
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "id": "space.gutter",
+                        "type": "text",
+                        "props": {
+                            "value": "Phone gutter 16 · bars are drawn 3× so they can be seen",
+                            "variant": "caption",
+                            "color": "muted"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "radius.row",
+                        "type": "row",
+                        "props": {
+                            "gap": 8
+                        },
+                        "children": [
+                            {
+                                "id": "radius.sm",
+                                "type": "card",
+                                "props": {
+                                    "background": "raised",
+                                    "padding": 12,
+                                    "cornerRadius": 8,
+                                    "flex": 1
+                                },
+                                "children": [
+                                    {
+                                        "id": "radius.sm.t",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "sm\n8",
+                                            "variant": "caption"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "radius.md",
+                                "type": "card",
+                                "props": {
+                                    "background": "raised",
+                                    "padding": 12,
+                                    "cornerRadius": 12,
+                                    "flex": 1
+                                },
+                                "children": [
+                                    {
+                                        "id": "radius.md.t",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "md\n12",
+                                            "variant": "caption"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "radius.lg",
+                                "type": "card",
+                                "props": {
+                                    "background": "raised",
+                                    "padding": 12,
+                                    "cornerRadius": 16,
+                                    "flex": 1
+                                },
+                                "children": [
+                                    {
+                                        "id": "radius.lg.t",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "lg\n16",
+                                            "variant": "caption"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "radius.xl",
+                                "type": "card",
+                                "props": {
+                                    "background": "raised",
+                                    "padding": 12,
+                                    "cornerRadius": 24,
+                                    "flex": 1
+                                },
+                                "children": [
+                                    {
+                                        "id": "radius.xl.t",
+                                        "type": "text",
+                                        "props": {
+                                            "value": "xl\n24",
+                                            "variant": "caption"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "id": "stat",
+                "type": "column",
+                "props": {
+                    "gap": 12
+                },
+                "children": [
+                    {
+                        "id": "stat.rule",
+                        "type": "divider",
+                        "props": {},
+                        "children": []
+                    },
+                    {
+                        "id": "stat.title",
+                        "type": "text",
+                        "props": {
+                            "value": "Stat",
+                            "variant": "heading"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "stat.note",
+                        "type": "text",
+                        "props": {
+                            "value": "A figure, its unit and label, and a status said in words as well as colour.",
+                            "variant": "caption",
+                            "color": "muted"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "stats.row",
+                        "type": "row",
+                        "props": {
+                            "gap": 8
+                        },
+                        "children": [
+                            {
+                                "id": "stat.pass",
+                                "type": "stat",
+                                "props": {
+                                    "label": "Heat loss",
+                                    "value": 1842,
+                                    "unit": "W",
+                                    "status": "pass",
+                                    "flex": 1
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "stat.warn",
+                                "type": "stat",
+                                "props": {
+                                    "label": "Daylight",
+                                    "value": 4.1,
+                                    "unit": "%",
+                                    "status": "warn",
+                                    "flex": 1
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "stats.row2",
+                        "type": "row",
+                        "props": {
+                            "gap": 8
+                        },
+                        "children": [
+                            {
+                                "id": "stat.fail",
+                                "type": "stat",
+                                "props": {
+                                    "label": "Post load",
+                                    "value": 91,
+                                    "unit": "%",
+                                    "status": "fail",
+                                    "status_text": "Over",
+                                    "flex": 1
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "stat.none",
+                                "type": "stat",
+                                "props": {
+                                    "label": "Water",
+                                    "value": null,
+                                    "unit": "lb",
+                                    "flex": 1
+                                },
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "id": "section",
+                "type": "column",
+                "props": {
+                    "gap": 12
+                },
+                "children": [
+                    {
+                        "id": "section.rule",
+                        "type": "divider",
+                        "props": {},
+                        "children": []
+                    },
+                    {
+                        "id": "section.title",
+                        "type": "text",
+                        "props": {
+                            "value": "Section",
+                            "variant": "heading"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "section.note",
+                        "type": "text",
+                        "props": {
+                            "value": "A titled card on the surface, with a note in muted ink.",
+                            "variant": "caption",
+                            "color": "muted"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "section.body",
+                        "type": "text",
+                        "props": {
+                            "value": "A section groups one question's answers. It has a heading, a note and its content; nothing else.",
+                            "variant": "body"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "id": "chart",
+                "type": "column",
+                "props": {
+                    "gap": 12
+                },
+                "children": [
+                    {
+                        "id": "chart.rule",
+                        "type": "divider",
+                        "props": {},
+                        "children": []
+                    },
+                    {
+                        "id": "chart.title",
+                        "type": "text",
+                        "props": {
+                            "value": "Chart series",
+                            "variant": "heading"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "chart.note",
+                        "type": "text",
+                        "props": {
+                            "value": "Eight colours that stay apart for colour-blind readers and meet 3:1 on every ground.",
+                            "variant": "caption",
+                            "color": "muted"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "chart",
+                        "type": "chart",
+                        "props": {
+                            "rows": [
+                                {
+                                    "t": 0,
+                                    "v": {
+                                        "s1": 61.35091625415885,
+                                        "s2": 76.77933458857744,
+                                        "s3": 82.64770092846842,
+                                        "s4": 79.00680052112622,
+                                        "s5": 69.57616460895717,
+                                        "s6": 60.309047550008586,
+                                        "s7": 57.09561690985217,
+                                        "s8": 63.490482908266465
+                                    }
+                                },
+                                {
+                                    "t": 1,
+                                    "v": {
+                                        "s1": 66.28115554248838,
+                                        "s2": 77.9742835038608,
+                                        "s3": 79.6463392717944,
+                                        "s4": 72.96707599240649,
+                                        "s5": 62.82824795272017,
+                                        "s6": 55.45633531258861,
+                                        "s7": 56.01032164556054,
+                                        "s8": 66.59131962008091
+                                    }
+                                },
+                                {
+                                    "t": 2,
+                                    "v": {
+                                        "s1": 69.814969435352,
+                                        "s2": 77.38081612117556,
+                                        "s3": 75.15455475362813,
+                                        "s4": 66.30993828855303,
+                                        "s5": 56.57413041299925,
+                                        "s6": 52.018123103302514,
+                                        "s7": 56.71450266619251,
+                                        "s8": 71.16621558376104
+                                    }
+                                },
+                                {
+                                    "t": 3,
+                                    "v": {
+                                        "s1": 71.70904302633292,
+                                        "s2": 75.03979465484801,
+                                        "s3": 69.4816217621566,
+                                        "s4": 59.49375360725605,
+                                        "s5": 51.24442890116316,
+                                        "s6": 50.231143332884486,
+                                        "s7": 59.15967475313442,
+                                        "s8": 76.90017391010524
+                                    }
+                                },
+                                {
+                                    "t": 4,
+                                    "v": {
+                                        "s1": 71.8329630133988,
+                                        "s2": 71.1124062630784,
+                                        "s3": 63.01814070865674,
+                                        "s4": 52.98783906258277,
+                                        "s5": 47.206111193076005,
+                                        "s6": 50.21843553561391,
+                                        "s7": 63.17747962959394,
+                                        "s8": 83.39839238941323
+                                    }
+                                },
+                                {
+                                    "t": 5,
+                                    "v": {
+                                        "s1": 70.17819709095286,
+                                        "s2": 65.86906477296034,
+                                        "s3": 56.209143882699564,
+                                        "s4": 47.24014863190296,
+                                        "s5": 44.73722897029597,
+                                        "s6": 51.980874685837854,
+                                        "s7": 68.49127799108172,
+                                        "s8": 90.21344694415735
+                                    }
+                                },
+                                {
+                                    "t": 6,
+                                    "v": {
+                                        "s1": 66.858681427613,
+                                        "s2": 59.670791784005836,
+                                        "s3": 49.52345349047022,
+                                        "s4": 42.64643002623156,
+                                        "s5": 44.00777303177347,
+                                        "s6": 55.397110953060746,
+                                        "s7": 74.73519704682795,
+                                        "s8": 96.8760982732637
+                                    }
+                                },
+                                {
+                                    "t": 7,
+                                    "v": {
+                                        "s1": 62.10297577990907,
+                                        "s2": 52.94435912347462,
+                                        "s3": 43.421401677756606,
+                                        "s4": 39.522976136629204,
+                                        "s5": 45.067968858758405,
+                                        "s6": 60.23192504366453,
+                                        "s7": 81.4793220851974,
+                                        "s8": 102.92760054750133
+                                    }
+                                },
+                                {
+                                    "t": 8,
+                                    "v": {
+                                        "s1": 56.238526388559535,
+                                        "s2": 46.1529041786018,
+                                        "s3": 38.32313512199387,
+                                        "s4": 38.08484721071688,
+                                        "s5": 47.844818422422144,
+                                        "s6": 66.15242383603533,
+                                        "s7": 88.25929753956339,
+                                        "s8": 107.95128759423717
+                                    }
+                                },
+                                {
+                                    "t": 9,
+                                    "v": {
+                                        "s1": 49.66912020955654,
+                                        "s2": 39.76404133838582,
+                                        "s3": 34.57968652821731,
+                                        "s4": 38.4310632352942,
+                                        "s5": 52.14712634230597,
+                                        "s6": 72.75096118544673,
+                                        "s7": 94.60829942224545,
+                                        "s8": 111.60126175708582
+                                    }
+                                },
+                                {
+                                    "t": 10,
+                                    "v": {
+                                        "s1": 42.84708283166017,
+                                        "s2": 34.21766517883027,
+                                        "s3": 32.448804853187305,
+                                        "s4": 40.5377860790464,
+                                        "s5": 57.67866432777558,
+                                        "s6": 79.57320572461818,
+                                        "s7": 100.08917771749304,
+                                        "s8": 113.62621010650938
+                                    }
+                                },
+                                {
+                                    "t": 11,
+                                    "v": {
+                                        "s1": 36.24213434667459,
+                                        "s2": 29.895662250027662,
+                                        "s3": 32.07720842759811,
+                                        "s4": 44.25996082761908,
+                                        "s5": 64.058567486655,
+                                        "s6": 86.14942309799883,
+                                        "s7": 104.32455562224835,
+                                        "s8": 113.88670817560711
+                                    }
+                                },
+                                {
+                                    "t": 12,
+                                    "v": {
+                                        "s1": 30.30904755000858,
+                                        "s2": 27.09561690985217,
+                                        "s3": 33.490482908266465,
+                                        "s4": 49.34130329965092,
+                                        "s5": 70.84755814696891,
+                                        "s6": 92.02681874331365,
+                                        "s7": 107.0228132012861,
+                                        "s8": 112.36481980100828
+                                    }
+                                },
+                                {
+                                    "t": 13,
+                                    "v": {
+                                        "s1": 25.456335312588596,
+                                        "s2": 26.010321645560534,
+                                        "s3": 36.59131962008091,
+                                        "s4": 55.43194606987906,
+                                        "s5": 77.57819159395339,
+                                        "s6": 96.80071431168233,
+                                        "s7": 107.99816639516332,
+                                        "s8": 109.16533208771298
+                                    }
+                                },
+                                {
+                                    "t": 14,
+                                    "v": {
+                                        "s1": 22.018123103302514,
+                                        "s2": 26.71450266619251,
+                                        "s3": 41.166215583761044,
+                                        "s4": 62.11252801160448,
+                                        "s5": 83.78704120217515,
+                                        "s6": 100.14241112550704,
+                                        "s7": 107.18345887412232,
+                                        "s8": 104.50854046642124
+                                    }
+                                },
+                                {
+                                    "t": 15,
+                                    "v": {
+                                        "s1": 20.231143332884486,
+                                        "s2": 29.159674753134418,
+                                        "s3": 46.90017391010524,
+                                        "s4": 68.92306871294319,
+                                        "s5": 89.0466069087613,
+                                        "s6": 101.8218221818556,
+                                        "s7": 104.63478597601875,
+                                        "s8": 98.71508061628563
+                                    }
+                                },
+                                {
+                                    "t": 16,
+                                    "v": {
+                                        "s1": 20.218435535613903,
+                                        "s2": 33.17747962959394,
+                                        "s3": 53.398392389413225,
+                                        "s4": 75.39463966672606,
+                                        "s5": 92.99475002262928,
+                                        "s6": 101.72331441220793,
+                                        "s7": 100.52763235468265,
+                                        "s8": 92.18385162594012
+                                    }
+                                },
+                                {
+                                    "t": 17,
+                                    "v": {
+                                        "s1": 21.980874685837854,
+                                        "s2": 38.491277991081716,
+                                        "s3": 60.213446944157354,
+                                        "s4": 81.08165156668854,
+                                        "s5": 95.35962768464863,
+                                        "s6": 99.85367040599282,
+                                        "s7": 95.14478927454171,
+                                        "s8": 85.36455045701064
+                                    }
+                                },
+                                {
+                                    "t": 18,
+                                    "v": {
+                                        "s1": 25.39711095306075,
+                                        "s2": 44.73519704682795,
+                                        "s3": 66.8760982732637,
+                                        "s4": 85.59253462161294,
+                                        "s5": 95.97841015775161,
+                                        "s6": 96.34162140661945,
+                                        "s7": 88.85688348618554,
+                                        "s8": 78.72670880416194
+                                    }
+                                },
+                                {
+                                    "t": 19,
+                                    "v": {
+                                        "s1": 30.231925043664535,
+                                        "s2": 51.479322085197396,
+                                        "s3": 72.92760054750133,
+                                        "s4": 88.61669944517578,
+                                        "s5": 94.80849219896277,
+                                        "s6": 91.4289837347887,
+                                        "s7": 82.0968583349163,
+                                        "s8": 72.72736426743123
+                                    }
+                                },
+                                {
+                                    "t": 20,
+                                    "v": {
+                                        "s1": 36.15242383603532,
+                                        "s2": 58.2592975395634,
+                                        "s3": 77.95128759423717,
+                                        "s4": 89.94592217405473,
+                                        "s5": 91.93042657288383,
+                                        "s6": 85.45400892598599,
+                                        "s7": 75.33016416331654,
+                                        "s8": 67.77959178476713
+                                    }
+                                },
+                                {
+                                    "t": 21,
+                                    "v": {
+                                        "s1": 42.750961185446734,
+                                        "s2": 64.60829942224545,
+                                        "s3": 81.60126175708582,
+                                        "s4": 89.48868137738512,
+                                        "s5": 87.54237772441803,
+                                        "s6": 78.82809398088034,
+                                        "s7": 69.02271049832504,
+                                        "s8": 64.22406204089991
+                                    }
+                                },
+                                {
+                                    "t": 22,
+                                    "v": {
+                                        "s1": 49.57320572461818,
+                                        "s2": 70.08917771749304,
+                                        "s3": 83.62621010650938,
+                                        "s4": 87.27645961339574,
+                                        "s5": 81.94647749391865,
+                                        "s6": 72.0074553057884,
+                                        "s7": 63.608786621934,
+                                        "s8": 62.30558515122301
+                                    }
+                                },
+                                {
+                                    "t": 23,
+                                    "v": {
+                                        "s1": 56.14942309799884,
+                                        "s2": 74.32455562224835,
+                                        "s3": 83.88670817560711,
+                                        "s4": 83.46157574997181,
+                                        "s5": 75.52802232941063,
+                                        "s6": 65.46171668714786,
+                                        "s7": 59.46115930151386,
+                                        "s8": 62.15625466650814
+                                    }
+                                }
+                            ],
+                            "x": "t",
+                            "x_label": "hour",
+                            "axes": {
+                                "left": {
+                                    "unit": "°F"
+                                }
+                            },
+                            "series": [
+                                {
+                                    "id": "s1",
+                                    "label": "Series 1",
+                                    "path": "v.s1"
+                                },
+                                {
+                                    "id": "s2",
+                                    "label": "Series 2",
+                                    "path": "v.s2"
+                                },
+                                {
+                                    "id": "s3",
+                                    "label": "Series 3",
+                                    "path": "v.s3"
+                                },
+                                {
+                                    "id": "s4",
+                                    "label": "Series 4",
+                                    "path": "v.s4"
+                                },
+                                {
+                                    "id": "s5",
+                                    "label": "Series 5",
+                                    "path": "v.s5"
+                                },
+                                {
+                                    "id": "s6",
+                                    "label": "Series 6",
+                                    "path": "v.s6"
+                                },
+                                {
+                                    "id": "s7",
+                                    "label": "Series 7",
+                                    "path": "v.s7"
+                                },
+                                {
+                                    "id": "s8",
+                                    "label": "Series 8",
+                                    "path": "v.s8"
+                                }
+                            ]
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "id": "button",
+                "type": "column",
+                "props": {
+                    "gap": 12
+                },
+                "children": [
+                    {
+                        "id": "button.rule",
+                        "type": "divider",
+                        "props": {},
+                        "children": []
+                    },
+                    {
+                        "id": "button.title",
+                        "type": "text",
+                        "props": {
+                            "value": "Buttons",
+                            "variant": "heading"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "button.note",
+                        "type": "text",
+                        "props": {
+                            "value": "Four sizes. Every one has a 48 dp touch target.",
+                            "variant": "caption",
+                            "color": "muted"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "btn.row",
+                        "type": "row",
+                        "props": {
+                            "gap": 8
+                        },
+                        "children": [
+                            {
+                                "id": "btn.sm",
+                                "type": "button",
+                                "props": {
+                                    "label": "sm 36",
+                                    "size": "sm"
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "btn.md",
+                                "type": "button",
+                                "props": {
+                                    "label": "md 48",
+                                    "size": "md"
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "btn.lg",
+                                "type": "button",
+                                "props": {
+                                    "label": "lg 56",
+                                    "size": "lg"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "btn.xl",
+                        "type": "button",
+                        "props": {
+                            "label": "xl 72 · one tap",
+                            "size": "xl"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "btn.row2",
+                        "type": "row",
+                        "props": {
+                            "gap": 8
+                        },
+                        "children": [
+                            {
+                                "id": "btn.outline",
+                                "type": "button",
+                                "props": {
+                                    "label": "Outline",
+                                    "size": "md",
+                                    "variant": "outline"
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "btn.ghost",
+                                "type": "button",
+                                "props": {
+                                    "label": "Ghost",
+                                    "size": "md",
+                                    "variant": "ghost"
+                                },
+                                "children": []
+                            },
+                            {
+                                "id": "btn.destructive",
+                                "type": "button",
+                                "props": {
+                                    "label": "Delete",
+                                    "size": "md",
+                                    "variant": "destructive"
+                                },
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "id": "window",
+                "type": "column",
+                "props": {
+                    "gap": 12
+                },
+                "children": [
+                    {
+                        "id": "window.rule",
+                        "type": "divider",
+                        "props": {},
+                        "children": []
+                    },
+                    {
+                        "id": "window.title",
+                        "type": "text",
+                        "props": {
+                            "value": "Window size",
+                            "variant": "heading"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "window.note",
+                        "type": "text",
+                        "props": {
+                            "value": "One spec lays out for a phone, a tablet and a desktop.",
+                            "variant": "caption",
+                            "color": "muted"
+                        },
+                        "children": []
+                    },
+                    {
+                        "id": "window.note",
+                        "type": "text",
+                        "props": {
+                            "value": "Compact under 600 dp, medium from 600, expanded from 840: a spec shows or hides a subtree with visible on window.is_compact, window.is_medium and window.is_expanded.",
+                            "variant": "caption",
+                            "color": "muted"
+                        },
+                        "children": []
+                    }
+                ]
+            }
+        ]
+    }
+}
