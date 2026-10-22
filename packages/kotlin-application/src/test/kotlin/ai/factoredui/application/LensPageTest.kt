@@ -55,6 +55,14 @@ class LensPageTest {
     }
 
     @Test
+    fun the_strip_ends_in_a_gap_wide_enough_for_the_drawings_reset_view_label() {
+        val strip = page().byId("lens")
+        val last = strip["children"]!!.jsonArray.last().jsonObject
+        assertEquals("lens.reset-gap", last["id"]!!.jsonPrimitive.content)
+        assertTrue(last.props()["width"]!!.jsonPrimitive.content.toDouble() >= 96.0)
+    }
+
+    @Test
     fun a_system_button_chooses_its_panel_and_unchooses_the_others() {
         val root = page()
         val button = root.byId("systems.walls")

@@ -113,6 +113,11 @@ fun RenderSpec(root: SpecNode, context: RenderContext) {
     }
 }
 
+private fun windowGroundOf(root: SpecNode, theme: SpecTheme): Color {
+    val named = (root.props["background"] as? SpecValue.StringValue)?.value?.takeUnless { it.startsWith("{") }
+    return named?.let { theme.tokenColor(it) ?: it.parseColor() } ?: theme.ground
+}
+
 /**
  * Renders a full [Spec]: its root tree plus any spec-level keyboard shortcuts.
  * When [Spec.keybindings] is empty this is just the root render — no focus
@@ -125,7 +130,7 @@ fun RenderSpec(spec: Spec, context: RenderContext) {
     ThemeScope(context.theme) {
         CompositionLocalProvider(LocalScreenRegistry provides context.screen) {
             ScreenFrameCounter(context.screen)
-            Box(modifier = Modifier.fillMaxSize().background(context.theme.ground)) {
+            Box(modifier = Modifier.fillMaxSize().background(windowGroundOf(spec.root, LocalSpecTheme.current))) {
                 if (spec.keybindings.isEmpty()) {
                     RenderNode(node = spec.root, context = context)
                 } else {

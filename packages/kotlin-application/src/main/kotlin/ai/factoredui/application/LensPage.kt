@@ -9,6 +9,7 @@ private const val WORLD_GROUND = "#2b3c50"
 private const val DOCK_CLOSED_DP = 520
 private const val DOCK_OPEN_DP = 840
 private const val SYSTEMS_PER_ROW = 4
+private const val RESET_VIEW_GAP_DP = 100
 private const val BLUEPRINT_PATH = "{ui.blueprint}"
 private const val SELECTION_CARD = "selection.card"
 
@@ -44,6 +45,7 @@ private fun topStrip(hasBlueprint: Boolean, title: String): JsonObject = specNod
     listOfNotNull(
         textNode("lens.title", title, variant = "subheading", bold = true, color = INK, flex = 1),
         if (hasBlueprint) specNode("lens.blueprint", "toggle", mapOf("label" to "Blueprint", "value" to BLUEPRINT_PATH, "color" to INK, "width" to 170)) else null,
+        specNode("lens.reset-gap", "column", mapOf("width" to RESET_VIEW_GAP_DP)),
     ),
 )
 
