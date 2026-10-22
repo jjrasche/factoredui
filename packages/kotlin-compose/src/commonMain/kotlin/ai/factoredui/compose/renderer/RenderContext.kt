@@ -4,6 +4,8 @@ import ai.factoredui.compose.adapter.ActionRegistry
 import ai.factoredui.compose.adapter.HostDataSource
 import ai.factoredui.compose.experiments.ControlExperiments
 import ai.factoredui.compose.experiments.Experiments
+import ai.factoredui.compose.media.MediaHost
+import ai.factoredui.compose.media.platformMediaHost
 import ai.factoredui.compose.observability.NoOpObservability
 import ai.factoredui.compose.observability.Observability
 import ai.factoredui.compose.schema.ActionRef
@@ -40,6 +42,7 @@ class RenderContext private constructor(
     private val store: MutableStateFlow<Map<String, Any?>>,
     private val overlay: Map<String, Any?>,
     val screen: ScreenRegistry,
+    val mediaHost: MediaHost,
 ) {
     constructor(
         actions: ActionRegistry = emptyMap(),
@@ -48,6 +51,7 @@ class RenderContext private constructor(
         experiments: Experiments = ControlExperiments,
         hostDataSource: HostDataSource? = null,
         theme: SpecTheme = SpecTheme.LIGHT,
+        mediaHost: MediaHost = platformMediaHost(),
     ) : this(
         actions = actions,
         observability = observability,
@@ -57,6 +61,7 @@ class RenderContext private constructor(
         store = MutableStateFlow(initialData),
         overlay = emptyMap(),
         screen = ScreenRegistry(),
+        mediaHost = mediaHost,
     )
 
     /** Reactive flow of the merged (overlay + store) data map. */
@@ -109,6 +114,7 @@ class RenderContext private constructor(
         store = store,
         overlay = overlay + extra,
         screen = screen,
+        mediaHost = mediaHost,
     )
 
     /** Recursively rebuild a nested map structure with [value] placed at [segments]. */

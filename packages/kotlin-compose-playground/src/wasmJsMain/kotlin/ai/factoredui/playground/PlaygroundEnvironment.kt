@@ -14,6 +14,9 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -42,12 +45,20 @@ private val composerHttp = HttpClient()
 
 // Dev-harness host: forward a spec button's action to the server that served the
 // spec (?spec=.../spec → POST .../action). scene3d POSTs its own select/camera.
+private fun jsonOfParam(value: Any?): JsonElement = when (value) {
+    null -> JsonNull
+    is String -> JsonPrimitive(value)
+    is Boolean -> JsonPrimitive(value)
+    is Number -> JsonPrimitive(value)
+    is Map<*, *> -> buildJsonObject { value.forEach { (key, inner) -> put(key.toString(), jsonOfParam(inner)) } }
+    is List<*> -> JsonArray(value.map(::jsonOfParam))
+    else -> JsonPrimitive(value.toString())
+}
+
 private fun forwardAction(name: String, actionUrl: String): ActionHandler = handler@{ params ->
     val body = buildJsonObject {
         put("action", name)
-        put("params", buildJsonObject {
-            params.forEach { (key, value) -> if (value is String) put(key, JsonPrimitive(value)) }
-        })
+        put("params", jsonOfParam(params))
     }.toString()
     runCatching {
         composerHttp.post(actionUrl) {
@@ -99,16 +110,28 @@ fun playgroundActions(actionUrl: String? = null): ActionRegistry {
         },
     )
     if (actionUrl == null) return base
-    return base + SCENE3D_VERBS.associateWith { verb -> forwardAction(verb, actionUrl) }
+    return ForwardingActions(base + SCENE3D_VERBS.associateWith { verb -> forwardAction(verb, actionUrl) }) { name -> forwardAction(name, actionUrl) }
 }
 
-fun actionUrlParam(): String? = deriveFromSpec("/action")
+private class ForwardingActions(private val known: Map<String, ActionHandler>, private val forward: (String) -> ActionHandler) : Map<String, ActionHandler> by known {
+    override fun get(key: String): ActionHandler = known[key] ?: forward(key)
+}
+
+private fun rawActionParam(): String =
+    js("(new URLSearchParams(window.location.search).get('action')) || ''")
+
+fun actionUrlParam(): String? = rawActionParam().ifEmpty { null } ?: deriveFromSpec("/action") ?: deriveFromSpecFile("action")
 
 fun worldStreamUrlParam(): String? = deriveFromSpec("/world/stream")
 
 private fun deriveFromSpec(suffix: String): String? {
     val spec = specUrlParam() ?: return null
     return if (spec.endsWith("/spec")) spec.removeSuffix("/spec") + suffix else null
+}
+
+private fun deriveFromSpecFile(sibling: String): String? {
+    val path = specUrlParam()?.substringBefore('?') ?: return null
+    return if (path.endsWith("/spec.json")) path.removeSuffix("spec.json") + sibling else null
 }
 
 fun placeholderSpec(message: String): Spec = Spec(

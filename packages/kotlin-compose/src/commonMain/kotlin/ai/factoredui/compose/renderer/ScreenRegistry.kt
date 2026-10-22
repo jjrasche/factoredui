@@ -74,6 +74,12 @@ data class ChartHoverRecord(val x: Double, val values: List<Pair<String, String>
 
 data class ChartRecord(val xLow: Double?, val xHigh: Double?, val xTicks: List<Pair<Double, String>>, val axes: List<ChartAxisRecord>, val series: List<ChartSeriesRecord>, val hover: ChartHoverRecord?)
 
+data class AudioMarkerRecord(val at: Double, val label: String)
+
+data class AudioRecord(val source: String, val status: String, val position: Double, val duration: Double?, val isPlaying: Boolean, val rate: Double, val markers: List<AudioMarkerRecord>, val mediaActions: List<String>)
+
+data class VoiceRecord(val label: String, val mode: String, val capture: String, val status: String, val isListening: Boolean, val transcript: String?)
+
 /** Where a scene's canvas sits in the window, in the units the window's pointer uses. */
 data class CanvasPlacement(val originX: Float, val originY: Float, val pixelsPerUnit: Float)
 
@@ -92,6 +98,8 @@ class NodeRecord(
     var notices: List<String> = emptyList()
     var scene: SceneRecord? = null
     var chart: ChartRecord? = null
+    var audio: AudioRecord? = null
+    var voice: VoiceRecord? = null
     var canvas: CanvasPlacement? = null
     var fill: Long? = null
     var ink: Long? = null
@@ -107,7 +115,7 @@ class NodeRecord(
 }
 
 private fun NodeRecord.fingerprint(): List<Any?> =
-    listOf(visible, boundProps, enabled, action, text, bounds, rowCount, notices, scene, chart, canvas, fill, ink, shownProps, menu, menuBounds.toMap(), menuComposed.toSet(), isBoundToNull, emptyMessage, emptyBounds)
+    listOf(visible, boundProps, enabled, action, text, bounds, rowCount, notices, scene, chart, audio, voice, canvas, fill, ink, shownProps, menu, menuBounds.toMap(), menuComposed.toSet(), isBoundToNull, emptyMessage, emptyBounds)
 
 /** Written on the screen's thread as it draws; [frame] and [changes] are read by a driver waiting on another thread for the screen to settle. */
 class ScreenRegistry {

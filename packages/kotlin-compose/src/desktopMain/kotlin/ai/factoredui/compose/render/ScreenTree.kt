@@ -1,5 +1,6 @@
 package ai.factoredui.compose.render
 
+import ai.factoredui.compose.renderer.AudioRecord
 import ai.factoredui.compose.renderer.CanvasPlacement
 import ai.factoredui.compose.renderer.ChartAxisRecord
 import ai.factoredui.compose.renderer.ChartRecord
@@ -10,6 +11,7 @@ import ai.factoredui.compose.renderer.ScenePartRecord
 import ai.factoredui.compose.renderer.SceneRecord
 import ai.factoredui.compose.renderer.ScreenBounds
 import ai.factoredui.compose.renderer.ScreenRegistry
+import ai.factoredui.compose.renderer.VoiceRecord
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.asListProps
@@ -178,6 +180,28 @@ private fun chartJson(chart: ChartRecord): JsonObject = buildJsonObject {
     put("hover", chart.hover?.let { hover -> buildJsonObject { put("x", hover.x); put("values", buildJsonArray { hover.values.forEach { (id, text) -> add(buildJsonObject { put("id", id); put("text", text) }) } }) } } ?: JsonNull)
 }
 
+/** What an audio node holds: where it is in the narration, whether it plays, how fast, the passages it knows and the lock-screen actions the spec maps. */
+private fun audioJson(audio: AudioRecord): JsonObject = buildJsonObject {
+    put("source", audio.source)
+    put("status", audio.status)
+    put("position", audio.position)
+    put("duration", valueJson(audio.duration))
+    put("playing", audio.isPlaying)
+    put("rate", audio.rate)
+    put("markers", buildJsonArray { audio.markers.forEach { add(buildJsonObject { put("at", it.at); put("label", it.label) }) } })
+    put("media_actions", JsonArray(audio.mediaActions.map(::JsonPrimitive)))
+}
+
+/** What a voice node holds: its mode, what it captures, whether it is listening and the last words it heard. */
+private fun voiceJson(voice: VoiceRecord): JsonObject = buildJsonObject {
+    put("label", voice.label)
+    put("mode", voice.mode)
+    put("capture", voice.capture)
+    put("status", voice.status)
+    put("listening", voice.isListening)
+    put("transcript", valueJson(voice.transcript))
+}
+
 fun optionPath(selectPath: String, value: String): String = "$selectPath/option/$value"
 
 private fun optionJson(record: NodeRecord, item: MenuItemRecord): JsonObject = buildJsonObject {
@@ -236,6 +260,8 @@ fun screenJson(node: ScreenNode): JsonObject = buildJsonObject {
     if (record.notices.isNotEmpty()) put("notices", JsonArray(record.notices.map(::JsonPrimitive)))
     record.scene?.let { put("scene", sceneJson(it, record.canvas)) }
     record.chart?.let { put("chart", chartJson(it)) }
+    record.audio?.let { put("audio", audioJson(it)) }
+    record.voice?.let { put("voice", voiceJson(it)) }
     put("children", JsonArray(drawnChildren(node)))
 }
 

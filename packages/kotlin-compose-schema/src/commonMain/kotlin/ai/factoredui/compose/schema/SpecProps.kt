@@ -154,7 +154,7 @@ data class ButtonProps(
 )
 
 enum class ButtonVariant { PRIMARY, SECONDARY, OUTLINE, GHOST, DESTRUCTIVE }
-enum class ButtonSize { SM, MD, LG }
+enum class ButtonSize { SM, MD, LG, XL }
 
 fun Map<String, SpecValue>.asButtonProps(): ButtonProps = ButtonProps(
     label = string("label") ?: "",
@@ -168,6 +168,7 @@ fun Map<String, SpecValue>.asButtonProps(): ButtonProps = ButtonProps(
     size = when (string("size")) {
         "sm" -> ButtonSize.SM
         "lg" -> ButtonSize.LG
+        "xl" -> ButtonSize.XL
         else -> ButtonSize.MD
     },
     icon = string("icon"),

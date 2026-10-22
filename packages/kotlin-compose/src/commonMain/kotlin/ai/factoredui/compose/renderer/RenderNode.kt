@@ -86,7 +86,10 @@ import ai.factoredui.compose.schema.asSpacerProps
 import ai.factoredui.compose.schema.asTextProps
 import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.displayedText
+import ai.factoredui.compose.schema.ButtonSize
 import ai.factoredui.compose.schema.ButtonVariant
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.LocalTextStyle
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
@@ -301,6 +304,8 @@ private fun RenderNodeByType(
         SpecNodeType.TABLE -> RenderTable(node, resolvedProps, context)
         SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)
         SpecNodeType.VIDEO -> RenderVideo(node, resolvedProps, context)
+        SpecNodeType.AUDIO -> RenderAudio(node, resolvedProps, context)
+        SpecNodeType.VOICE -> RenderVoice(node, resolvedProps, context)
         SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)
         SpecNodeType.SELECT -> RenderSelect(node, resolvedProps, context)
         SpecNodeType.TABS -> RenderTabs(node, resolvedProps, context)
@@ -863,33 +868,36 @@ private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, conte
         }
     }
 
+    val sized = Modifier.nodeTag(node.id).then(if (props.size == ButtonSize.XL) Modifier.heightIn(min = XL_BUTTON_HEIGHT) else Modifier)
     when (props.variant) {
         ButtonVariant.OUTLINE -> OutlinedButton(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.nodeTag(node.id),
-        ) { ButtonContent(icon, label) }
+            modifier = sized,
+        ) { ButtonContent(icon, label, props.size) }
 
         ButtonVariant.GHOST -> TextButton(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.nodeTag(node.id),
-        ) { ButtonContent(icon, label) }
+            modifier = sized,
+        ) { ButtonContent(icon, label, props.size) }
 
         ButtonVariant.DESTRUCTIVE -> Button(
             onClick = onClickHandler,
             enabled = !isDisabled,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier.nodeTag(node.id),
-        ) { ButtonContent(icon, label) }
+            modifier = sized,
+        ) { ButtonContent(icon, label, props.size) }
 
         else -> Button(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.nodeTag(node.id),
-        ) { ButtonContent(icon, label) }
+            modifier = sized,
+        ) { ButtonContent(icon, label, props.size) }
     }
 }
+
+private val XL_BUTTON_HEIGHT = 72.dp
 
 @Composable
 private fun RenderImage(node: SpecNode, resolvedProps: Map<String, Any?>) {
@@ -964,15 +972,16 @@ private fun IconifyImage(name: String, sizeDp: Dp, contentDescription: String, m
 }
 
 @Composable
-private fun ButtonContent(icon: String?, label: String) {
+private fun ButtonContent(icon: String?, label: String, size: ButtonSize) {
+    val style = if (size == ButtonSize.XL) MaterialTheme.typography.headlineSmall else LocalTextStyle.current
     if (!icon.isNullOrEmpty()) {
         IconifyImage(name = icon, sizeDp = 20.dp, contentDescription = label.ifEmpty { "icon" })
         if (label.isNotEmpty()) {
             Spacer(Modifier.width(8.dp))
-            Text(label)
+            Text(label, style = style)
         }
     } else {
-        Text(label)
+        Text(label, style = style)
     }
 }
 

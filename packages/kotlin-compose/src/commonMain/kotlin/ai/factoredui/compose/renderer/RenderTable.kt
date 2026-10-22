@@ -8,6 +8,7 @@ import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.schema.TableLayout
+import ai.factoredui.compose.schema.actionRefOf
 import ai.factoredui.compose.schema.readColumnOverrides
 import ai.factoredui.compose.schema.mergedProfile
 import ai.factoredui.compose.schema.readDisplayProfile
@@ -55,12 +56,6 @@ private fun specValueOf(raw: Any?): SpecValue = when (raw) {
     is List<*> -> SpecValue.ArrayValue(raw.map(::specValueOf))
     is Map<*, *> -> SpecValue.ObjectValue(raw.entries.associate { it.key.toString() to specValueOf(it.value) })
     else -> SpecValue.StringValue(raw.toString())
-}
-
-private fun actionRefOf(raw: SpecValue?): ActionRef? {
-    val fields = (raw as? SpecValue.ObjectValue)?.value ?: return null
-    val action = (fields["action"] as? SpecValue.StringValue)?.value ?: return null
-    return ActionRef(action, (fields["params"] as? SpecValue.ObjectValue)?.value.orEmpty())
 }
 
 private fun cellNode(id: String, value: String, slot: Pair<String, SpecValue>, align: String, extra: Map<String, SpecValue> = emptyMap()) = SpecNode(

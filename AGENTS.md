@@ -108,7 +108,7 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart.
+column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart.
 
 - There is no table and no ratio-against-a-limit widget.
 - A table of the engine's views is a `table` (see Tables). Any other table is a `list` with an `itemTemplate`.
@@ -320,6 +320,30 @@ A `chart` draws series of numbers against a numeric x: lines, or areas stacked a
 - `axes`: `{ left: { unit, label }, right: { unit, label } }`. An axis is drawn only when a series is on its side; it spans round tick values that enclose its series (and zero when it holds an area), with `unit` and `label` printed at its top and `unit` after each value read from a series on it. `x_label` is printed before the x end values and the hover's x.
 - Hover: a pointer over the drawing (or a touch pressed on it) reads the row nearest it: a crosshair, a dot on each series, and under the drawing each series' own value, not the edge it is stacked to. `/tree` has `<id>/readout`, `<id>/readout/x` and `<id>/readout/<series id>` while it reads, `<id>/legend/<i>`, `<id>/axis/<left|right>/<i>` and `.../unit`, `<id>/axis/x/first` and `/last`; the plotted values are in the node's `chart` field.
 - `empty_text` is drawn when no series can be drawn.
+
+## Audio and voice
+
+Both run only where the host gives the renderer a media engine: the browser (wasmJs) does; desktop, Android and iOS draw a notice and read back `unsupported`. The mic and speech recognition need a secure page (HTTPS or localhost). Neither works with the screen locked except playback and its lock-screen controls.
+
+`audio` plays one stored file (an `<audio>` element, so it keeps playing with the screen locked) and hands the lock screen's controls to the page through the Media Session.
+
+- `source`: the URL. `title`, `artist`, `album`, `artwork` (a URL): what the lock screen shows. A source that changes is opened again.
+- Two-way bindings: `position` (seconds), `playing` (bool), `rate` (number), and `duration` (seconds, written when known). The node writes `position` at most twice a second while it plays and writes `playing` when the player starts, pauses, ends or is refused; a write by anything else seeks, plays, pauses or changes the rate. A `position` already held when the length is known is where it resumes. Seek to a passage with a button's `set_binding` on `position`.
+- `markers`: `[{ at, label }]` in seconds, kept in time order and read back; with markers the lock screen's previous and next go to the start of the passage being heard (or the one before it, within 3 seconds of its start) and the next one; without them they seek by `seek_step` (default 15 seconds, as seekbackward and seekforward do).
+- `on_position`: an action told, with `position`, `rate`, `playing`, `duration` and `reason` (`play`, `pause`, `seek`, `rate`, `ended` or `tick`) added to its params, on each of those and every `report_every` seconds of narration while it plays (default 5).
+- `media_actions`: `{ <lock-screen action>: { action, params } }` for `play`, `pause`, `previoustrack`, `nexttrack`, `seekbackward`, `seekforward`, `seekto`, `stop`. A named one is dispatched instead of its default, with its params resolved then (`"position": "{book.position}"`), so a spec can make a lock-screen button a reaction such as "lost me". A name it does not know is named in a notice.
+- `controls`: true (default) draws a play and pause button, minus and plus `seek_step` buttons, a seek bar, the time and a rate button (0.75 to 2). Browsers start sound only after a tap, and a page that sets `playing` before one is refused: the node reads back `blocked`, writes `playing` false and says to tap play.
+- `/tree` node `audio` field: `source, status, position, duration, playing, rate, markers, media_actions`; `status` is `idle`, `loading`, `ready`, `blocked`, `failed` or `unsupported`.
+
+`voice` is one large control that captures speech.
+
+- `mode`: `hold` (default: listens while pressed) or `toggle`. `label` (default "Hold to talk" or "Tap to talk"). `lang`.
+- `capture`: `text` (default; the browser's speech recognition, which on Chrome sends the audio to the browser vendor's service) or `audio` (records and POSTs the recording to `upload_url`). Only one is used, because a phone's mic can serve one capture at a time.
+- `on_capture`: an action told when listening ends with something to tell, with `text`, `confidence`, `ms`, `uploaded` and `bytes` added to its params. Listening that ends with nothing heard tells nothing.
+- Bindings written: `listening` (bool) and `transcript` (the last words heard).
+- `/tree` node `voice` field: `label, mode, capture, status, listening, transcript`; `status` is `ready`, `listening`, `failed` or `unsupported`, and a failure (a refused mic, no HTTPS, no recognition) is in the node's notices.
+
+A `button` with `size: "xl"` is at least 72 dp tall with a large label, for a thumb. In the stock browser host, an action the host does not know is POSTed as `{ action, params }` (numbers and booleans kept) to `/action` beside the spec URL (`/spec.json` becomes `/action`), or to the `action` query parameter.
 
 ## Reports data
 
