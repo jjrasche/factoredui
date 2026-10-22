@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ai.factoredui.compose.net.startSseSubscription
 import ai.factoredui.compose.observability.LoggingObservability
+import ai.factoredui.compose.observability.NoOpObservability
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.applyActionAnswer
 import ai.factoredui.compose.scene3d.Scene3dWorldState
@@ -30,7 +31,7 @@ fun PlaygroundApp() {
         val host = hostTheme()
         RenderContext(
             actions = playgroundActions(actionUrlParam()) { answer -> answered[0]?.applyActionAnswer(answer) },
-            observability = LoggingObservability(),
+            observability = if (debugParam()) LoggingObservability() else NoOpObservability,
             theme = host.theme,
             themes = host.themes,
             initialData = mapOf("theme" to mapOf("notices" to host.notices)),

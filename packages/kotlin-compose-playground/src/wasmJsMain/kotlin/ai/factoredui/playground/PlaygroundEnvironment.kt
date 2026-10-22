@@ -190,5 +190,8 @@ fun hostTheme(): HostTheme {
     val users = if (text == null) emptyMap() else (fileMode ?: mode).let { forMode -> applyUserTokens(forMode, text).also { notices += it.notices }.let { mapOf(forMode to SpecTheme.from(it.tokens)) } }
     return HostTheme(users[mode] ?: checkNotNull(themeNamed(mode)), users, notices)
 }
+fun debugParam(): Boolean =
+    js("(new URLSearchParams(window.location.search).get('debug')) ? true : false")
+
 fun fullscreenParam(): Boolean =
     js("(new URLSearchParams(window.location.search).get('full')) ? true : false")
