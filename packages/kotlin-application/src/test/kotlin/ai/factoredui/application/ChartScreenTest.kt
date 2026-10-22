@@ -44,7 +44,7 @@ class ChartScreenTest {
     fun the_chart_rows_are_the_season_rows_cut_to_the_x_and_the_series_paths() {
         val rows = root.props("chart")["rows"]!!.jsonArray
         assertEquals(100, rows.size)
-        assertEquals("""{"t":5,"series":{"outside_f":35},"stocks":{"air_f":65}}""", rows[5].toString())
+        assertEquals("""{"t":5,"series":{"outside_f":35},"stocks":{"air_f":65},"at":"Step 5"}""", rows[5].toString())
     }
 
     @Test
@@ -66,19 +66,57 @@ class ChartScreenTest {
     }
 
     @Test
-    fun the_slider_runs_from_the_first_row_to_the_last_row_a_whole_day_still_fits() {
+    fun the_slider_snaps_to_whole_days_from_the_first_row_to_the_last_day_that_fits() {
         val slider = root.props("scrub.slider")
-        assertEquals(listOf(0.0, 76.0, 1.0), listOf("min", "max", "step").map { slider[it]!!.jsonPrimitive.double })
+        assertEquals(listOf(0.0, 72.0, 24.0), listOf("min", "max", "step").map { slider[it]!!.jsonPrimitive.double })
         assertEquals("{day.from}", slider["value"]!!.jsonPrimitive.content)
     }
 
     @Test
-    fun the_day_buttons_move_the_start_by_the_step_and_keep_it_in_the_slider_range() {
-        fun params(id: String) = root.node(id)["action"]!!.jsonObject["params"]!!.jsonObject
-        assertEquals(listOf("day.from", -24.0, 0.0, 76.0), params("scrub.previous").let { listOf(it["path"]!!.jsonPrimitive.content, it["add"]!!.jsonPrimitive.double, it["min"]!!.jsonPrimitive.double, it["max"]!!.jsonPrimitive.double) })
-        assertEquals(24.0, params("scrub.next")["add"]!!.jsonPrimitive.double)
+    fun the_slider_is_the_only_scrub_control_and_a_label_says_where_the_window_starts() {
+        assertTrue(root.nodes().none { it["type"]!!.jsonPrimitive.content == "button" })
+        assertEquals("{day.label}", root.props("scrub.label")["value"]!!.jsonPrimitive.content)
+        val chart = root.props("chart")
+        assertEquals(listOf("at", "{day.label}"), listOf("row_label", "window_label").map { chart[it]!!.jsonPrimitive.content })
     }
 
+    @Test
+    fun the_page_is_dark_and_drawn_on_the_ground() {
+        assertEquals("dark", spec["theme"]!!.jsonPrimitive.content)
+        assertEquals("ground", root["props"]!!.jsonObject["background"]!!.jsonPrimitive.content)
+    }
+
+    private fun labelsFor(clock: String, steps: Int = 3): List<String> {
+        val season = kotlinx.serialization.json.Json.parseToJsonElement("""{ "clock": $clock, "steps": [ ${(0 until steps).joinToString(",") { """{ "t": ${it * 25}, "series": { "outside_f": 1 }, "stocks": { "air_f": 2 } }""" }} ] }""").jsonObject
+        val screen = chartScreenSpec(readChartScreen(SCREEN), season)["root"]!!.jsonObject
+        return screen.props("chart")["rows"]!!.jsonArray.map { it.jsonObject["at"]!!.jsonPrimitive.content }
+    }
+
+    @Test
+    fun with_a_start_the_rows_are_labelled_with_the_date_and_time_of_each_step() {
+        assertEquals(listOf("Tue 3 Nov, 21:00", "Wed 4 Nov, 22:00", "Thu 5 Nov, 23:00"), labelsFor("""{ "step": 1.0, "unit": "hour", "start": "2020-11-03T21:00:00" }"""))
+    }
+
+    @Test
+    fun a_start_with_an_offset_or_only_a_date_is_read_too() {
+        assertEquals("Tue 3 Nov, 21:00", labelsFor("""{ "step": 1, "unit": "hour", "start": "2020-11-03T21:00:00+00:00" }""").first())
+        assertEquals("Tue 3 Nov, 00:00", labelsFor("""{ "step": 1, "unit": "hour", "start": "2020-11-03" }""").first())
+    }
+
+    @Test
+    fun with_no_start_an_hourly_season_counts_days_and_hours() {
+        assertEquals(listOf("Day 1, 00:00", "Day 2, 01:00", "Day 3, 02:00"), labelsFor("""{ "step": 1, "unit": "hour" }"""))
+    }
+
+    @Test
+    fun a_clock_that_says_nothing_usable_labels_the_rows_by_their_step() {
+        assertEquals(listOf("Step 0", "Step 25", "Step 50"), labelsFor("""{ "step": 1, "unit": "fortnight" }"""))
+    }
+
+    @Test
+    fun a_step_of_more_than_one_unit_is_counted_in_its_own_size() {
+        assertEquals(listOf("Day 1, 00:00", "Day 3, 02:00"), labelsFor("""{ "step": 2, "unit": "hour" }""", steps = 2))
+    }
     @Test
     fun the_greenhouse_day_screen_reads_with_two_stacks_and_three_lines() {
         val screen = readChartScreen(checkNotNull(ChartScreenTest::class.java.getResource("/greenhouse-day.screen.json")).readText())

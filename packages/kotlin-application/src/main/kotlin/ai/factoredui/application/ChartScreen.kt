@@ -5,12 +5,14 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlin.math.floor
 
 class ChartScreenFormatException(message: String) : IllegalArgumentException(message)
 
 data class ChartScreen(val title: String, val rowsKey: String, val chart: JsonObject, val xPath: String, val dayLength: Double, val dayFrom: Double?, val dayStep: Double)
 
 private const val DAY_PATH = "day.from"
+private const val DAY_LABEL_PATH = "day.label"
 
 private fun objectIn(root: JsonObject, key: String): JsonObject = root[key] as? JsonObject ?: throw ChartScreenFormatException("the screen has no '$key' object")
 
@@ -47,30 +49,32 @@ private fun projected(row: JsonObject, paths: List<String>): JsonObject =
 private fun pathsOf(screen: ChartScreen): List<String> =
     listOf(screen.xPath) + (screen.chart["series"] as JsonArray).mapNotNull { ((it as? JsonObject)?.get("path") as? JsonPrimitive)?.content }
 
+private const val ROW_LABEL = "at"
+
+private fun labelled(row: JsonObject, xPath: String, clock: SeasonClock): JsonObject {
+    val step = xOf(row, xPath) ?: return row
+    return JsonObject(row + (ROW_LABEL to JsonPrimitive(stepLabel(clock, step))))
+}
+
 private fun rowsOf(screen: ChartScreen, season: JsonObject): List<JsonObject> {
     val rows = season[screen.rowsKey] as? JsonArray ?: throw ChartScreenFormatException("the season has no '${screen.rowsKey}' list")
     val paths = pathsOf(screen)
-    return rows.filterIsInstance<JsonObject>().map { projected(it, paths) }
+    val clock = clockOf(season)
+    return rows.filterIsInstance<JsonObject>().map { labelled(projected(it, paths), screen.xPath, clock) }
 }
 
 private fun xOf(row: JsonObject, xPath: String): Double? = (valueAt(row, xPath) as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toDoubleOrNull()
 
-private fun dayButton(id: String, label: String, add: Double, low: Double, high: Double): JsonObject =
-    JsonObject(
-        specNode(id, "button", mapOf("label" to label, "variant" to "secondary", "size" to "sm", "flex" to 1)) +
-            ("action" to jsonOf(mapOf("action" to "set_binding", "params" to mapOf("path" to DAY_PATH, "add" to add, "min" to low, "max" to high)))),
-    )
-
-private fun scrubControls(screen: ChartScreen, low: Double, high: Double): List<JsonObject> = listOf(
-    specNode("scrub.slider", "slider", mapOf("value" to "{$DAY_PATH}", "min" to low, "max" to high, "step" to 1)),
-    specNode("scrub.buttons", "row", mapOf("gap" to 8), listOf(dayButton("scrub.previous", "Previous", -screen.dayStep, low, high), dayButton("scrub.next", "Next", screen.dayStep, low, high))),
-    textNode("scrub.start", "starts at {$DAY_PATH}", variant = "caption", color = MUTED),
+private fun scrubControls(low: Double, high: Double, step: Double): List<JsonObject> = listOf(
+    textNode("scrub.label", "{$DAY_LABEL_PATH}", variant = "subheading", color = INK),
+    specNode("scrub.slider", "slider", mapOf("value" to "{$DAY_PATH}", "min" to low, "max" to high, "step" to step)),
 )
-
 private fun chartNode(screen: ChartScreen, rows: List<JsonObject>): JsonObject {
     val props = screen.chart.toMutableMap<String, JsonElement>()
     props["rows"] = JsonArray(rows)
     props["window"] = jsonOf(mapOf("from" to "{$DAY_PATH}", "length" to screen.dayLength))
+    props["row_label"] = JsonPrimitive(ROW_LABEL)
+    props["window_label"] = JsonPrimitive("{$DAY_LABEL_PATH}")
     props.putIfAbsent("ink", JsonPrimitive(INK))
     props.putIfAbsent("muted", JsonPrimitive(MUTED))
     return JsonObject(mapOf("id" to JsonPrimitive("chart"), "type" to JsonPrimitive("chart"), "props" to JsonObject(props), "children" to JsonArray(emptyList())))
@@ -78,16 +82,17 @@ private fun chartNode(screen: ChartScreen, rows: List<JsonObject>): JsonObject {
 
 private fun page(children: List<JsonObject>, state: Map<String, Any?>): JsonObject {
     val root = specNode("root", "column", mapOf("gap" to 12, "padding" to 16, "background" to HUD), children)
-    return JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "state" to jsonOf(state), "root" to root))
+    return JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(state), "root" to root))
 }
 
-/** The screen as a spec: the season's rows cut to the paths the chart reads, the chart windowed by the day binding, and the controls that move the day. */
+/** The screen as a spec: the season's rows cut to the paths the chart reads and labelled with their time, the chart windowed by the day binding, and the one slider that moves the day. */
 fun chartScreenSpec(screen: ChartScreen, season: JsonObject): JsonObject {
     val title = textNode("screen.title", screen.title, variant = "subheading", bold = true, color = INK)
     val rows = rowsOf(screen, season)
     val firsts = rows.mapNotNull { xOf(it, screen.xPath) }
     if (firsts.isEmpty()) return page(listOf(title, textNode("screen.empty", "The season has no rows to draw.", variant = "caption", color = MUTED)), emptyMap())
     val low = firsts.min()
-    val high = maxOf(low, firsts.max() - screen.dayLength)
-    return page(listOf(title, chartNode(screen, rows)) + scrubControls(screen, low, high), mapOf(DAY_PATH to (screen.dayFrom ?: low)))
+    val step = screen.dayStep.takeIf { it >= 1.0 } ?: 1.0
+    val high = low + floor((maxOf(low, firsts.max() - screen.dayLength) - low) / step) * step
+    return page(listOf(title, chartNode(screen, rows)) + scrubControls(low, high, step), mapOf(DAY_PATH to (screen.dayFrom ?: low)))
 }

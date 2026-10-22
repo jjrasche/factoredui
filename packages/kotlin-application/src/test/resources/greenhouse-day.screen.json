@@ -5,6 +5,7 @@
     "x": "t",
     "x_label": "hour",
     "x_axis": { "every": 3, "as": "hour_of_day" },
+    "stack_labels": { "gains": "Heat in", "losses": "Heat out" },
     "axes": {
       "left": { "unit": "W per foot", "label": "Heat flow" },
       "right": { "unit": "°F", "label": "Temperature" }
