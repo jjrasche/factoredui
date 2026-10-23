@@ -67,7 +67,7 @@ class SceneViewJsonTest {
     fun everyProvenanceKindIsNamedByItsTagRecordedComputedOrGuessed() {
         assertEquals(listOf("recorded", "computed", "guessed"), ProvenanceKind.entries.map { it.tag })
         val tags = ProvenanceKind.entries.map { kind ->
-            val scene = everyLayerScene().copy(ground = null, surface = null, footprints = null, instances = null, boundaries = null, water = WaterLayer(1, emptyList(), emptyList(), Provenance(kind)))
+            val scene = everyLayerScene().copy(ground = null, surface = null, footprints = null, instances = null, boundaries = null, water = WaterLayer(1, emptyList(), Provenance(kind)))
             parsed(scene).getValue("water").jsonObject.getValue("provenance").jsonObject.getValue("tag").jsonPrimitive.content
         }
         assertEquals(listOf("recorded", "computed", "guessed"), tags)
