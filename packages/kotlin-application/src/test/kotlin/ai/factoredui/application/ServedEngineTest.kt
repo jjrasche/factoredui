@@ -39,15 +39,11 @@ internal class FakeEngine {
             posted += request
             val asking = inFlight.incrementAndGet()
             maxInFlight.updateAndGet { maxOf(it, asking) }
-            try {
-                runHeaders.forEach { (name, value) -> exchange.responseHeaders.add(name, value) }
-                val bytes = runAnswer(request).toByteArray()
-                exchange.sendResponseHeaders(status, if (bytes.isEmpty()) -1 else bytes.size.toLong())
-                if (bytes.isNotEmpty()) exchange.responseBody.use { it.write(bytes) }
-                exchange.close()
-            } finally {
-                inFlight.decrementAndGet()
-            }
+            runHeaders.forEach { (name, value) -> exchange.responseHeaders.add(name, value) }
+            val bytes = try { runAnswer(request).toByteArray() } finally { inFlight.decrementAndGet() }
+            exchange.sendResponseHeaders(status, if (bytes.isEmpty()) -1 else bytes.size.toLong())
+            if (bytes.isNotEmpty()) exchange.responseBody.use { it.write(bytes) }
+            exchange.close()
         }
         server.start()
     }
