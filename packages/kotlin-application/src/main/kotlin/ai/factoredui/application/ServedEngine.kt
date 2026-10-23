@@ -18,11 +18,12 @@ class EngineWorld(val id: String, val path: Path)
 
 private const val CONNECT_TIMEOUT_SECONDS = 5L
 
-class ServedEngine(private val address: URI) : EngineRuntime {
+/** Every call waits `timeoutSeconds` when one is given, and otherwise as long as the caller asks. */
+class ServedEngine(private val address: URI, private val timeoutSeconds: Long? = null) : EngineRuntime {
     private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(CONNECT_TIMEOUT_SECONDS)).build()
 
     fun worlds(): List<EngineWorld> {
-        val request = HttpRequest.newBuilder(address.resolve("/worlds")).GET().timeout(Duration.ofSeconds(RUNTIME_TIMEOUT_SECONDS)).build()
+        val request = HttpRequest.newBuilder(address.resolve("/worlds")).GET().timeout(Duration.ofSeconds(timeoutSeconds ?: RUNTIME_TIMEOUT_SECONDS)).build()
         val response = sent(request)
         if (response.statusCode() != 200) throw RuntimeFailedException("the engine at $address listed no worlds: ${reasonIn(response)}")
         return worldsIn(Json.parseToJsonElement(response.body().toString(Charsets.UTF_8)))
@@ -35,7 +36,7 @@ class ServedEngine(private val address: URI) : EngineRuntime {
         val request = HttpRequest.newBuilder(address.resolve("/run"))
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
-            .timeout(Duration.ofSeconds(timeoutSeconds))
+            .timeout(Duration.ofSeconds(this.timeoutSeconds ?: timeoutSeconds))
             .build()
         val response = sent(request)
         if (response.statusCode() != 200) throw RuntimeFailedException("the engine refused $command: ${reasonIn(response)}")
