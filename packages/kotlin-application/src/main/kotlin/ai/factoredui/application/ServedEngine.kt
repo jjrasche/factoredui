@@ -13,14 +13,16 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Path
 import java.time.Duration
+import java.util.concurrent.Semaphore
 
 class EngineWorld(val id: String, val path: Path)
 
 private const val CONNECT_TIMEOUT_SECONDS = 5L
 
-/** Every call waits `timeoutSeconds` when one is given, and otherwise as long as the caller asks. */
-class ServedEngine(private val address: URI, private val timeoutSeconds: Long? = null) : EngineRuntime {
+/** Every call waits `timeoutSeconds` when one is given, and otherwise as long as the caller asks; at most `maxConcurrentCalls` commands are with the engine at once, however many threads ask, and a call's wait for its turn is not part of its timeout. */
+class ServedEngine(private val address: URI, private val timeoutSeconds: Long? = null, maxConcurrentCalls: Int = 1) : EngineRuntime {
     private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(CONNECT_TIMEOUT_SECONDS)).build()
+    private val turns = Semaphore(maxConcurrentCalls, true)
 
     fun worlds(): List<EngineWorld> {
         val request = HttpRequest.newBuilder(address.resolve("/worlds")).GET().timeout(Duration.ofSeconds(timeoutSeconds ?: RUNTIME_TIMEOUT_SECONDS)).build()
@@ -38,7 +40,7 @@ class ServedEngine(private val address: URI, private val timeoutSeconds: Long? =
             .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
             .timeout(Duration.ofSeconds(this.timeoutSeconds ?: timeoutSeconds))
             .build()
-        val response = sent(request)
+        val response = turns.withPermit { sent(request) }
         if (response.statusCode() != 200) throw RuntimeFailedException("the engine refused $command: ${reasonIn(response)}")
         val text = response.body().toString(Charsets.UTF_8)
         return text.ifBlank { throw RuntimeFailedException("the engine answered nothing to $command: ${standardErrorOf(response)}") }
@@ -59,6 +61,15 @@ class ServedEngine(private val address: URI, private val timeoutSeconds: Long? =
 
     private fun standardErrorOf(response: HttpResponse<ByteArray>): String =
         response.headers().firstValue("X-We-Stderr").map { URLDecoder.decode(it, Charsets.UTF_8) }.orElse("it wrote nothing to standard error")
+}
+
+private fun <T> Semaphore.withPermit(work: () -> T): T {
+    acquire()
+    try {
+        return work()
+    } finally {
+        release()
+    }
 }
 
 private fun worldsIn(answer: JsonElement): List<EngineWorld> {
