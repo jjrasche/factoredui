@@ -5,7 +5,6 @@ import ai.factoredui.compose.schema.BindingResolver
 import ai.factoredui.compose.schema.Spec
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.awt.Point
@@ -24,10 +23,16 @@ private const val SHEET = """
     {"id":"size","type":"text","props":{"value":"8 ft 0 in","slot":"half"}},
     {"id":"layers","type":"text","props":{"value":"OSB EPS OSB","slot":"full"}}]}"""
 
-private class SheetPage(width: Int, stop: String = "peek") : AutoCloseable {
+private const val WINDOW_HEIGHT = 700
+private const val PEEK_DP = 96.0
+private const val HALF_DP = 320.0
+private const val HANDLE_DP = 44.0
+private const val FULL_FRACTION = 0.92
+
+private class SheetPage(private val width: Int, stop: String = "peek") : AutoCloseable {
     val context = RenderContext(initialData = mapOf("piece" to mapOf("stop" to stop)))
     private val spec = """{"spec_version":1,"renderer_min":1,"root":{"id":"page","type":"stack","props":{"width":"fill","height":"fill"},"children":[$SHEET]}}"""
-    private val surface = SceneSurface(json.decodeFromString(Spec.serializer(), spec), context, width, 700, ticking = false)
+    private val surface = SceneSurface(json.decodeFromString(Spec.serializer(), spec), context, width, WINDOW_HEIGHT, ticking = false)
 
     fun settle() = surface.onScreenThread { surface.onScreenThread { } }
 
@@ -36,8 +41,12 @@ private class SheetPage(width: Int, stop: String = "peek") : AutoCloseable {
     fun bound(path: String): Any? = BindingResolver.resolveBinding("{$path}", context.data)
 
     fun tapHandle() {
-        val bounds = checkNotNull(node("sheet/handle")).getValue("bounds").jsonObject
-        surface.click(Point(bounds.getValue("x").jsonPrimitive.int + bounds.getValue("w").jsonPrimitive.int / 2, bounds.getValue("y").jsonPrimitive.int + bounds.getValue("h").jsonPrimitive.int / 2))
+        val sheetHeight = when (bound("piece.stop")) {
+            "half" -> HALF_DP
+            "full" -> WINDOW_HEIGHT.toDouble() * FULL_FRACTION
+            else -> PEEK_DP
+        }
+        surface.click(Point(width / 2, (WINDOW_HEIGHT - sheetHeight + HANDLE_DP / 2.0).toInt()))
         settle()
     }
 
