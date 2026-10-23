@@ -58,7 +58,7 @@ private fun systemRow(name: String, caption: String?, drawn: List<String>): Json
             listOf(
                 specNode(
                     "systems.$name.row", "row", mapOf("gap" to 8),
-                    listOfNotNull(textNode("systems.$name.name", humanize(name), flex = 1), caption?.let { textNode("systems.$name.caption", it, variant = "caption", color = MUTED) }),
+                    listOfNotNull(textNode("systems.$name.name", humanize(name), flex = 1), caption?.let { textNode("systems.$name.caption", it, variant = "caption", color = MUTED, flex = 1) }),
                 ),
             ),
         ) + ("action" to jsonOf(selectSystem(name, drawn))),
