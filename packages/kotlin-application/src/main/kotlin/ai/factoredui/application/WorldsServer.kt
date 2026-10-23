@@ -10,7 +10,11 @@ import java.net.URLDecoder
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 data class WorldsOptions(val engine: URI, val bundle: Path, val bind: String, val port: Int)
 
@@ -65,8 +69,15 @@ private fun pageOf(engine: ServedEngine, worldId: String?, viewId: String?, timi
         .getOrElse { DrawnWorldPage(noticePage(bar, drawFailure(it, "${view.label} of ${chosen.id}"), state)) }
 }
 
-private class WorldsCache(val store: WorldSpecStore) {
-    val rebuilding: MutableSet<String> = ConcurrentHashMap.newKeySet()
+/** How long the page waits: a visitor waits `visitorWaitSeconds` for a build before being told it is under way; the background build waits `backgroundTimeoutSeconds` for each engine call. */
+data class WorldsPatience(val visitorWaitSeconds: Long = 60, val backgroundTimeoutSeconds: Long = 600, val warmAtStart: Boolean = true)
+
+private const val DEFAULT_BUILD_SECONDS = 90L
+private const val WARM_RETRY_MILLIS = 30_000L
+
+private class WorldsCache(val store: WorldSpecStore, val patience: WorldsPatience) {
+    val building = ConcurrentHashMap<String, CompletableFuture<ByteArray>>()
+    val buildSeconds = ConcurrentHashMap<String, Long>()
 }
 
 private fun requestOf(asked: Map<String, String>) = "${asked["world"].orEmpty()}\u0000${asked["view"].orEmpty()}"
@@ -76,43 +87,78 @@ private fun respondSpec(exchange: HttpExchange, body: ByteArray, timing: String)
     respond(exchange, 200, CONTENT_TYPES.getValue("json"), body)
 }
 
-private fun buildAndKeep(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>, timings: Timings): ByteArray {
-    val drawn = pageOf(engine, asked["world"], asked["view"], timings)
+private fun buildAndKeep(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>): ByteArray {
+    val started = System.nanoTime()
+    val drawn = pageOf(engine, asked["world"], asked["view"], Timings())
     val body = drawn.page.toString().toByteArray()
     val worldFile = drawn.worldFile
     val worldId = drawn.worldId
-    if (worldFile != null && worldId != null) cache.store.keep(requestOf(asked), WorldSpec(worldId, worldSpecKey(worldId, asked["view"], worldFile), worldFile, body))
+    if (worldFile != null && worldId != null) {
+        cache.store.keep(requestOf(asked), WorldSpec(worldId, worldSpecKey(worldId, asked["view"], worldFile), worldFile, body))
+        cache.buildSeconds[requestOf(asked)] = (System.nanoTime() - started) / 1_000_000_000
+    }
     return body
 }
 
 private fun isStale(kept: WorldSpec, viewId: String?): Boolean =
     runCatching { worldSpecKey(kept.worldId, viewId, kept.worldFile) != kept.key }.getOrDefault(true)
 
-private fun rebuildInBackground(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>) {
+private fun buildInBackground(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>): CompletableFuture<ByteArray> {
     val request = requestOf(asked)
-    if (!cache.rebuilding.add(request)) return
+    val started = CompletableFuture<ByteArray>()
+    val running = cache.building.putIfAbsent(request, started) ?: started
+    if (running !== started) return running
     Thread {
         try {
-            runCatching { buildAndKeep(engine, cache, asked, Timings()) }
+            started.complete(buildAndKeep(engine, cache, asked))
+        } catch (problem: Throwable) {
+            started.completeExceptionally(problem)
         } finally {
-            cache.rebuilding.remove(request)
+            cache.building.remove(request)
         }
     }.apply { isDaemon = true }.start()
+    return started
+}
+
+private fun buildingPage(cache: WorldsCache, asked: Map<String, String>): ByteArray {
+    val seconds = cache.buildSeconds[requestOf(asked)] ?: DEFAULT_BUILD_SECONDS
+    return noticePage(worldBar(emptyList(), null, emptyList(), null), "This page is building, ready in about $seconds s. Reload then.").toString().toByteArray()
+}
+
+private fun serveBuilt(exchange: HttpExchange, cache: WorldsCache, asked: Map<String, String>, build: CompletableFuture<ByteArray>, started: Long) {
+    try {
+        val body = build.get(cache.patience.visitorWaitSeconds, TimeUnit.SECONDS)
+        respondSpec(exchange, body, "total;dur=${(System.nanoTime() - started) / 1_000_000}")
+    } catch (stillBuilding: TimeoutException) {
+        respondSpec(exchange, buildingPage(cache, asked), "building")
+    } catch (failed: ExecutionException) {
+        respondText(exchange, 502, "cannot build the page: ${failed.cause?.message}")
+    }
 }
 
 private fun serveWorldSpec(exchange: HttpExchange, engine: ServedEngine, cache: WorldsCache) {
     val asked = queryOf(exchange)
     val lastGood = cache.store.lastGood(requestOf(asked))
-    if (lastGood != null) {
-        if (isStale(lastGood.spec, asked["view"])) rebuildInBackground(engine, cache, asked)
-        return respondSpec(exchange, lastGood.spec.body, "cache;desc=${lastGood.source}")
+    if (lastGood == null) return serveBuilt(exchange, cache, asked, buildInBackground(engine, cache, asked), System.nanoTime())
+    if (isStale(lastGood.spec, asked["view"])) buildInBackground(engine, cache, asked)
+    respondSpec(exchange, lastGood.spec.body, "cache;desc=${lastGood.source}")
+}
+
+private fun requestsToWarm(worlds: List<EngineWorld>): List<Map<String, String>> =
+    listOf(emptyMap<String, String>()) + worlds.flatMap { world -> listOf(mapOf("world" to world.id)) + viewsOf(world).map { mapOf("world" to world.id, "view" to it.id) } }
+
+private fun listWorldsWhenAnswered(engine: ServedEngine): List<EngineWorld> {
+    while (true) {
+        runCatching { engine.worlds() }.onSuccess { return it }
+        Thread.sleep(WARM_RETRY_MILLIS)
     }
-    val timings = Timings()
-    val started = System.nanoTime()
-    runCatching { buildAndKeep(engine, cache, asked, timings) }.fold(
-        onSuccess = { respondSpec(exchange, it, timings.header((System.nanoTime() - started) / 1_000_000)) },
-        onFailure = { respondText(exchange, 502, "cannot build the page: ${it.message}") },
-    )
+}
+
+private fun warmEveryWorld(engine: ServedEngine, cache: WorldsCache) {
+    Thread {
+        val worlds = listWorldsWhenAnswered(engine)
+        requestsToWarm(worlds).forEach { asked -> runCatching { buildInBackground(engine, cache, asked).get() } }
+    }.apply { isDaemon = true }.start()
 }
 
 private fun respondJson(exchange: HttpExchange, status: Int, body: JsonObject) = respond(exchange, status, CONTENT_TYPES.getValue("json"), body.toString().toByteArray())
@@ -133,8 +179,10 @@ private fun serveAction(exchange: HttpExchange) {
     respondJson(exchange, 200, JsonObject(mapOf("handled" to JsonPrimitive(false), "action" to JsonPrimitive(name), "reason" to JsonPrimitive(reason))))
 }
 
-fun startWorldsServer(options: WorldsOptions, cacheDirectory: Path? = defaultCacheDirectory()): HttpServer {
-    val engine = ServedEngine(options.engine)
-    val cache = WorldsCache(WorldSpecStore(cacheDirectory))
-    return startServing(options.bind, options.port, options.bundle, ::serveAction) { exchange -> serveWorldSpec(exchange, engine, cache) }
+fun startWorldsServer(options: WorldsOptions, cacheDirectory: Path? = defaultCacheDirectory(), patience: WorldsPatience = WorldsPatience()): HttpServer {
+    val engine = ServedEngine(options.engine, patience.backgroundTimeoutSeconds)
+    val cache = WorldsCache(WorldSpecStore(cacheDirectory), patience)
+    val server = startServing(options.bind, options.port, options.bundle, ::serveAction) { exchange -> serveWorldSpec(exchange, engine, cache) }
+    if (patience.warmAtStart) warmEveryWorld(engine, cache)
+    return server
 }

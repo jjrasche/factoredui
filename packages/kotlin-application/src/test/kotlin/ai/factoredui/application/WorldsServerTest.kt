@@ -67,8 +67,8 @@ class WorldsServerTest {
 
     private val specCache: Path = Files.createTempDirectory("spec-cache")
 
-    private fun serving(): Int {
-        val server = startWorldsServer(WorldsOptions(engine.address, bundle, "127.0.0.1", 0), specCache)
+    private fun serving(patience: WorldsPatience = WorldsPatience(warmAtStart = false)): Int {
+        val server = startWorldsServer(WorldsOptions(engine.address, bundle, "127.0.0.1", 0), specCache, patience)
         servers += server
         return server.address.port
     }
@@ -366,6 +366,46 @@ class WorldsServerTest {
         assertNotEquals(withSecondJar, withSecondPin)
         Files.writeString(world, """{ "id": "w", "title": "edited", "uses": [ { "domain": "d", "file": "d.jar" } ] }""")
         assertNotEquals(withSecondPin, worldSpecKey("w", "v", world))
+    }
+
+    @Test
+    fun a_build_that_outlasts_the_visitors_wait_is_answered_with_a_building_page_and_then_the_real_one() {
+        val folder = addWorld("slow", "slow-house")
+        engineLists("slow-house" to folder)
+        val mayFinish = java.util.concurrent.CountDownLatch(1)
+        engine.runAnswer = { mayFinish.await(20, java.util.concurrent.TimeUnit.SECONDS); LOADED_DRAWN }
+        val port = serving(WorldsPatience(visitorWaitSeconds = 1, warmAtStart = false))
+        val building = try {
+            fetch(port, "/spec.json?world=slow-house")
+        } finally {
+            mayFinish.countDown()
+        }
+        assertEquals(200, building.statusCode())
+        assertTrue(building.body().contains("building") && building.body().contains("ready in about"), building.body())
+        assertTrue(bodyBecomes(port, "/spec.json?world=slow-house", building.body()))
+    }
+
+    @Test
+    fun the_background_build_waits_for_the_engine_as_long_as_its_own_timeout_and_the_visitors_wait_does_not_set_it() {
+        val folder = addWorld("slow", "slow-house")
+        engineLists("slow-house" to folder)
+        engine.runAnswer = { Thread.sleep(2000); LOADED_DRAWN }
+        val impatient = fetch(serving(WorldsPatience(visitorWaitSeconds = 60, backgroundTimeoutSeconds = 1, warmAtStart = false)), "/spec.json?world=slow-house")
+        assertEquals(502, impatient.statusCode())
+        val patient = fetch(serving(WorldsPatience(visitorWaitSeconds = 60, backgroundTimeoutSeconds = 60, warmAtStart = false)), "/spec.json?world=slow-house")
+        assertEquals(200, patient.statusCode())
+    }
+
+    @Test
+    fun at_startup_every_world_is_built_in_the_background_so_the_cache_is_warm_before_anyone_visits() {
+        val first = addWorld("one", "world-one")
+        val second = addWorld("two", "world-two")
+        engineLists("world-one" to first, "world-two" to second)
+        answeringAsTheEngineDoes()
+        val port = serving(WorldsPatience(warmAtStart = true))
+        val warmed = (1..100).any { Thread.sleep(100); engine.posted.isNotEmpty() && fetch(port, "/spec.json?world=world-two").headers().firstValue("Server-Timing").get().contains("cache") }
+        assertTrue(warmed)
+        assertTrue(fetch(port, "/spec.json").headers().firstValue("Server-Timing").get().contains("cache"))
     }
 
     private fun post(port: Int, path: String, body: String): HttpResponse<String> =
