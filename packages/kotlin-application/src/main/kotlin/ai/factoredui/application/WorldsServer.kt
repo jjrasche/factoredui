@@ -10,6 +10,7 @@ import java.net.URLDecoder
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
 
 data class WorldsOptions(val engine: URI, val bundle: Path, val bind: String, val port: Int)
 
@@ -47,29 +48,69 @@ private fun specOfView(engine: EngineRuntime, world: EngineWorld, view: WorldVie
 
 private fun drawFailure(problem: Throwable, subject: String): String = "Cannot draw $subject: ${problem.message ?: problem::class.simpleName}"
 
-private fun pageOf(engine: ServedEngine, worldId: String?, viewId: String?, timings: Timings): JsonObject {
+private class Drawn(val page: JsonObject, val worldId: String? = null, val worldFile: Path? = null)
+
+private fun pageOf(engine: ServedEngine, worldId: String?, viewId: String?, timings: Timings): Drawn {
     val worlds = engine.worlds()
     val labels = worlds.map(::labelOf)
-    if (worlds.isEmpty()) return noticePage(worldBar(labels, null, emptyList(), null), "The engine serves no worlds.")
+    if (worlds.isEmpty()) return Drawn(noticePage(worldBar(labels, null, emptyList(), null), "The engine serves no worlds."))
     val chosen = if (worldId == null) worlds.first() else worlds.firstOrNull { it.id == worldId }
-    if (chosen == null) return noticePage(worldBar(labels, null, emptyList(), null), "The engine serves no world named '$worldId'.")
+    if (chosen == null) return Drawn(noticePage(worldBar(labels, null, emptyList(), null), "The engine serves no world named '$worldId'."))
     val views = viewsOf(chosen)
     val view = if (viewId == null) views.firstOrNull() else views.firstOrNull { it.id == viewId }
     val bar = worldBar(labels, chosen, views, view)
     val state = barState(chosen)
-    if (view == null) return noticePage(bar, if (viewId == null) "${chosen.id} has no view to draw." else "${chosen.id} has no view named '$viewId'.", state)
-    return runCatching { withWorldBar(specOfView(engine, chosen, view, timings), bar, state) }.getOrElse { noticePage(bar, drawFailure(it, "${view.label} of ${chosen.id}"), state) }
+    if (view == null) return Drawn(noticePage(bar, if (viewId == null) "${chosen.id} has no view to draw." else "${chosen.id} has no view named '$viewId'.", state))
+    return runCatching { Drawn(withWorldBar(specOfView(engine, chosen, view, timings), bar, state), chosen.id, chosen.path) }
+        .getOrElse { Drawn(noticePage(bar, drawFailure(it, "${view.label} of ${chosen.id}"), state)) }
 }
 
-private fun serveWorldSpec(exchange: HttpExchange, engine: ServedEngine) {
+private class WorldsCache(val store: WorldSpecStore) {
+    val rebuilding: MutableSet<String> = ConcurrentHashMap.newKeySet()
+}
+
+private fun requestOf(asked: Map<String, String>) = "${asked["world"].orEmpty()}\u0000${asked["view"].orEmpty()}"
+
+private fun respondSpec(exchange: HttpExchange, body: ByteArray, timing: String) {
+    exchange.responseHeaders.add("Server-Timing", timing)
+    respond(exchange, 200, CONTENT_TYPES.getValue("json"), body)
+}
+
+private fun buildAndKeep(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>, timings: Timings): ByteArray {
+    val drawn = pageOf(engine, asked["world"], asked["view"], timings)
+    val body = drawn.page.toString().toByteArray()
+    val worldFile = drawn.worldFile
+    val worldId = drawn.worldId
+    if (worldFile != null && worldId != null) cache.store.keep(requestOf(asked), WorldSpec(worldId, worldSpecKey(worldId, asked["view"], worldFile), worldFile, body))
+    return body
+}
+
+private fun isStale(kept: WorldSpec, viewId: String?): Boolean =
+    runCatching { worldSpecKey(kept.worldId, viewId, kept.worldFile) != kept.key }.getOrDefault(true)
+
+private fun rebuildInBackground(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>) {
+    val request = requestOf(asked)
+    if (!cache.rebuilding.add(request)) return
+    Thread {
+        try {
+            runCatching { buildAndKeep(engine, cache, asked, Timings()) }
+        } finally {
+            cache.rebuilding.remove(request)
+        }
+    }.apply { isDaemon = true }.start()
+}
+
+private fun serveWorldSpec(exchange: HttpExchange, engine: ServedEngine, cache: WorldsCache) {
     val asked = queryOf(exchange)
+    val lastGood = cache.store.lastGood(requestOf(asked))
+    if (lastGood != null) {
+        if (isStale(lastGood.spec, asked["view"])) rebuildInBackground(engine, cache, asked)
+        return respondSpec(exchange, lastGood.spec.body, "cache;desc=${lastGood.source}")
+    }
     val timings = Timings()
     val started = System.nanoTime()
-    runCatching { pageOf(engine, asked["world"], asked["view"], timings) }.fold(
-        onSuccess = {
-            exchange.responseHeaders.add("Server-Timing", timings.header((System.nanoTime() - started) / 1_000_000))
-            respond(exchange, 200, CONTENT_TYPES.getValue("json"), it.toString().toByteArray())
-        },
+    runCatching { buildAndKeep(engine, cache, asked, timings) }.fold(
+        onSuccess = { respondSpec(exchange, it, timings.header((System.nanoTime() - started) / 1_000_000)) },
         onFailure = { respondText(exchange, 502, "cannot build the page: ${it.message}") },
     )
 }
@@ -92,7 +133,8 @@ private fun serveAction(exchange: HttpExchange) {
     respondJson(exchange, 200, JsonObject(mapOf("handled" to JsonPrimitive(false), "action" to JsonPrimitive(name), "reason" to JsonPrimitive(reason))))
 }
 
-fun startWorldsServer(options: WorldsOptions): HttpServer {
+fun startWorldsServer(options: WorldsOptions, cacheDirectory: Path? = defaultCacheDirectory()): HttpServer {
     val engine = ServedEngine(options.engine)
-    return startServing(options.bind, options.port, options.bundle, ::serveAction) { exchange -> serveWorldSpec(exchange, engine) }
+    val cache = WorldsCache(WorldSpecStore(cacheDirectory))
+    return startServing(options.bind, options.port, options.bundle, ::serveAction) { exchange -> serveWorldSpec(exchange, engine, cache) }
 }

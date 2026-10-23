@@ -16,6 +16,7 @@ import java.nio.file.Path
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -64,8 +65,10 @@ class WorldsServerTest {
 
     private val servers = mutableListOf<HttpServer>()
 
+    private val specCache: Path = Files.createTempDirectory("spec-cache")
+
     private fun serving(): Int {
-        val server = startWorldsServer(WorldsOptions(engine.address, bundle, "127.0.0.1", 0))
+        val server = startWorldsServer(WorldsOptions(engine.address, bundle, "127.0.0.1", 0), specCache)
         servers += server
         return server.address.port
     }
@@ -273,6 +276,96 @@ class WorldsServerTest {
         assertTrue(nodes.any { it.idText() == "bar.world" })
         assertTrue(nodes.none { it.idText() == "chart" })
         assertNotNull(nodes.firstOrNull { it.propText("value")?.contains("steps") == true })
+    }
+
+    private fun bodyBecomes(port: Int, path: String, different: String): Boolean {
+        repeat(100) {
+            if (fetch(port, path).body() != different) return true
+            Thread.sleep(100)
+        }
+        return false
+    }
+
+    @Test
+    fun a_second_request_for_an_unchanged_world_is_served_from_the_cache_without_asking_the_engine() {
+        val port = twoWorlds()
+        val first = fetch(port, "/spec.json?world=small-house")
+        val asked = engine.posted.size
+        val second = fetch(port, "/spec.json?world=small-house")
+        assertEquals(first.body(), second.body())
+        assertEquals(asked, engine.posted.size)
+        assertTrue(second.headers().firstValue("Server-Timing").get().contains("cache"))
+    }
+
+    @Test
+    fun the_last_good_page_is_served_and_not_a_502_when_the_engine_stops_answering() {
+        val port = twoWorlds()
+        val good = fetch(port, "/spec.json?world=small-house")
+        engine.stop()
+        val after = fetch(port, "/spec.json?world=small-house")
+        assertEquals(200, after.statusCode())
+        assertEquals(good.body(), after.body())
+    }
+
+    @Test
+    fun a_restart_serves_the_last_good_page_from_disk_while_the_engine_is_cold() {
+        val port = twoWorlds()
+        val good = fetch(port, "/spec.json?world=small-house")
+        servers.removeAt(servers.lastIndex).stop(0)
+        engine.stop()
+        val restarted = fetch(serving(), "/spec.json?world=small-house")
+        assertEquals(200, restarted.statusCode())
+        assertEquals(good.body(), restarted.body())
+        assertTrue(restarted.headers().firstValue("Server-Timing").get().contains("disk"))
+    }
+
+    @Test
+    fun a_changed_world_file_is_stale_while_revalidated_the_old_page_is_served_until_the_rebuild_lands() {
+        val port = twoWorlds()
+        engine.runAnswer = { LOADED_DRAWN }
+        val old = fetch(port, "/spec.json?world=small-house").body()
+        val rebuildMayFinish = java.util.concurrent.CountDownLatch(1)
+        engine.runAnswer = { rebuildMayFinish.await(20, java.util.concurrent.TimeUnit.SECONDS); LOADED }
+        try {
+            Files.writeString(worldsRoot.resolve("house").resolve("world.json"), """{ "id": "small-house", "title": "small-house edited", "systems": {}, "uses": [] }""")
+            val during = fetch(port, "/spec.json?world=small-house")
+            assertEquals(200, during.statusCode())
+            assertEquals(old, during.body())
+        } finally {
+            rebuildMayFinish.countDown()
+        }
+        assertTrue(bodyBecomes(port, "/spec.json?world=small-house", old))
+    }
+
+    @Test
+    fun a_page_that_only_says_it_could_not_draw_is_not_kept_as_the_last_good() {
+        val port = twoWorlds()
+        engine.runAnswer = { """{"clock": {}}""" }
+        val failed = fetch(port, "/spec.json?world=greenhouse-world").body()
+        answeringAsTheEngineDoes()
+        val drawn = fetch(port, "/spec.json?world=greenhouse-world").body()
+        assertTrue(failed != drawn)
+        assertTrue(Json.parseToJsonElement(drawn).let(::nodesIn).any { it.idText() == "chart" })
+    }
+
+    @Test
+    fun the_cache_key_changes_with_the_world_file_each_pinned_domain_jar_the_engine_pin_and_the_world_id() {
+        val folder = Files.createTempDirectory("keyed")
+        val world = folder.resolve("world.json").also { Files.writeString(it, """{ "id": "w", "uses": [ { "domain": "d", "file": "d.jar" } ] }""") }
+        Files.writeString(folder.resolve("d.jar"), "jar one")
+        Files.writeString(folder.resolve("engine.pin"), "5d5a58e")
+        val base = worldSpecKey("w", "v", world)
+        assertEquals(base, worldSpecKey("w", "v", world))
+        assertNotEquals(base, worldSpecKey("other", "v", world))
+        assertNotEquals(base, worldSpecKey("w", "other", world))
+        Files.writeString(folder.resolve("d.jar"), "jar two")
+        val withSecondJar = worldSpecKey("w", "v", world)
+        assertNotEquals(base, withSecondJar)
+        Files.writeString(folder.resolve("engine.pin"), "60c416a")
+        val withSecondPin = worldSpecKey("w", "v", world)
+        assertNotEquals(withSecondJar, withSecondPin)
+        Files.writeString(world, """{ "id": "w", "title": "edited", "uses": [ { "domain": "d", "file": "d.jar" } ] }""")
+        assertNotEquals(withSecondPin, worldSpecKey("w", "v", world))
     }
 
     private fun post(port: Int, path: String, body: String): HttpResponse<String> =
