@@ -1,11 +1,13 @@
 package ai.factoredui.application
 
+import java.net.Socket
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -41,6 +43,20 @@ class PageServerTest {
         val answer = fetch("/app.js", null)
         assertNull(answer.headers().firstValue("Content-Encoding").orElse(null))
         assertContentEquals(BUNDLE_TEXT, answer.body())
+    }
+
+    @Test
+    fun a_stalled_slow_client_does_not_block_a_concurrent_request() {
+        Files.write(bundle.resolve("big.bin"), ByteArray(64 * 1024 * 1024))
+        Socket("127.0.0.1", server.address.port).use { stalled ->
+            stalled.receiveBufferSize = 1024
+            stalled.getOutputStream().write("GET /big.bin HTTP/1.1\r\nHost: x\r\n\r\n".toByteArray())
+            stalled.getOutputStream().flush()
+            Thread.sleep(500)
+            val request = HttpRequest.newBuilder(URI("http://127.0.0.1:${server.address.port}/app.js")).build()
+            val answer = client.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray()).get(5, TimeUnit.SECONDS)
+            assertEquals(200, answer.statusCode())
+        }
     }
 
     private fun fakeRuntime(callLog: Path): Path {
