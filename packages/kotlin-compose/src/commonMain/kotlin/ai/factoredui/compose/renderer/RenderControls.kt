@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import ai.factoredui.compose.schema.SpecNode
@@ -143,7 +144,7 @@ internal fun RenderSelect(
             OutlinedButton(
                 onClick = { expanded = true },
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text(currentLabel) }
+            ) { Text(currentLabel, maxLines = 1, overflow = TextOverflow.Ellipsis) }
 
             DropdownMenu(
                 expanded = expanded,
