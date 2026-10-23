@@ -22,9 +22,9 @@ import ai.factoredui.compose.stackedscene.exaggerationNote
 import ai.factoredui.compose.stackedscene.fitDrawing
 import ai.factoredui.compose.stackedscene.hitAllDrawnParts
 import ai.factoredui.compose.stackedscene.hitDrawnPart
+import ai.factoredui.compose.stackedscene.partPopupLines
 import ai.factoredui.compose.stackedscene.intrinsicSceneHeight
 import ai.factoredui.compose.stackedscene.isEveryPartFlat
-import ai.factoredui.compose.stackedscene.partPopupLines
 import ai.factoredui.compose.stackedscene.partValueText
 import ai.factoredui.compose.stackedscene.partValues
 import ai.factoredui.compose.stackedscene.partsToDraw
@@ -133,7 +133,7 @@ private fun applyPartTap(target: PartTapTarget, xPx: Double, yPx: Double) {
 private fun writePicked(target: PartTapTarget, xPx: Double, yPx: Double) {
     val path = target.pickedPath ?: return
     val crossed = hitAllDrawnParts(target.scene, target.parts, target.drawing, target.fit, xPx, yPx, target.quarterTurns)
-    target.context.setBinding(path, crossed.map { it.footprint.id })
+    target.context.setBinding(path, crossed.mapIndexed { index, part -> mapOf("id" to part.footprint.id, "index" to index, "label" to partPopupLines(target.scene, part.footprint, null).first()) })
 }
 
 private fun tapPart(target: PartTapTarget, hit: VisiblePart?) {

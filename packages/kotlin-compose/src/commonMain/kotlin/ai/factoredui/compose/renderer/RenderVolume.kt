@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -307,6 +308,31 @@ private fun pickProjectedBoxes(boxes: List<ProjectedBox>, at: Offset, reachPx: F
     return (holding + near).distinct()
 }
 
+private const val NOTHING_PICKED = -1
+
+private fun pickedEntries(crossed: List<String>, details: Map<String, SelectionDetail>): List<Map<String, Any?>> =
+    crossed.mapIndexed { index, id -> mapOf("id" to id, "index" to index, "label" to (details[id]?.title ?: id)) }
+
+private fun pickedIdsOf(raw: Any?): List<String> = (raw as? List<*>).orEmpty().mapNotNull { (it as? Map<*, *>)?.get("id") as? String }
+
+/** With `through` bound, the one picked at that index is the selection; an index of -1 clears it. */
+@Composable
+private fun PublishPickedThrough(node: SpecNode, through: Int?, pickedIds: List<String>, context: RenderContext) {
+    val selectedPath = node.props["selected"]?.bindingPath()
+    val hasThrough = node.props["through"]?.bindingPath() != null
+    LaunchedEffect(selectedPath, hasThrough, through, pickedIds) {
+        if (selectedPath == null || !hasThrough || through == null) return@LaunchedEffect
+        context.setBinding(selectedPath, pickedIds.getOrNull(through)?.let { listOf(it) } ?: emptyList<String>())
+    }
+}
+
+/** Writes what `details` holds for the one selected thing, as given, to the path `detail_record` binds; nothing when none or several are selected. */
+@Composable
+private fun PublishDetailRecord(node: SpecNode, selection: Set<String>, rawDetails: Any?, context: RenderContext) {
+    val path = node.props["detail_record"]?.bindingPath() ?: return
+    val record = selection.singleOrNull()?.let { (rawDetails as? Map<*, *>)?.get(it) }
+    LaunchedEffect(path, record) { context.setBinding(path, record) }
+}
 @Composable
 internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val read = remember(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"], resolvedProps["lines"], resolvedProps["labels"]) {
@@ -315,7 +341,13 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val details = remember(resolvedProps["details"]) { readSelectionDetails(resolvedProps["details"]) }
     val selection = rememberDrawingSelection(node, resolvedProps["selected"], context)
     PublishSelectionText(node, selection.ids, details, context)
-    val hidden = remember(resolvedProps["hidden"]) { (resolvedProps["hidden"] as? List<*>).orEmpty().filterIsInstance<String>().toSet() }
+    val throughPath = node.props["through"]?.bindingPath()
+    val through = (resolvedProps["through"] as? Number)?.toInt()
+    val pickedIds = pickedIdsOf(resolvedProps["picked"])
+    val inFront = if (throughPath != null && through != null && through > 0) pickedIds.take(through) else emptyList()
+    val hidden = remember(resolvedProps["hidden"], inFront) { (resolvedProps["hidden"] as? List<*>).orEmpty().filterIsInstance<String>().toSet() + inFront }
+    PublishPickedThrough(node, through, pickedIds, context)
+    PublishDetailRecord(node, selection.ids, resolvedProps["details"], context)
     val shown = remember(read, hidden) { if (hidden.isEmpty()) read else read.copy(boxes = read.boxes.filter { it.id !in hidden }) }
     val pickedPath = node.props["picked"]?.bindingPath()
     val span = volumeSpan(read.boxes)
@@ -328,7 +360,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun", (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), pickedPath, context)
+            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun", (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), pickedPath, throughPath, context)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -336,7 +368,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean, step: Double?, gradeMm: Double?, pickedPath: String?, context: RenderContext) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean, step: Double?, gradeMm: Double?, pickedPath: String?, throughPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
     val camera = remember(span) { Camera().also { frameCamera(it, span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -350,11 +382,11 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
         val scene = remember(revision, read, span, widthPx, heightPx, isLit, step, gradeMm) { projectScene(read, span, camera, widthPx, heightPx, isLit, step, gradeMm) }
         val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
         Box(
-            modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }.pointerInput(scene, selection.ids, pickedPath) {
+            modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }.pointerInput(scene, selection.ids, pickedPath, throughPath) {
                 detectTapGestures(onTap = { at ->
                     val crossed = pickProjectedBoxes(scene.boxes.filter { isPickable(it.box.id, details) }, at, reachPx)
-                    pickedPath?.let { context.setBinding(it, crossed) }
-                    selection.tap(crossed)
+                    pickedPath?.let { context.setBinding(it, pickedEntries(crossed, details)) }
+                    if (throughPath != null) context.setBinding(throughPath, if (crossed.isEmpty()) NOTHING_PICKED else 0) else selection.tap(crossed)
                 })
             },
         ) {

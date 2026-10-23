@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 
 private const val STATUS_BAR_DP = 4
 private const val UNIT_BASELINE_LIFT_DP = 6
+private const val RATIO_BAR_DP = 6
 
 private class StatusMark(val colour: Color, val word: String)
 
@@ -45,10 +46,11 @@ internal fun RenderStat(node: SpecNode, resolvedProps: Map<String, Any?>) {
     val unit = (resolvedProps["unit"] as? String).orEmpty()
     val named = (resolvedProps["status"] as? String)?.takeIf { it.isNotEmpty() }
     val status = statusMarkOf(theme, named, (resolvedProps["status_text"] as? String)?.takeIf { it.isNotEmpty() })
+    val fraction = (resolvedProps["fraction"] as? Number)?.toDouble()?.takeIf { it >= 0.0 }
     val notice = if (named != null && status == null) "stat status must be pass, warn or fail, not '$named'; it is drawn without one." else null
     RecordDrawn {
         text = listOf(label, value, unit).filter { it.isNotEmpty() }.joinToString(" ")
-        shownProps = status?.let { mapOf("status_shown" to it.word) }.orEmpty()
+        shownProps = status?.let { mapOf("status_shown" to it.word) }.orEmpty() + (fraction?.let { mapOf("fraction_shown" to it) } ?: emptyMap())
         notices = listOfNotNull(notice)
     }
     Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(theme.radius.md.dp)).background(theme.surface).nodeTag(node.id)) {
@@ -59,7 +61,17 @@ internal fun RenderStat(node: SpecNode, resolvedProps: Map<String, Any?>) {
                 Text(value, style = theme.displayMonoStyle(), color = theme.ink, maxLines = 1)
                 if (unit.isNotEmpty()) Text(unit, style = MaterialTheme.typography.bodyMedium, color = theme.muted, modifier = Modifier.padding(bottom = UNIT_BASELINE_LIFT_DP.dp))
             }
+            fraction?.let { RatioBar(it, status?.colour ?: if (it > 1.0) theme.fail else theme.accent, theme) }
             status?.let { Text(it.word, style = MaterialTheme.typography.labelMedium, color = it.colour) }
         }
+    }
+}
+
+/** A bar to the limit: full at 1.0, and past it the bar is full and drawn in the fail colour so being over reads at a glance. */
+@Composable
+private fun RatioBar(fraction: Double, colour: Color, theme: SpecTheme) {
+    val over = fraction > 1.0
+    Box(modifier = Modifier.fillMaxWidth().height(RATIO_BAR_DP.dp).clip(RoundedCornerShape(theme.radius.sm.dp)).background(theme.ground)) {
+        Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(fraction.coerceAtMost(1.0).toFloat()).background(if (over) theme.fail else colour))
     }
 }

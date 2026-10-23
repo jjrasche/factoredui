@@ -89,4 +89,14 @@ class StatRenderTest {
         val (x, y) = stat.bounds
         assertEquals(SpecTheme.LIGHT.surface.toArgb() and 0xFFFFFF, stat.pixel(x + 40, y + 2))
     }
+
+    @Test
+    fun a_stat_with_a_fraction_reads_it_back_and_a_negative_one_is_ignored() {
+        val within = drawn(statPage("""{"label":"Deflection","value":0.71,"fraction":0.71}"""))
+        assertEquals("0.71", within.node.getValue("props").jsonObject.getValue("fraction_shown").jsonPrimitive.content)
+        val over = drawn(statPage("""{"label":"Deflection","value":1.4,"fraction":1.4}"""))
+        assertEquals("1.4", over.node.getValue("props").jsonObject.getValue("fraction_shown").jsonPrimitive.content)
+        val negative = drawn(statPage("""{"label":"Deflection","value":1,"fraction":-1}"""))
+        assertEquals(null, negative.node.getValue("props").jsonObject["fraction_shown"])
+    }
 }
