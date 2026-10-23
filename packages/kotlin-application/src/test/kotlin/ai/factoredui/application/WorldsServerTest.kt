@@ -410,8 +410,7 @@ class WorldsServerTest {
 
     private fun fullLoad(): JsonObject = Json.parseToJsonElement(checkNotNull(WorldsServerTest::class.java.getResource("/live-load-summary.json")).readText()) as JsonObject
 
-    private fun loadWith(section: String, replacement: JsonElement): String {
-        val load = fullLoad()
+    private fun loadWith(section: String, replacement: JsonElement, load: JsonObject = fullLoad()): String {
         val sections = load.getValue("sections") as JsonObject
         return JsonObject(load + ("sections" to JsonObject(sections + (section to replacement)))).toString()
     }
@@ -419,11 +418,19 @@ class WorldsServerTest {
     private val engineTimedOutOnGeometry = """{"ok": false, "asked": true, "error": {"message": "the engine at http://127.0.0.1:8197 did not answer: request timed out", "setting": null}}"""
 
     private fun answeringWithGeometryTimedOut() {
-        engine.runAnswer = { loadWith("geometry", Json.parseToJsonElement(engineTimedOutOnGeometry)) }
+        engine.runAnswer = { loadWith("geometry", Json.parseToJsonElement(engineTimedOutOnGeometry), cleanLoad()) }
     }
 
-    private fun answeringCleanWithoutTheSimulation() {
-        engine.runAnswer = { loadWith("simulation", Json.parseToJsonElement("""{"ok": null, "asked": true, "skipped": "not run"}""")) }
+    private val simulationSkipped = Json.parseToJsonElement("""{"ok": null, "asked": true, "skipped": "not run"}""")
+
+    private fun cleanLoad(): JsonObject = Json.parseToJsonElement(loadWith("simulation", simulationSkipped)) as JsonObject
+
+    private fun answeringCleanWithOneObjectFewer() {
+        val load = cleanLoad()
+        val sections = load.getValue("sections") as JsonObject
+        val expansion = sections.getValue("expansion") as JsonObject
+        val fewer = JsonObject(expansion + ("objects" to JsonArray((expansion.getValue("objects") as JsonArray).drop(1))))
+        engine.runAnswer = { JsonObject(load + ("sections" to JsonObject(sections + ("expansion" to fewer)))).toString() }
     }
 
     private fun worldServed(): Pair<Int, Path> {
@@ -434,7 +441,7 @@ class WorldsServerTest {
 
     @Test
     fun a_rebuild_whose_sections_report_an_engine_failure_does_not_replace_a_clean_last_good_page_and_is_retried_until_a_clean_one_lands() {
-        engine.runAnswer = { fullLoad().toString() }
+        engine.runAnswer = { cleanLoad().toString() }
         val (port, folder) = worldServed()
         val clean = fetch(port, "/spec.json?world=small-house").body()
         assertTrue(!clean.contains("could not be"), clean)
@@ -445,7 +452,7 @@ class WorldsServerTest {
         repeat(100) { if (engine.posted.size == askedBefore) Thread.sleep(100) }
         Thread.sleep(500)
         assertEquals(clean, fetch(port, "/spec.json?world=small-house").body())
-        answeringCleanWithoutTheSimulation()
+        answeringCleanWithOneObjectFewer()
         assertTrue(bodyBecomes(port, "/spec.json?world=small-house", clean))
         assertTrue(!fetch(port, "/spec.json?world=small-house").body().contains("could not be"))
     }
@@ -466,7 +473,7 @@ class WorldsServerTest {
         answeringWithGeometryTimedOut()
         val (port, _) = worldServed()
         val failing = fetch(port, "/spec.json?world=small-house").body()
-        answeringCleanWithoutTheSimulation()
+        answeringCleanWithOneObjectFewer()
         assertTrue(bodyBecomes(port, "/spec.json?world=small-house", failing))
         assertTrue(!fetch(port, "/spec.json?world=small-house").body().contains("could not be"))
     }
