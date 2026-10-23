@@ -1,11 +1,14 @@
 package ai.factoredui.application
 
+import java.net.Socket
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption
+import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -43,13 +46,31 @@ class PageServerTest {
         assertContentEquals(BUNDLE_TEXT, answer.body())
     }
 
-    private fun fakeRuntime(callLog: Path): Path {
-        val launcher = Files.createDirectories(Files.createTempDirectory("runtime").resolve("bin")).resolve("we")
-        Files.writeString(launcher, "echo \"$1\" >> '$callLog'\necho '{\"sections\": {\"expansion\": {\"ok\": true, \"asked\": true, \"extent_mm\": [10, 10], \"objects\": [], \"instances\": [], \"supplied\": {}}}}'\n")
-        return launcher
+    @Test
+    fun a_stalled_slow_client_does_not_block_a_concurrent_request() {
+        Files.write(bundle.resolve("big.bin"), ByteArray(64 * 1024 * 1024))
+        Socket("127.0.0.1", server.address.port).use { stalled ->
+            stalled.receiveBufferSize = 1024
+            stalled.getOutputStream().write("GET /big.bin HTTP/1.1\r\nHost: x\r\n\r\n".toByteArray())
+            stalled.getOutputStream().flush()
+            Thread.sleep(500)
+            val request = HttpRequest.newBuilder(URI("http://127.0.0.1:${server.address.port}/app.js")).build()
+            val answer = client.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray()).get(5, TimeUnit.SECONDS)
+            assertEquals(200, answer.statusCode())
+        }
     }
 
-    private fun serving(system: Path, callLog: Path, cache: Path?) = startPageServer(Options(system, fakeRuntime(callLog), bundle, "127.0.0.1", 0, cacheDirectory = cache))
+    private fun fakeRuntime(callLog: Path) = object : EngineRuntime {
+        override fun answer(arguments: List<String>, timeoutSeconds: Long): String {
+            Files.writeString(callLog, arguments[0] + "\n", StandardOpenOption.APPEND)
+            return """{"sections": {"expansion": {"ok": true, "asked": true, "extent_mm": [10, 10], "objects": [], "instances": [], "supplied": {}}}}"""
+        }
+    }
+
+    private fun launcherFile(): Path = Files.createDirectories(Files.createTempDirectory("runtime").resolve("bin")).resolve("we").also { Files.writeString(it, "") }
+
+    private fun serving(system: Path, callLog: Path, cache: Path?) =
+        startPageServer(Options(system, launcherFile(), bundle, "127.0.0.1", 0, cacheDirectory = cache), fakeRuntime(callLog))
 
     private fun calls(callLog: Path) = Files.readAllLines(callLog).count { it == "load" }
 
@@ -59,7 +80,7 @@ class PageServerTest {
         val system = Files.createTempFile("system", ".json").also { Files.writeString(it, """{ "id": "w", "title": "W", "systems": {} }""") }
         val cached = serving(system, callLog, Files.createTempDirectory("cache"))
         try {
-            repeat(3) { assertEquals(200, fetchFrom(cached, "/spec.json").statusCode()) }
+            repeat(3) { fetchFrom(cached, "/spec.json").let { answer -> assertEquals(200, answer.statusCode(), String(answer.body())) } }
             assertEquals(2, calls(callLog))
             Files.writeString(system, """{ "id": "w", "title": "Changed", "systems": {} }""")
             assertEquals(200, fetchFrom(cached, "/spec.json").statusCode())
