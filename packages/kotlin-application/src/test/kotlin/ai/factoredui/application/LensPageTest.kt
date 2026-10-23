@@ -41,8 +41,9 @@ class LensPageTest {
         assertEquals("stack", root["type"]!!.jsonPrimitive.content)
         assertEquals("true", root.props()["fill"]!!.jsonPrimitive.content)
         assertEquals("top", root.byId("lens").props()["anchor"]!!.jsonPrimitive.content)
-        val sheet = root.byId("dock").props()["sheet"]!!.jsonObject
-        assertEquals(listOf("260", "840"), listOf("closed_dp", "open_dp").map { sheet[it]!!.jsonPrimitive.content })
+        val dock = root.byId("dock")
+        assertEquals("sheet", dock["type"]!!.jsonPrimitive.content)
+        assertEquals(listOf("260", "520"), listOf("peek_height", "half_height").map { dock.props()[it]!!.jsonPrimitive.content })
     }
 
     @Test

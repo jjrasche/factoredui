@@ -65,6 +65,6 @@ internal fun withWorldBar(spec: JsonObject, bar: JsonObject, state: Map<String, 
     val children = childrenOf(root)
     val dock = children.firstOrNull { (it["id"] as JsonPrimitive).content == "dock" }
     val padded = if (dock != null || (root["type"] as? JsonPrimitive)?.content == "scrollview") guttered(bar) else bar
-    val barred = if (dock == null) listOf(padded) + children else children.map { if (it === dock) withChildren(dock, listOf(padded) + childrenOf(dock)) else it }
+    val barred = if (dock == null) listOf(padded) + children else children.map { if (it === dock) withChildren(dock, listOf(inPeekSlot(padded)) + childrenOf(dock)) else it }
     return JsonObject(spec + mapOf("root" to withChildren(root, barred), "state" to mergedState(spec, state)))
 }

@@ -15,11 +15,10 @@ enum class SheetStop(val wire: String) {
     }
 }
 
-data class SheetProps(val stop: SheetStop, val peekDp: Double, val halfDp: Double, val sideDp: Double, val notices: List<String>)
+data class SheetProps(val stop: SheetStop, val peekDp: Double, val halfDp: Double, val background: String?, val notices: List<String>)
 
 private const val DEFAULT_PEEK_DP = 96.0
 private const val DEFAULT_HALF_DP = 320.0
-private const val DEFAULT_SIDE_DP = 360.0
 
 private fun sizeOf(resolved: Map<String, Any?>, key: String, default: Double, notices: MutableList<String>): Double {
     if (resolved[key] == null) return default
@@ -39,7 +38,7 @@ fun readSheetProps(resolved: Map<String, Any?>): SheetProps {
         stop = named ?: SheetStop.PEEK,
         peekDp = sizeOf(resolved, "peek_height", DEFAULT_PEEK_DP, notices),
         halfDp = sizeOf(resolved, "half_height", DEFAULT_HALF_DP, notices),
-        sideDp = sizeOf(resolved, "side_width", DEFAULT_SIDE_DP, notices),
+        background = (resolved["background"] as? String)?.takeIf { it.isNotEmpty() },
         notices = notices,
     )
 }

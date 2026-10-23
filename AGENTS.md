@@ -168,7 +168,7 @@ A string `"{path.to.value}"` is resolved at render time from one state map. Insi
 - A `scene` inside a `scrollview` takes the shape of its window at the available width (at least 200 tall, at most 1.5 times its width) instead of filling the height. A `height` gives it that height instead.
 - Controls (`toggle`, `select`, `slider`, `textinput`) write their new value back to the bound path.
 - A `toggle` takes `label` and `color` (the label's ink, `#rrggbb`), for a toggle on a coloured ground.
-- A `stack` with `fill: true` fills the space its parent gives it, and takes a `background`. Its children sit at the top-left unless one carries `anchor`: `fill` fills the stack, `top` or `bottom` spans its width at that edge. A child with `sheet: { closed_dp, open_dp }` (open not less than closed) is a bottom panel over the stack: a handle (`<id>/handle`) is dragged to set its height between the two, snapping to the nearer on release, and a tap on it flips it. The sheet's first child stays above; the rest scroll under it.
+- A `stack` with `fill: true` fills the space its parent gives it, and takes a `background`. Its children sit at the top-left unless one carries `anchor`: `fill` fills the stack, `top` or `bottom` spans its width at that edge, and `end` is the right edge, the full height. A bottom panel that opens is a `sheet` node (see Sheet).
 - A `select` option is `{ "label": "Zoom 2 times", "value": 2 }`; its `value` is text, a number or true/false, and is written in that type. An option is chosen when the bound value reads as the same text (2, 2.0 and "2" all choose option 2), and `/click?id=<select id>/option/2` picks it. An option with no text `label` or with any other `value` is dropped, and the select shows one notice naming each dropped option's index: "select 'zoom' dropped options 1, 3: each needs a text 'label' and a 'value' that is text, a number or true/false".
 - Dense primitives take typed data, not children.
 - `geomap` shows a selection from a `selected` binding (list of ids), writes it on tap, and dispatches `on_feature_tap`.
@@ -375,7 +375,7 @@ The rule for any new primitive: name it for what it does to data, not for the ap
 
 - Children carry `slot`: `peek` (always shown), `half` (shown at half and full) or `full` (shown only at full). A child with no slot is shown at full and named in a notice.
 - `stop`: `peek`, `half` or `full`. Bind it (`"stop": "{piece.stop}"`) and the sheet writes it when the reader taps the handle (peek, half, full, back to peek) or drags it; a spec can also set it, for example to `half` when something is selected. Unbound, the sheet keeps its own stop.
-- `peek_height` (default 96 dp), `half_height` (default 320 dp); full is 92% of the height. The 44 dp handle is the touch target.
+- `peek_height` (default 96 dp), `half_height` (default 320 dp); full is 92% of the height. `background` is a token name or `#rrggbb` (default the raised ground). The 44 dp handle is the touch target. Everything in the sheet scrolls together under the handle.
 - It is always a bottom sheet. Placement by window size is the spec's: draw a `sheet` with `visible: "{window.is_compact}"` and, for a wider window, a plain `column` child of the `stack` with `anchor: "end"` and a `width`, `visible: "{window.is_at_least_medium}"`, holding the same content without slots.
 - `/tree`: `props` carries `stop`; a slot that is not shown is not in the tree.
 

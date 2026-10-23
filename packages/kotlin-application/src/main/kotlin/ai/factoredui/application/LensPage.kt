@@ -8,7 +8,7 @@ private const val CARD = "raised"
 private const val DOCK = "surface"
 private const val WORLD_GROUND = "#2b3c50"
 private const val DOCK_CLOSED_DP = 260
-private const val DOCK_OPEN_DP = 840
+private const val DOCK_HALF_DP = 520
 private const val GUTTER_DP = 16
 private const val RESET_VIEW_GAP_DP = 100
 private const val BLUEPRINT_PATH = "{ui.blueprint}"
@@ -103,6 +103,8 @@ private fun elsewhere(describing: Describing?, file: SystemFile, expansion: Expa
     ).map(::inDark) + oldCards.map(::inDark)
 }
 
+internal fun inPeekSlot(node: JsonObject): JsonObject = JsonObject(node + ("props" to JsonObject((node["props"] as JsonObject) + ("slot" to JsonPrimitive("peek")))))
+
 private fun pageSpec(root: JsonObject): JsonObject =
     JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(pickState()), "root" to root))
 
@@ -140,7 +142,7 @@ fun buildLensPageSpec(
         "dock.body", "column", mapOf("gap" to 12, "padding" to GUTTER_DP),
         listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + bodyContent,
     )
-    val dock = specNode("dock", "column", mapOf("anchor" to "bottom", "sheet" to mapOf("closed_dp" to DOCK_CLOSED_DP, "open_dp" to DOCK_OPEN_DP), "background" to DOCK), listOf(body), visible = if (shaded != null) "{$PICK_THROUGH_PATH}=$NOTHING_PICKED" else null)
+    val dock = specNode("dock", "sheet", mapOf("peek_height" to DOCK_CLOSED_DP, "half_height" to DOCK_HALF_DP, "background" to DOCK), listOf(inPeekSlot(body)), visible = if (shaded != null) "{$PICK_THROUGH_PATH}=$NOTHING_PICKED" else null)
     val piecePanel = if (shaded != null) listOf(piecePanelNode(idsBySystem(expansion, geometry))) else emptyList()
     val world = listOfNotNull(shaded, blueprint)
     return pageSpec(specNode("root", "stack", mapOf("fill" to true, "background" to HUD), world + listOf(topStrip(blueprint != null), dock) + piecePanel))

@@ -84,7 +84,7 @@ private fun androidx.compose.foundation.layout.BoxScope.BottomSheet(node: SpecNo
             SheetStop.HALF -> props.halfDp.dp
             SheetStop.FULL -> maxHeight * FULL_FRACTION
         }
-        Column(modifier = Modifier.fillMaxWidth().height(shownHeight).clip(RoundedCornerShape(topStart = theme.radius.xl.dp, topEnd = theme.radius.xl.dp)).background(theme.raised)) {
+        Column(modifier = Modifier.fillMaxWidth().height(shownHeight).clip(RoundedCornerShape(topStart = theme.radius.xl.dp, topEnd = theme.radius.xl.dp)).background(props.background?.let { theme.tokenColor(it) ?: it.parseColor() } ?: theme.raised)) {
             SheetHandle(node.id, stop, move)
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) { SheetSlots(node, context, stop::opensSlot) }
         }
