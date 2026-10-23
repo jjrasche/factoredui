@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,6 +44,7 @@ internal fun BoxScope.RenderStackChild(child: SpecNode, context: RenderContext) 
         placement.anchor == StackAnchor.FILL -> Box(modifier = Modifier.fillMaxSize()) { RenderSizedChild(child, context) }
         placement.anchor == StackAnchor.TOP -> Box(modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth()) { RenderSizedChild(child, context) }
         placement.anchor == StackAnchor.BOTTOM -> Box(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) { RenderSizedChild(child, context) }
+        placement.anchor == StackAnchor.END -> Box(modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()) { RenderSizedChild(child, context) }
         else -> RenderSizedChild(child, context)
     }
 }

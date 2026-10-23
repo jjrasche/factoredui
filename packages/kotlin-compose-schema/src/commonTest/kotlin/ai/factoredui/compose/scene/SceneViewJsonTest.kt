@@ -31,7 +31,7 @@ private fun everyLayerScene(): SceneView = SceneView(
         listOf(SceneInstance("t1", "oak", 1500, 1600, 12, 0.0, 9000, 2500, listOf("tree"), ProvenanceKind.MEASURED)),
         provenance = SURVEYED,
     ),
-    water = WaterLayer(6, listOf(Pond("p1", 100, listOf(PondTile(1, 1, 300)))), listOf(FlowLine("f1", listOf(0L to 0L, 10L to 20L), 1.5, "L/s", "swale")), SURVEYED),
+    water = WaterLayer(6, listOf(FlowLine("f1", listOf(0L to 0L, 10L to 20L), 1.5, "L/s", "swale")), SURVEYED),
     boundaries = BoundaryLayer(8, listOf(BoundaryPolygon("b1", "parcel", listOf(0L to 0L, 3048L to 0L, 3048L to 3048L))), SURVEYED),
     grid = GridSpec("square", 5.0, 2, 2),
     annotations = AnnotationLayer(9, listOf(Annotation("instance", "t1", "note", "leaning", null))),
@@ -105,7 +105,7 @@ class SceneViewJsonTest {
     fun landCoverAndWaterAndFootprintsCarryTheirOwnShapes() {
         val json = parsed(everyLayerScene())
         assertEquals(listOf(1, 1, 2, 2), json.getValue("surface").jsonObject.getValue("class_ids").jsonArray.map { it.jsonPrimitive.int })
-        assertEquals(300, json.getValue("water").jsonObject.getValue("ponds").jsonArray.single().jsonObject.getValue("tiles").jsonArray.single().jsonObject.getValue("depth_mm").jsonPrimitive.long)
+        assertEquals(1.5, json.getValue("water").jsonObject.getValue("flow").jsonArray.single().jsonObject.getValue("quantity").jsonPrimitive.double)
         assertEquals(2400, json.getValue("footprints").jsonObject.getValue("items").jsonArray.single().jsonObject.getValue("height_mm").jsonPrimitive.long)
     }
 

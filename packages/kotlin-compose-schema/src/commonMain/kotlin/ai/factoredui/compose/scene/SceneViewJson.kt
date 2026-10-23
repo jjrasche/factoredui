@@ -138,14 +138,6 @@ private fun instancesJson(layer: InstanceLayer): JsonObject = JsonObject(
     mapOf("version" to JsonPrimitive(layer.version), "items" to JsonArray(layer.items.map(::instanceJson)), "provenance" to provenanceJson(layer.provenance)),
 )
 
-private fun pondJson(pond: Pond): JsonObject = JsonObject(
-    mapOf(
-        "id" to JsonPrimitive(pond.id),
-        "level_mm" to JsonPrimitive(pond.levelMm),
-        "tiles" to JsonArray(pond.tiles.map { JsonObject(mapOf("col" to JsonPrimitive(it.col), "row" to JsonPrimitive(it.row), "depth_mm" to JsonPrimitive(it.depthMm))) }),
-    ),
-)
-
 private fun flowJson(line: FlowLine): JsonObject = JsonObject(
     mapOf(
         "id" to JsonPrimitive(line.id),
@@ -159,7 +151,6 @@ private fun flowJson(line: FlowLine): JsonObject = JsonObject(
 private fun waterJson(layer: WaterLayer): JsonObject = JsonObject(
     mapOf(
         "version" to JsonPrimitive(layer.version),
-        "ponds" to JsonArray(layer.ponds.map(::pondJson)),
         "flow" to JsonArray(layer.flow.map(::flowJson)),
         "provenance" to provenanceJson(layer.provenance),
     ),

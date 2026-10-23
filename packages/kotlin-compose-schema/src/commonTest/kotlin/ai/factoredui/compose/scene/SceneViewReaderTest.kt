@@ -32,7 +32,7 @@ private fun everyLayerScene(): SceneView = SceneView(
         ),
         provenance = RECORDED,
     ),
-    water = WaterLayer(6, listOf(Pond("w", 100, listOf(PondTile(1, 1, 300)))), listOf(FlowLine("f", listOf(0L to 0L, 10L to 20L), 1.5, "L/s", "swale")), RECORDED),
+    water = WaterLayer(6, listOf(FlowLine("f", listOf(0L to 0L, 10L to 20L), 1.5, "L/s", "swale")), RECORDED),
     boundaries = BoundaryLayer(8, listOf(BoundaryPolygon("b", "parcel", listOf(0L to 0L, 610L to 0L, 610L to 610L))), RECORDED),
     grid = GridSpec("square", 1.0, 2, 2),
     annotations = AnnotationLayer(9, listOf(Annotation("FOOTPRINT", "b1", "share", "32% of its limit", "the host", 0.32), Annotation("INSTANCE", null, "note", "leaning", null))),

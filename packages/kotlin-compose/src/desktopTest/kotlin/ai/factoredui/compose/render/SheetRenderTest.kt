@@ -59,7 +59,7 @@ class SheetRenderTest {
     @Test
     fun on_a_phone_it_peeks_with_only_the_peek_slot_showing() = SheetPage(width = 400).use { page ->
         page.settle()
-        assertEquals("sheet", page.shown("layout"))
+        assertEquals("peek", page.shown("stop"))
         assertNotNull(page.node("name"))
         assertNull(page.node("size"))
         assertNull(page.node("layers"))
@@ -85,13 +85,5 @@ class SheetRenderTest {
         assertEquals("full", page.bound("piece.stop"))
         page.tapHandle()
         assertEquals("peek", page.bound("piece.stop"))
-    }
-
-    @Test
-    fun on_a_wide_window_it_is_a_side_panel_with_every_slot_and_no_handle() = SheetPage(width = 1000).use { page ->
-        page.settle()
-        assertEquals("side", page.shown("layout"))
-        assertEquals(listOf(true, true, true), listOf("name", "size", "layers").map { page.node(it) != null })
-        assertNull(page.node("sheet/handle"))
     }
 }

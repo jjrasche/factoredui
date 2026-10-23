@@ -202,10 +202,12 @@ fun RenderNode(node: SpecNode, context: RenderContext) {
     val scopedTheme = themeNamed(resolvedProps["theme"] as? String)
     val profile = scopedProfileOf(node, resolvedProps) ?: LocalDisplayProfile.current
     CompositionLocalProvider(LocalNodeIdentity provides NodeIdentity(node.id, path), LocalDisplayProfile provides profile) {
-        if (scopedTheme == null) {
-            RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context)
-        } else {
-            ThemeScope(scopedTheme) { RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context) }
+        SwipeHost(node, context) {
+            if (scopedTheme == null) {
+                RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context)
+            } else {
+                ThemeScope(scopedTheme) { RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context) }
+            }
         }
     }
 }
@@ -319,7 +321,6 @@ private fun RenderNodeByType(
         SpecNodeType.AUDIO -> RenderAudio(node, resolvedProps, context)
         SpecNodeType.READALONG -> RenderReadAlong(node, resolvedProps, context)
         SpecNodeType.SHEET -> RenderSheet(node, resolvedProps, context)
-        SpecNodeType.LAYERS -> RenderLayers(node, resolvedProps)
         SpecNodeType.VOICE -> RenderVoice(node, resolvedProps, context)
         SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)
         SpecNodeType.SELECT -> RenderSelect(node, resolvedProps, context)
@@ -353,11 +354,13 @@ private fun resolveLayoutProps(node: SpecNode, resolved: Map<String, Any?>): Lay
         gap = (resolved["gap"] as? Number)?.toInt() ?: base.gap,
         padding = (resolved["padding"] as? Number)?.toInt() ?: base.padding,
         background = (resolved["background"] as? String) ?: base.background,
+        flex = (resolved["flex"] as? Number)?.toFloat() ?: base.flex,
     )
 }
 
 @Composable
 private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val liveData by context.dataFlow.collectAsState()
     val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     // A node's OWN flex is honoured by whatever lays it out — except at the root, where
@@ -379,6 +382,7 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
             val fixedWidth = childLayout.width
             val fixedHeight = childLayout.height
             when {
+                !BindingResolver.isVisible(child.visible, liveData) -> RenderNode(node = child, context = context)
                 fixedHeight != null -> Box(Modifier.height(fixedHeight.dp).then(columnSlotWidth(fixedWidth, props.align)), propagateMinConstraints = true) { RenderInSlot(child, context, fixedWidth) }
                 fixedWidth != null -> Box(Modifier.let { if (childFlex > 0f) it.weight(childFlex) else it }.width(fixedWidth.dp)) { RenderInFixedSlot(child, context) }
                 childFlex > 0f -> Box(Modifier.weight(childFlex)) { RenderNode(node = child, context = context) }
@@ -391,6 +395,7 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
 
 @Composable
 private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val liveData by context.dataFlow.collectAsState()
     val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val claimsSpace = props.flex > 0f
@@ -413,6 +418,7 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
             val fixedHeight = heightOf(childLayout.height)
             val isHeightFixed = childLayout.height != null
             when {
+                !BindingResolver.isVisible(child.visible, liveData) -> RenderNode(node = child, context = context)
                 fixedWidth != null -> Box(modifier = Modifier.width(fixedWidth.dp).then(fixedHeight), propagateMinConstraints = isHeightFixed) { RenderInFixedSlot(child, context) }
                 childLayout.flex > 0f -> Box(modifier = Modifier.weight(childLayout.flex).then(fixedHeight), propagateMinConstraints = isHeightFixed) {
                     CompositionLocalProvider(LocalSlotWidth provides SlotWidth.GIVEN) { RenderNode(node = child, context = context) }
@@ -422,6 +428,21 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
                 }
                 else -> CompositionLocalProvider(LocalSlotWidth provides SlotWidth.SHARED) { RenderNode(node = child, context = context) }
             }
+        }
+        RowOfData(node, resolvedProps, context)
+    }
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.RowOfData(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val template = (node.props["itemTemplate"] as? SpecValue.NodeValue)?.value ?: return
+    val rows = (resolvedProps["data"] as? List<*>)?.filterNotNull() ?: return
+    val listPath = LocalNodeIdentity.current?.path ?: node.id
+    rows.forEachIndexed { index, row ->
+        val rowContext = context.withAdditionalData(mapOf("row" to row, "item" to row))
+        val flex = (BindingResolver.resolveProps(template.props, rowContext.data)["flex"] as? Number)?.toFloat() ?: template.props.asLayoutProps().flex
+        CompositionLocalProvider(LocalPathPrefix provides "$listPath/$index/") {
+            if (flex > 0f) Box(modifier = Modifier.weight(flex)) { RenderNode(node = template, context = rowContext) } else RenderNode(node = template, context = rowContext)
         }
     }
 }
@@ -753,9 +774,7 @@ private fun RenderRows(rows: List<Any?>, props: ListProps, context: RenderContex
     val list = LocalNodeIdentity.current
     RecordDrawn { rowCount = visibleRows.size }
     BoxWithConstraints(modifier = list?.let { Modifier.nodeTag(it.id) } ?: Modifier, propagateMinConstraints = true) {
-        if (props.isHorizontal) {
-            HorizontalRows(node, visibleRows, itemTemplate, context, list?.path.orEmpty())
-        } else if (props.stacked || !constraints.hasBoundedHeight) {
+        if (props.stacked || !constraints.hasBoundedHeight) {
             StackedRows(visibleRows, itemTemplate, context, list?.path.orEmpty())
         } else {
             LazyRows(visibleRows, itemTemplate, context, list?.path.orEmpty())

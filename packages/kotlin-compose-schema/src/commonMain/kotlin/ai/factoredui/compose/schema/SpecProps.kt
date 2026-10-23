@@ -293,7 +293,6 @@ data class ListProps(
     val emptyText: String = "",
     val maxItems: Int? = null,
     val stacked: Boolean = false,
-    val isHorizontal: Boolean = false,
 )
 
 fun Map<String, SpecValue>.asListProps(): ListProps = ListProps(
@@ -303,7 +302,6 @@ fun Map<String, SpecValue>.asListProps(): ListProps = ListProps(
     emptyText = string("emptyText") ?: "",
     maxItems = int("maxItems"),
     stacked = boolean("stacked") ?: false,
-    isHorizontal = string("direction") == "horizontal",
 )
 
 // --- SpacerProps ---
@@ -353,7 +351,7 @@ fun Map<String, SpecValue>.asToggleProps(): ToggleProps = ToggleProps(
 
 // --- StackPlacement ---
 
-enum class StackAnchor { FILL, TOP, BOTTOM }
+enum class StackAnchor { FILL, TOP, BOTTOM, END }
 
 data class SheetProps(val closedDp: Float, val openDp: Float)
 
@@ -372,6 +370,7 @@ fun Map<String, SpecValue>.asStackPlacement(): StackPlacement = StackPlacement(
         "fill" -> StackAnchor.FILL
         "top" -> StackAnchor.TOP
         "bottom" -> StackAnchor.BOTTOM
+        "end" -> StackAnchor.END
         else -> null
     },
     sheet = sheetOf(),
@@ -1006,7 +1005,6 @@ data class StackedSceneProps(
     val showLower: Boolean = false,
     val hideTopCount: Int = 0,
     val highlightIds: Set<String> = emptySet(),
-    val hiddenIds: Set<String> = emptySet(),
     val onPartTap: String? = null,
     val colourScale: ColourScale? = null,
     val notes: List<String> = emptyList(),
@@ -1078,14 +1076,6 @@ private fun highlightReading(raw: Any?): PropReading<Set<String>> {
     val entries = raw as? List<*> ?: return PropReading(emptySet(), "highlight must be a list of part ids, not '$raw'; nothing is highlighted.")
     val strays = entries.filterNot { it is String }
     val strayNote = strays.takeIf { it.isNotEmpty() }?.let { "highlight entries that are not part ids are not drawn: ${it.joinToString()}" }
-    return PropReading(entries.filterIsInstance<String>().toSet(), strayNote)
-}
-
-private fun hiddenReading(raw: Any?): PropReading<Set<String>> {
-    if (raw == null) return PropReading(emptySet())
-    val entries = raw as? List<*> ?: return PropReading(emptySet(), "hidden must be a list of part ids, not '$raw'; nothing is hidden.")
-    val strays = entries.filterNot { it is String }
-    val strayNote = strays.takeIf { it.isNotEmpty() }?.let { "hidden entries that are not part ids are ignored: ${it.joinToString()}" }
     return PropReading(entries.filterIsInstance<String>().toSet(), strayNote)
 }
 
@@ -1177,7 +1167,6 @@ fun resolveStackedSceneProps(resolved: Map<String, Any?>, nodeId: String): Stack
     val showLower = showLowerReading(resolved["show_lower"])
     val hideTop = hideTopReading(resolved["hide_top"])
     val highlight = highlightReading(resolved["highlight"])
-    val hidden = hiddenReading(resolved["hidden"])
     val onPartTap = onPartTapReading(resolved["on_part_tap"])
     val colourScale = colourByReading(resolved[COLOR_BY])
     val yAxis = yAxisReading(resolved["y_axis"])
@@ -1191,11 +1180,10 @@ fun resolveStackedSceneProps(resolved: Map<String, Any?>, nodeId: String): Stack
         showLower = showLower.value,
         hideTopCount = hideTop.value,
         highlightIds = highlight.value,
-        hiddenIds = hidden.value,
         onPartTap = onPartTap.value,
         colourScale = colourScale.value,
         notes = listOfNotNull(
-            drawing.note, yAxis.note, focus.note, showLower.note, hideTop.note, highlight.note, hidden.note, onPartTap.note, colourScale.note,
+            drawing.note, yAxis.note, focus.note, showLower.note, hideTop.note, highlight.note, onPartTap.note, colourScale.note,
             quarterTurns.note, zoom.note, panX.note, panY.note,
         ),
         yAxis = yAxis.value,

@@ -51,12 +51,12 @@ class LensPageTest {
         val volume = root.byId("volume").props()
         assertEquals(listOf("{pick.items}", "{pick.through}", "{pick.hidden}", "{piece}"), listOf("picked", "through", "hidden", "detail_record").map { volume[it]!!.jsonPrimitive.content })
         assertEquals("{pick.through}=-1", root.byId("dock")["visible"]!!.jsonPrimitive.content)
-        assertEquals("{piece.title}", root.byId("piece-sheet")["visible"]!!.jsonPrimitive.content)
+        assertEquals("{piece.title}", root.byId("piece-panel")["visible"]!!.jsonPrimitive.content)
     }
 
     @Test
     fun the_piece_sheets_open_this_solution_is_offered_for_each_system_that_is_drawn() {
-        assertEquals("{piece.system}=walls", page().byId("piece.open.walls")["visible"]!!.jsonPrimitive.content)
+        assertEquals("{piece.system}=walls", page().byId("sheet.open.walls")["visible"]!!.jsonPrimitive.content)
     }
 
     @Test

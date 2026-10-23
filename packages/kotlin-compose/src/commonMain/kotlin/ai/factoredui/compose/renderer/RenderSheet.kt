@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 
 private const val HANDLE_HEIGHT_DP = 44
@@ -40,8 +38,6 @@ private const val HANDLE_BAR_WIDTH_DP = 40
 private const val HANDLE_BAR_HEIGHT_DP = 4
 private const val DRAG_STEP_DP = 40
 private const val FULL_FRACTION = 0.92f
-private const val LAYOUT_SHEET = "sheet"
-private const val LAYOUT_SIDE = "side"
 
 private fun slotOf(child: SpecNode): String? = (child.props["slot"] as? SpecValue.StringValue)?.value
 
@@ -61,15 +57,13 @@ internal fun RenderSheet(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     val stopPath = node.props["stop"]?.bindingPath()
     var heldStop by remember { mutableStateOf(props.stop) }
     val stop = if (stopPath != null) props.stop else heldStop
-    val widthDp = LocalWindowInfo.current.containerSize.width / LocalDensity.current.density
-    val isSide = widthClassOf(widthDp) != "compact"
     val move = { next: SheetStop -> if (stopPath != null) context.setBinding(stopPath, next.wire) else heldStop = next }
     RecordDrawn {
-        shownProps = mapOf("layout" to if (isSide) LAYOUT_SIDE else LAYOUT_SHEET, "stop" to stop.wire)
+        shownProps = mapOf("stop" to stop.wire)
         notices = props.notices + slotNotices(node.children)
     }
     Box(modifier = Modifier.fillMaxSize().nodeTag(node.id)) {
-        if (isSide) SideSheet(node, props, context) else BottomSheet(node, props, stop, move, context)
+        BottomSheet(node, props, stop, move, context)
     }
 }
 
@@ -78,17 +72,6 @@ private fun SheetSlots(node: SpecNode, context: RenderContext, shows: (String?) 
     val theme = LocalSpecTheme.current
     Column(verticalArrangement = Arrangement.spacedBy(theme.space.md.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = theme.space.gutter.dp)) {
         node.children.filter { shows(slotOf(it)) }.forEach { RenderNode(node = it, context = context) }
-    }
-}
-
-@Composable
-private fun androidx.compose.foundation.layout.BoxScope.SideSheet(node: SpecNode, props: SheetProps, context: RenderContext) {
-    val theme = LocalSpecTheme.current
-    Column(
-        modifier = Modifier.align(Alignment.CenterEnd).width(props.sideDp.dp).fillMaxHeight().background(theme.raised)
-            .verticalScroll(rememberScrollState()).padding(vertical = theme.space.lg.dp),
-    ) {
-        SheetSlots(node, context) { true }
     }
 }
 

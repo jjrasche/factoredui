@@ -109,7 +109,7 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart, stat, readalong, sheet, layers.
+column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart, stat, readalong, sheet.
 
 - There is no table and no ratio-against-a-limit widget.
 - A table of the engine's views is a `table` (see Tables). Any other table is a `list` with an `itemTemplate`.
@@ -160,7 +160,6 @@ A string `"{path.to.value}"` is resolved at render time from one state map. Insi
 
 - `list`: either `children` (one node per row) or `data` plus `itemTemplate` (one template over rows). Never both; the renderer prints a red notice if you give both. `data` is a state key or a ref such as `"{row.branches}"`.
 - `itemTemplate` is one node drawn once per row, with the row bound as both `{row.x}` and `{item.x}`.
-- `direction: "horizontal"` lays the rows side by side in a row that scrolls sideways (chips, a strip of cards). `step` binds a number: the row then does not scroll by hand; a swipe left goes to the next row and a swipe right to the one before, writing the number (kept inside the rows), and the row at the number is scrolled into view. Bound to the same path as a drawing's `through`, a swipe steps the pick along what a tap crossed.
 - `emptyText` (text) is drawn in place of the rows when there are none. With no `emptyText` an empty list draws nothing.
 - `maxItems` (whole number) draws only that many rows.
 - `stacked` (bool, default false) lays the rows out in a plain column instead of a lazy list that scrolls itself. A list whose height is unbounded, as inside a `scrollview`, stacks its rows (or children) whether or not it says so, and takes the height of its content. A list with a bounded height, such as one with a `flex` in a `column` outside any scroll, or one with a `height` even inside a scroll, is a fixed pane: it is lazy and scrolls its own rows.
@@ -202,8 +201,6 @@ A `scene` node with `"view_state": { "renderer": "stacked_scene" }` draws parts 
 - `highlight`: a binding to a list of part ids. Those parts get the heavy outline and every other part fades.
 - `selected`: a binding path to a list of part ids. A tap selects the part and opens a popup naming its type, its id and, under `color_by`, its value in the active scale's `format` followed by the label of the stop the value falls in: "p2 · 32% · busy". A stop with no label adds nothing. A part with no value shows the scale's `unknown_label`, if it has one. The popup follows a switched scheme. Tapping it again or tapping empty space clears it. Unbound, the selection is kept locally.
 - `on_part_tap`: an action name, dispatched with params `{ "id": "<part id>" }`.
-- `hidden`: a list of part ids that are not drawn and cannot be tapped. Bind it to what a reader has hidden (an outliner's eye per part, or the parts in front of one picked through).
-- `picked`: a binding the scene writes on every tap: `[{ id, index, label }]` for every drawn part the tap crosses, nearest to the viewer first (`label` is the part's type label), and `[]` for a tap on nothing. The first is the part a plain tap selects.
 - `quarter_turns` (whole number, as a number or as text): which of the iso's four aspects is drawn, each a quarter turn round from the last. 0 (default) looks from the smallest x and y; 1 from the smallest x and the largest y; 2 from the largest x and y; 3 from the largest x and the smallest y. It is read round the four, so 4 draws as 0 and -1 as 3. A value that is not a whole number draws the first aspect and a notice naming the scene: "scene 'board': quarter_turns must be a whole number, not '1.5'; the first aspect is drawn." The plan and the elevations ignore it.
 - `zoom` (number, default 1, held between 0.25 and 16), `pan_x` and `pan_y` (numbers, default 0) frame the fitted drawing in every view. `zoom` scales it about the centre of the drawing area. `pan_x` moves it right by that share of the drawing area's width and `pan_y` down by that share of its height, so a value means the same at any window size: `"pan_x": 0.25` moves it a quarter of the width. Taps, a part's `bounds`, `centre` and `covered_by` follow the framed drawing. A zoom or pan that is not a finite number (or a zoom of 0 or less) draws the default and a notice naming the prop.
 - Gestures: when `quarter_turns` or `zoom` is a binding, the drawing takes the pointer. The wheel zooms about the pointer, 1.25 times per notch, and the drawn point under the pointer stays under it. A drag with the control key held pans. In the iso a horizontal drag of at least 48 units steps `quarter_turns` one aspect in its direction, once per drag. A tap with no drag still taps a part; a drag never does. Each gesture writes a bound prop as the value it then reads (`quarter_turns` 0 to 3, `zoom` held between its bounds, a pan as a share); an unbound one is held by the scene. With neither `quarter_turns` nor `zoom` bound, the scene leaves the drag and the wheel to the page, so a scene inside a scrolling page scrolls with it. For example: `"quarter_turns": "{board.turns}", "zoom": "{board.zoom}", "pan_x": "{board.pan_x}", "pan_y": "{board.pan_y}"`.
@@ -372,22 +369,23 @@ Examples of the same node with no book in it:
 
 The rule for any new primitive: name it for what it does to data, not for the app that asked for it; take its vocabulary from props (labels, units, colours), never from the renderer; read and write numbers and text through bindings so another node can drive it. If a request only makes sense for one app, build the generic node and let that app's spec carry the specifics.
 
-## Sheet and layers
+## Sheet
 
-`sheet` is a panel that docks to the screen and shows more as it opens. Put it last in a `stack` so it sits over the content (a `scene3d`, a map, a table); it takes no space of its own and touches pass through everywhere it is not.
+`sheet` is a bottom sheet that shows more as it opens. Put it last in a `stack` so it sits over the content (a `scene3d`, a map, a table); it takes no space of its own and touches pass through everywhere it is not.
 
 - Children carry `slot`: `peek` (always shown), `half` (shown at half and full) or `full` (shown only at full). A child with no slot is shown at full and named in a notice.
 - `stop`: `peek`, `half` or `full`. Bind it (`"stop": "{piece.stop}"`) and the sheet writes it when the reader taps the handle (peek, half, full, back to peek) or drags it; a spec can also set it, for example to `half` when something is selected. Unbound, the sheet keeps its own stop.
-- `peek_height` (default 96 dp), `half_height` (default 320 dp); full is 92% of the height.
-- On a compact window (under 600 dp wide) it is a bottom sheet with a 44 dp handle. On a wider one it is a `side_width` (default 360 dp) panel on the right showing every slot, with no handle. The same children serve both.
-- `/tree`: `props` carries `layout` (`sheet` or `side`) and `stop`; a slot that is not shown is not in the tree.
+- `peek_height` (default 96 dp), `half_height` (default 320 dp); full is 92% of the height. The 44 dp handle is the touch target.
+- It is always a bottom sheet. Placement by window size is the spec's: draw a `sheet` with `visible: "{window.is_compact}"` and, for a wider window, a plain `column` child of the `stack` with `anchor: "end"` and a `width`, `visible: "{window.is_at_least_medium}"`, holding the same content without slots.
+- `/tree`: `props` carries `stop`; a slot that is not shown is not in the tree.
 
-`layers` is a to-scale strip of a layered thing: a wall panel (OSB, EPS, OSB), soil horizons, a budget by line. Nothing in it knows what the layers are.
+`stack` children take an `anchor`: `fill`, `top`, `bottom`, or `end` (the right edge, the full height; give the child a `width`).
 
-- `layers`: `[{ label, size, size_text?, note?, color? }]` in order. A layer without a label or a size above zero is named and left out.
-- Each segment's width is in proportion to `size`; none is narrower than `min_share` (default 0.04) so a thin layer stays visible. `unit` is appended to `size` when there is no `size_text`; pass `size_text` (`7/16 in`) for formatted figures.
-- Under the strip each layer is a row: swatch, label, size, `note` (an R-value, a cost). `color` is a token name or `#rrggbb`; the default is the chart palette in order.
+A `row` may take `data` and an `itemTemplate` as a `list` does: it draws the template once per row, side by side, with the row bound as `{row.x}` and `{item.x}`. A template's `flex` may be a binding (`"flex": "{item.share}"`), so a proportional bar is a row of cells whose widths come from the data, and `background` may be too (`"{item.color}"`).
 
+`on_swipe` is a gesture any node may carry: `{ "left": <action>, "right": <action> }`. A horizontal drag of 48 dp or more, ending on that node, dispatches the action for its direction (left for a drag to the left); a shorter one does nothing. Either side may be left out. Use `set_binding` with `add` to step a number (`{ "path": "pick.through", "add": 1, "min": 0 }`), which keeps it in range. A node that scrolls sideways by itself takes the drag first.
+
+A child with `visible` false takes no space in a `column` or `row`, whatever its `flex`.
 ## Stat
 
 A `stat` is a card for one figure: a label, a big monospaced number, a unit and an optional status.

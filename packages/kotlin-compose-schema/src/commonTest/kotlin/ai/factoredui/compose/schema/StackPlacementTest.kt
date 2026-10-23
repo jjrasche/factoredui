@@ -12,6 +12,7 @@ class StackPlacementTest {
     fun a_child_names_where_it_sits_by_its_anchor() {
         assertEquals(StackAnchor.BOTTOM, mapOf("anchor" to SpecValue.StringValue("bottom")).asStackPlacement().anchor)
         assertEquals(StackAnchor.FILL, mapOf("anchor" to SpecValue.StringValue("fill")).asStackPlacement().anchor)
+        assertEquals(StackAnchor.END, mapOf("anchor" to SpecValue.StringValue("end")).asStackPlacement().anchor)
         assertNull(mapOf("anchor" to SpecValue.StringValue("middle")).asStackPlacement().anchor)
     }
 

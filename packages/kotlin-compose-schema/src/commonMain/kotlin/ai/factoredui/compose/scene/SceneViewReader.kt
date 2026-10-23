@@ -220,9 +220,6 @@ private fun instancesOf(layer: JsonObject): InstanceLayer =
 
 private fun waterOf(layer: JsonObject): WaterLayer = WaterLayer(
     version = layer.long("version") ?: 0L,
-    ponds = layer.objects("ponds").map { pond ->
-        Pond(pond.requiredString("id"), pond.requiredLong("level_mm"), pond.objects("tiles").map { PondTile(it.requiredInt("col"), it.requiredInt("row"), it.requiredLong("depth_mm")) })
-    },
     flow = layer.objects("flow").map { line ->
         FlowLine(
             line.requiredString("id"),

@@ -315,14 +315,15 @@ private fun pickedEntries(crossed: List<String>, details: Map<String, SelectionD
 
 private fun pickedIdsOf(raw: Any?): List<String> = (raw as? List<*>).orEmpty().mapNotNull { (it as? Map<*, *>)?.get("id") as? String }
 
-/** With `through` bound, the one picked at that index is the selection; an index of -1 clears it. */
+/** With `through` bound, the one picked at that index is the selection, an index of -1 clears it, and one past the last picked is brought back to the last. */
 @Composable
 private fun PublishPickedThrough(node: SpecNode, through: Int?, pickedIds: List<String>, context: RenderContext) {
     val selectedPath = node.props["selected"]?.bindingPath()
-    val hasThrough = node.props["through"]?.bindingPath() != null
-    LaunchedEffect(selectedPath, hasThrough, through, pickedIds) {
-        if (selectedPath == null || !hasThrough || through == null) return@LaunchedEffect
-        context.setBinding(selectedPath, pickedIds.getOrNull(through)?.let { listOf(it) } ?: emptyList<String>())
+    val throughPath = node.props["through"]?.bindingPath()
+    LaunchedEffect(selectedPath, throughPath, through, pickedIds) {
+        if (throughPath == null || through == null) return@LaunchedEffect
+        if (pickedIds.isNotEmpty() && through >= pickedIds.size) return@LaunchedEffect context.setBinding(throughPath, pickedIds.lastIndex)
+        selectedPath?.let { context.setBinding(it, pickedIds.getOrNull(through)?.let { id -> listOf(id) } ?: emptyList<String>()) }
     }
 }
 

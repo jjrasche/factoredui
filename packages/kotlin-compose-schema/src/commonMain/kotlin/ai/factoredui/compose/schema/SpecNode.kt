@@ -74,7 +74,6 @@ enum class SpecNodeType {
     @SerialName("audio") AUDIO,
     @SerialName("readalong") READALONG,
     @SerialName("sheet") SHEET,
-    @SerialName("layers") LAYERS,
     @SerialName("voice") VOICE,
     @SerialName("icon") ICON,
     @SerialName("divider") DIVIDER,
