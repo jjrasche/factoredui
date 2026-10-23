@@ -155,7 +155,7 @@ class StackedScenePropsTest {
         val props = sceneProps(
             mapOf("view" to "west", "focus" to 1.0, "show_lower" to false, "hide_top" to 2.0, "highlight" to listOf("e1"), "on_part_tap" to "tapped", "color_by" to COLOR_BY),
         )
-        assertEquals(StackedSceneProps(StackedDrawing.WEST, LevelFocus.OneLevel(1), false, 2, setOf("e1"), emptySet(), "tapped", SCALE), props)
+        assertEquals(StackedSceneProps(StackedDrawing.WEST, LevelFocus.OneLevel(1), false, 2, setOf("e1"), "tapped", SCALE), props)
     }
 
     @Test
@@ -240,27 +240,6 @@ class StackedScenePropsTest {
         val props = sceneProps(mapOf("highlight" to listOf("e1", 3)))
         assertEquals(setOf("e1"), props.highlightIds)
         assertEquals(listOf("highlight entries that are not part ids are not drawn: 3"), props.notes)
-    }
-
-    @Test
-    fun the_hidden_parts_are_read_as_a_set_of_ids() {
-        val props = sceneProps(mapOf("hidden" to listOf("w1", "w2")))
-        assertEquals(setOf("w1", "w2"), props.hiddenIds)
-        assertEquals(emptyList(), props.notes)
-    }
-
-    @Test
-    fun a_hidden_that_is_not_a_list_hides_nothing_and_says_so() {
-        val props = sceneProps(mapOf("hidden" to "w1"))
-        assertEquals(emptySet(), props.hiddenIds)
-        assertEquals(listOf("hidden must be a list of part ids, not 'w1'; nothing is hidden."), props.notes)
-    }
-
-    @Test
-    fun a_hidden_entry_that_is_not_a_part_id_is_named() {
-        val props = sceneProps(mapOf("hidden" to listOf("w1", 3)))
-        assertEquals(setOf("w1"), props.hiddenIds)
-        assertEquals(listOf("hidden entries that are not part ids are ignored: 3"), props.notes)
     }
 
     @Test

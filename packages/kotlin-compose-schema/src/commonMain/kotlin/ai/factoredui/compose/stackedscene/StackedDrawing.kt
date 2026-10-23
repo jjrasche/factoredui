@@ -56,12 +56,6 @@ fun hitDrawnPart(scene: SceneView, parts: List<VisiblePart>, drawing: StackedDra
     return if (drawing == StackedDrawing.ISO) hitIso(scene, parts, u, v, quarterTurns) else hitPartInView(scene, parts, u, v, flatViewOf(drawing))
 }
 
-/** Every part the point crosses, nearest to the viewer first: [parts] are in drawing order, back to front. */
-fun hitAllDrawnParts(scene: SceneView, parts: List<VisiblePart>, drawing: StackedDrawing, fit: CanvasFit, xPx: Double, yPx: Double, quarterTurns: Int = 0): List<VisiblePart> {
-    val (u, v) = canvasToMm(fit, xPx, yPx)
-    return if (drawing == StackedDrawing.ISO) hitIsoAll(scene, parts, u, v, quarterTurns) else hitPartsInView(scene, parts, u, v, flatViewOf(drawing))
-}
-
 fun popupAnchor(scene: SceneView, footprint: SceneFootprint, drawing: StackedDrawing, fit: CanvasFit, quarterTurns: Int = 0): Pair<Double, Double> {
     if (drawing == StackedDrawing.ISO) {
         val top = projectFaces(partBox(scene, footprint), quarterTurns).top.map { (u, v) -> mmToCanvas(fit, u, v) }

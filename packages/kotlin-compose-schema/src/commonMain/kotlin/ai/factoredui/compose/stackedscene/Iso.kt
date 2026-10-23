@@ -164,12 +164,7 @@ fun isPointInPolygon(x: Double, y: Double, polygon: List<Pair<Double, Double>>):
     return inside
 }
 
-private fun isoCrosses(scene: SceneView, part: VisiblePart, u: Double, v: Double, quarterTurns: Int): Boolean {
+fun hitIso(scene: SceneView, ordered: List<VisiblePart>, u: Double, v: Double, quarterTurns: Int): VisiblePart? = ordered.lastOrNull { part ->
     val faces = projectFaces(partBox(scene, part.footprint), quarterTurns)
-    return listOf(faces.top, faces.xSide, faces.ySide).any { isPointInPolygon(u, v, it) }
+    listOf(faces.top, faces.xSide, faces.ySide).any { isPointInPolygon(u, v, it) }
 }
-
-fun hitIso(scene: SceneView, ordered: List<VisiblePart>, u: Double, v: Double, quarterTurns: Int): VisiblePart? = ordered.lastOrNull { isoCrosses(scene, it, u, v, quarterTurns) }
-
-fun hitIsoAll(scene: SceneView, ordered: List<VisiblePart>, u: Double, v: Double, quarterTurns: Int): List<VisiblePart> =
-    ordered.filter { isoCrosses(scene, it, u, v, quarterTurns) }.asReversed()
