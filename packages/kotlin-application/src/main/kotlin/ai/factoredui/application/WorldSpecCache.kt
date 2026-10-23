@@ -94,10 +94,12 @@ internal class WorldSpecStore(private val directory: Path?) {
 
 private val FAILURE_SENTENCE = Regex("""\bcould not be (run|read|stepped|described)\b""")
 
-/** Whether any text on the page says a section could not be run, read, stepped or described: the engine failed that section. */
+private val TRANSPORT_FAILURE = Regex("""did not answer|timed out|timeout|connection (refused|reset|closed)|\bstatus 5\d\d\b|listed no worlds""", RegexOption.IGNORE_CASE)
+
+/** Whether any text on the page says a section could not be run, read, stepped or described because the engine could not be reached or failed to answer: a timeout, no answer, a refused connection or a 5xx. An answer the engine gave about the domain ("the ranking could not be run: the relation has a cycle") is a page, and stays one. */
 internal fun hasEngineFailure(node: JsonElement): Boolean = when (node) {
     is JsonObject -> node.values.any(::hasEngineFailure)
     is JsonArray -> node.any(::hasEngineFailure)
-    is JsonPrimitive -> node.isString && FAILURE_SENTENCE.containsMatchIn(node.content)
+    is JsonPrimitive -> node.isString && FAILURE_SENTENCE.containsMatchIn(node.content) && TRANSPORT_FAILURE.containsMatchIn(node.content)
     else -> false
 }
