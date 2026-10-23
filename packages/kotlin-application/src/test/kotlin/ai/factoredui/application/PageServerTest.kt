@@ -75,7 +75,7 @@ class PageServerTest {
         val system = Files.createTempFile("system", ".json").also { Files.writeString(it, """{ "id": "w", "title": "W", "systems": {} }""") }
         val cached = serving(system, callLog, Files.createTempDirectory("cache"))
         try {
-            repeat(3) { assertEquals(200, fetchFrom(cached, "/spec.json").statusCode()) }
+            repeat(3) { fetchFrom(cached, "/spec.json").let { answer -> assertEquals(200, answer.statusCode(), String(answer.body())) } }
             assertEquals(2, calls(callLog))
             Files.writeString(system, """{ "id": "w", "title": "Changed", "systems": {} }""")
             assertEquals(200, fetchFrom(cached, "/spec.json").statusCode())
