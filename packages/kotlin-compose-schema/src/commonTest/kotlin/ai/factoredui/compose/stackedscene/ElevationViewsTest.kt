@@ -141,6 +141,21 @@ class ElevationViewsTest {
     }
 
     @Test
+    fun every_part_a_point_crosses_is_listed_nearest_first_and_the_nearest_is_the_one_a_tap_hits() {
+        val scene = elevationBoard()
+        val ordered = orderForView(scene, blocksOf(scene), FlatView.SOUTH)
+        val crossed = hitPartsInView(scene, ordered, 1500.0, 100.0, FlatView.SOUTH).map { it.footprint.id }
+        assertEquals("block-front", crossed.first())
+        assertEquals(ordered.map { it.footprint.id }.filter { it in crossed }.asReversed(), crossed)
+    }
+
+    @Test
+    fun a_point_that_crosses_nothing_lists_no_part() {
+        val scene = elevationBoard()
+        assertEquals(emptyList(), hitPartsInView(scene, orderForView(scene, blocksOf(scene), FlatView.SOUTH), -99999.0, -99999.0, FlatView.SOUTH))
+    }
+
+    @Test
     fun the_plan_is_not_exaggerated_and_an_elevation_is_stretched_so_its_height_can_be_read() {
         val scene = elevationBoard()
         assertEquals(1, exaggerationFor(scene, FlatView.PLAN, 800.0, 600.0, 20.0))

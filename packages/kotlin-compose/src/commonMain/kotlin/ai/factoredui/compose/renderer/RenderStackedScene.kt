@@ -20,6 +20,7 @@ import ai.factoredui.compose.stackedscene.VisiblePart
 import ai.factoredui.compose.stackedscene.drawnPartsSummary
 import ai.factoredui.compose.stackedscene.exaggerationNote
 import ai.factoredui.compose.stackedscene.fitDrawing
+import ai.factoredui.compose.stackedscene.hitAllDrawnParts
 import ai.factoredui.compose.stackedscene.hitDrawnPart
 import ai.factoredui.compose.stackedscene.intrinsicSceneHeight
 import ai.factoredui.compose.stackedscene.isEveryPartFlat
@@ -117,13 +118,23 @@ private class PartTapTarget(
     val quarterTurns: Int,
     val selection: Set<String>,
     val selectedPath: String?,
+    val pickedPath: String?,
     val onPartTap: String?,
     val context: RenderContext,
     val scope: CoroutineScope,
     val keepLocalSelection: (Set<String>) -> Unit,
 )
 
-private fun applyPartTap(target: PartTapTarget, xPx: Double, yPx: Double) = tapPart(target, findTappedPart(target, xPx, yPx))
+private fun applyPartTap(target: PartTapTarget, xPx: Double, yPx: Double) {
+    writePicked(target, xPx, yPx)
+    tapPart(target, findTappedPart(target, xPx, yPx))
+}
+
+private fun writePicked(target: PartTapTarget, xPx: Double, yPx: Double) {
+    val path = target.pickedPath ?: return
+    val crossed = hitAllDrawnParts(target.scene, target.parts, target.drawing, target.fit, xPx, yPx, target.quarterTurns)
+    target.context.setBinding(path, crossed.map { it.footprint.id })
+}
 
 private fun tapPart(target: PartTapTarget, hit: VisiblePart?) {
     val nextSelection = selectionAfterTap(target.selection, hit?.footprint?.id)
@@ -168,6 +179,7 @@ private fun RenderSizedStackedScene(
     sizeModifier: Modifier,
 ) {
     val selectedPath = node.props["selected"]?.bindingPath()
+    val pickedPath = node.props["picked"]?.bindingPath()
     var localSelection by remember { mutableStateOf(resolveGeomapSelection(resolvedSelected)) }
     val selection = if (selectedPath != null) resolveGeomapSelection(resolvedSelected) else localSelection
     val framingPaths = framingPathsOf(node)
@@ -182,8 +194,8 @@ private fun RenderSizedStackedScene(
         writeFraming(context, framingPaths, framingInHand.current(), next) { heldFraming = it }
         framingInHand.moved = next
     }
-    val parts = remember(scene, props.drawing, props.focus, props.showLower, props.hideTopCount, props.highlightIds, framing.quarterTurns) {
-        partsToDraw(scene, props.drawing, props.focus, props.showLower, props.hideTopCount, props.highlightIds, framing.quarterTurns)
+    val parts = remember(scene, props.drawing, props.focus, props.showLower, props.hideTopCount, props.highlightIds, props.hiddenIds, framing.quarterTurns) {
+        partsToDraw(scene, props.drawing, props.focus, props.showLower, props.hideTopCount, props.highlightIds, framing.quarterTurns).filter { it.footprint.id !in props.hiddenIds }
     }
     val values = remember(scene, props.colourScale) { props.colourScale?.let { partValues(scene, it.channel) }.orEmpty() }
     val scope = rememberCoroutineScope()
@@ -196,7 +208,7 @@ private fun RenderSizedStackedScene(
             val picture = StackedPicture(scene, parts, props.drawing, fit, framing.quarterTurns, values, props.colourScale, props.highlightIds + selection)
             val notices = sceneNotices(scene, parts, props, fit)
             val popup = popupLines(scene, parts, selection, props, values)
-            val tapTarget = PartTapTarget(node.id, scene, parts, props.drawing, fit, framing.quarterTurns, selection, selectedPath, props.onPartTap, context, scope) {
+            val tapTarget = PartTapTarget(node.id, scene, parts, props.drawing, fit, framing.quarterTurns, selection, selectedPath, pickedPath, props.onPartTap, context, scope) {
                 localSelection = it
             }
             val latestTapTarget by rememberUpdatedState(tapTarget)

@@ -70,6 +70,9 @@ fun coveredFlags(scene: SceneView, parts: List<VisiblePart>, view: FlatView): Li
 fun hitPartInView(scene: SceneView, parts: List<VisiblePart>, u: Double, v: Double, view: FlatView): VisiblePart? =
     parts.lastOrNull { partRectInView(scene, it.footprint, view).contains(u, v) }
 
+fun hitPartsInView(scene: SceneView, parts: List<VisiblePart>, u: Double, v: Double, view: FlatView): List<VisiblePart> =
+    parts.filter { partRectInView(scene, it.footprint, view).contains(u, v) }.asReversed()
+
 fun exaggerationFor(scene: SceneView, view: FlatView, canvasWidth: Double, canvasHeight: Double, margin: Double): Int {
     if (view == FlatView.PLAN) return 1
     val window = viewWindow(scene, view)

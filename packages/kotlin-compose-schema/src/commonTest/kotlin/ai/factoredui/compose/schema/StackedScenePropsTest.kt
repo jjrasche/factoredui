@@ -243,6 +243,27 @@ class StackedScenePropsTest {
     }
 
     @Test
+    fun the_hidden_parts_are_read_as_a_set_of_ids() {
+        val props = sceneProps(mapOf("hidden" to listOf("w1", "w2")))
+        assertEquals(setOf("w1", "w2"), props.hiddenIds)
+        assertEquals(emptyList(), props.notes)
+    }
+
+    @Test
+    fun a_hidden_that_is_not_a_list_hides_nothing_and_says_so() {
+        val props = sceneProps(mapOf("hidden" to "w1"))
+        assertEquals(emptySet(), props.hiddenIds)
+        assertEquals(listOf("hidden must be a list of part ids, not 'w1'; nothing is hidden."), props.notes)
+    }
+
+    @Test
+    fun a_hidden_entry_that_is_not_a_part_id_is_named() {
+        val props = sceneProps(mapOf("hidden" to listOf("w1", 3)))
+        assertEquals(setOf("w1"), props.hiddenIds)
+        assertEquals(listOf("hidden entries that are not part ids are ignored: 3"), props.notes)
+    }
+
+    @Test
     fun a_show_lower_that_is_not_a_bool_hides_the_lower_levels_and_says_so() {
         val props = sceneProps(mapOf("show_lower" to "yes"))
         assertEquals(false, props.showLower)
