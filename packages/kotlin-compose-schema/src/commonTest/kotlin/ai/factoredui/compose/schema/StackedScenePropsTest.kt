@@ -155,7 +155,7 @@ class StackedScenePropsTest {
         val props = sceneProps(
             mapOf("view" to "west", "focus" to 1.0, "show_lower" to false, "hide_top" to 2.0, "highlight" to listOf("e1"), "on_part_tap" to "tapped", "color_by" to COLOR_BY),
         )
-        assertEquals(StackedSceneProps(StackedDrawing.WEST, LevelFocus.OneLevel(1), false, 2, setOf("e1"), "tapped", SCALE), props)
+        assertEquals(StackedSceneProps(StackedDrawing.WEST, LevelFocus.OneLevel(1), false, 2, setOf("e1"), emptySet(), "tapped", SCALE), props)
     }
 
     @Test
