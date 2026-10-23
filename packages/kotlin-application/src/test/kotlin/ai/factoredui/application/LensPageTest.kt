@@ -46,6 +46,25 @@ class LensPageTest {
     }
 
     @Test
+    fun a_tap_on_the_world_lists_what_it_crossed_and_the_piece_sheet_takes_the_docks_place_while_one_is_picked() {
+        val root = page()
+        val volume = root.byId("volume").props()
+        assertEquals(listOf("{pick.items}", "{pick.through}", "{pick.hidden}", "{piece}"), listOf("picked", "through", "hidden", "detail_record").map { volume[it]!!.jsonPrimitive.content })
+        assertEquals("{pick.through}=-1", root.byId("dock")["visible"]!!.jsonPrimitive.content)
+        assertEquals("{piece.title}", root.byId("piece-sheet")["visible"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun the_piece_sheets_open_this_solution_is_offered_for_each_system_that_is_drawn() {
+        assertEquals("{piece.system}=walls", page().byId("piece.open.walls")["visible"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun the_page_starts_with_nothing_picked() {
+        val pick = buildLensPageSpec(readSystemFile(SYSTEM_FILE), readExpansion(EXPANSION), geometried = Geometried(readGeometry(GEOMETRY)))["state"]!!.jsonObject["pick"]!!.jsonObject
+        assertEquals("-1", pick["through"]!!.jsonPrimitive.content)
+    }
+    @Test
     fun the_blueprint_is_a_drawing_over_the_shaded_one_that_a_switch_shows() {
         val root = page()
         val switchPath = root.byId("lens.blueprint").props()["value"]!!.jsonPrimitive.content

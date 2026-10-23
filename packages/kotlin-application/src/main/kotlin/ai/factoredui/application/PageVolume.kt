@@ -103,7 +103,7 @@ internal fun volumeNode(file: SystemFile, expansion: Expansion, overlay: Overlay
             "legend" to legend,
             "empty_text" to "The expansion has nothing to draw.",
             "selected" to SELECTION_PATH,
-            "details" to detailsOf(file, expansion, overlay).let { details -> geometry?.let { withFragmentDetails(details, boxes) } ?: details },
+            "details" to detailsOf(file, expansion, overlay).let { details -> geometry?.let { withFragmentDetails(withPieceFacts(details, it), boxes) } ?: details },
         ),
     )
 }

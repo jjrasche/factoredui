@@ -104,7 +104,11 @@ private fun elsewhere(describing: Describing?, file: SystemFile, expansion: Expa
 }
 
 private fun pageSpec(root: JsonObject): JsonObject =
-    JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "root" to root))
+    JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(pickState()), "root" to root))
+
+private fun idsBySystem(expansion: Expansion, geometry: Geometry?): Map<String, List<String>> =
+    geometry?.pieces?.groupBy({ it.system }, { it.id })
+        ?: (expansion.objects.map { it.system to it.id } + expansion.instances.map { it.system to it.id }).groupBy({ it.first }, { it.second })
 
 private fun noDrawingPage(body: List<JsonObject>, note: String): JsonObject =
     specNode("root", "scrollview", mapOf("background" to HUD), listOf(specNode("page", "column", mapOf("gap" to GUTTER_DP, "padding" to GUTTER_DP), listOf(textNode("drawing.none", note, variant = "caption", color = MUTED)) + body)))
@@ -123,7 +127,7 @@ fun buildLensPageSpec(
     traced: Traced? = null,
 ): JsonObject {
     val geometry = geometried?.geometry
-    val shaded = volumeNode(file, expansion, overlaying?.overlay, geometry, built?.build?.stageOf)?.let { fullWorld(it, mapOf("ground" to WORLD_GROUND, "lighting" to "sun")) }
+    val shaded = volumeNode(file, expansion, overlaying?.overlay, geometry, built?.build?.stageOf)?.let { fullWorld(it, mapOf("ground" to WORLD_GROUND, "lighting" to "sun") + pickProps()) }
     val blueprint = geometry?.let { fullWorld(blueprintVolumeNode(it, expansion), visible = BLUEPRINT_PATH) }
     val drawn = systemOrder(file, expansion).filter { name -> expansion.objects.any { it.system == name } || expansion.instances.any { it.system == name } }
     val notes = listOfNotNull(
@@ -136,7 +140,8 @@ fun buildLensPageSpec(
         "dock.body", "column", mapOf("gap" to 12, "padding" to GUTTER_DP),
         listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + bodyContent,
     )
-    val dock = specNode("dock", "column", mapOf("anchor" to "bottom", "sheet" to mapOf("closed_dp" to DOCK_CLOSED_DP, "open_dp" to DOCK_OPEN_DP), "background" to DOCK), listOf(body))
+    val dock = specNode("dock", "column", mapOf("anchor" to "bottom", "sheet" to mapOf("closed_dp" to DOCK_CLOSED_DP, "open_dp" to DOCK_OPEN_DP), "background" to DOCK), listOf(body), visible = if (shaded != null) "{$PICK_THROUGH_PATH}=$NOTHING_PICKED" else null)
+    val piecePanel = if (shaded != null) listOf(piecePanelNode(idsBySystem(expansion, geometry))) else emptyList()
     val world = listOfNotNull(shaded, blueprint)
-    return pageSpec(specNode("root", "stack", mapOf("fill" to true, "background" to HUD), world + listOf(topStrip(blueprint != null), dock)))
+    return pageSpec(specNode("root", "stack", mapOf("fill" to true, "background" to HUD), world + listOf(topStrip(blueprint != null), dock) + piecePanel))
 }
