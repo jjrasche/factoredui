@@ -126,7 +126,7 @@ private fun geometryOrSayWhy(loaded: Loaded): Geometried =
 
 internal class PageSource(val system: Path, val runtime: EngineRuntime, val overlay: String?, val rank: String?, val sampleArguments: List<String>?, val sampleFile: Path?)
 
-private fun Options.source() = PageSource(system, ProcessRuntime(runtime), overlay, rank, sampleArguments, sampleFile)
+private fun Options.source(engine: EngineRuntime) = PageSource(system, engine, overlay, rank, sampleArguments, sampleFile)
 
 private class BuiltSpec(val worldStamp: Pair<Long, Long>, val body: ByteArray)
 
@@ -167,15 +167,15 @@ private fun cacheOf(options: Options): SpecCache? = options.cacheDirectory?.let 
 
 private fun keyOrNull(options: Options): String? = runCatching { specCacheKey(options) }.getOrNull()
 
-private fun buildAndKeep(options: Options, built: AtomicReference<BuiltSpec?>, stamp: Pair<Long, Long>, started: Long): Served {
+private fun buildAndKeep(options: Options, engine: EngineRuntime, built: AtomicReference<BuiltSpec?>, stamp: Pair<Long, Long>, started: Long): Served {
     val timings = Timings()
-    val body = buildLensSpecBody(options.source(), timings)
+    val body = buildLensSpecBody(options.source(engine), timings)
     runCatching { keyOrNull(options)?.let { cacheOf(options)?.write(it, body) } }
     built.set(BuiltSpec(stamp, body))
     return Served(body, timings.header((System.nanoTime() - started) / 1_000_000))
 }
 
-private fun serveFromMemoryOrDiskOrBuild(options: Options, built: AtomicReference<BuiltSpec?>): Served {
+private fun serveFromMemoryOrDiskOrBuild(options: Options, engine: EngineRuntime, built: AtomicReference<BuiltSpec?>): Served {
     val started = System.nanoTime()
     val stamp = stampOf(options.system)
     built.get()?.takeIf { it.worldStamp == stamp }?.let { return Served(it.body, "cache;desc=memory") }
@@ -185,11 +185,11 @@ private fun serveFromMemoryOrDiskOrBuild(options: Options, built: AtomicReferenc
         built.set(BuiltSpec(stamp, kept))
         return Served(kept, "cache;desc=disk, total;dur=${(System.nanoTime() - started) / 1_000_000}")
     }
-    return buildAndKeep(options, built, stamp, started)
+    return buildAndKeep(options, engine, built, stamp, started)
 }
 
-private fun serveSpec(exchange: HttpExchange, options: Options, built: AtomicReference<BuiltSpec?>) {
-    val served = runCatching { synchronized(built) { serveFromMemoryOrDiskOrBuild(options, built) } }
+private fun serveSpec(exchange: HttpExchange, options: Options, engine: EngineRuntime, built: AtomicReference<BuiltSpec?>) {
+    val served = runCatching { synchronized(built) { serveFromMemoryOrDiskOrBuild(options, engine, built) } }
     served.fold(
         onSuccess = {
             exchange.responseHeaders.add("Server-Timing", it.timing)
@@ -228,9 +228,11 @@ internal fun startServing(bind: String, port: Int, bundle: Path, serveActionRequ
     return server
 }
 
-fun startPageServer(options: Options): HttpServer {
+fun startPageServer(options: Options): HttpServer = startPageServer(options, ProcessRuntime(options.runtime))
+
+internal fun startPageServer(options: Options, engine: EngineRuntime): HttpServer {
     val builtSpec = AtomicReference<BuiltSpec?>(null)
-    return startServing(options.bind, options.port, options.bundle) { exchange -> serveSpec(exchange, options, builtSpec) }
+    return startServing(options.bind, options.port, options.bundle) { exchange -> serveSpec(exchange, options, engine, builtSpec) }
 }
 
 private fun serveScreen(exchange: HttpExchange, options: ScreenOptions) {

@@ -7,6 +7,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
 import kotlin.test.AfterTest
@@ -59,13 +60,17 @@ class PageServerTest {
         }
     }
 
-    private fun fakeRuntime(callLog: Path): Path {
-        val launcher = Files.createDirectories(Files.createTempDirectory("runtime").resolve("bin")).resolve("we")
-        Files.writeString(launcher, "echo \"$1\" >> '$callLog'\necho '{\"sections\": {\"expansion\": {\"ok\": true, \"asked\": true, \"extent_mm\": [10, 10], \"objects\": [], \"instances\": [], \"supplied\": {}}}}'\n")
-        return launcher
+    private fun fakeRuntime(callLog: Path) = object : EngineRuntime {
+        override fun answer(arguments: List<String>, timeoutSeconds: Long): String {
+            Files.writeString(callLog, arguments[0] + "\n", StandardOpenOption.APPEND)
+            return """{"sections": {"expansion": {"ok": true, "asked": true, "extent_mm": [10, 10], "objects": [], "instances": [], "supplied": {}}}}"""
+        }
     }
 
-    private fun serving(system: Path, callLog: Path, cache: Path?) = startPageServer(Options(system, fakeRuntime(callLog), bundle, "127.0.0.1", 0, cacheDirectory = cache))
+    private fun launcherFile(): Path = Files.createDirectories(Files.createTempDirectory("runtime").resolve("bin")).resolve("we").also { Files.writeString(it, "") }
+
+    private fun serving(system: Path, callLog: Path, cache: Path?) =
+        startPageServer(Options(system, launcherFile(), bundle, "127.0.0.1", 0, cacheDirectory = cache), fakeRuntime(callLog))
 
     private fun calls(callLog: Path) = Files.readAllLines(callLog).count { it == "load" }
 
