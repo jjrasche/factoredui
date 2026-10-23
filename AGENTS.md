@@ -109,7 +109,7 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart, stat, readalong, sheet.
+column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart, stat, readalong, sheet, layers.
 
 - There is no table and no ratio-against-a-limit widget.
 - A table of the engine's views is a `table` (see Tables). Any other table is a `list` with an `itemTemplate`.
@@ -365,6 +365,22 @@ Examples of the same node with no book in it:
 - A changelog read against a `slider` of dates: runs are the entries, `position` is the slider's value.
 
 The rule for any new primitive: name it for what it does to data, not for the app that asked for it; take its vocabulary from props (labels, units, colours), never from the renderer; read and write numbers and text through bindings so another node can drive it. If a request only makes sense for one app, build the generic node and let that app's spec carry the specifics.
+
+## Sheet and layers
+
+`sheet` is a panel that docks to the screen and shows more as it opens. Put it last in a `stack` so it sits over the content (a `scene3d`, a map, a table); it takes no space of its own and touches pass through everywhere it is not.
+
+- Children carry `slot`: `peek` (always shown), `half` (shown at half and full) or `full` (shown only at full). A child with no slot is shown at full and named in a notice.
+- `stop`: `peek`, `half` or `full`. Bind it (`"stop": "{piece.stop}"`) and the sheet writes it when the reader taps the handle (peek, half, full, back to peek) or drags it; a spec can also set it, for example to `half` when something is selected. Unbound, the sheet keeps its own stop.
+- `peek_height` (default 96 dp), `half_height` (default 320 dp); full is 92% of the height.
+- On a compact window (under 600 dp wide) it is a bottom sheet with a 44 dp handle. On a wider one it is a `side_width` (default 360 dp) panel on the right showing every slot, with no handle. The same children serve both.
+- `/tree`: `props` carries `layout` (`sheet` or `side`) and `stop`; a slot that is not shown is not in the tree.
+
+`layers` is a to-scale strip of a layered thing: a wall panel (OSB, EPS, OSB), soil horizons, a budget by line. Nothing in it knows what the layers are.
+
+- `layers`: `[{ label, size, size_text?, note?, color? }]` in order. A layer without a label or a size above zero is named and left out.
+- Each segment's width is in proportion to `size`; none is narrower than `min_share` (default 0.04) so a thin layer stays visible. `unit` is appended to `size` when there is no `size_text`; pass `size_text` (`7/16 in`) for formatted figures.
+- Under the strip each layer is a row: swatch, label, size, `note` (an R-value, a cost). `color` is a token name or `#rrggbb`; the default is the chart palette in order.
 
 ## Stat
 

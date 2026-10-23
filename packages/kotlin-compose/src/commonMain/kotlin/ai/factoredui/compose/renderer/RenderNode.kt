@@ -319,6 +319,7 @@ private fun RenderNodeByType(
         SpecNodeType.AUDIO -> RenderAudio(node, resolvedProps, context)
         SpecNodeType.READALONG -> RenderReadAlong(node, resolvedProps, context)
         SpecNodeType.SHEET -> RenderSheet(node, resolvedProps, context)
+        SpecNodeType.LAYERS -> RenderLayers(node, resolvedProps)
         SpecNodeType.VOICE -> RenderVoice(node, resolvedProps, context)
         SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)
         SpecNodeType.SELECT -> RenderSelect(node, resolvedProps, context)

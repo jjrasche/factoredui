@@ -21,6 +21,7 @@ private val minimalNodeOf: Map<SpecNodeType, String> = mapOf(
     SpecNodeType.IMAGE to """{ "id": "n", "type": "image", "props": { "source": "" } }""",
     SpecNodeType.VIDEO to """{ "id": "n", "type": "video", "props": { "source": "/tmp/x.mp4" } }""",
     SpecNodeType.AUDIO to """{ "id": "n", "type": "audio", "props": { "source": "/tmp/x.mp3", "title": "A chapter" } }""",
+    SpecNodeType.LAYERS to """{ "id": "n", "type": "layers", "props": { "unit": "in", "layers": [{ "label": "OSB", "size": 0.4375 }, { "label": "EPS", "size": 3.5 }] } }""",
     SpecNodeType.SHEET to """{ "id": "n", "type": "sheet", "children": [{ "id": "t", "type": "text", "props": { "value": "Wall 3", "slot": "peek" } }] }""",
     SpecNodeType.READALONG to """{ "id": "n", "type": "readalong", "props": { "words": [{ "t": "In", "at": 0, "end": 1 }, { "t": "the", "at": 1, "end": 2 }], "position": "{pos}" } }""",
     SpecNodeType.VOICE to """{ "id": "n", "type": "voice", "props": { "label": "Hold to talk" } }""",
