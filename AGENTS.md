@@ -381,7 +381,7 @@ The rule for any new primitive: name it for what it does to data, not for the ap
 
 `stack` children take an `anchor`: `fill`, `top`, `bottom`, or `end` (the right edge, the full height; give the child a `width`).
 
-A `row` may take `data` and an `itemTemplate` as a `list` does: it draws the template once per row, side by side, with the row bound as `{row.x}` and `{item.x}`. A template's `flex` may be a binding (`"flex": "{item.share}"`), so a proportional bar is a row of cells whose widths come from the data, and `background` may be too (`"{item.color}"`).
+A `row` may take `data` and an `itemTemplate` as a `list` does: it draws the template once per row, side by side, with the row bound as `{row.x}` and `{item.x}`. A template's `flex` may be a binding (`"flex": "{item.share}"`), so a proportional bar is a row of cells whose widths come from the data, and `background` may be too (`"{item.color}"`). With `scroll_to` bound to a number the row does not draw all its rows at once: it is one line that does not scroll by hand and brings the row at that number into view, so a chosen chip stays on screen (static `children` are not drawn then).
 
 `on_swipe` is a gesture any node may carry: `{ "left": <action>, "right": <action> }`. A horizontal drag of 48 dp or more, ending on that node, dispatches the action for its direction (left for a drag to the left); a shorter one does nothing. Either side may be left out. Use `set_binding` with `add` to step a number (`{ "path": "pick.through", "add": 1, "min": 0 }`), which keeps it in range. A node that scrolls sideways by itself takes the drag first.
 

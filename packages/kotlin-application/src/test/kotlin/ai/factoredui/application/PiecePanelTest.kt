@@ -66,7 +66,7 @@ class PiecePanelTest {
     fun the_chips_are_a_row_over_what_a_tap_crossed_and_a_chip_steps_the_pick_to_its_index() {
         val panel = piecePanelNode(SYSTEMS)
         val chips = nodeOf(panel, "sheet.chips")
-        assertEquals(listOf("row", "{pick.items}"), listOf((chips["type"] as JsonPrimitive).content, propOf(chips, "data")))
+        assertEquals(listOf("row", "{pick.items}", "{pick.through}"), listOf((chips["type"] as JsonPrimitive).content, propOf(chips, "data"), propOf(chips, "scroll_to")))
         assertEquals("{item.index}", (valuesOf(nodeOf(panel, "sheet.chip"))["pick.through"] as JsonPrimitive).content)
     }
 

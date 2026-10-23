@@ -397,6 +397,7 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
 private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val liveData by context.dataFlow.collectAsState()
     val props = resolveLayoutProps(node, resolvedProps)
+    if (node.scrollsToARow()) return ScrollingRowOfData(node, resolvedProps, context, props.gap, props.padding)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val claimsSpace = props.flex > 0f
     val fillWidth = hasFlexChild || claimsSpace || props.justify != LayoutJustify.START

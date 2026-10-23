@@ -53,7 +53,7 @@ private fun stepSwipe(): Map<String, Any?> = mapOf(
 
 private fun rayChips(p: String): JsonObject {
     val chip = withAction(specNode("$p.chip", "button", mapOf("label" to "{item.label}", "variant" to "outline", "size" to "sm")), mapOf("values" to mapOf(PICK_THROUGH_PATH to "{item.index}")))
-    return specNode("$p.rays", "column", stepSwipe(), listOf(specNode("$p.chips", "row", mapOf("gap" to 8, "data" to bound(PICK_ITEMS_PATH), "itemTemplate" to chip))))
+    return specNode("$p.rays", "column", stepSwipe(), listOf(specNode("$p.chips", "row", mapOf("gap" to 8, "data" to bound(PICK_ITEMS_PATH), "scroll_to" to bound(PICK_THROUGH_PATH), "itemTemplate" to chip))))
 }
 
 private fun factRow(p: String): JsonObject = specNode(
