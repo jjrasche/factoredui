@@ -50,6 +50,12 @@ class PiecePanelTest {
     }
 
     @Test
+    fun the_chips_are_one_row_that_a_swipe_steps_along_the_pick() {
+        val chips = nodeOf(piecePanelNode(SYSTEMS), "pick.items")
+        assertEquals(listOf("horizontal", "{pick.through}"), listOf("direction", "step").map { propOf(chips, it) })
+    }
+
+    @Test
     fun a_chip_steps_the_pick_to_its_index() {
         val chip = nodeOf(piecePanelNode(SYSTEMS), "pick.chip")
         val action = chip["action"] as JsonObject

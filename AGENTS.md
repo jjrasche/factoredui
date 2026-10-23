@@ -160,6 +160,7 @@ A string `"{path.to.value}"` is resolved at render time from one state map. Insi
 
 - `list`: either `children` (one node per row) or `data` plus `itemTemplate` (one template over rows). Never both; the renderer prints a red notice if you give both. `data` is a state key or a ref such as `"{row.branches}"`.
 - `itemTemplate` is one node drawn once per row, with the row bound as both `{row.x}` and `{item.x}`.
+- `direction: "horizontal"` lays the rows side by side in a row that scrolls sideways (chips, a strip of cards). `step` binds a number: the row then does not scroll by hand; a swipe left goes to the next row and a swipe right to the one before, writing the number (kept inside the rows), and the row at the number is scrolled into view. Bound to the same path as a drawing's `through`, a swipe steps the pick along what a tap crossed.
 - `emptyText` (text) is drawn in place of the rows when there are none. With no `emptyText` an empty list draws nothing.
 - `maxItems` (whole number) draws only that many rows.
 - `stacked` (bool, default false) lays the rows out in a plain column instead of a lazy list that scrolls itself. A list whose height is unbounded, as inside a `scrollview`, stacks its rows (or children) whether or not it says so, and takes the height of its content. A list with a bounded height, such as one with a `flex` in a `column` outside any scroll, or one with a `height` even inside a scroll, is a fixed pane: it is lazy and scrolls its own rows.

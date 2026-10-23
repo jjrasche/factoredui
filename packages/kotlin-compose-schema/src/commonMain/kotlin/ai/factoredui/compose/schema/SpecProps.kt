@@ -293,6 +293,7 @@ data class ListProps(
     val emptyText: String = "",
     val maxItems: Int? = null,
     val stacked: Boolean = false,
+    val isHorizontal: Boolean = false,
 )
 
 fun Map<String, SpecValue>.asListProps(): ListProps = ListProps(
@@ -302,6 +303,7 @@ fun Map<String, SpecValue>.asListProps(): ListProps = ListProps(
     emptyText = string("emptyText") ?: "",
     maxItems = int("maxItems"),
     stacked = boolean("stacked") ?: false,
+    isHorizontal = string("direction") == "horizontal",
 )
 
 // --- SpacerProps ---

@@ -753,7 +753,9 @@ private fun RenderRows(rows: List<Any?>, props: ListProps, context: RenderContex
     val list = LocalNodeIdentity.current
     RecordDrawn { rowCount = visibleRows.size }
     BoxWithConstraints(modifier = list?.let { Modifier.nodeTag(it.id) } ?: Modifier, propagateMinConstraints = true) {
-        if (props.stacked || !constraints.hasBoundedHeight) {
+        if (props.isHorizontal) {
+            HorizontalRows(node, visibleRows, itemTemplate, context, list?.path.orEmpty())
+        } else if (props.stacked || !constraints.hasBoundedHeight) {
             StackedRows(visibleRows, itemTemplate, context, list?.path.orEmpty())
         } else {
             LazyRows(visibleRows, itemTemplate, context, list?.path.orEmpty())
