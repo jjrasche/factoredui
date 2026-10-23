@@ -8,6 +8,7 @@ import ai.factoredui.compose.math.project
 import ai.factoredui.compose.plan.PlanLabelAlign
 import ai.factoredui.compose.plan.PlanStyle
 import ai.factoredui.compose.schema.SpecNode
+import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.volume.VolumeBox
 import ai.factoredui.compose.volume.VolumeLegendEntry
 import ai.factoredui.compose.volume.VolumeRead
@@ -314,6 +315,9 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val details = remember(resolvedProps["details"]) { readSelectionDetails(resolvedProps["details"]) }
     val selection = rememberDrawingSelection(node, resolvedProps["selected"], context)
     PublishSelectionText(node, selection.ids, details, context)
+    val hidden = remember(resolvedProps["hidden"]) { (resolvedProps["hidden"] as? List<*>).orEmpty().filterIsInstance<String>().toSet() }
+    val shown = remember(read, hidden) { if (hidden.isEmpty()) read else read.copy(boxes = read.boxes.filter { it.id !in hidden }) }
+    val pickedPath = node.props["picked"]?.bindingPath()
     val span = volumeSpan(read.boxes)
     val fill = resolvedProps["fill"] == true
     val bottomInsetDp = (resolvedProps["bottom_inset_dp"] as? Number)?.toFloat() ?: 0f
@@ -324,7 +328,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, read, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun", (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble())
+            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun", (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), pickedPath, context)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -332,7 +336,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean, step: Double?, gradeMm: Double?) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean, step: Double?, gradeMm: Double?, pickedPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
     val camera = remember(span) { Camera().also { frameCamera(it, span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -346,8 +350,12 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
         val scene = remember(revision, read, span, widthPx, heightPx, isLit, step, gradeMm) { projectScene(read, span, camera, widthPx, heightPx, isLit, step, gradeMm) }
         val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
         Box(
-            modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }.pointerInput(scene, selection.ids) {
-                detectTapGestures(onTap = { at -> selection.tap(pickProjectedBoxes(scene.boxes.filter { isPickable(it.box.id, details) }, at, reachPx)) })
+            modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }.pointerInput(scene, selection.ids, pickedPath) {
+                detectTapGestures(onTap = { at ->
+                    val crossed = pickProjectedBoxes(scene.boxes.filter { isPickable(it.box.id, details) }, at, reachPx)
+                    pickedPath?.let { context.setBinding(it, crossed) }
+                    selection.tap(crossed)
+                })
             },
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {

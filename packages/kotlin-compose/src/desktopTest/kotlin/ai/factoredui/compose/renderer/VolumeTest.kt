@@ -79,4 +79,21 @@ class VolumeTest {
             assertTrue("volume box 'bad': width_mm, depth_mm and height_mm must be numbers of 0 or more; it is not drawn." in texts, texts.toString())
         }
     }
+
+    @Test
+    fun a_hidden_box_is_not_drawn_and_the_others_keep_their_place() {
+        val hiddenSpec = Json.decodeFromString(
+            Spec.serializer(),
+            """
+            { "spec_version": 1, "renderer_min": 1, "root": { "id": "root", "type": "column", "props": {}, "children": [
+              { "id": "volume", "type": "volume", "props": {
+                  "boxes": $BOXES, "hidden": ["tower"],
+                  "styles": { "base": { "stroke": "#335588" } }, "legend": [] } } ] } }
+            """,
+        )
+        driveScreen(hiddenSpec, widthDp = VOLUME_WIDTH_DP, heightDp = VOLUME_HEIGHT_DP).use { screen ->
+            assertEquals(null, screen.boundsOf("volume/tower"))
+            assertNotNull(screen.boundsOf("volume/slab"))
+        }
+    }
 }
