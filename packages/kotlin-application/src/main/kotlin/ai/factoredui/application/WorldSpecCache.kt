@@ -39,9 +39,20 @@ private fun usedJarsOf(worldFile: Path): List<Path> {
 private fun enginePinOf(worldFile: Path): String =
     worldFile.toAbsolutePath().parent.resolve(ENGINE_PIN_FILE).takeIf { Files.isRegularFile(it) }?.let { Files.readString(it).trim() } ?: "no engine pin"
 
-/** What one served page depends on: the world's id, the view asked for, the world file's bytes, each pinned domain file's bytes and the engine pin beside the world. A change in any is a different key. */
-fun worldSpecKey(worldId: String, viewId: String?, worldFile: Path): String =
-    sha256Of(listOf(worldId, viewId.orEmpty(), sha256OfFile(worldFile), usedJarsOf(worldFile).joinToString(",") { sha256OfFile(it) }, enginePinOf(worldFile)).joinToString("|"))
+private const val VERSION_SYSTEM = """{ "id": "fixture", "title": "Fixture", "systems": { "walls": { "solution": "panels", "settings": {} } } }"""
+
+private const val VERSION_EXPANSION = """{ "extent_mm": [1000, 100], "supplied": {}, "instances": [], "objects": [ { "id": "wall-a", "system": "walls", "type": "wall", "x_mm": 0, "y_mm": 0, "width_mm": 1000, "depth_mm": 100, "level": 0, "elevation_mm": 0, "fields": { "height_mm": 3000 } } ] }"""
+
+private const val VERSION_GEOMETRY = """{ "pieces": [ { "id": "wall-a", "system": "walls", "x": 0, "y": 0, "z": 0, "dx": 1000, "dy": 100, "dz": 3000, "layers": [ { "name": "skin", "material": "OSB", "thickness_mm": 11.1, "source": null }, { "name": "core", "material": "EPS", "thickness_mm": 88.9, "source": null } ] } ], "contacts": [], "cuts": [], "unmeasured": [] }"""
+
+/** The page builders' own shape: a fixed world drawn through them, hashed. Any change to what they emit is a new version, with nothing to remember to bump. */
+internal val pageBuilderVersion: String by lazy {
+    sha256Of(buildLensPageSpec(readSystemFile(VERSION_SYSTEM), readExpansion(VERSION_EXPANSION), geometried = Geometried(readGeometry(VERSION_GEOMETRY))).toString())
+}
+
+/** What one served page depends on: the world's id, the view asked for, the world file's bytes, each pinned domain file's bytes, the engine pin beside the world, and the version of the page builders. A change in any is a different key. */
+fun worldSpecKey(worldId: String, viewId: String?, worldFile: Path, builderVersion: String = pageBuilderVersion): String =
+    sha256Of(listOf(worldId, viewId.orEmpty(), sha256OfFile(worldFile), usedJarsOf(worldFile).joinToString(",") { sha256OfFile(it) }, enginePinOf(worldFile), builderVersion).joinToString("|"))
 
 internal class WorldSpec(val worldId: String, val key: String, val worldFile: Path, val body: ByteArray, val isClean: Boolean)
 
