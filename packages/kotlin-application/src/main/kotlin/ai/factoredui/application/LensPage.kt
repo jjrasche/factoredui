@@ -35,7 +35,7 @@ private fun worldProps(node: JsonObject, extra: Map<String, Any?>): JsonObject {
 }
 
 private fun fullWorld(node: JsonObject, extra: Map<String, Any?> = emptyMap(), visible: String? = null): JsonObject {
-    val placed = worldProps(node, mapOf("fill" to true, "bottom_inset_dp" to DOCK_CLOSED_DP, "anchor" to "fill", "detail_text" to "{$SELECTION_CARD}") + extra)
+    val placed = worldProps(node, mapOf("fill" to true, "bottom_inset_dp" to "{$PICK_INSET_PATH}", "anchor" to "fill", "detail_text" to "{$SELECTION_CARD}") + extra)
     return if (visible == null) placed else JsonObject(placed + ("visible" to JsonPrimitive(visible)))
 }
 
@@ -106,7 +106,7 @@ private fun elsewhere(describing: Describing?, file: SystemFile, expansion: Expa
 internal fun inPeekSlot(node: JsonObject): JsonObject = JsonObject(node + ("props" to JsonObject((node["props"] as JsonObject) + ("slot" to JsonPrimitive("peek")))))
 
 private fun pageSpec(root: JsonObject): JsonObject =
-    JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(pickState()), "root" to root))
+    JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(pickState(DOCK_CLOSED_DP)), "root" to root))
 
 private fun idsBySystem(expansion: Expansion, geometry: Geometry?): Map<String, List<String>> =
     geometry?.pieces?.groupBy({ it.system }, { it.id })
@@ -142,7 +142,7 @@ fun buildLensPageSpec(
         "dock.body", "column", mapOf("gap" to 12, "padding" to GUTTER_DP),
         listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + bodyContent,
     )
-    val dock = specNode("dock", "sheet", mapOf("peek_height" to DOCK_CLOSED_DP, "half_height" to DOCK_HALF_DP, "background" to DOCK), listOf(inPeekSlot(body)), visible = if (shaded != null) "{$PICK_THROUGH_PATH}=$NOTHING_PICKED" else null)
+    val dock = specNode("dock", "sheet", mapOf("peek_height" to DOCK_CLOSED_DP, "half_height" to DOCK_HALF_DP, "background" to DOCK, "peek_to" to "{$PICK_INSET_PATH}"), listOf(inPeekSlot(body)), visible = if (shaded != null) "{$PICK_THROUGH_PATH}=$NOTHING_PICKED" else null)
     val piecePanel = if (shaded != null) listOf(piecePanelNode(idsBySystem(expansion, geometry))) else emptyList()
     val world = listOfNotNull(shaded, blueprint)
     return pageSpec(specNode("root", "stack", mapOf("fill" to true, "background" to HUD), world + listOf(topStrip(blueprint != null), dock) + piecePanel))

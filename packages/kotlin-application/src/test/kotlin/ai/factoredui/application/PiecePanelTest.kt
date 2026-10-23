@@ -51,7 +51,7 @@ class PiecePanelTest {
     fun the_sheets_name_and_kind_are_the_peek_and_the_chips_size_and_sections_are_the_half() {
         val panel = piecePanelNode(SYSTEMS)
         assertEquals(listOf("peek", "peek", "peek"), listOf("sheet.name", "sheet.kind", "sheet.binding").map { propOf(nodeOf(panel, it), "slot") })
-        assertEquals(listOf("half", "half", "half"), listOf("sheet.rays", "sheet.facts", "sheet.sections").map { propOf(nodeOf(panel, it), "slot") })
+        assertEquals(listOf("half", "half", "half", "half"), listOf("sheet.rays", "sheet.size", "sheet.facts", "sheet.sections").map { propOf(nodeOf(panel, it), "slot") })
         assertEquals(listOf("full", "full", "full"), listOf("sheet.strip", "sheet.legend", "sheet.checks").map { propOf(nodeOf(panel, it), "slot") })
     }
 
@@ -128,7 +128,26 @@ class PiecePanelTest {
 
     @Test
     fun the_page_state_starts_with_nothing_picked_and_the_sheet_peeking() {
-        val pick = pickState()["pick"] as Map<*, *>
-        assertEquals(listOf(NOTHING_PICKED, "peek", false), listOf(pick["through"], pick["stop"], pick["solution_open"]))
+        val pick = pickState(260)["pick"] as Map<*, *>
+        assertEquals(listOf(NOTHING_PICKED, "peek", false, 260), listOf(pick["through"], pick["stop"], pick["solution_open"], pick["inset"]))
     }
-}
+
+    @Test
+    fun a_length_reads_in_inches_with_their_fraction_below_a_foot_and_in_feet_and_inches_from_there() {
+        assertEquals(listOf("4 1/2 in", "7/16 in"), listOf(114.3, 11.1125).map(::lengthText))
+        assertEquals("8'-0\"", lengthText(2438.4))
+    }
+
+    @Test
+    fun a_piece_with_a_label_is_titled_by_it_and_one_without_keeps_its_id() {
+        val labelled = SIP_PIECE.copy(label = "Upper south glass")
+        assertEquals("Upper south glass", (withPieceFacts(emptyMap(), Geometry(listOf(labelled), emptyList(), emptyList(), emptyList()))["w1"] as Map<*, *>)["title"])
+        assertEquals("w1", (withPieceFacts(emptyMap(), GEOMETRY)["w1"] as Map<*, *>)["title"])
+    }
+
+    @Test
+    fun the_chips_have_a_width_so_a_long_label_is_cut_with_an_ellipsis_and_the_sheet_reports_its_peek_height_for_the_world_to_leave_room() {
+        val panel = piecePanelNode(SYSTEMS)
+        assertEquals("168", propOf(nodeOf(panel, "sheet.chip"), "width"))
+        assertEquals("{pick.inset}", propOf(nodeOf(panel, "piece-sheet"), "peek_to"))
+    }}

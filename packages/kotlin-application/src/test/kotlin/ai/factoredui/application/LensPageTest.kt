@@ -52,6 +52,7 @@ class LensPageTest {
         val volume = root.byId("volume").props()
         assertEquals(listOf("{pick.items}", "{pick.through}", "{pick.hidden}", "{piece}"), listOf("picked", "through", "hidden", "detail_record").map { volume[it]!!.jsonPrimitive.content })
         assertEquals("{pick.through}=-1", root.byId("dock")["visible"]!!.jsonPrimitive.content)
+        assertEquals(listOf("{pick.inset}", "{pick.inset}"), listOf(volume["bottom_inset_dp"]!!.jsonPrimitive.content, root.byId("dock").props()["peek_to"]!!.jsonPrimitive.content))
         assertEquals("{piece.title}", root.byId("piece-panel")["visible"]!!.jsonPrimitive.content)
     }
 

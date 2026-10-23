@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +58,8 @@ internal fun RenderSheet(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     val stopPath = node.props["stop"]?.bindingPath()
     var heldStop by remember { mutableStateOf(props.stop) }
     val stop = if (stopPath != null) props.stop else heldStop
+    val peekPath = node.props["peek_to"]?.bindingPath()
+    LaunchedEffect(peekPath, props.peekDp) { peekPath?.let { context.setBinding(it, props.peekDp) } }
     val move = { next: SheetStop -> if (stopPath != null) context.setBinding(stopPath, next.wire) else heldStop = next }
     RecordDrawn {
         shownProps = mapOf("stop" to stop.wire)

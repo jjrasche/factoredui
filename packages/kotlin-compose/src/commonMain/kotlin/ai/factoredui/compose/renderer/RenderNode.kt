@@ -54,6 +54,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.toArgb
 import ai.factoredui.compose.ramp.ValueColourReading
@@ -1016,10 +1017,10 @@ private fun ButtonContent(icon: String?, label: String, size: ButtonSize) {
         IconifyImage(name = icon, sizeDp = 20.dp, contentDescription = label.ifEmpty { "icon" })
         if (label.isNotEmpty()) {
             Spacer(Modifier.width(8.dp))
-            Text(label, style = style)
+            Text(label, style = style, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     } else {
-        Text(label, style = style)
+        Text(label, style = style, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

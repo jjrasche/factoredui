@@ -18,7 +18,7 @@ private val json = Json { ignoreUnknownKeys = true }
 private fun slot(id: String, slot: String) = """{"id":"$id","type":"text","props":{"value":"$id","slot":"$slot"}}"""
 
 private const val SHEET = """
-  {"id":"sheet","type":"sheet","props":{"stop":"{piece.stop}"},"children":[
+  {"id":"sheet","type":"sheet","props":{"stop":"{piece.stop}","peek_to":"{piece.inset}"},"children":[
     {"id":"name","type":"text","props":{"value":"Wall 3","slot":"peek"}},
     {"id":"size","type":"text","props":{"value":"8 ft 0 in","slot":"half"}},
     {"id":"layers","type":"text","props":{"value":"OSB EPS OSB","slot":"full"}}]}"""
@@ -56,6 +56,12 @@ private class SheetPage(private val width: Int, stop: String = "peek") : AutoClo
 }
 
 class SheetRenderTest {
+    @Test
+    fun it_writes_its_peek_height_to_the_binding_the_world_leaves_room_by() = SheetPage(width = 400).use { page ->
+        page.settle()
+        assertEquals(96.0, page.bound("piece.inset"))
+    }
+
     @Test
     fun on_a_phone_it_peeks_with_only_the_peek_slot_showing() = SheetPage(width = 400).use { page ->
         page.settle()

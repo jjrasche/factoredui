@@ -13,7 +13,7 @@ class GeometryFormatException(message: String) : IllegalArgumentException(messag
 /** One layer of a piece, outside to inside in [GeoPiece.layers], which sum to the piece's thickness. */
 data class GeoLayer(val name: String, val material: String, val thicknessMm: Double, val source: String?)
 
-data class GeoPiece(val id: String, val system: String, val xMm: Double, val yMm: Double, val zMm: Double, val dxMm: Double, val dyMm: Double, val dzMm: Double, val layers: List<GeoLayer> = emptyList(), val material: String? = null, val materialSource: String? = null)
+data class GeoPiece(val id: String, val system: String, val xMm: Double, val yMm: Double, val zMm: Double, val dxMm: Double, val dyMm: Double, val dzMm: Double, val layers: List<GeoLayer> = emptyList(), val material: String? = null, val materialSource: String? = null, val label: String? = null)
 
 data class GeoRegion(val minMm: List<Double>, val maxMm: List<Double>)
 
@@ -50,7 +50,7 @@ private fun regionOf(entry: JsonObject, where: String): GeoRegion {
 private fun pieceOf(entry: JsonObject): GeoPiece {
     val id = entry.text("id", "a piece")
     val where = "piece '$id'"
-    return GeoPiece(id, entry.text("system", where), entry.number("x", where), entry.number("y", where), entry.number("z", where), entry.number("dx", where), entry.number("dy", where), entry.number("dz", where), layersOf(entry, where), entry.optionalText("material"), entry.optionalText("material_source"))
+    return GeoPiece(id, entry.text("system", where), entry.number("x", where), entry.number("y", where), entry.number("z", where), entry.number("dx", where), entry.number("dy", where), entry.number("dz", where), layersOf(entry, where), entry.optionalText("material"), entry.optionalText("material_source"), entry.optionalText("label"))
 }
 
 private fun layersOf(entry: JsonObject, where: String): List<GeoLayer> {

@@ -28,7 +28,7 @@ internal fun ScrollingRowOfData(node: SpecNode, resolvedProps: Map<String, Any?>
     LazyRow(state = state, userScrollEnabled = false, horizontalArrangement = Arrangement.spacedBy(gapDp.dp), modifier = Modifier.nodeTag(node.id).padding(paddingDp.dp)) {
         itemsIndexed(rows) { position, row ->
             CompositionLocalProvider(LocalPathPrefix provides "$listPath/$position/") {
-                RenderNode(node = template, context = context.withAdditionalData(mapOf("row" to row, "item" to row)))
+                RenderSizedChild(template, context.withAdditionalData(mapOf("row" to row, "item" to row)))
             }
         }
     }

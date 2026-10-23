@@ -25,9 +25,9 @@ private val SPEC = Json.decodeFromString(
               { "id": "slab", "x_mm": 2000, "y_mm": 1500, "z_mm": 0, "width_mm": 4000, "depth_mm": 3000, "height_mm": 400, "style": "base" },
               { "id": "tower", "x_mm": 1000, "y_mm": 1000, "z_mm": 400, "width_mm": 600, "depth_mm": 600, "height_mm": 2000, "style": "base" } ],
             "styles": { "base": { "stroke": "#335588" } }, "legend": [],
-            "fill": true, "anchor": "fill", "bottom_inset_dp": $DOCK_PEEK_DP,
+            "fill": true, "anchor": "fill", "bottom_inset_dp": "{pick.inset}",
             "selected": "{pick.selected}", "picked": "{pick.items}", "through": "{pick.through}", "hidden": "{pick.hidden}", "detail_record": "{piece}" } },
-        { "id": "dock", "type": "sheet", "props": { "peek_height": $DOCK_PEEK_DP, "half_height": 520, "background": "surface" },
+        { "id": "dock", "type": "sheet", "props": { "peek_height": $DOCK_PEEK_DP, "half_height": 520, "background": "surface", "peek_to": "{pick.inset}" },
           "visible": "{pick.through}=-1", "children": [
             { "id": "dock.body", "type": "column", "props": { "gap": 12, "padding": 16, "slot": "peek" }, "children": [
               { "id": "system.row", "type": "row", "props": { "gap": 8 }, "children": [

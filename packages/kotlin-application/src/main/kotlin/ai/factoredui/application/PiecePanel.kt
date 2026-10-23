@@ -9,17 +9,20 @@ internal const val PICK_THROUGH_PATH = "pick.through"
 internal const val PICK_HIDDEN_PATH = "pick.hidden"
 internal const val PICK_STOP_PATH = "pick.stop"
 internal const val SOLUTION_OPEN_PATH = "pick.solution_open"
+internal const val PICK_INSET_PATH = "pick.inset"
 internal const val NOTHING_PICKED = -1
 
 private const val PIECE_RAISED = "raised"
 private const val SIDE_WIDTH_DP = 360
 private const val STRIP_HEIGHT_DP = 40
 private const val GUTTER_DP = 16
+private const val CHIP_WIDTH_DP = 168
+private const val FOOT_MM = 304.8
 
 private fun bound(path: String) = "{$path}"
 
-internal fun pickState(): Map<String, Any?> = mapOf(
-    "pick" to mapOf("items" to emptyList<Any?>(), "through" to NOTHING_PICKED, "hidden" to emptyList<String>(), "stop" to "peek", "solution_open" to false),
+internal fun pickState(insetDp: Int): Map<String, Any?> = mapOf(
+    "pick" to mapOf("items" to emptyList<Any?>(), "through" to NOTHING_PICKED, "hidden" to emptyList<String>(), "stop" to "peek", "solution_open" to false, "inset" to insetDp),
 )
 
 internal fun pickProps(): Map<String, Any?> = mapOf(
@@ -52,17 +55,22 @@ private fun stepSwipe(): Map<String, Any?> = mapOf(
 )
 
 private fun rayChips(p: String): JsonObject {
-    val chip = withAction(specNode("$p.chip", "button", mapOf("label" to "{item.label}", "variant" to "outline", "size" to "sm")), mapOf("values" to mapOf(PICK_THROUGH_PATH to "{item.index}")))
+    val chip = withAction(specNode("$p.chip", "button", mapOf("label" to "{item.label}", "variant" to "outline", "size" to "sm", "width" to CHIP_WIDTH_DP)), mapOf("values" to mapOf(PICK_THROUGH_PATH to "{item.index}")))
     return specNode("$p.rays", "column", stepSwipe(), listOf(specNode("$p.chips", "row", mapOf("gap" to 8, "data" to bound(PICK_ITEMS_PATH), "scroll_to" to bound(PICK_THROUGH_PATH), "itemTemplate" to chip))))
 }
 
 private fun factRow(p: String): JsonObject = specNode(
     "$p.facts", "row", mapOf("gap" to 8),
     listOf(
-        specNode("$p.size", "stat", mapOf("label" to "Size", "value" to bound("$PIECE_PATH.size_text"), "flex" to 1), visible = bound("$PIECE_PATH.size_text")),
         specNode("$p.weight", "stat", mapOf("label" to "Weight", "value" to bound("$PIECE_PATH.weight_text"), "flex" to 1), visible = bound("$PIECE_PATH.weight_text")),
         specNode("$p.cost", "stat", mapOf("label" to "Cost", "value" to bound("$PIECE_PATH.cost_text"), "flex" to 1), visible = bound("$PIECE_PATH.cost_text")),
     ),
+)
+
+private fun sizeLine(p: String): JsonObject = specNode(
+    "$p.size", "column", mapOf("gap" to 2),
+    listOf(textNode("$p.size.label", "Size", variant = "caption", color = MUTED), specNode("$p.size.value", "text", mapOf("value" to bound("$PIECE_PATH.size_text"), "variant" to "mono"))),
+    visible = bound("$PIECE_PATH.size_text"),
 )
 
 private fun sectionList(p: String): JsonObject {
@@ -111,7 +119,7 @@ private fun backToAll(p: String): JsonObject =
         mapOf("values" to mapOf(PICK_HIDDEN_PATH to emptyList<String>(), SOLUTION_OPEN_PATH to false)),
     )
 
-private fun halfNodes(p: String, slot: String?): List<JsonObject> = listOf(rayChips(p), factRow(p), sectionList(p)).map { slotted(it, slot) }
+private fun halfNodes(p: String, slot: String?): List<JsonObject> = listOf(rayChips(p), sizeLine(p), factRow(p), sectionList(p)).map { slotted(it, slot) }
 
 private fun fullNodes(p: String, idsBySystem: Map<String, List<String>>, slot: String?): List<JsonObject> {
     val everyId = idsBySystem.values.flatten()
@@ -121,7 +129,7 @@ private fun fullNodes(p: String, idsBySystem: Map<String, List<String>>, slot: S
 
 private fun bottomSheet(idsBySystem: Map<String, List<String>>): JsonObject =
     specNode(
-        "piece-sheet", "sheet", mapOf("stop" to bound(PICK_STOP_PATH)),
+        "piece-sheet", "sheet", mapOf("stop" to bound(PICK_STOP_PATH), "peek_to" to bound(PICK_INSET_PATH)),
         peekNodes("sheet", "peek") + halfNodes("sheet", "half") + fullNodes("sheet", idsBySystem, "full"),
         visible = bound("window.is_compact"),
     )
@@ -141,6 +149,9 @@ private const val SIXTEENTHS_PER_INCH = 16
 private const val MM_PER_INCH_EXACT = 25.4
 private const val MIN_LAYER_SHARE = 0.04
 private val LAYER_COLOURS = listOf("#c9a66b", "#8fb8d8", "#9ccc9c", "#d08a8a", "#b39ddb", "#e0c36a")
+
+/** A length the way a builder reads it: inches with their fraction below a foot (4 1/2 in), feet and inches from there. */
+internal fun lengthText(mm: Double): String = if (mm < FOOT_MM) thicknessText(mm) else feetInches(mm)
 
 /** A thickness the way a builder reads it: 7/16 in, 3 1/2 in. */
 internal fun thicknessText(mm: Double): String {
@@ -177,7 +188,7 @@ private fun layerEntries(layers: List<GeoLayer>): List<Map<String, Any?>> {
 
 private fun factsOf(piece: GeoPiece): Map<String, Any?> {
     val sides = listOf(piece.dxMm, piece.dyMm, piece.dzMm).sortedDescending()
-    return mapOf("system" to piece.system, "kind" to sentenceCase(piece.material ?: piece.system), "size_text" to sides.joinToString(" × ") { feetInches(it) }) +
+    return mapOf("system" to piece.system, "kind" to sentenceCase(piece.material ?: piece.system), "size_text" to sides.joinToString(" × ") { lengthText(it) }) + (piece.label?.let { mapOf("title" to it) } ?: emptyMap()) +
         (if (piece.layers.isEmpty()) emptyMap() else mapOf("layers" to layerEntries(piece.layers)))
 }
 
