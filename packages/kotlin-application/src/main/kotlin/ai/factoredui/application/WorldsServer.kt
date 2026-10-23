@@ -70,16 +70,20 @@ private fun pageOf(engine: ServedEngine, worldId: String?, viewId: String?, timi
 }
 
 /** How long the page waits: a visitor waits `visitorWaitSeconds` for a build before being told it is under way; the background build waits `backgroundTimeoutSeconds` for each engine call. */
-data class WorldsPatience(val visitorWaitSeconds: Long = 60, val backgroundTimeoutSeconds: Long = 600, val warmAtStart: Boolean = true)
+data class WorldsPatience(val visitorWaitSeconds: Long = 60, val backgroundTimeoutSeconds: Long = 600, val retryBackoffSeconds: Long = 60, val retryMaxSeconds: Long = 600, val warmAtStart: Boolean = true)
 
 private const val DEFAULT_BUILD_SECONDS = 90L
 private const val WARM_RETRY_MILLIS = 30_000L
 
-private class BuiltPage(val body: ByteArray, val timing: String)
+private class BuiltPage(val body: ByteArray, val timing: String, val isClean: Boolean, val key: String?)
 
 private class WorldsCache(val store: WorldSpecStore, val patience: WorldsPatience) {
     val building = ConcurrentHashMap<String, CompletableFuture<BuiltPage>>()
     val buildSeconds = ConcurrentHashMap<String, Long>()
+    val backoffSeconds = ConcurrentHashMap<String, Long>()
+    val nextAttemptNanos = ConcurrentHashMap<String, Long>()
+    val attemptedKey = ConcurrentHashMap<String, String>()
+    val retrying: MutableSet<String> = ConcurrentHashMap.newKeySet()
 }
 
 private fun requestOf(asked: Map<String, String>) = "${asked["world"].orEmpty()}\u0000${asked["view"].orEmpty()}"
@@ -94,17 +98,57 @@ private fun buildAndKeep(engine: ServedEngine, cache: WorldsCache, asked: Map<St
     val timings = Timings()
     val drawn = pageOf(engine, asked["world"], asked["view"], timings)
     val body = drawn.page.toString().toByteArray()
+    val isClean = !hasEngineFailure(drawn.page)
     val worldFile = drawn.worldFile
     val worldId = drawn.worldId
-    if (worldFile != null && worldId != null) {
-        cache.store.keep(requestOf(asked), WorldSpec(worldId, worldSpecKey(worldId, asked["view"], worldFile), worldFile, body))
-        cache.buildSeconds[requestOf(asked)] = (System.nanoTime() - started) / 1_000_000_000
+    val request = requestOf(asked)
+    val isReplacing = isClean || cache.store.lastGood(request)?.spec?.isClean != true
+    val key = if (worldFile != null && worldId != null) worldSpecKey(worldId, asked["view"], worldFile) else null
+    if (worldFile != null && worldId != null && key != null && isReplacing) {
+        cache.store.keep(request, WorldSpec(worldId, key, worldFile, body, isClean))
+        cache.buildSeconds[request] = (System.nanoTime() - started) / 1_000_000_000
     }
-    return BuiltPage(body, timings.header((System.nanoTime() - started) / 1_000_000))
+    return BuiltPage(body, timings.header((System.nanoTime() - started) / 1_000_000), isClean || worldFile == null, key)
 }
 
-private fun isStale(kept: WorldSpec, viewId: String?): Boolean =
-    runCatching { worldSpecKey(kept.worldId, viewId, kept.worldFile) != kept.key }.getOrDefault(true)
+private fun currentKeyOf(kept: WorldSpec, viewId: String?): String? = runCatching { worldSpecKey(kept.worldId, viewId, kept.worldFile) }.getOrNull()
+
+private fun isBackedOffFor(cache: WorldsCache, request: String, key: String?): Boolean =
+    (cache.nextAttemptNanos[request] ?: 0L) > System.nanoTime() && cache.attemptedKey[request] == key
+
+private fun shouldRebuild(cache: WorldsCache, request: String, kept: WorldSpec, viewId: String?): Boolean {
+    val current = currentKeyOf(kept, viewId)
+    val isStale = !kept.isClean || current != kept.key
+    return isStale && !isBackedOffFor(cache, request, current)
+}
+
+private fun clearBackoff(cache: WorldsCache, request: String) {
+    cache.backoffSeconds.remove(request)
+    cache.nextAttemptNanos.remove(request)
+    cache.attemptedKey.remove(request)
+}
+
+private fun backOff(cache: WorldsCache, request: String, key: String?): Long {
+    val patience = cache.patience
+    val seconds = cache.backoffSeconds.merge(request, patience.retryBackoffSeconds) { before, _ -> minOf(before * 2, patience.retryMaxSeconds) }!!
+    cache.nextAttemptNanos[request] = System.nanoTime() + seconds * 1_000_000_000
+    if (key == null) cache.attemptedKey.remove(request) else cache.attemptedKey[request] = key
+    return seconds
+}
+
+private fun retryAfterBackoff(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>, key: String?) {
+    val request = requestOf(asked)
+    if (!cache.retrying.add(request)) return
+    val seconds = backOff(cache, request, key)
+    Thread {
+        try {
+            Thread.sleep(seconds * 1000)
+        } finally {
+            cache.retrying.remove(request)
+        }
+        buildInBackground(engine, cache, asked)
+    }.apply { isDaemon = true }.start()
+}
 
 private fun buildInBackground(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>): CompletableFuture<BuiltPage> {
     val request = requestOf(asked)
@@ -112,13 +156,12 @@ private fun buildInBackground(engine: ServedEngine, cache: WorldsCache, asked: M
     val running = cache.building.putIfAbsent(request, started) ?: started
     if (running !== started) return running
     Thread {
-        try {
-            started.complete(buildAndKeep(engine, cache, asked))
-        } catch (problem: Throwable) {
-            started.completeExceptionally(problem)
-        } finally {
-            cache.building.remove(request)
-        }
+        val outcome = runCatching { buildAndKeep(engine, cache, asked) }
+        cache.building.remove(request)
+        val isCleanBuild = outcome.getOrNull()?.isClean ?: false
+        val kept = cache.store.lastGood(request)?.spec
+        if (isCleanBuild) clearBackoff(cache, request) else if (outcome.isSuccess || kept != null) retryAfterBackoff(engine, cache, asked, outcome.getOrNull()?.key ?: kept?.let { currentKeyOf(it, asked["view"]) })
+        outcome.fold({ started.complete(it) }, { started.completeExceptionally(it) })
     }.apply { isDaemon = true }.start()
     return started
 }
@@ -143,7 +186,7 @@ private fun serveWorldSpec(exchange: HttpExchange, engine: ServedEngine, cache: 
     val asked = queryOf(exchange)
     val lastGood = cache.store.lastGood(requestOf(asked))
     if (lastGood == null) return serveBuilt(exchange, cache, asked, buildInBackground(engine, cache, asked))
-    if (isStale(lastGood.spec, asked["view"])) buildInBackground(engine, cache, asked)
+    if (shouldRebuild(cache, requestOf(asked), lastGood.spec, asked["view"])) buildInBackground(engine, cache, asked)
     respondSpec(exchange, lastGood.spec.body, "cache;desc=${lastGood.source}")
 }
 

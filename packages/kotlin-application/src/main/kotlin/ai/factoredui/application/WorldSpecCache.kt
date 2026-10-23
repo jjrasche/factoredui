@@ -2,7 +2,10 @@ package ai.factoredui.application
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -29,7 +32,7 @@ private fun sha256OfFile(file: Path): String {
 }
 
 private fun usedJarsOf(worldFile: Path): List<Path> {
-    val uses = (Json.parseToJsonElement(Files.readString(worldFile)) as? JsonObject)?.get("uses") as? kotlinx.serialization.json.JsonArray ?: return emptyList()
+    val uses = (Json.parseToJsonElement(Files.readString(worldFile)) as? JsonObject)?.get("uses") as? JsonArray ?: return emptyList()
     return uses.mapNotNull { ((it as? JsonObject)?.get("file") as? JsonPrimitive)?.content }.map { worldFile.toAbsolutePath().parent.resolve(it) }
 }
 
@@ -40,7 +43,7 @@ private fun enginePinOf(worldFile: Path): String =
 fun worldSpecKey(worldId: String, viewId: String?, worldFile: Path): String =
     sha256Of(listOf(worldId, viewId.orEmpty(), sha256OfFile(worldFile), usedJarsOf(worldFile).joinToString(",") { sha256OfFile(it) }, enginePinOf(worldFile)).joinToString("|"))
 
-internal class WorldSpec(val worldId: String, val key: String, val worldFile: Path, val body: ByteArray)
+internal class WorldSpec(val worldId: String, val key: String, val worldFile: Path, val body: ByteArray, val isClean: Boolean)
 
 internal class KeptWorldSpec(val spec: WorldSpec, val source: String)
 
@@ -65,14 +68,25 @@ internal class WorldSpecStore(private val directory: Path?) {
     private fun readSpec(file: Path): WorldSpec {
         val kept = Json.parseToJsonElement(Files.readString(file)) as JsonObject
         fun text(name: String) = (kept.getValue(name) as JsonPrimitive).content
-        return WorldSpec(text("world_id"), text("key"), Path.of(text("world_file")), text("body").toByteArray())
+        val isClean = (kept["is_clean"] as? JsonPrimitive)?.booleanOrNull ?: false
+        return WorldSpec(text("world_id"), text("key"), Path.of(text("world_file")), text("body").toByteArray(), isClean)
     }
 
     private fun writeSpec(file: Path, spec: WorldSpec) {
-        val text = JsonObject(mapOf("world_id" to JsonPrimitive(spec.worldId), "key" to JsonPrimitive(spec.key), "world_file" to JsonPrimitive(spec.worldFile.toString()), "body" to JsonPrimitive(spec.body.toString(Charsets.UTF_8)))).toString()
+        val text = JsonObject(mapOf("world_id" to JsonPrimitive(spec.worldId), "key" to JsonPrimitive(spec.key), "is_clean" to JsonPrimitive(spec.isClean), "world_file" to JsonPrimitive(spec.worldFile.toString()), "body" to JsonPrimitive(spec.body.toString(Charsets.UTF_8)))).toString()
         Files.createDirectories(file.parent)
         val partial = Files.createTempFile(file.parent, "world-spec", ".part")
         Files.writeString(partial, text)
         Files.move(partial, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
+}
+
+private val FAILURE_SENTENCE = Regex("""\bcould not be (run|read|stepped|described)\b""")
+
+/** Whether any text on the page says a section could not be run, read, stepped or described: the engine failed that section. */
+internal fun hasEngineFailure(node: JsonElement): Boolean = when (node) {
+    is JsonObject -> node.values.any(::hasEngineFailure)
+    is JsonArray -> node.any(::hasEngineFailure)
+    is JsonPrimitive -> node.isString && FAILURE_SENTENCE.containsMatchIn(node.content)
+    else -> false
 }
