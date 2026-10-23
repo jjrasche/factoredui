@@ -408,6 +408,20 @@ class WorldsServerTest {
         assertTrue(fetch(port, "/spec.json").headers().firstValue("Server-Timing").get().contains("cache"))
     }
 
+    @Test
+    fun the_warm_the_retries_and_the_visitors_never_have_the_engine_drawing_two_pages_at_once() {
+        val names = listOf("one", "two", "three")
+        val folders = names.map { addWorld(it, "world-$it") }
+        engineLists(*names.indices.map { "world-${names[it]}" to folders[it] }.toTypedArray())
+        engine.runAnswer = { Thread.sleep(150); LOADED_DRAWN }
+        val port = serving(WorldsPatience(warmAtStart = true))
+        val visitors = names.map { name -> Thread { fetch(port, "/spec.json?world=world-$name") }.apply { start() } }
+        visitors.forEach { it.join() }
+        val warmed = (1..200).any { Thread.sleep(100); names.all { fetch(port, "/spec.json?world=world-$it").headers().firstValue("Server-Timing").get().contains("cache") } }
+        assertTrue(warmed)
+        assertEquals(1, engine.maxInFlight.get())
+    }
+
     private fun fullLoad(): JsonObject = Json.parseToJsonElement(checkNotNull(WorldsServerTest::class.java.getResource("/live-load-summary.json")).readText()) as JsonObject
 
     private fun loadWith(section: String, replacement: JsonElement, load: JsonObject = fullLoad()): String {

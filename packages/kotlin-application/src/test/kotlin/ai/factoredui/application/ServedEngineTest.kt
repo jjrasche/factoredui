@@ -16,7 +16,9 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 internal class FakeEngine {
-    val posted = mutableListOf<JsonObject>()
+    val posted: MutableList<JsonObject> = java.util.concurrent.CopyOnWriteArrayList()
+    val maxInFlight = java.util.concurrent.atomic.AtomicInteger()
+    private val inFlight = java.util.concurrent.atomic.AtomicInteger()
     var worldsAnswer: String = """{"worlds": []}"""
     var status: Int = 200
     var runAnswer: (JsonObject) -> String = { "" }
@@ -31,14 +33,21 @@ internal class FakeEngine {
             exchange.sendResponseHeaders(200, bytes.size.toLong())
             exchange.responseBody.use { it.write(bytes) }
         }
+        server.executor = java.util.concurrent.Executors.newCachedThreadPool()
         server.createContext("/run") { exchange ->
             val request = Json.parseToJsonElement(exchange.requestBody.readBytes().toString(Charsets.UTF_8)) as JsonObject
             posted += request
-            runHeaders.forEach { (name, value) -> exchange.responseHeaders.add(name, value) }
-            val bytes = runAnswer(request).toByteArray()
-            exchange.sendResponseHeaders(status, if (bytes.isEmpty()) -1 else bytes.size.toLong())
-            if (bytes.isNotEmpty()) exchange.responseBody.use { it.write(bytes) }
-            exchange.close()
+            val asking = inFlight.incrementAndGet()
+            maxInFlight.updateAndGet { maxOf(it, asking) }
+            try {
+                runHeaders.forEach { (name, value) -> exchange.responseHeaders.add(name, value) }
+                val bytes = runAnswer(request).toByteArray()
+                exchange.sendResponseHeaders(status, if (bytes.isEmpty()) -1 else bytes.size.toLong())
+                if (bytes.isNotEmpty()) exchange.responseBody.use { it.write(bytes) }
+                exchange.close()
+            } finally {
+                inFlight.decrementAndGet()
+            }
         }
         server.start()
     }

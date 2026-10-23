@@ -12,6 +12,8 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.PriorityBlockingQueue
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -77,8 +79,33 @@ private const val WARM_RETRY_MILLIS = 30_000L
 
 private class BuiltPage(val body: ByteArray, val timing: String, val isClean: Boolean, val key: String?)
 
+internal enum class BuildPriority { VISITOR, RETRY, WARM }
+
+internal class BuildTask(val priority: BuildPriority, val sequence: Long, val run: () -> Unit) : Comparable<BuildTask> {
+    override fun compareTo(other: BuildTask): Int = compareValuesBy(this, other, { it.priority }, { it.sequence })
+}
+
+/** Every build, whoever asked for it, runs one at a time on one thread, so the engine never has two pages being drawn at once; a visitor's build goes before a retry, and a retry before warming. */
+internal class BuildQueue {
+    private val tasks = PriorityBlockingQueue<BuildTask>()
+    private val sequence = AtomicLong()
+
+    init {
+        Thread { while (true) tasks.take().run() }.apply { isDaemon = true; name = "worlds-build" }.start()
+    }
+
+    fun submit(priority: BuildPriority, run: () -> Unit): BuildTask = BuildTask(priority, sequence.incrementAndGet(), run).also { tasks.add(it) }
+
+    fun promote(waiting: BuildTask): BuildTask = if (waiting.priority != BuildPriority.VISITOR && tasks.remove(waiting)) submit(BuildPriority.VISITOR, waiting.run) else waiting
+}
+
+private class PendingBuild(val future: CompletableFuture<BuiltPage>) {
+    @Volatile var task: BuildTask? = null
+}
+
 private class WorldsCache(val store: WorldSpecStore, val patience: WorldsPatience) {
-    val building = ConcurrentHashMap<String, CompletableFuture<BuiltPage>>()
+    val queue = BuildQueue()
+    val building = ConcurrentHashMap<String, PendingBuild>()
     val buildSeconds = ConcurrentHashMap<String, Long>()
     val backoffSeconds = ConcurrentHashMap<String, Long>()
     val nextAttemptNanos = ConcurrentHashMap<String, Long>()
@@ -146,24 +173,27 @@ private fun retryAfterBackoff(engine: ServedEngine, cache: WorldsCache, asked: M
         } finally {
             cache.retrying.remove(request)
         }
-        buildInBackground(engine, cache, asked)
+        buildInBackground(engine, cache, asked, BuildPriority.RETRY)
     }.apply { isDaemon = true }.start()
 }
 
-private fun buildInBackground(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>): CompletableFuture<BuiltPage> {
+private fun buildInBackground(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>, priority: BuildPriority): CompletableFuture<BuiltPage> {
     val request = requestOf(asked)
-    val started = CompletableFuture<BuiltPage>()
-    val running = cache.building.putIfAbsent(request, started) ?: started
-    if (running !== started) return running
-    Thread {
+    val pending = PendingBuild(CompletableFuture())
+    val running = cache.building.putIfAbsent(request, pending)
+    if (running != null) {
+        if (priority == BuildPriority.VISITOR) running.task = running.task?.let(cache.queue::promote)
+        return running.future
+    }
+    pending.task = cache.queue.submit(priority) {
         val outcome = runCatching { buildAndKeep(engine, cache, asked) }
         cache.building.remove(request)
         val isCleanBuild = outcome.getOrNull()?.isClean ?: false
         val kept = cache.store.lastGood(request)?.spec
         if (isCleanBuild) clearBackoff(cache, request) else if (outcome.isSuccess || kept != null) retryAfterBackoff(engine, cache, asked, outcome.getOrNull()?.key ?: kept?.let { currentKeyOf(it, asked["view"]) })
-        outcome.fold({ started.complete(it) }, { started.completeExceptionally(it) })
-    }.apply { isDaemon = true }.start()
-    return started
+        outcome.fold({ pending.future.complete(it) }, { pending.future.completeExceptionally(it) })
+    }
+    return pending.future
 }
 
 private fun buildingPage(cache: WorldsCache, asked: Map<String, String>): ByteArray {
@@ -185,13 +215,13 @@ private fun serveBuilt(exchange: HttpExchange, cache: WorldsCache, asked: Map<St
 private fun serveWorldSpec(exchange: HttpExchange, engine: ServedEngine, cache: WorldsCache) {
     val asked = queryOf(exchange)
     val lastGood = cache.store.lastGood(requestOf(asked))
-    if (lastGood == null) return serveBuilt(exchange, cache, asked, buildInBackground(engine, cache, asked))
-    if (shouldRebuild(cache, requestOf(asked), lastGood.spec, asked["view"])) buildInBackground(engine, cache, asked)
+    if (lastGood == null) return serveBuilt(exchange, cache, asked, buildInBackground(engine, cache, asked, BuildPriority.VISITOR))
+    if (shouldRebuild(cache, requestOf(asked), lastGood.spec, asked["view"])) buildInBackground(engine, cache, asked, BuildPriority.VISITOR)
     respondSpec(exchange, lastGood.spec.body, "cache;desc=${lastGood.source}")
 }
 
 private fun requestsToWarm(worlds: List<EngineWorld>): List<Map<String, String>> =
-    listOf(emptyMap<String, String>()) + worlds.flatMap { world -> listOf(mapOf("world" to world.id)) + viewsOf(world).map { mapOf("world" to world.id, "view" to it.id) } }
+    listOf(emptyMap<String, String>()) + worlds.map { world -> mapOf("world" to world.id) }
 
 private fun listWorldsWhenAnswered(engine: ServedEngine): List<EngineWorld> {
     while (true) {
@@ -203,7 +233,7 @@ private fun listWorldsWhenAnswered(engine: ServedEngine): List<EngineWorld> {
 private fun warmEveryWorld(engine: ServedEngine, cache: WorldsCache) {
     Thread {
         val worlds = listWorldsWhenAnswered(engine)
-        requestsToWarm(worlds).forEach { asked -> runCatching { buildInBackground(engine, cache, asked).get() } }
+        requestsToWarm(worlds).forEach { asked -> runCatching { buildInBackground(engine, cache, asked, BuildPriority.WARM).get() } }
     }.apply { isDaemon = true }.start()
 }
 
