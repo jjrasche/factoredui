@@ -48,21 +48,21 @@ private fun specOfView(engine: EngineRuntime, world: EngineWorld, view: WorldVie
 
 private fun drawFailure(problem: Throwable, subject: String): String = "Cannot draw $subject: ${problem.message ?: problem::class.simpleName}"
 
-private class Drawn(val page: JsonObject, val worldId: String? = null, val worldFile: Path? = null)
+private class DrawnWorldPage(val page: JsonObject, val worldId: String? = null, val worldFile: Path? = null)
 
-private fun pageOf(engine: ServedEngine, worldId: String?, viewId: String?, timings: Timings): Drawn {
+private fun pageOf(engine: ServedEngine, worldId: String?, viewId: String?, timings: Timings): DrawnWorldPage {
     val worlds = engine.worlds()
     val labels = worlds.map(::labelOf)
-    if (worlds.isEmpty()) return Drawn(noticePage(worldBar(labels, null, emptyList(), null), "The engine serves no worlds."))
+    if (worlds.isEmpty()) return DrawnWorldPage(noticePage(worldBar(labels, null, emptyList(), null), "The engine serves no worlds."))
     val chosen = if (worldId == null) worlds.first() else worlds.firstOrNull { it.id == worldId }
-    if (chosen == null) return Drawn(noticePage(worldBar(labels, null, emptyList(), null), "The engine serves no world named '$worldId'."))
+    if (chosen == null) return DrawnWorldPage(noticePage(worldBar(labels, null, emptyList(), null), "The engine serves no world named '$worldId'."))
     val views = viewsOf(chosen)
     val view = if (viewId == null) views.firstOrNull() else views.firstOrNull { it.id == viewId }
     val bar = worldBar(labels, chosen, views, view)
     val state = barState(chosen)
-    if (view == null) return Drawn(noticePage(bar, if (viewId == null) "${chosen.id} has no view to draw." else "${chosen.id} has no view named '$viewId'.", state))
-    return runCatching { Drawn(withWorldBar(specOfView(engine, chosen, view, timings), bar, state), chosen.id, chosen.path) }
-        .getOrElse { Drawn(noticePage(bar, drawFailure(it, "${view.label} of ${chosen.id}"), state)) }
+    if (view == null) return DrawnWorldPage(noticePage(bar, if (viewId == null) "${chosen.id} has no view to draw." else "${chosen.id} has no view named '$viewId'.", state))
+    return runCatching { DrawnWorldPage(withWorldBar(specOfView(engine, chosen, view, timings), bar, state), chosen.id, chosen.path) }
+        .getOrElse { DrawnWorldPage(noticePage(bar, drawFailure(it, "${view.label} of ${chosen.id}"), state)) }
 }
 
 private class WorldsCache(val store: WorldSpecStore) {
