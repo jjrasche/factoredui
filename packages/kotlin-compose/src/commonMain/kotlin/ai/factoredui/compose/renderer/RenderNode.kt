@@ -356,6 +356,7 @@ private fun resolveLayoutProps(node: SpecNode, resolved: Map<String, Any?>): Lay
 
 @Composable
 private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val liveData by context.dataFlow.collectAsState()
     val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     // A node's OWN flex is honoured by whatever lays it out — except at the root, where
@@ -377,6 +378,7 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
             val fixedWidth = childLayout.width
             val fixedHeight = childLayout.height
             when {
+                !BindingResolver.isVisible(child.visible, liveData) -> RenderNode(node = child, context = context)
                 fixedHeight != null -> Box(Modifier.height(fixedHeight.dp).then(columnSlotWidth(fixedWidth, props.align)), propagateMinConstraints = true) { RenderInSlot(child, context, fixedWidth) }
                 fixedWidth != null -> Box(Modifier.let { if (childFlex > 0f) it.weight(childFlex) else it }.width(fixedWidth.dp)) { RenderInFixedSlot(child, context) }
                 childFlex > 0f -> Box(Modifier.weight(childFlex)) { RenderNode(node = child, context = context) }
@@ -389,6 +391,7 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
 
 @Composable
 private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val liveData by context.dataFlow.collectAsState()
     val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val claimsSpace = props.flex > 0f
@@ -411,6 +414,7 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
             val fixedHeight = heightOf(childLayout.height)
             val isHeightFixed = childLayout.height != null
             when {
+                !BindingResolver.isVisible(child.visible, liveData) -> RenderNode(node = child, context = context)
                 fixedWidth != null -> Box(modifier = Modifier.width(fixedWidth.dp).then(fixedHeight), propagateMinConstraints = isHeightFixed) { RenderInFixedSlot(child, context) }
                 childLayout.flex > 0f -> Box(modifier = Modifier.weight(childLayout.flex).then(fixedHeight), propagateMinConstraints = isHeightFixed) {
                     CompositionLocalProvider(LocalSlotWidth provides SlotWidth.GIVEN) { RenderNode(node = child, context = context) }
