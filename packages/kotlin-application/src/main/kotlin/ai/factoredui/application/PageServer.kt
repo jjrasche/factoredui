@@ -223,6 +223,7 @@ internal fun startServing(bind: String, port: Int, bundle: Path, serveActionRequ
             else -> serveBundleFile(exchange, bundleRoot)
         }
     }
+    server.executor = Executors.newCachedThreadPool { task -> Thread(task, "page-server-request").also { it.isDaemon = true } }
     server.start()
     return server
 }
