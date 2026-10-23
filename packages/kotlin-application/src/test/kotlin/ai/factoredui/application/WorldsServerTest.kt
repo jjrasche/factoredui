@@ -391,9 +391,9 @@ class WorldsServerTest {
         engineLists("slow-house" to folder)
         engine.runAnswer = { Thread.sleep(2000); LOADED_DRAWN }
         val impatient = fetch(serving(WorldsPatience(visitorWaitSeconds = 60, backgroundTimeoutSeconds = 1, warmAtStart = false)), "/spec.json?world=slow-house")
-        assertEquals(502, impatient.statusCode())
+        assertTrue(impatient.body().contains("did not answer"), impatient.body())
         val patient = fetch(serving(WorldsPatience(visitorWaitSeconds = 60, backgroundTimeoutSeconds = 60, warmAtStart = false)), "/spec.json?world=slow-house")
-        assertEquals(200, patient.statusCode())
+        assertTrue(nodesIn(Json.parseToJsonElement(patient.body())).any { it.idText() == "systems" })
     }
 
     @Test

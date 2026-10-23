@@ -75,8 +75,10 @@ data class WorldsPatience(val visitorWaitSeconds: Long = 60, val backgroundTimeo
 private const val DEFAULT_BUILD_SECONDS = 90L
 private const val WARM_RETRY_MILLIS = 30_000L
 
+private class BuiltPage(val body: ByteArray, val timing: String)
+
 private class WorldsCache(val store: WorldSpecStore, val patience: WorldsPatience) {
-    val building = ConcurrentHashMap<String, CompletableFuture<ByteArray>>()
+    val building = ConcurrentHashMap<String, CompletableFuture<BuiltPage>>()
     val buildSeconds = ConcurrentHashMap<String, Long>()
 }
 
@@ -87,9 +89,10 @@ private fun respondSpec(exchange: HttpExchange, body: ByteArray, timing: String)
     respond(exchange, 200, CONTENT_TYPES.getValue("json"), body)
 }
 
-private fun buildAndKeep(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>): ByteArray {
+private fun buildAndKeep(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>): BuiltPage {
     val started = System.nanoTime()
-    val drawn = pageOf(engine, asked["world"], asked["view"], Timings())
+    val timings = Timings()
+    val drawn = pageOf(engine, asked["world"], asked["view"], timings)
     val body = drawn.page.toString().toByteArray()
     val worldFile = drawn.worldFile
     val worldId = drawn.worldId
@@ -97,15 +100,15 @@ private fun buildAndKeep(engine: ServedEngine, cache: WorldsCache, asked: Map<St
         cache.store.keep(requestOf(asked), WorldSpec(worldId, worldSpecKey(worldId, asked["view"], worldFile), worldFile, body))
         cache.buildSeconds[requestOf(asked)] = (System.nanoTime() - started) / 1_000_000_000
     }
-    return body
+    return BuiltPage(body, timings.header((System.nanoTime() - started) / 1_000_000))
 }
 
 private fun isStale(kept: WorldSpec, viewId: String?): Boolean =
     runCatching { worldSpecKey(kept.worldId, viewId, kept.worldFile) != kept.key }.getOrDefault(true)
 
-private fun buildInBackground(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>): CompletableFuture<ByteArray> {
+private fun buildInBackground(engine: ServedEngine, cache: WorldsCache, asked: Map<String, String>): CompletableFuture<BuiltPage> {
     val request = requestOf(asked)
-    val started = CompletableFuture<ByteArray>()
+    val started = CompletableFuture<BuiltPage>()
     val running = cache.building.putIfAbsent(request, started) ?: started
     if (running !== started) return running
     Thread {
@@ -125,10 +128,10 @@ private fun buildingPage(cache: WorldsCache, asked: Map<String, String>): ByteAr
     return noticePage(worldBar(emptyList(), null, emptyList(), null), "This page is building, ready in about $seconds s. Reload then.").toString().toByteArray()
 }
 
-private fun serveBuilt(exchange: HttpExchange, cache: WorldsCache, asked: Map<String, String>, build: CompletableFuture<ByteArray>, started: Long) {
+private fun serveBuilt(exchange: HttpExchange, cache: WorldsCache, asked: Map<String, String>, build: CompletableFuture<BuiltPage>) {
     try {
-        val body = build.get(cache.patience.visitorWaitSeconds, TimeUnit.SECONDS)
-        respondSpec(exchange, body, "total;dur=${(System.nanoTime() - started) / 1_000_000}")
+        val built = build.get(cache.patience.visitorWaitSeconds, TimeUnit.SECONDS)
+        respondSpec(exchange, built.body, built.timing)
     } catch (stillBuilding: TimeoutException) {
         respondSpec(exchange, buildingPage(cache, asked), "building")
     } catch (failed: ExecutionException) {
@@ -139,7 +142,7 @@ private fun serveBuilt(exchange: HttpExchange, cache: WorldsCache, asked: Map<St
 private fun serveWorldSpec(exchange: HttpExchange, engine: ServedEngine, cache: WorldsCache) {
     val asked = queryOf(exchange)
     val lastGood = cache.store.lastGood(requestOf(asked))
-    if (lastGood == null) return serveBuilt(exchange, cache, asked, buildInBackground(engine, cache, asked), System.nanoTime())
+    if (lastGood == null) return serveBuilt(exchange, cache, asked, buildInBackground(engine, cache, asked))
     if (isStale(lastGood.spec, asked["view"])) buildInBackground(engine, cache, asked)
     respondSpec(exchange, lastGood.spec.body, "cache;desc=${lastGood.source}")
 }
