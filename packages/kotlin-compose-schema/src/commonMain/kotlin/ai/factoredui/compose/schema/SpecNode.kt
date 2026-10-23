@@ -72,6 +72,7 @@ enum class SpecNodeType {
     @SerialName("image") IMAGE,
     @SerialName("video") VIDEO,
     @SerialName("audio") AUDIO,
+    @SerialName("readalong") READALONG,
     @SerialName("voice") VOICE,
     @SerialName("icon") ICON,
     @SerialName("divider") DIVIDER,

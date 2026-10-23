@@ -317,6 +317,7 @@ private fun RenderNodeByType(
         SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)
         SpecNodeType.VIDEO -> RenderVideo(node, resolvedProps, context)
         SpecNodeType.AUDIO -> RenderAudio(node, resolvedProps, context)
+        SpecNodeType.READALONG -> RenderReadAlong(node, resolvedProps, context)
         SpecNodeType.VOICE -> RenderVoice(node, resolvedProps, context)
         SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)
         SpecNodeType.SELECT -> RenderSelect(node, resolvedProps, context)
@@ -1118,7 +1119,7 @@ private fun Map<String, Any?>.asResolvedCardProps(): ResolvedCardProps = Resolve
     maxWidthFraction = (get("maxWidthFraction") as? Double)?.toFloat(),
 )
 
-private fun String.parseColor(): Color? = runCatching {
+internal fun String.parseColor(): Color? = runCatching {
     val hex = removePrefix("#")
     when (hex.length) {
         6 -> Color(

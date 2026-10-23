@@ -109,7 +109,7 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart, stat.
+column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart, stat, readalong.
 
 - There is no table and no ratio-against-a-limit widget.
 - A table of the engine's views is a `table` (see Tables). Any other table is a `list` with an `itemTemplate`.
@@ -346,6 +346,25 @@ Both run only where the host gives the renderer a media engine: the browser (was
 - `/tree` node `voice` field: `label, mode, capture, status, listening, transcript`; `status` is `ready`, `listening`, `failed` or `unsupported`, and a failure (a refused mic, no HTTPS, no recognition) is in the node's notices.
 
 A `button` with `size: "xl"` is at least 72 dp tall with a large label, for a thumb. In the stock browser host, an action the host does not know is POSTed as `{ action, params }` (numbers and booleans kept) to `/action` beside the spec URL (`/spec.json` becomes `/action`), or to the `action` query parameter. The server's JSON answer can write bindings: `{ "set": { "pushback.guide": "…", "pushback.audio": "/x.mp3" } }` writes each path in one step, as `set_binding` with `values` does, except that a text is stored as it is and never read as a binding. An empty answer writes nothing. A status outside 200 to 299, an answer that is not a JSON object, a `set` that is not an object or has an empty path, or a server that cannot be reached writes the reason to `renderer.error` and changes nothing else. There is one route per spec: a server branches on the action name.
+
+## Readalong, and how a primitive is kept generic
+
+`readalong` is text whose runs light up as a number moves through their ranges. The number is any numeric binding: an audio position, a video time, a slider, a day count, a log offset. Nothing in the node knows about books or sound; a spec supplies the meaning.
+
+- `words`: `[{ t, at, end, v?, p? }]`. `t` is the run as shown, `at` and `end` are where it starts and stops on the number line, `v` is an optional small marker label drawn before it (a verse number, a line number, a speaker), `p: true` starts a new paragraph.
+- `position`: the numeric binding. The run with `at <= position < end` is lit, the previous one stays lit between runs, and none is lit before the first. The node only reads it; whatever moves the number (an `audio` node writing the same path) moves the text.
+- A tap on a run writes that run's `at` to `position`, so the thing that follows the number (an `audio` node) seeks. `on_word_tap` is also told `index`, `at` and `verse`.
+- `highlight_color` (a token name or `#rrggbb`; default the accent, with text chosen for contrast), `size` (sp), `follow` (default true: the lit run is kept in view; a drag pauses it until the next tap).
+- It scrolls inside itself, so the page does not. Give it `flex: 1` in a column to fill the space left under fixed controls, or a `height`; with neither it is at most 420 dp tall.
+- `/tree` node: `text` is the whole text, `props` carries `lit_index`, `lit_text` and `word_count`.
+
+Examples of the same node with no book in it:
+
+- A recipe whose steps are lit as a timer runs: runs are the steps, `position` is the timer's elapsed seconds.
+- Subtitles on a `video`: runs are the cues, `position` is the video's `position`.
+- A changelog read against a `slider` of dates: runs are the entries, `position` is the slider's value.
+
+The rule for any new primitive: name it for what it does to data, not for the app that asked for it; take its vocabulary from props (labels, units, colours), never from the renderer; read and write numbers and text through bindings so another node can drive it. If a request only makes sense for one app, build the generic node and let that app's spec carry the specifics.
 
 ## Stat
 
