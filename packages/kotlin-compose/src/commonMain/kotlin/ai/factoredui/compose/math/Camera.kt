@@ -19,6 +19,7 @@ class Camera(
     var fovYRadians: Float = (PI / 3f).toFloat(),
     var near: Float = 0.1f,
     var far: Float = 500f,
+    var minDistance: Float = MIN_DISTANCE,
 ) {
 
     fun eyePosition(): Vec3 {
@@ -71,7 +72,7 @@ class Camera(
 
     private fun clampPitch(value: Float): Float = max(min(value, PITCH_LIMIT), -PITCH_LIMIT)
 
-    private fun clampDistance(value: Float): Float = max(min(value, MAX_DISTANCE), MIN_DISTANCE)
+    private fun clampDistance(value: Float): Float = max(min(value, MAX_DISTANCE), minDistance)
 
     companion object {
         private const val DRAG_SENSITIVITY = 0.01f

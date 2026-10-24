@@ -69,6 +69,7 @@ import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
@@ -85,6 +86,12 @@ private const val VOLUME_ASPECT = 1.15f
 private const val FRAMING_YAW = -(PI / 4).toFloat()
 private const val FRAMING_PITCH = (PI / 6).toFloat()
 private const val FRAMING_SLACK = 1.1f
+private const val FIT_FILL = 0.95f
+private const val FIT_PASSES = 4
+private const val MIN_FIT_SCALE = 0.05f
+private const val SMALLEST_VIEW_DISTANCE = 0.02f
+private const val NEAREST_SEEN = 0.01f
+private const val RESET_ROW_DP = 24f
 private const val MM_PER_UNIT = 1000f
 private const val GROUND_MARGIN = 0.15f
 private const val HATCH_GAP_DP = 6f
@@ -118,6 +125,24 @@ private fun frameCamera(camera: Camera, span: VolumeSpanMm) {
     camera.target = worldOf((span.west + span.east) / 2, (span.south + span.north) / 2, (span.floor + span.ceiling) / 2)
     val radius = hypot(hypot(span.east - span.west, span.north - span.south), span.ceiling - span.floor).toFloat() / MM_PER_UNIT / 2
     camera.setOrbit(FRAMING_YAW, FRAMING_PITCH, radius / sin(camera.fovYRadians / 2) * FRAMING_SLACK)
+}
+
+private fun spanCorners(span: VolumeSpanMm): List<Vec3> =
+    listOf(span.west, span.east).flatMap { x -> listOf(span.south, span.north).flatMap { y -> listOf(span.floor, span.ceiling).map { z -> worldOf(x, y, z) } } }
+
+/** Frames [span] with the camera as [frameCamera] does, then moves it nearer or farther until the span's corners fill [FIT_FILL] of the drawing's width or height, whichever they reach first. */
+private fun fitCamera(camera: Camera, span: VolumeSpanMm, widthPx: Float, heightPx: Float) {
+    frameCamera(camera, span)
+    if (widthPx <= 0f || heightPx <= 0f) return
+    repeat(FIT_PASSES) {
+        val view = camera.viewMatrix()
+        val lens = camera.projectionMatrix(widthPx / heightPx)
+        val corners = spanCorners(span).map { it.project(view, lens, widthPx, heightPx) }
+        if (corners.any { !it.visible }) return
+        val reachedX = (corners.maxOf { it.x } - corners.minOf { it.x }) / (widthPx * FIT_FILL)
+        val reachedY = (corners.maxOf { it.y } - corners.minOf { it.y }) / (heightPx * FIT_FILL)
+        camera.setOrbit(camera.yawRadians, camera.pitchRadians, camera.distance * max(reachedX, reachedY).coerceAtLeast(MIN_FIT_SCALE))
+    }
 }
 
 private data class ProjectedFace(val corners: List<Offset>, val shade: Float)
@@ -384,15 +409,16 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 @Composable
 private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, pickedPath: String?, throughPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
-    val camera = remember(span, focusSpan) { Camera().also { frameCamera(it, focusSpan ?: span) } }
+    val camera = remember(span, focusSpan) { Camera(near = NEAREST_SEEN, minDistance = SMALLEST_VIEW_DISTANCE).also { frameCamera(it, focusSpan ?: span) } }
     var revision by remember(camera) { mutableStateOf(0) }
     val fits = fillInsetDp != null
     BoxWithConstraints(modifier = if (fits) Modifier.fillMaxWidth().weight(1f) else Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         val widthDp = if (fits) maxWidth else min(maxWidth, VOLUME_MAX_WIDTH_DP.dp)
-        val heightDp = if (fits) (maxHeight - (fillInsetDp ?: 0f).dp).coerceAtLeast(1.dp) else widthDp * VOLUME_ASPECT
+        val heightDp = if (fits) (maxHeight - (fillInsetDp ?: 0f).dp).coerceAtLeast(1.dp) else boundedHeight(widthDp * VOLUME_ASPECT, maxHeight)
         val density = LocalDensity.current
         val widthPx = with(density) { widthDp.toPx() }
         val heightPx = with(density) { heightDp.toPx() }
+        if (focusSpan != null) remember(camera, focusSpan, widthPx, heightPx) { fitCamera(camera, focusSpan, widthPx, heightPx) }
         val scene = remember(revision, read, span, widthPx, heightPx, sun, step, gradeMm) { projectScene(read, span, camera, widthPx, heightPx, sun, step, gradeMm) }
         val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
         Box(
@@ -530,3 +556,6 @@ private fun highlightedIds(read: VolumeRead, raw: Any?): Set<String>? {
     if (names.isEmpty()) return null
     return read.boxes.filter { it.id in names || it.style in names }.map { it.id }.toSet().takeIf { it.isNotEmpty() }
 }
+
+/** The drawing's natural height, or the room the parent leaves it (less the Reset view line under it) when that is less; a parent with no bound on its height leaves it its natural height. */
+private fun boundedHeight(natural: Dp, available: Dp): Dp = if (available.value.isFinite()) min(natural, (available - RESET_ROW_DP.dp).coerceAtLeast(1.dp)) else natural
