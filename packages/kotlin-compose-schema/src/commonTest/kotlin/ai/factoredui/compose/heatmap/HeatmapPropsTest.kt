@@ -19,7 +19,8 @@ class HeatmapPropsTest {
     @Test
     fun the_axes_the_frames_and_the_range_are_read() {
         val props = drawn(heat(mapOf("unit" to "F")))
-        assertEquals(HeatAxis(10.0, 5.0, 2, null).last, props.y.last)
+        assertEquals(listOf(10.0, 15.0), listOf(props.y.first, props.y.last))
+        assertEquals(listOf(10.0, 15.0, 20.0), props.y.edges)
         assertEquals(listOf(listOf(1.0, 2.0, 3.0, 4.0, 5.0, 6.0), listOf(6.0, 5.0, 4.0, 3.0, 2.0, 1.0)), props.frames)
         assertEquals(0.0 to 10.0, props.min to props.max)
         assertEquals("F", props.unit)
@@ -67,5 +68,26 @@ class HeatmapPropsTest {
     fun the_legend_text_carries_the_unit_when_there_is_one() {
         assertEquals("68 F", heatLegendText(68.0, "F"))
         assertEquals("68", heatLegendText(68.0, null))
+    }
+
+    @Test
+    fun an_axis_given_edges_has_one_cell_between_each_pair_and_ends_at_its_first_and_last_edge() {
+        val props = drawn(heat(mapOf("x" to mapOf("edges" to listOf(0, 100, 300, 800), "count" to 3, "label" to "Distance"))))
+        assertEquals(listOf(3, 800.0, 0.0), listOf(props.x.count, props.x.extent, props.x.first))
+        assertEquals(listOf(0.0, 100.0, 300.0, 800.0), props.x.edges)
+        assertEquals(800.0, props.x.last)
+        assertEquals("Distance", props.x.label)
+    }
+
+    @Test
+    fun the_edges_set_the_count_and_a_count_beside_them_is_ignored() {
+        assertEquals(3, drawn(heat(mapOf("x" to mapOf("edges" to listOf(0, 1, 2, 3), "count" to 9)))).x.count)
+    }
+
+    @Test
+    fun edges_that_do_not_rise_or_are_too_few_refuse_the_drawing() {
+        assertTrue(refused(heat(mapOf("x" to mapOf("edges" to listOf(0, 5, 5))))).single().startsWith("heatmap x edges must be"))
+        assertTrue(refused(heat(mapOf("y" to mapOf("edges" to listOf(1))))).single().startsWith("heatmap y edges must be"))
+        assertTrue(refused(heat(mapOf("y" to mapOf("edges" to "0,1,2")))).single().startsWith("heatmap y edges must be"))
     }
 }

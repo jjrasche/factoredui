@@ -1,5 +1,6 @@
 package ai.factoredui.compose.renderer
 
+import ai.factoredui.compose.heatmap.HeatAxis
 import ai.factoredui.compose.heatmap.HeatmapProps
 import ai.factoredui.compose.heatmap.HeatmapReading
 import ai.factoredui.compose.heatmap.heatFrameIndex
@@ -34,7 +35,7 @@ private const val LEGEND_BAR_DP = 10
 private const val CELL_OVERLAP_PX = 0.5f
 
 private fun widthOverHeight(props: HeatmapProps): Float =
-    ((props.x.count * props.x.step) / (props.y.count * props.y.step)).toFloat().coerceIn(MIN_WIDTH_OVER_HEIGHT, MAX_WIDTH_OVER_HEIGHT)
+    (props.x.extent / props.y.extent).toFloat().coerceIn(MIN_WIDTH_OVER_HEIGHT, MAX_WIDTH_OVER_HEIGHT)
 
 private fun shareAlong(props: HeatmapProps, value: Double): Float = ((value - props.min) / (props.max - props.min)).toFloat().coerceIn(0f, 1f)
 
@@ -64,16 +65,20 @@ internal fun RenderHeatmap(node: SpecNode, resolvedProps: Map<String, Any?>) {
     }
 }
 
+private fun HeatAxis.cut(index: Int): Float = ((edges[index] - first) / extent).toFloat()
+
 @Composable
 private fun HeatCells(props: HeatmapProps, cells: List<Double?>, widthOverHeight: Float, modifier: Modifier) {
     Canvas(modifier = modifier.fillMaxWidth().aspectRatio(widthOverHeight)) {
-        val cellWidth = size.width / props.x.count
-        val cellHeight = size.height / props.y.count
         for (row in 0 until props.y.count) {
-            val top = (if (props.isYUp) props.y.count - 1 - row else row) * cellHeight
+            val near = props.y.cut(row) * size.height
+            val far = props.y.cut(row + 1) * size.height
+            val top = if (props.isYUp) size.height - far else near
             for (column in 0 until props.x.count) {
                 val value = cells[row * props.x.count + column] ?: continue
-                drawRect(Color(rampColourFor(props.ramp, value)), Offset(column * cellWidth, top), Size(cellWidth + CELL_OVERLAP_PX, cellHeight + CELL_OVERLAP_PX))
+                val left = props.x.cut(column) * size.width
+                val right = props.x.cut(column + 1) * size.width
+                drawRect(Color(rampColourFor(props.ramp, value)), Offset(left, top), Size(right - left + CELL_OVERLAP_PX, far - near + CELL_OVERLAP_PX))
             }
         }
     }
@@ -84,12 +89,12 @@ private fun HeatAxes(nodeId: String, props: HeatmapProps) {
     val theme = LocalSpecTheme.current
     val style = MaterialTheme.typography.labelSmall
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(heatLegendText(props.x.origin, null), style = style, color = theme.muted, modifier = Modifier.nodeTag("$nodeId/x/first"))
+        Text(heatLegendText(props.x.first, null), style = style, color = theme.muted, modifier = Modifier.nodeTag("$nodeId/x/first"))
         props.x.label?.let { Text(it, style = style, color = theme.muted, modifier = Modifier.nodeTag("$nodeId/x/label")) }
         Text(heatLegendText(props.x.last, null), style = style, color = theme.muted, modifier = Modifier.nodeTag("$nodeId/x/last"))
     }
     props.y.label?.let {
-        Text("$it: ${heatLegendText(props.y.origin, null)} to ${heatLegendText(props.y.last, null)}", style = style, color = theme.muted, modifier = Modifier.nodeTag("$nodeId/y/label"))
+        Text("$it: ${heatLegendText(props.y.first, null)} to ${heatLegendText(props.y.last, null)}", style = style, color = theme.muted, modifier = Modifier.nodeTag("$nodeId/y/label"))
     }
 }
 

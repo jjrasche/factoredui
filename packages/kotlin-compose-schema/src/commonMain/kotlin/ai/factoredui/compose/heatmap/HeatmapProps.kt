@@ -6,8 +6,9 @@ import ai.factoredui.compose.ramp.RampStop
 import ai.factoredui.compose.ramp.readColourRamp
 import ai.factoredui.compose.schema.plainFigureText
 
-data class HeatAxis(val origin: Double, val step: Double, val count: Int, val label: String?) {
-    val last: Double get() = origin + step * (count - 1)
+/** [edges] are the count + 1 cuts between cells, so cell i spans edges[i]..edges[i + 1]; [first] and [last] are the numbers printed at the axis ends. */
+data class HeatAxis(val count: Int, val label: String?, val edges: List<Double>, val first: Double, val last: Double) {
+    val extent: Double get() = edges.last() - edges.first()
 }
 
 data class HeatmapProps(
@@ -37,15 +38,29 @@ private const val BLANK_CELL: Long = 0x00000000L
 
 private fun finiteNumberOf(raw: Any?): Double? = (raw as? Number)?.toDouble()?.takeIf { it.isFinite() }
 
-private fun axisOf(owner: String, raw: Any?): Pair<HeatAxis?, String?> {
-    val fields = raw as? Map<*, *>
+private fun uniformAxisOf(owner: String, fields: Map<*, *>?, raw: Any?): Pair<HeatAxis?, String?> {
     val origin = finiteNumberOf(fields?.get("origin"))
     val step = finiteNumberOf(fields?.get("step"))
     val count = finiteNumberOf(fields?.get("count"))?.toInt()
     if (origin == null || step == null || step <= 0.0 || count == null || count < 1) {
-        return null to "heatmap $owner needs { origin: a number, step: a number above 0, count: 1 or more }, not '$raw'."
+        return null to "heatmap $owner needs { origin: a number, step: a number above 0, count: 1 or more } or { edges: 2 or more rising numbers }, not '$raw'."
     }
-    return HeatAxis(origin, step, count, fields?.get("label") as? String) to null
+    return HeatAxis(count, fields?.get("label") as? String, List(count + 1) { origin + step * it }, origin, origin + step * (count - 1)) to null
+}
+
+private fun gradedAxisOf(owner: String, fields: Map<*, *>?, raw: List<*>): Pair<HeatAxis?, String?> {
+    val edges = raw.map { finiteNumberOf(it) }
+    if (edges.size < 2 || edges.any { it == null } || edges.zipWithNext().any { (before, after) -> after!! <= before!! }) {
+        return null to "heatmap $owner edges must be 2 or more numbers that rise, not '$raw'."
+    }
+    val cuts = edges.map { it!! }
+    return HeatAxis(cuts.size - 1, fields?.get("label") as? String, cuts, cuts.first(), cuts.last()) to null
+}
+
+private fun axisOf(owner: String, raw: Any?): Pair<HeatAxis?, String?> {
+    val fields = raw as? Map<*, *>
+    val edges = fields?.get("edges")
+    return if (edges != null) gradedAxisOf(owner, fields, edges as? List<*> ?: emptyList<Any?>()) else uniformAxisOf(owner, fields, raw)
 }
 
 private fun framesOf(raw: Any?, cells: Int, notices: MutableList<String>): List<List<Double?>> =

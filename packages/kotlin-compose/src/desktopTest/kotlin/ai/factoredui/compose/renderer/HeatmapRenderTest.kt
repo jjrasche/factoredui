@@ -7,6 +7,7 @@ import kotlinx.serialization.json.Json
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -67,6 +68,34 @@ class HeatmapRenderTest {
             val last = screen.frame().png
             screen.type("section.frame", 99)
             assertTrue(last.contentEquals(screen.frame().png), "frame 99 should draw what frame 2 draws")
+        }
+    }
+
+    @Test
+    fun cells_between_edges_are_drawn_as_wide_as_their_edges_say() {
+        val graded: Spec = Json.decodeFromString(
+            Spec.serializer(),
+            """
+            { "spec_version": 1, "renderer_min": 1,
+              "root": { "id": "root", "type": "column", "props": {}, "children": [
+                { "id": "heat", "type": "heatmap", "props": {
+                    "x": { "edges": [0, 100, 300, 800], "count": 3 }, "y": { "origin": 0, "step": 1, "count": 1 },
+                    "frames": [ [0, 20, 40] ], "frame": 0, "min": 0, "max": 40, "ramp": "viridis", "unit": "F" } } ] } }
+            """,
+        )
+        driveScreen(graded, widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP).use { screen ->
+            val cells = assertNotNull(screen.boundsOf("heat/cells"))
+            val image = ImageIO.read(ByteArrayInputStream(screen.frame().png))
+            val y = ((cells.top.value + cells.bottom.value) / 2).toInt()
+            val row = (cells.left.value.toInt() until cells.right.value.toInt()).map { x -> image.getRGB(x, y) and 0xFFFFFF }
+            val runs = row.fold(mutableListOf<Int>() to -1) { (lengths, previous), colour ->
+                if (colour == previous) lengths[lengths.lastIndex] += 1 else lengths += 1
+                lengths to colour
+            }.first.filter { it > 3 }
+            assertEquals(3, runs.size, "three cells make three runs of colour: $runs")
+            assertTrue(kotlin.math.abs(runs[1] - 2 * runs[0]) <= 3, "the middle cell is twice the first: $runs")
+            assertTrue(kotlin.math.abs(runs[2] - 5 * runs[0]) <= 5, "the last cell is five times the first: $runs")
+            assertNotNull(screen.boundsOfText("800"), "the last edge is not labelled")
         }
     }
 }
