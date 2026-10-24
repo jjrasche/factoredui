@@ -76,7 +76,8 @@ private fun namedRamp(name: String, min: Double, max: Double): ColourRamp? {
     return ColourRamp(stops, over = colours.last(), noFigure = BLANK_CELL)
 }
 
-private fun rampOf(raw: Any?, min: Double?, max: Double?): Pair<ColourRamp?, String?> {
+/** A colour ramp given as `{ stops: [[value, colour], ...] }` or as a built-in name spread over [min]..[max]; the notice says why not when it cannot be read. */
+fun readRampOrName(raw: Any?, min: Double?, max: Double?): Pair<ColourRamp?, String?> {
     if (raw is String) {
         if (min == null || max == null || max <= min) return null to "heatmap ramp '$raw' needs min and max with max above min."
         return (namedRamp(raw, min, max)) to if (raw in NAMED_RAMPS) null else "heatmap ramp '$raw' is not one of ${NAMED_RAMPS.keys.joinToString()}; give { stops: [[value, colour], ...] } or one of those names."
@@ -93,7 +94,7 @@ fun readHeatmapProps(resolved: Map<String, Any?>): HeatmapReading {
     val (y, yNotice) = axisOf("y", resolved["y"])
     val min = finiteNumberOf(resolved["min"])
     val max = finiteNumberOf(resolved["max"])
-    val (ramp, rampNotice) = rampOf(resolved["ramp"], min, max)
+    val (ramp, rampNotice) = readRampOrName(resolved["ramp"], min, max)
     val refusals = listOfNotNull(xNotice, yNotice, rampNotice)
     if (x == null || y == null || ramp == null || refusals.isNotEmpty()) return HeatmapReading.Refused(refusals)
     val notices = mutableListOf<String>()

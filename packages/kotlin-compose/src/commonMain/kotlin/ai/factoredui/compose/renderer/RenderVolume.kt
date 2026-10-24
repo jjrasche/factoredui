@@ -2,7 +2,11 @@ package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.detail.SelectionDetail
 import ai.factoredui.compose.detail.readSelectionDetails
+import ai.factoredui.compose.heatmap.heatFrameIndex
+import ai.factoredui.compose.heatmap.readRampOrName
 import ai.factoredui.compose.math.Camera
+import ai.factoredui.compose.ramp.ColourRamp
+import ai.factoredui.compose.ramp.rampColourFor
 import ai.factoredui.compose.math.Vec3
 import ai.factoredui.compose.math.project
 import ai.factoredui.compose.plan.PlanLabelAlign
@@ -424,13 +428,14 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val currentTint = planColour(resolvedProps["current_color"] as? String) ?: CURRENT_INK
     val highlighted = remember(read, resolvedProps["highlight"]) { highlightedIds(read, resolvedProps["highlight"]) }
     val focusSpan = remember(read, resolvedProps["focus"]) { volumeSpan(read.boxes.filter { it.id in idsIn(resolvedProps["focus"]) }) }
+    val colouring = remember(read, resolvedProps["value_ramp"], resolvedProps["min"], resolvedProps["max"], resolvedProps["frame"], resolvedProps["unit"]) { boxColouringOf(read, resolvedProps) }
     val gradeTint = (planColour(resolvedProps["grade_color"] as? String) ?: GRADE_COLOUR).let { it.copy(alpha = (resolvedProps["grade_opacity"] as? Number)?.toFloat()?.coerceIn(0f, 1f) ?: GRADE_OPACITY) }
     Column(modifier = (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).nodeTag(node.id)) {
-        read.notices.forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
+        (read.notices + listOfNotNull(colouring.notice)).forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, highlighted, focusSpan, pickedPath, throughPath, context)
+            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, highlighted, focusSpan, colouring.colouring, pickedPath, throughPath, context)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -438,7 +443,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, pickedPath: String?, throughPath: String?, context: RenderContext) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, colouring: BoxColouring?, pickedPath: String?, throughPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
     val camera = remember(span, focusSpan) { Camera(near = NEAREST_SEEN, minDistance = SMALLEST_VIEW_DISTANCE).also { frameCamera(it, focusSpan ?: span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -465,7 +470,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                 ground?.let { drawRect(it) }
                 if (!blueprint) scene.ground?.let { drawPath(pathOf(it), GROUND_FILL, style = Fill) }
                 fun drawBox(it: ProjectedBox) {
-                    val style = read.styles[it.box.style] ?: PlanStyle()
+                    val style = styleOf(it.box, read.styles[it.box.style] ?: PlanStyle(), colouring)
                     val phase = phaseOf(it.box, step)
                     when {
                         blueprint -> drawBlueprintBox(it, style, ground ?: Color.Transparent, theme.ink)
@@ -493,6 +498,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                 val size = IntSize(max(1, (projected.right - projected.left).toInt()), max(1, (projected.bottom - projected.top).toInt()))
                 PlanPlaced(projected.left, projected.top, PlanLabelAlign.START, size) { Box(modifier = Modifier.nodeTag("$nodeId/${projected.box.id}")) }
             }
+            colouring?.let { Box(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth(0.6f).padding(8.dp)) { RampLegend("$nodeId/ramp", it.ramp, it.min, it.max, it.unit) } }
             scene.north?.let { PlanPlaced(it.x, it.y, PlanLabelAlign.CENTER, null) { Text(text = "N", style = VOLUME_TEXT, color = theme.ink, modifier = Modifier.nodeTag("$nodeId/north")) } }
             if (fits) {
                 Text(
@@ -590,3 +596,29 @@ private fun highlightedIds(read: VolumeRead, raw: Any?): Set<String>? {
 
 /** The drawing's natural height, or the room the parent leaves it (less the Reset view line under it) when that is less; a parent with no bound on its height leaves it its natural height. */
 private fun boundedHeight(natural: Dp, available: Dp): Dp = if (available.value.isFinite()) min(natural, (available - RESET_ROW_DP.dp).coerceAtLeast(1.dp)) else natural
+
+private class BoxColouring(val ramp: ColourRamp, val min: Double, val max: Double, val unit: String?, val frame: Int)
+
+private class BoxColouringReading(val colouring: BoxColouring?, val notice: String?)
+
+/** The colouring boxes take from their `values` when `value_ramp` is given: the ramp, its range and the frame shown; no colouring when no box carries a value, and a notice when the ramp cannot be read. */
+private fun boxColouringOf(read: VolumeRead, props: Map<String, Any?>): BoxColouringReading {
+    val rampGiven = props["value_ramp"] ?: return BoxColouringReading(null, null)
+    val frames = read.boxes.maxOfOrNull { it.values.size } ?: 0
+    if (frames == 0) return BoxColouringReading(null, null)
+    val min = (props["min"] as? Number)?.toDouble()
+    val max = (props["max"] as? Number)?.toDouble()
+    val (ramp, notice) = readRampOrName(rampGiven, min, max)
+    if (ramp == null) return BoxColouringReading(null, notice)
+    return BoxColouringReading(BoxColouring(ramp, min ?: ramp.stops.first().at, max ?: ramp.stops.last().at, props["unit"] as? String, heatFrameIndex(props["frame"], frames)), null)
+}
+
+private fun valueAt(box: VolumeBox, frame: Int): Double? = if (box.values.size == 1) box.values[0] else box.values.getOrNull(frame)
+
+private fun hexOf(argb: Long): String = "#" + (argb and 0xFFFFFF).toString(16).padStart(6, '0')
+
+/** [base], drawn in the ramp's colour for the box's value at the frame shown when the box has one. */
+private fun styleOf(box: VolumeBox, base: PlanStyle, colouring: BoxColouring?): PlanStyle {
+    val value = colouring?.let { valueAt(box, it.frame) } ?: return base
+    return base.copy(stroke = hexOf(rampColourFor(colouring.ramp, value)))
+}

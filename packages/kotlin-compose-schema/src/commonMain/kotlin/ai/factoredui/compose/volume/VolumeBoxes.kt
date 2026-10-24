@@ -3,7 +3,7 @@ package ai.factoredui.compose.volume
 import ai.factoredui.compose.plan.PlanStyle
 import ai.factoredui.compose.plan.readPlanStyles
 
-/** A box in millimetres: [xMm], [yMm] is the centre of its footprint on the ground (east, north), [zMm] its underside, turned [rotationDeg] anticlockwise seen from above. A width or depth of 0 is a vertical plane and both 0 is a vertical edge. An [isEstimate] box has a size that was not given, so it is hatched. A [stage] is the step at which the box is put in place, for a volume that is stepped. A [pitchDeg] tips the box about its own width axis through its centre, before it is turned, raising the far (+depth) side for a positive angle. */
+/** A box in millimetres: [xMm], [yMm] is the centre of its footprint on the ground (east, north), [zMm] its underside, turned [rotationDeg] anticlockwise seen from above. A width or depth of 0 is a vertical plane and both 0 is a vertical edge. An [isEstimate] box has a size that was not given, so it is hatched. A [stage] is the step at which the box is put in place, for a volume that is stepped. A box may carry [values], a series of numbers a volume colours it from at the frame it shows. A [pitchDeg] tips the box about its own width axis through its centre, before it is turned, raising the far (+depth) side for a positive angle. */
 data class VolumeBox(
     val id: String,
     val xMm: Double,
@@ -17,6 +17,7 @@ data class VolumeBox(
     val isEstimate: Boolean = false,
     val stage: Double? = null,
     val pitchDeg: Double = 0.0,
+    val values: List<Double?> = emptyList(),
 )
 
 data class VolumeLegendEntry(val label: String, val style: String?, val isHatched: Boolean)
@@ -54,7 +55,7 @@ private fun boxOf(index: Int, fields: Map<*, *>, stageField: String): Pair<Volum
     val sizes = SIZE_KEYS.map { numberIn(fields, it) }
     if (sizes.any { it == null || it < 0 }) return null to "volume box '$id': width_mm, depth_mm and height_mm must be numbers of 0 or more; it is not drawn."
     val (width, depth, height) = sizes.map { it!! }
-    return VolumeBox(id, x, y, z, width, depth, height, numberIn(fields, "rotation_deg") ?: 0.0, fields["style"] as? String, fields["estimate"] as? Boolean ?: false, numberIn(fields, stageField), numberIn(fields, "pitch_deg") ?: 0.0) to null
+    return VolumeBox(id, x, y, z, width, depth, height, numberIn(fields, "rotation_deg") ?: 0.0, fields["style"] as? String, fields["estimate"] as? Boolean ?: false, numberIn(fields, stageField), numberIn(fields, "pitch_deg") ?: 0.0, valuesOf(fields)) to null
 }
 
 private fun legendOf(resolved: Any?): List<VolumeLegendEntry> =
@@ -175,4 +176,10 @@ fun <T> paintOnTop(farToNear: List<T>, boxOf: (T) -> VolumeBox): List<T> {
         }
     }
     return order
+}
+
+private fun valuesOf(fields: Map<*, *>): List<Double?> {
+    val series = fields["values"] as? List<*>
+    if (series != null) return series.map { (it as? Number)?.toDouble()?.takeIf(Double::isFinite) }
+    return listOfNotNull(numberIn(fields, "value"))
 }

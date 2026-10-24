@@ -109,4 +109,11 @@ class VolumeBoxesTest {
         val read = readVolume(listOf(sized + mapOf("id" to "a", "week" to 5, "stage" to 3)), null, null, null, null, stageField = "week")
         assertEquals(listOf(5.0), read.boxes.map { it.stage })
     }
+
+    @Test
+    fun a_box_carries_a_series_of_values_or_a_single_value_and_one_with_neither_has_none() {
+        val sized = mapOf("x_mm" to 0, "y_mm" to 0, "z_mm" to 0, "width_mm" to 1, "depth_mm" to 1, "height_mm" to 1)
+        val read = readVolume(listOf(sized + mapOf("id" to "a", "values" to listOf(1, null, "x", 4)), sized + mapOf("id" to "b", "value" to 7), sized + mapOf("id" to "c")), null, null)
+        assertEquals(listOf(listOf(1.0, null, null, 4.0), listOf(7.0), emptyList()), read.boxes.map { it.values })
+    }
 }

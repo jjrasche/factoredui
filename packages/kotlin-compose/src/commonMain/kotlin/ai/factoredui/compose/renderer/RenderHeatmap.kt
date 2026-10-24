@@ -6,6 +6,7 @@ import ai.factoredui.compose.heatmap.HeatmapReading
 import ai.factoredui.compose.heatmap.heatFrameIndex
 import ai.factoredui.compose.heatmap.heatLegendText
 import ai.factoredui.compose.heatmap.readHeatmapProps
+import ai.factoredui.compose.ramp.ColourRamp
 import ai.factoredui.compose.ramp.rampColourFor
 import ai.factoredui.compose.schema.SpecNode
 import androidx.compose.foundation.Canvas
@@ -37,7 +38,6 @@ private const val CELL_OVERLAP_PX = 0.5f
 private fun widthOverHeight(props: HeatmapProps): Float =
     (props.x.extent / props.y.extent).toFloat().coerceIn(MIN_WIDTH_OVER_HEIGHT, MAX_WIDTH_OVER_HEIGHT)
 
-private fun shareAlong(props: HeatmapProps, value: Double): Float = ((value - props.min) / (props.max - props.min)).toFloat().coerceIn(0f, 1f)
 
 @Composable
 internal fun RenderHeatmap(node: SpecNode, resolvedProps: Map<String, Any?>) {
@@ -61,7 +61,7 @@ internal fun RenderHeatmap(node: SpecNode, resolvedProps: Map<String, Any?>) {
         if (cells == null) (resolvedProps["empty_text"] as? String)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = theme.muted) }
         else HeatCells(props, cells, widthOverHeight(props), Modifier.nodeTag("${node.id}/cells"))
         HeatAxes(node.id, props)
-        HeatLegend(node.id, props)
+        RampLegend("${node.id}/legend", props.ramp, props.min, props.max, props.unit)
     }
 }
 
@@ -98,14 +98,15 @@ private fun HeatAxes(nodeId: String, props: HeatmapProps) {
     }
 }
 
+/** A legend line: [min], a gradient bar of [ramp] across min..max, and [max], each with [unit]; its parts are tagged `<tag>/min`, `<tag>/bar` and `<tag>/max`. */
 @Composable
-private fun HeatLegend(nodeId: String, props: HeatmapProps) {
+internal fun RampLegend(tag: String, ramp: ColourRamp, min: Double, max: Double, unit: String?) {
     val theme = LocalSpecTheme.current
     val style = MaterialTheme.typography.labelSmall
-    val brush = Brush.horizontalGradient(*props.ramp.stops.map { shareAlong(props, it.at) to Color(it.colour) }.toTypedArray())
+    val brush = Brush.horizontalGradient(*ramp.stops.map { ((it.at - min) / (max - min)).toFloat().coerceIn(0f, 1f) to Color(it.colour) }.toTypedArray())
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(theme.space.sm.dp)) {
-        Text(heatLegendText(props.min, props.unit), style = style, color = theme.ink, modifier = Modifier.nodeTag("$nodeId/legend/min"))
-        Spacer(modifier = Modifier.weight(1f).height(LEGEND_BAR_DP.dp).background(brush).nodeTag("$nodeId/legend/bar"))
-        Text(heatLegendText(props.max, props.unit), style = style, color = theme.ink, modifier = Modifier.nodeTag("$nodeId/legend/max"))
+        Text(heatLegendText(min, unit), style = style, color = theme.ink, modifier = Modifier.nodeTag("$tag/min"))
+        Spacer(modifier = Modifier.weight(1f).height(LEGEND_BAR_DP.dp).background(brush).nodeTag("$tag/bar"))
+        Text(heatLegendText(max, unit), style = style, color = theme.ink, modifier = Modifier.nodeTag("$tag/max"))
     }
 }
