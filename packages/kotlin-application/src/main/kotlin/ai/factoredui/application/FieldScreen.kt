@@ -69,7 +69,7 @@ private fun feet(millimetres: Double): Double = Math.round(millimetres / MM_PER_
 /** A heatmap axis runs up from its origin; an axis that runs down (z below the floor) is drawn as its depth, so the first row sits at the top of the screen. Lengths in mm are drawn in feet. */
 private fun axisNode(axis: JsonObject, screen: FieldScreen): Map<String, Any?> {
     val name = (axis["name"] as? JsonPrimitive)?.content.orEmpty()
-    val shared = mapOf("count" to cellCountOf(axis), "label" to (screen.axisLabels[name] ?: name), "unit" to "ft")
+    val shared = mapOf("count" to cellCountOf(axis), "label" to "${screen.axisLabels[name] ?: name} (ft)", "unit" to "ft")
     val edges = edgesOf(axis)
     if (edges != null) return shared + ("edges" to edges.map(::feet))
     val origin = feet(numberOf(axis, "origin_mm"))

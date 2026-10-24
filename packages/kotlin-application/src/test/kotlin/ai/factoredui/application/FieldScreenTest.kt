@@ -69,8 +69,8 @@ class FieldScreenTest {
         assertEquals(3.0, axes["x"]!!.jsonObject["count"]!!.jsonPrimitive.double)
         assertEquals(1.0, axes["y"]!!.jsonObject["step"]!!.jsonPrimitive.double, 1e-9)
         assertEquals("ft", axes["y"]!!.jsonObject["unit"]!!.jsonPrimitive.content)
-        assertEquals("Depth", axes["y"]!!.jsonObject["label"]!!.jsonPrimitive.content)
-        assertEquals("Across the house", axes["x"]!!.jsonObject["label"]!!.jsonPrimitive.content)
+        assertEquals("Depth (ft)", axes["y"]!!.jsonObject["label"]!!.jsonPrimitive.content)
+        assertEquals("Across the house (ft)", axes["x"]!!.jsonObject["label"]!!.jsonPrimitive.content)
     }
 
     @Test
