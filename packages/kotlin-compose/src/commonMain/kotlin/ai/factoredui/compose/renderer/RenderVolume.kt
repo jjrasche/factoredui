@@ -13,12 +13,14 @@ import ai.factoredui.compose.volume.VolumeBox
 import ai.factoredui.compose.volume.VolumeLegendEntry
 import ai.factoredui.compose.volume.VolumeRead
 import ai.factoredui.compose.volume.VolumeSpanMm
+import ai.factoredui.compose.volume.Direction
 import ai.factoredui.compose.volume.UP
 import ai.factoredui.compose.volume.footprintCorners
 import ai.factoredui.compose.volume.shadowOutline
 import ai.factoredui.compose.volume.sideNormal
 import ai.factoredui.compose.volume.sunShade
 import ai.factoredui.compose.volume.paintOnTop
+import ai.factoredui.compose.volume.readSun
 import ai.factoredui.compose.volume.readVolume
 import ai.factoredui.compose.volume.volumeSpan
 import androidx.compose.foundation.Canvas
@@ -125,16 +127,16 @@ private class ProjectedLabel(val at: Offset, val text: String, val style: String
 
 private class ProjectedScene(val ground: List<Offset>?, val boxes: List<ProjectedBox>, val north: Offset?, val lines: List<ProjectedLine>, val labels: List<ProjectedLabel>, val shadows: List<List<Offset>>)
 
-private fun faceShades(ground: List<Pair<Double, Double>>, isLit: Boolean): List<Float> =
-    if (!isLit) listOf(1f) + SIDE_SHADES.toList()
-    else listOf(sunShade(UP).toFloat()) + ground.indices.map { i -> sideNormal(ground[i], ground[(i + 1) % 4])?.let { sunShade(it).toFloat() } ?: 1f }
+private fun faceShades(ground: List<Pair<Double, Double>>, sun: Direction?): List<Float> =
+    if (sun == null) listOf(1f) + SIDE_SHADES.toList()
+    else listOf(sunShade(UP, sun).toFloat()) + ground.indices.map { i -> sideNormal(ground[i], ground[(i + 1) % 4])?.let { sunShade(it, sun).toFloat() } ?: 1f }
 
-private fun projectBox(box: VolumeBox, eye: Vec3, isLit: Boolean, project: (Vec3) -> Offset?): Pair<Float, ProjectedBox>? {
+private fun projectBox(box: VolumeBox, eye: Vec3, sun: Direction?, project: (Vec3) -> Offset?): Pair<Float, ProjectedBox>? {
     val ground = footprintCorners(box)
     val low = ground.map { worldOf(it.first, it.second, box.zMm) }
     val high = ground.map { worldOf(it.first, it.second, box.zMm + box.heightMm) }
     val faceCorners = listOf(high) + low.indices.map { i -> listOf(low[i], low[(i + 1) % 4], high[(i + 1) % 4], high[i]) }
-    val shades = faceShades(ground, isLit)
+    val shades = faceShades(ground, sun)
     val projected = faceCorners.map { corners -> corners.map(project) }
     if (projected.any { face -> face.any { it == null } }) return null
     val centre = (low + high).reduce { sum, point -> sum + point } * (1f / 8f)
@@ -159,18 +161,18 @@ private fun phaseOf(box: VolumeBox, step: Double?): Phase {
     }
 }
 
-private fun projectShadows(read: VolumeRead, span: VolumeSpanMm, step: Double?, gradeMm: Double?, project: (Vec3) -> Offset?): List<List<Offset>> =
+private fun projectShadows(read: VolumeRead, span: VolumeSpanMm, step: Double?, gradeMm: Double?, sun: Direction, project: (Vec3) -> Offset?): List<List<Offset>> =
     read.boxes.filter { !it.isEstimate && phaseOf(it, step) != Phase.GHOST }.mapNotNull { box ->
-        val outline = shadowOutline(box, groundLevelMm(span, gradeMm)).map { (x, y) -> project(worldOf(x, y, groundLevelMm(span, gradeMm))) }
+        val outline = shadowOutline(box, groundLevelMm(span, gradeMm), sun).map { (x, y) -> project(worldOf(x, y, groundLevelMm(span, gradeMm))) }
         outline.takeIf { points -> points.size >= 3 && points.all { it != null } }?.map { it!! }
     }
 
-private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, widthPx: Float, heightPx: Float, isLit: Boolean, step: Double?, gradeMm: Double?): ProjectedScene {
+private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, widthPx: Float, heightPx: Float, sun: Direction?, step: Double?, gradeMm: Double?): ProjectedScene {
     val view = camera.viewMatrix()
     val lens = camera.projectionMatrix(widthPx / heightPx)
     val project = { point: Vec3 -> point.project(view, lens, widthPx, heightPx).takeIf { it.visible }?.let { Offset(it.x, it.y) } }
     val eye = camera.eyePosition()
-    val boxes = paintOnTop(read.boxes.mapNotNull { projectBox(it, eye, isLit, project) }.sortedByDescending { it.first }.map { it.second }) { it.box }
+    val boxes = paintOnTop(read.boxes.mapNotNull { projectBox(it, eye, sun, project) }.sortedByDescending { it.first }.map { it.second }) { it.box }
     val marginX = (span.east - span.west) * GROUND_MARGIN
     val marginY = (span.north - span.south) * GROUND_MARGIN
     val groundCorners = listOf(
@@ -184,7 +186,7 @@ private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, w
         if (from != null && to != null) ProjectedLine(from, to, line.style) else null
     }
     val labels = read.labels.mapNotNull { label -> project(worldOf(label.at.xMm, label.at.yMm, label.at.zMm))?.let { ProjectedLabel(it, label.text, label.style) } }
-    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north, lines, labels, if (isLit) projectShadows(read, span, step, gradeMm, project) else emptyList())
+    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north, lines, labels, if (sun != null) projectShadows(read, span, step, gradeMm, sun, project) else emptyList())
 }
 
 private fun pathOf(corners: List<Offset>): Path = Path().apply {
@@ -362,7 +364,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun", (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, pickedPath, throughPath, context)
+            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, pickedPath, throughPath, context)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -370,7 +372,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean, step: Double?, gradeMm: Double?, gradeTint: Color, pickedPath: String?, throughPath: String?, context: RenderContext) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, pickedPath: String?, throughPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
     val camera = remember(span) { Camera().also { frameCamera(it, span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -381,7 +383,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
         val density = LocalDensity.current
         val widthPx = with(density) { widthDp.toPx() }
         val heightPx = with(density) { heightDp.toPx() }
-        val scene = remember(revision, read, span, widthPx, heightPx, isLit, step, gradeMm) { projectScene(read, span, camera, widthPx, heightPx, isLit, step, gradeMm) }
+        val scene = remember(revision, read, span, widthPx, heightPx, sun, step, gradeMm) { projectScene(read, span, camera, widthPx, heightPx, sun, step, gradeMm) }
         val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
         Box(
             modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }.pointerInput(scene, selection.ids, pickedPath, throughPath) {
@@ -401,7 +403,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                     when {
                         blueprint -> drawBlueprintBox(it, style, ground ?: Color.Transparent, theme.ink)
                         phase == Phase.GHOST -> drawGhostBox(it, style, theme.ink)
-                        isLit -> drawLitBox(it, style, theme.ink)
+                        sun != null -> drawLitBox(it, style, theme.ink)
                         else -> drawProjectedBox(it, style, theme.ink)
                     }
                     if (phase == Phase.CURRENT && !blueprint) drawCurrentOutline(it)

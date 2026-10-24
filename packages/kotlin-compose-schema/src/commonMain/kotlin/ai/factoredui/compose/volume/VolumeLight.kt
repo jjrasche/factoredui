@@ -28,7 +28,7 @@ fun sideNormal(from: Pair<Double, Double>, to: Pair<Double, Double>): Direction?
 }
 
 /** How lit a face with this normal is, from the ambient floor at 0.55 up to about 0.9 for a face turned straight to the sun. */
-fun sunShade(normal: Direction): Double = AMBIENT + DIRECT * max(0.0, normal.x * SUN.x + normal.y * SUN.y + normal.z * SUN.z)
+fun sunShade(normal: Direction, sun: Direction = SUN): Double = AMBIENT + DIRECT * max(0.0, normal.x * sun.x + normal.y * sun.y + normal.z * sun.z)
 
 private fun cross(origin: Pair<Double, Double>, a: Pair<Double, Double>, b: Pair<Double, Double>) =
     (a.first - origin.first) * (b.second - origin.second) - (a.second - origin.second) * (b.first - origin.first)
@@ -50,11 +50,19 @@ fun convexHull(points: List<Pair<Double, Double>>): List<Pair<Double, Double>> {
 }
 
 /** Where a box's shadow falls on the ground at [groundMm]: its eight corners slid along the sun's rays down to that height, as a convex outline in east-north pairs. */
-fun shadowOutline(box: VolumeBox, groundMm: Double): List<Pair<Double, Double>> {
+fun shadowOutline(box: VolumeBox, groundMm: Double, sun: Direction = SUN): List<Pair<Double, Double>> {
     val corners = footprintCorners(box)
     val points = listOf(box.zMm, box.zMm + box.heightMm).flatMap { z ->
         val drop = max(0.0, z - groundMm)
-        corners.map { (x, y) -> (x - SUN.x / SUN.z * drop) to (y - SUN.y / SUN.z * drop) }
+        corners.map { (x, y) -> (x - sun.x / sun.z * drop) to (y - sun.y / sun.z * drop) }
     }
     return convexHull(points)
+}
+
+/** The way to the sun a spec names as `[east, north, up]`: the default when it names none, or names a vector with no height (a sun on the horizon casts no finite shadow) or no length. */
+fun readSun(resolved: Any?): Direction {
+    val parts = (resolved as? List<*>)?.map { (it as? Number)?.toDouble()?.takeIf(Double::isFinite) }
+    if (parts == null || parts.size != 3 || parts.any { it == null }) return SUN
+    val (x, y, z) = parts.map { it!! }
+    return if (z <= 0.0) SUN else unit(x, y, z)
 }

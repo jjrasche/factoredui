@@ -44,4 +44,17 @@ class VolumeLightTest {
         val buried = VolumeBox("buried", 0.0, 0.0, -1000.0, 100.0, 100.0, 500.0)
         assertEquals(setOf(-50.0, 50.0), shadowOutline(buried, 0.0).flatMap { listOf(it.first, it.second) }.toSet())
     }
+
+    @Test
+    fun a_spec_that_names_no_usable_sun_gets_the_default_one() {
+        listOf(null, "up", listOf(1, 2), listOf(1, 2, 0), listOf(1, 2, -1), listOf(1, "a", 3)).forEach { assertEquals(SUN, readSun(it), "$it") }
+    }
+
+    @Test
+    fun a_named_sun_is_a_unit_vector_and_moves_the_shadow_away_from_it() {
+        val sun = readSun(listOf(1, 0, 1))
+        assertEquals(1.0, sun.x * sun.x + sun.y * sun.y + sun.z * sun.z, 1e-9)
+        val shadow = shadowOutline(POST, 0.0, sun)
+        assertTrue(shadow.minOf { it.first } < -900.0, "a sun in the east throws the shadow west: ${shadow}")
+    }
 }
