@@ -34,7 +34,7 @@ class VolumeFitTest {
         driveScreen(stoolSpec(""" "focus": $STOOL_IDS, """), widthDp = PHONE_WIDTH_DP, heightDp = PHONE_HEIGHT_DP).use { screen ->
             val bounds = listOf("seat", "leg1", "leg2", "leg3", "leg4").map { assertNotNull(screen.boundsOf("volume/$it"), it) }
             val width = bounds.maxOf { it.right.value } - bounds.minOf { it.left.value }
-            assertTrue(width >= 0.6f * PHONE_WIDTH_DP, "the stool is $width dp wide of $PHONE_WIDTH_DP")
+            assertTrue(width >= 0.6f * PHONE_WIDTH_DP, "the stool is $width dp wide of $PHONE_WIDTH_DP; volume ${screen.boundsOf("volume")}; boxes $bounds")
         }
     }
 
