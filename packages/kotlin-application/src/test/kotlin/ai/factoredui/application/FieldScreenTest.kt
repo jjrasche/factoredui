@@ -62,7 +62,7 @@ class FieldScreenTest {
 
     @Test
     fun the_heatmap_axes_are_the_grids_axes_a_downward_axis_drawn_as_its_depth() {
-        val axes = rootOf().props("parallel-runs.heatmap")["axes"]!!.jsonObject
+        val axes = rootOf().props("parallel-runs.heatmap")
         assertEquals(500.0, axes["x"]!!.jsonObject["step"]!!.jsonPrimitive.double)
         assertEquals(3.0, axes["x"]!!.jsonObject["count"]!!.jsonPrimitive.double)
         assertEquals(250.0, axes["y"]!!.jsonObject["step"]!!.jsonPrimitive.double)
@@ -73,7 +73,7 @@ class FieldScreenTest {
     fun graded_cells_pass_their_edges_to_the_heatmap_and_count_one_fewer() {
         val graded = answer(10.0).replace(""""origin_mm": 0, "step_mm": 500, "count": 3""", """"edges_mm": [0, 100, 300, 800]""")
         val answers = mapOf("serpentine" to Json.parseToJsonElement(graded).jsonObject, "parallel-runs" to Json.parseToJsonElement(graded).jsonObject)
-        val axes = fieldScreenSpec(readFieldScreen(VIEW), answers)["root"]!!.jsonObject.props("serpentine.heatmap")["axes"]!!.jsonObject["x"]!!.jsonObject
+        val axes = fieldScreenSpec(readFieldScreen(VIEW), answers)["root"]!!.jsonObject.props("serpentine.heatmap")["x"]!!.jsonObject
         assertEquals(listOf(0.0, 100.0, 300.0, 800.0), axes["edges"]!!.jsonArray.map { it.jsonPrimitive.double })
         assertEquals(3.0, axes["count"]!!.jsonPrimitive.double)
         assertTrue("step" !in axes)

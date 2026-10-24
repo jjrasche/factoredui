@@ -119,7 +119,7 @@ private fun heatmapNode(id: String, field: LayoutField, screen: FieldScreen, low
     return specNode(
         id, "heatmap",
         mapOf(
-            "axes" to mapOf("x" to axisNode(axes[0] as JsonObject), "y" to axisNode(axes[1] as JsonObject)),
+            "x" to axisNode(axes[0] as JsonObject), "y" to axisNode(axes[1] as JsonObject),
             "frames" to field.frames, "frame" to "{$FRAME_PATH}", "min" to low, "max" to high, "ramp" to screen.ramp, "unit" to "C",
         ),
     )
