@@ -86,8 +86,8 @@ private const val HATCH_GAP_DP = 6f
 private const val OUTLINE_DP = 1.2f
 private const val LIT_OUTLINE_DP = 0.8f
 private const val BURIED_TOLERANCE_MM = 1.0
-private const val SOIL_ALPHA = 0.5f
-private val SOIL = Color(0xFF6B5A48)
+private const val GRADE_OPACITY = 0.5f
+private val GRADE_COLOUR = Color(0xFF6B5A48)
 private const val GHOST_FILL_ALPHA = 0.08f
 private const val GHOST_EDGE_ALPHA = 0.3f
 private const val CURRENT_OUTLINE_DP = 2.5f
@@ -356,12 +356,13 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val bottomInsetDp = (resolvedProps["bottom_inset_dp"] as? Number)?.toFloat() ?: 0f
     val blueprint = resolvedProps["mode"] == "blueprint"
     val ground = planColour(resolvedProps["ground"] as? String)
+    val gradeTint = (planColour(resolvedProps["grade_color"] as? String) ?: GRADE_COLOUR).let { it.copy(alpha = (resolvedProps["grade_opacity"] as? Number)?.toFloat()?.coerceIn(0f, 1f) ?: GRADE_OPACITY) }
     Column(modifier = (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).nodeTag(node.id)) {
         read.notices.forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun", (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), pickedPath, throughPath, context)
+            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, resolvedProps["lighting"] == "sun", (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, pickedPath, throughPath, context)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -369,7 +370,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean, step: Double?, gradeMm: Double?, pickedPath: String?, throughPath: String?, context: RenderContext) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, isLit: Boolean, step: Double?, gradeMm: Double?, gradeTint: Color, pickedPath: String?, throughPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
     val camera = remember(span) { Camera().also { frameCamera(it, span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -407,7 +408,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                 }
                 val isBuried = { projected: ProjectedBox -> gradeMm != null && !blueprint && projected.box.zMm + projected.box.heightMm < gradeMm - BURIED_TOLERANCE_MM }
                 scene.boxes.filter(isBuried).forEach(::drawBox)
-                if (gradeMm != null && !blueprint) scene.ground?.let { drawPath(pathOf(it), SOIL.copy(alpha = SOIL_ALPHA), style = Fill) }
+                if (gradeMm != null && !blueprint) scene.ground?.let { drawPath(pathOf(it), gradeTint, style = Fill) }
                 scene.shadows.forEach { drawShadow(it) }
                 scene.boxes.filterNot(isBuried).forEach(::drawBox)
                 scene.lines.forEach { drawProjectedLine(it, read.styles[it.style] ?: PlanStyle(), theme.ink) }
