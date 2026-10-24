@@ -366,13 +366,15 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val blueprint = resolvedProps["mode"] == "blueprint"
     val ground = planColour(resolvedProps["ground"] as? String)
     val currentTint = planColour(resolvedProps["current_color"] as? String) ?: CURRENT_INK
+    val highlighted = remember(read, resolvedProps["highlight"]) { highlightedIds(read, resolvedProps["highlight"]) }
+    val focusSpan = remember(read, resolvedProps["focus"]) { volumeSpan(read.boxes.filter { it.id in idsIn(resolvedProps["focus"]) }) }
     val gradeTint = (planColour(resolvedProps["grade_color"] as? String) ?: GRADE_COLOUR).let { it.copy(alpha = (resolvedProps["grade_opacity"] as? Number)?.toFloat()?.coerceIn(0f, 1f) ?: GRADE_OPACITY) }
     Column(modifier = (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).nodeTag(node.id)) {
         read.notices.forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, pickedPath, throughPath, context)
+            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, highlighted, focusSpan, pickedPath, throughPath, context)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -380,9 +382,9 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, pickedPath: String?, throughPath: String?, context: RenderContext) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, pickedPath: String?, throughPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
-    val camera = remember(span) { Camera().also { frameCamera(it, span) } }
+    val camera = remember(span, focusSpan) { Camera().also { frameCamera(it, focusSpan ?: span) } }
     var revision by remember(camera) { mutableStateOf(0) }
     val fits = fillInsetDp != null
     BoxWithConstraints(modifier = if (fits) Modifier.fillMaxWidth().weight(1f) else Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
@@ -410,6 +412,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                     val phase = phaseOf(it.box, step)
                     when {
                         blueprint -> drawBlueprintBox(it, style, ground ?: Color.Transparent, theme.ink)
+                        highlighted != null && it.box.id !in highlighted -> drawGhostBox(it, style, theme.ink)
                         phase == Phase.GHOST -> drawGhostBox(it, style, theme.ink)
                         sun != null -> drawLitBox(it, style, theme.ink)
                         else -> drawProjectedBox(it, style, theme.ink)
@@ -517,4 +520,13 @@ private fun VolumeLegend(nodeId: String, legend: List<VolumeLegendEntry>, styles
             }
         }
     }
+}
+
+private fun idsIn(raw: Any?): Set<String> = (raw as? List<*>).orEmpty().filterIsInstance<String>().toSet()
+
+/** The boxes to draw solid when `highlight` is given: each entry names a box by id or every box in a style of that name; null when it names none, so every box is drawn as normal. */
+private fun highlightedIds(read: VolumeRead, raw: Any?): Set<String>? {
+    val names = idsIn(raw)
+    if (names.isEmpty()) return null
+    return read.boxes.filter { it.id in names || it.style in names }.map { it.id }.toSet().takeIf { it.isNotEmpty() }
 }

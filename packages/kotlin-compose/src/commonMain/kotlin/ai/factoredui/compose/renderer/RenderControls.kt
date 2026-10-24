@@ -1,6 +1,7 @@
 package ai.factoredui.compose.renderer
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -22,6 +24,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +40,8 @@ import ai.factoredui.compose.schema.asTabsProps
 import ai.factoredui.compose.schema.asToggleProps
 import ai.factoredui.compose.schema.selectOptionKeyOf
 import ai.factoredui.compose.schema.bindingPath
+
+private const val TAB_LABEL_PADDING_DP = 16
 
 /**
  * Form-input + selection-container primitives.
@@ -186,17 +192,27 @@ internal fun RenderTabs(
 
     if (props.items.isEmpty()) return
 
+    val tabs: @Composable () -> Unit = {
+        props.items.forEachIndexed { index, label ->
+            Tab(
+                selected = index == selected,
+                onClick = {
+                    if (writePath != null) context.setBinding(writePath, index)
+                },
+                text = { Text(label, maxLines = 1, softWrap = false) },
+            )
+        }
+    }
+    val measurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.titleSmall
+    val density = LocalDensity.current
     Column(modifier = Modifier.nodeTag(node.id)) {
-        TabRow(selectedTabIndex = selected) {
-            props.items.forEachIndexed { index, label ->
-                Tab(
-                    selected = index == selected,
-                    onClick = {
-                        if (writePath != null) context.setBinding(writePath, index)
-                    },
-                    text = { Text(label) },
-                )
-            }
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val widestLabelPx = props.items.maxOf { measurer.measure(it, labelStyle, softWrap = false, maxLines = 1).size.width }
+            val eachTabPx = constraints.maxWidth / props.items.size
+            val isRoomForEveryLabel = widestLabelPx + with(density) { (2 * TAB_LABEL_PADDING_DP).dp.toPx() } <= eachTabPx
+            if (isRoomForEveryLabel) TabRow(selectedTabIndex = selected, tabs = tabs)
+            else ScrollableTabRow(selectedTabIndex = selected, edgePadding = 0.dp, tabs = tabs)
         }
         // Convention: one child per tab item. Mismatches render nothing.
         node.children.getOrNull(selected)?.let { child ->
