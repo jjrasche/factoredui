@@ -36,6 +36,16 @@ class VolumeBoxesTest {
     }
 
     @Test
+    fun a_style_is_opaque_unless_it_says_otherwise_and_its_opacity_stays_between_0_and_1() {
+        val read = readVolume(
+            emptyList<Any>(),
+            mapOf("solid" to mapOf("stroke" to "#112233"), "glass" to mapOf("opacity" to 0.25), "over" to mapOf("opacity" to 4), "under" to mapOf("opacity" to -1)),
+            null,
+        )
+        assertEquals(listOf(1f, 0.25f, 1f, 0f), listOf("solid", "glass", "over", "under").map { read.styles.getValue(it).opacity })
+    }
+
+    @Test
     fun a_style_the_styles_do_not_hold_is_named_once() {
         val read = readVolume(listOf(box("a", extra = mapOf("style" to "ghost")), box("b", extra = mapOf("style" to "ghost"))), null, null)
         assertEquals(listOf("volume style 'ghost' is not in styles; its boxes are drawn plain."), read.notices)

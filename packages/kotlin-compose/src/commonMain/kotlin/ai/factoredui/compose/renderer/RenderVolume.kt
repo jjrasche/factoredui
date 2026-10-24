@@ -216,7 +216,7 @@ private fun DrawScope.drawProjectedBox(projected: ProjectedBox, style: PlanStyle
     val effect = if (projected.box.isEstimate) PathEffect.dashPathEffect(floatArrayOf(DASH_DP.dp.toPx(), DASH_DP.dp.toPx())) else null
     projected.faces.forEach { face ->
         val path = pathOf(face.corners)
-        drawPath(path, shaded(body, face.shade), style = Fill)
+        drawPath(path, shaded(body, face.shade).copy(alpha = style.opacity), style = Fill)
         if (projected.box.isEstimate) drawHatch(face.corners, stroke.copy(alpha = 0.55f))
         drawPath(path, stroke, style = Stroke(width = (style.weight ?: OUTLINE_DP).dp.toPx(), pathEffect = effect))
     }
@@ -237,7 +237,7 @@ private fun DrawScope.drawLitBox(projected: ProjectedBox, style: PlanStyle, ink:
     val effect = if (projected.box.isEstimate) PathEffect.dashPathEffect(floatArrayOf(DASH_DP.dp.toPx(), DASH_DP.dp.toPx())) else null
     projected.faces.forEach { face ->
         val path = pathOf(face.corners)
-        val faceColour = shaded(body, face.shade)
+        val faceColour = shaded(body, face.shade).copy(alpha = style.opacity)
         drawPath(path, faceColour, style = Fill)
         if (projected.box.isEstimate) drawHatch(face.corners, stroke.copy(alpha = 0.55f))
         val edge = shaded(stroke, EDGE_DARKEN)
@@ -265,7 +265,7 @@ private fun DrawScope.drawBlueprintBox(projected: ProjectedBox, style: PlanStyle
     val effect = if (isDashed) PathEffect.dashPathEffect(floatArrayOf(DASH_DP.dp.toPx(), DASH_DP.dp.toPx())) else null
     projected.faces.forEach { face ->
         val path = pathOf(face.corners)
-        drawPath(path, ground, style = Fill)
+        drawPath(path, ground.copy(alpha = ground.alpha * style.opacity), style = Fill)
         drawPath(path, stroke, style = Stroke(width = (style.weight ?: OUTLINE_DP).dp.toPx(), pathEffect = effect))
     }
 }

@@ -11,6 +11,7 @@ data class PlanStyle(
     val stroke: String? = null,
     val weight: Float? = null,
     val dash: Boolean = false,
+    val opacity: Float = 1f,
 )
 
 /** A shape in millimetres. A rect spans [widthMm] east by [depthMm] north from its corner; a line runs to ([x2Mm], [y2Mm]); a marker and a label sit at the point, a label nudged by [dxDp] right and [dyDp] down. */
@@ -48,6 +49,7 @@ private fun styleOf(fields: Map<*, *>): PlanStyle = PlanStyle(
     stroke = fields["stroke"] as? String,
     weight = numberIn(fields, "weight")?.toFloat(),
     dash = fields["dash"] as? Boolean ?: false,
+    opacity = numberIn(fields, "opacity")?.toFloat()?.coerceIn(0f, 1f) ?: 1f,
 )
 
 fun readPlanStyles(resolved: Any?): Map<String, PlanStyle> =
