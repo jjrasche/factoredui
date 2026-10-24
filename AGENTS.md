@@ -172,7 +172,7 @@ A string `"{path.to.value}"` is resolved at render time from one state map. Insi
 - A `select` option is `{ "label": "Zoom 2 times", "value": 2 }`; its `value` is text, a number or true/false, and is written in that type. An option is chosen when the bound value reads as the same text (2, 2.0 and "2" all choose option 2), and `/click?id=<select id>/option/2` picks it. An option with no text `label` or with any other `value` is dropped, and the select shows one notice naming each dropped option's index: "select 'zoom' dropped options 1, 3: each needs a text 'label' and a 'value' that is text, a number or true/false".
 - Dense primitives take typed data, not children.
 - `geomap` shows a selection from a `selected` binding (list of ids), writes it on tap, and dispatches `on_feature_tap`.
-- `scene` picks a renderer from `view_state` (`level_feet`, `quarter_turns`, `centre_mm`, `renderer`).
+- `scene` picks a renderer by its `renderer` prop (or `view_state.renderer`, its older place), else by the zoom the view_state (`level_feet`, `quarter_turns`, `centre_mm`) is at.
 
 ## Actions
 
@@ -189,7 +189,7 @@ A string `"{path.to.value}"` is resolved at render time from one state map. Insi
 
 ## Stacked scene
 
-A `scene` node with `"view_state": { "renderer": "stacked_scene" }` draws parts stacked in levels from a scene payload. Props:
+A `scene` node with `"renderer": "stacked_scene"` (or `"view_state": { "renderer": "stacked_scene" }`) draws parts stacked in levels from a scene payload. Props:
 
 - `scene_view`: the payload, bound to an object or its JSON text. A bad payload prints the reason on screen.
 - `view`: `plan` (default), `iso`, `south` or `west`. The iso is a fixed isometric projection: it looks down at 35.264 degrees from an azimuth of 45 degrees, and `quarter_turns` picks which of its four aspects is shown. The plan draws a part's x toward the right. Its y runs as `y_axis` says. The south elevation looks along +y with x to the right. The west elevation looks along +x, so the y that is drawn at the top of the plan is on its left.
