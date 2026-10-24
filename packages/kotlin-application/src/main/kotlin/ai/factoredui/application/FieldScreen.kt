@@ -60,10 +60,14 @@ private fun edgesOf(axis: JsonObject): List<Double>? = (axis["edges_mm"] as? Jso
 
 private fun cellCountOf(axis: JsonObject): Int = edgesOf(axis)?.let { it.size - 1 } ?: numberOf(axis, "count").toInt()
 
+/** A heatmap axis runs up from its origin; an axis that runs down (z below the floor) is drawn as its depth, so the first row sits at the top of the screen. */
 private fun axisNode(axis: JsonObject): Map<String, Any?> {
     val shared = mapOf("count" to cellCountOf(axis), "label" to (axis["name"] as? JsonPrimitive)?.content, "unit" to (axis["unit"] as? JsonPrimitive)?.content)
     val edges = edgesOf(axis)
-    return if (edges != null) shared + ("edges" to edges) else shared + mapOf("origin" to numberOf(axis, "origin_mm"), "step" to numberOf(axis, "step_mm"))
+    if (edges != null) return shared + ("edges" to edges)
+    val origin = numberOf(axis, "origin_mm")
+    val step = numberOf(axis, "step_mm")
+    return if (step < 0) shared + mapOf("origin" to (if (origin == 0.0) 0.0 else -origin), "step" to -step) else shared + mapOf("origin" to origin, "step" to step)
 }
 
 private fun framesOf(grid: JsonObject, layout: String): List<List<Double>> {

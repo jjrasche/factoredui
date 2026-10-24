@@ -61,11 +61,11 @@ class FieldScreenTest {
     }
 
     @Test
-    fun the_heatmap_axes_are_the_grids_axes_with_their_origin_step_and_count() {
+    fun the_heatmap_axes_are_the_grids_axes_a_downward_axis_drawn_as_its_depth() {
         val axes = rootOf().props("parallel-runs.heatmap")["axes"]!!.jsonObject
         assertEquals(500.0, axes["x"]!!.jsonObject["step"]!!.jsonPrimitive.double)
         assertEquals(3.0, axes["x"]!!.jsonObject["count"]!!.jsonPrimitive.double)
-        assertEquals(-250.0, axes["y"]!!.jsonObject["step"]!!.jsonPrimitive.double)
+        assertEquals(250.0, axes["y"]!!.jsonObject["step"]!!.jsonPrimitive.double)
         assertEquals("mm", axes["y"]!!.jsonObject["unit"]!!.jsonPrimitive.content)
     }
 
