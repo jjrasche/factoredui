@@ -51,7 +51,7 @@ private fun siteOfView(engine: ServedEngine, siteFile: Path, timings: Timings): 
     siteSpec(engine, engine.worlds(), readSiteScreen(Files.readString(siteFile)), timings)
 
 private fun specOfView(engine: ServedEngine, world: EngineWorld, view: WorldView, timings: Timings): JsonObject =
-    view.site?.let { siteOfView(engine, it, timings) } ?: view.screen?.let { screenSpec(engine, world, it, timings) } ?: overviewSpec(engine, world, timings)
+    view.site?.let { siteOfView(engine, it, timings) } ?: view.field?.let { timings.timed("spec") { fieldSpecOfFile(it) } } ?: view.screen?.let { screenSpec(engine, world, it, timings) } ?: overviewSpec(engine, world, timings)
 
 private fun drawFailure(problem: Throwable, subject: String): String = "Cannot draw $subject: ${problem.message ?: problem::class.simpleName}"
 

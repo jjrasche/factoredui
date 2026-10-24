@@ -6,10 +6,12 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
+import java.nio.file.Files
+import java.nio.file.Path
 
 class FieldFormatException(message: String) : IllegalArgumentException(message)
 
-data class FieldScreen(val title: String, val world: String, val gridPath: String, val inletPath: String, val outletPath: String, val layouts: List<String>, val ramp: String)
+data class FieldScreen(val title: String, val world: String, val gridPath: String, val inletPath: String, val outletPath: String, val layouts: List<String>, val ramp: String, val answersFile: String? = null)
 
 private const val FRAME_PATH = "frame"
 
@@ -24,7 +26,23 @@ fun readFieldScreen(text: String): FieldScreen {
     return FieldScreen(
         (root["title"] as? JsonPrimitive)?.content.orEmpty(), textIn(root, "world"), textIn(root, "grid"),
         textIn(root, "inlet"), textIn(root, "outlet"), layouts, (root["ramp"] as? JsonPrimitive)?.content ?: "heat",
+        (root["answers"] as? JsonPrimitive)?.takeIf { it.isString }?.content,
     )
+}
+
+/** The file of answers a field view names, beside the view; null when the view names none. */
+fun answersFileOf(viewFile: Path, screen: FieldScreen): Path? = screen.answersFile?.let { viewFile.toAbsolutePath().parent.resolve(it) }
+
+private fun answersOf(viewFile: Path, screen: FieldScreen): Map<String, JsonObject> {
+    val file = answersFileOf(viewFile, screen) ?: throw FieldFormatException("the field view names no 'answers' file, and the engine's solver is not wired to give one yet")
+    val root = runCatching { Json.parseToJsonElement(Files.readString(file)) }.getOrNull() as? JsonObject ?: throw FieldFormatException("the answers file ${file.fileName} is not a JSON object")
+    return root.mapValues { (layout, answer) -> answer as? JsonObject ?: throw FieldFormatException("the answer for '$layout' is not an object") }
+}
+
+/** The page a field view file draws, from the answers file it names. */
+fun fieldSpecOfFile(viewFile: Path): JsonObject {
+    val screen = readFieldScreen(Files.readString(viewFile))
+    return fieldScreenSpec(screen, answersOf(viewFile, screen))
 }
 
 private fun elementAt(answer: JsonObject, path: String): JsonElement? =

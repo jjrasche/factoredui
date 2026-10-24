@@ -42,9 +42,20 @@ private fun enginePinOf(worldFile: Path): String =
 private fun siteFileOf(worldFile: Path, viewId: String?): Path? =
     viewId?.let { worldFile.toAbsolutePath().parent.resolve("views").resolve(it + ".site.json") }?.takeIf { Files.isRegularFile(it) }
 
-/** What one served page depends on: the world's id, the view asked for, the world file's bytes, each pinned domain file's bytes, the engine pin beside the world and the site file of a site view. A change in any is a different key. */
+private fun fieldFileOf(worldFile: Path, viewId: String?): Path? =
+    viewId?.let { worldFile.toAbsolutePath().parent.resolve("views").resolve("$it.field.json") }?.takeIf { Files.isRegularFile(it) }
+
+private fun fieldAnswersOf(fieldFile: Path?): Path? =
+    fieldFile?.let { file -> runCatching { readFieldScreen(Files.readString(file)) }.getOrNull()?.let { answersFileOf(file, it) } }
+
+private fun viewFilesDigest(worldFile: Path, viewId: String?): String {
+    val field = fieldFileOf(worldFile, viewId)
+    return listOfNotNull(siteFileOf(worldFile, viewId), field, fieldAnswersOf(field)).joinToString(",") { sha256OfFile(it) }
+}
+
+/** What one served page depends on: the world's id, the view asked for, the world file's bytes, each pinned domain file's bytes, the engine pin beside the world and the files of a site or field view. A change in any is a different key. */
 fun worldSpecKey(worldId: String, viewId: String?, worldFile: Path): String =
-    sha256Of(listOf(worldId, viewId.orEmpty(), sha256OfFile(worldFile), usedJarsOf(worldFile).joinToString(",") { sha256OfFile(it) }, enginePinOf(worldFile), siteFileOf(worldFile, viewId)?.let(::sha256OfFile).orEmpty()).joinToString("|"))
+    sha256Of(listOf(worldId, viewId.orEmpty(), sha256OfFile(worldFile), usedJarsOf(worldFile).joinToString(",") { sha256OfFile(it) }, enginePinOf(worldFile), viewFilesDigest(worldFile, viewId)).joinToString("|"))
 
 internal class WorldSpec(val worldId: String, val key: String, val worldFile: Path, val body: ByteArray, val isClean: Boolean)
 
