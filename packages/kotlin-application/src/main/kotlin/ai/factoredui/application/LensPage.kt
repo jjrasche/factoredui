@@ -103,6 +103,8 @@ private fun elsewhere(describing: Describing?, file: SystemFile, expansion: Expa
     ).map(::inDark) + oldCards.map(::inDark)
 }
 
+internal fun shadedWorld(volume: JsonObject): JsonObject = fullWorld(volume, mapOf("ground" to WORLD_GROUND, "lighting" to "sun"))
+
 private fun pageSpec(root: JsonObject): JsonObject =
     JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "root" to root))
 
@@ -123,7 +125,7 @@ fun buildLensPageSpec(
     traced: Traced? = null,
 ): JsonObject {
     val geometry = geometried?.geometry
-    val shaded = volumeNode(file, expansion, overlaying?.overlay, geometry, built?.build?.stageOf)?.let { fullWorld(it, mapOf("ground" to WORLD_GROUND, "lighting" to "sun")) }
+    val shaded = volumeNode(file, expansion, overlaying?.overlay, geometry, built?.build?.stageOf)?.let(::shadedWorld)
     val blueprint = geometry?.let { fullWorld(blueprintVolumeNode(it, expansion), visible = BLUEPRINT_PATH) }
     val drawn = systemOrder(file, expansion).filter { name -> expansion.objects.any { it.system == name } || expansion.instances.any { it.system == name } }
     val notes = listOfNotNull(
@@ -132,11 +134,15 @@ fun buildLensPageSpec(
     val drawings = geometry?.let { listOf(withVisible(inDark(blueprintDrawingsNode(it)), "ui.blueprint")) }.orEmpty()
     val bodyContent = notes + drawings + selectedPanels(describing, file, drawn) + viewPanels(boarded, sampled, built, traced) + systemList(drawn, views(boarded, sampled, built, traced), describing) + elsewhere(describing, file, expansion, solving, ranked)
     if (shaded == null && blueprint == null) return pageSpec(noDrawingPage(bodyContent, geometried?.failure?.let { "No drawing: the geometry could not be read." } ?: "This world has no drawing."))
+    return dockedPage(listOfNotNull(shaded, blueprint), blueprint != null, bodyContent)
+}
+
+/** The drawing filling the screen, the strip over its top, and the dock sliding up over its bottom with [bodyContent] in it. */
+internal fun dockedPage(world: List<JsonObject>, hasBlueprint: Boolean, bodyContent: List<JsonObject>): JsonObject {
     val body = specNode(
         "dock.body", "column", mapOf("gap" to 12, "padding" to GUTTER_DP),
         listOf(withVisible(textNode("dock.tapped", "{$SELECTION_CARD}", color = INK), SELECTION_CARD)) + bodyContent,
     )
     val dock = specNode("dock", "column", mapOf("anchor" to "bottom", "sheet" to mapOf("closed_dp" to DOCK_CLOSED_DP, "open_dp" to DOCK_OPEN_DP), "background" to DOCK), listOf(body))
-    val world = listOfNotNull(shaded, blueprint)
-    return pageSpec(specNode("root", "stack", mapOf("fill" to true, "background" to HUD), world + listOf(topStrip(blueprint != null), dock)))
+    return pageSpec(specNode("root", "stack", mapOf("fill" to true, "background" to HUD), world + listOf(topStrip(hasBlueprint), dock)))
 }

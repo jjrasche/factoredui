@@ -7,9 +7,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 private const val SCREEN_SUFFIX = ".screen.json"
+private const val SITE_SUFFIX = ".site.json"
 private const val OVERVIEW = "overview"
 
-class WorldView(val id: String, val label: String, val screen: Path?)
+class WorldView(val id: String, val label: String, val screen: Path?, val site: Path? = null)
 
 data class WorldLabel(val id: String, val short: String, val title: String?)
 
@@ -38,6 +39,19 @@ private fun screensBeside(world: EngineWorld): List<WorldView> {
     }
 }
 
+private fun isSiteOf(world: EngineWorld, file: Path): Boolean =
+    runCatching { readSiteScreen(Files.readString(file)).world == world.id }.getOrDefault(false)
+
+private fun sitesBeside(world: EngineWorld): List<WorldView> {
+    val directory = world.path.toAbsolutePath().parent?.resolve("views") ?: return emptyList()
+    if (!Files.isDirectory(directory)) return emptyList()
+    val files = Files.list(directory).use { listing -> listing.filter { it.fileName.toString().endsWith(SITE_SUFFIX) && isSiteOf(world, it) }.sorted().toList() }
+    return files.map { file ->
+        val id = file.fileName.toString().removeSuffix(SITE_SUFFIX)
+        WorldView(id, viewLabelOf(id), null, file)
+    }
+}
+
 private fun readsAsSystem(world: EngineWorld): Boolean = runCatching { readSystemFile(Files.readString(world.path)) }.isSuccess
 
-fun viewsOf(world: EngineWorld): List<WorldView> = screensBeside(world) + listOfNotNull(if (readsAsSystem(world)) WorldView(OVERVIEW, viewLabelOf(OVERVIEW), null) else null)
+fun viewsOf(world: EngineWorld): List<WorldView> = screensBeside(world) + sitesBeside(world) + listOfNotNull(if (readsAsSystem(world)) WorldView(OVERVIEW, viewLabelOf(OVERVIEW), null) else null)

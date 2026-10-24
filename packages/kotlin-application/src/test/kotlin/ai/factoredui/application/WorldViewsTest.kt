@@ -47,3 +47,24 @@ class WorldViewsTest {
         assertEquals(emptyList(), viewsOf(EngineWorld("gone", Path.of("no-such-directory", "world.json"))))
     }
 }
+
+class SiteViewsTest {
+    private fun siteWorld(siteWorld: String): EngineWorld {
+        val directory = Files.createTempDirectory("world")
+        val file = directory.resolve("w.json").also { Files.writeString(it, """{ "id": "w", "title": "W", "systems": {} }""") }
+        Files.writeString(Files.createDirectories(directory.resolve("views")).resolve("big.site.json"), """{"world": "$siteWorld", "members": [{"label": "a", "world": "w"}]}""")
+        return EngineWorld("w", file)
+    }
+
+    @Test
+    fun a_site_file_naming_this_world_is_a_view_before_the_overview() {
+        val views = viewsOf(siteWorld("w"))
+        assertEquals(listOf("big", "overview"), views.map { it.id })
+        assertEquals("Big", views.first().label)
+    }
+
+    @Test
+    fun a_site_file_naming_another_world_is_not_a_view_of_this_one() {
+        assertEquals(listOf("overview"), viewsOf(siteWorld("elsewhere")).map { it.id })
+    }
+}

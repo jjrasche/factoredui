@@ -47,8 +47,11 @@ private fun screenSpec(engine: EngineRuntime, world: EngineWorld, screenFile: Pa
 private fun overviewSpec(engine: EngineRuntime, world: EngineWorld, timings: Timings): JsonObject =
     Json.parseToJsonElement(buildLensSpecBody(PageSource(world.path, engine, null, null, null, null), timings).toString(Charsets.UTF_8)) as JsonObject
 
-private fun specOfView(engine: EngineRuntime, world: EngineWorld, view: WorldView, timings: Timings): JsonObject =
-    view.screen?.let { screenSpec(engine, world, it, timings) } ?: overviewSpec(engine, world, timings)
+private fun siteOfView(engine: ServedEngine, siteFile: Path, timings: Timings): JsonObject =
+    siteSpec(engine, engine.worlds(), readSiteScreen(Files.readString(siteFile)), timings)
+
+private fun specOfView(engine: ServedEngine, world: EngineWorld, view: WorldView, timings: Timings): JsonObject =
+    view.site?.let { siteOfView(engine, it, timings) } ?: view.screen?.let { screenSpec(engine, world, it, timings) } ?: overviewSpec(engine, world, timings)
 
 private fun drawFailure(problem: Throwable, subject: String): String = "Cannot draw $subject: ${problem.message ?: problem::class.simpleName}"
 

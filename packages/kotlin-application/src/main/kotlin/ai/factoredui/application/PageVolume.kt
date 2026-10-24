@@ -62,7 +62,7 @@ private fun boxNode(placed: Placed, baseMm: Double): Map<String, Any?> {
     )
 }
 
-private fun measuredBoxes(geometry: Geometry): List<Map<String, Any?>> = geometry.pieces.map { piece ->
+internal fun measuredBoxes(geometry: Geometry): List<Map<String, Any?>> = geometry.pieces.map { piece ->
     mapOf(
         "id" to piece.id, "style" to (piece.material ?: piece.system), "x_mm" to piece.xMm + piece.dxMm / 2, "y_mm" to piece.yMm + piece.dyMm / 2, "z_mm" to piece.zMm,
         "width_mm" to piece.dxMm, "depth_mm" to piece.dyMm, "height_mm" to piece.dzMm, "rotation_deg" to 0.0, "estimate" to false,

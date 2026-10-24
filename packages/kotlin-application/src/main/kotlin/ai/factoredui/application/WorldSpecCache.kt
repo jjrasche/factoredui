@@ -39,9 +39,12 @@ private fun usedJarsOf(worldFile: Path): List<Path> {
 private fun enginePinOf(worldFile: Path): String =
     worldFile.toAbsolutePath().parent.resolve(ENGINE_PIN_FILE).takeIf { Files.isRegularFile(it) }?.let { Files.readString(it).trim() } ?: "no engine pin"
 
-/** What one served page depends on: the world's id, the view asked for, the world file's bytes, each pinned domain file's bytes and the engine pin beside the world. A change in any is a different key. */
+private fun siteFileOf(worldFile: Path, viewId: String?): Path? =
+    viewId?.let { worldFile.toAbsolutePath().parent.resolve("views").resolve(it + ".site.json") }?.takeIf { Files.isRegularFile(it) }
+
+/** What one served page depends on: the world's id, the view asked for, the world file's bytes, each pinned domain file's bytes, the engine pin beside the world and the site file of a site view. A change in any is a different key. */
 fun worldSpecKey(worldId: String, viewId: String?, worldFile: Path): String =
-    sha256Of(listOf(worldId, viewId.orEmpty(), sha256OfFile(worldFile), usedJarsOf(worldFile).joinToString(",") { sha256OfFile(it) }, enginePinOf(worldFile)).joinToString("|"))
+    sha256Of(listOf(worldId, viewId.orEmpty(), sha256OfFile(worldFile), usedJarsOf(worldFile).joinToString(",") { sha256OfFile(it) }, enginePinOf(worldFile), siteFileOf(worldFile, viewId)?.let(::sha256OfFile).orEmpty()).joinToString("|"))
 
 internal class WorldSpec(val worldId: String, val key: String, val worldFile: Path, val body: ByteArray, val isClean: Boolean)
 
