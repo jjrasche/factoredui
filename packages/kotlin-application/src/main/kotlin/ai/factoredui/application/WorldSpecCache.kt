@@ -48,9 +48,16 @@ private fun fieldFileOf(worldFile: Path, viewId: String?): Path? =
 private fun fieldAnswersOf(fieldFile: Path?): Path? =
     fieldFile?.let { file -> runCatching { readFieldScreen(Files.readString(file)) }.getOrNull()?.let { answersFileOf(file, it) } }
 
+private fun cardsFileOf(worldFile: Path, viewId: String?): Path? =
+    viewId?.removeSuffix("-blueprint")?.let { worldFile.toAbsolutePath().parent.resolve("views").resolve("$it.cards.json") }?.takeIf { Files.isRegularFile(it) }
+
+private fun cardsAnswersOf(cardsFile: Path?): Path? =
+    cardsFile?.let { file -> runCatching { readCardsScreen(Files.readString(file)) }.getOrNull()?.let { cardsAnswersFileOf(file, it) } }
+
 private fun viewFilesDigest(worldFile: Path, viewId: String?): String {
     val field = fieldFileOf(worldFile, viewId)
-    return listOfNotNull(siteFileOf(worldFile, viewId), field, fieldAnswersOf(field)).joinToString(",") { sha256OfFile(it) }
+    val cards = cardsFileOf(worldFile, viewId)
+    return listOfNotNull(siteFileOf(worldFile, viewId), field, fieldAnswersOf(field), cards, cardsAnswersOf(cards)).joinToString(",") { sha256OfFile(it) }
 }
 
 /** What one served page depends on: the world's id, the view asked for, the world file's bytes, each pinned domain file's bytes, the engine pin beside the world and the files of a site or field view. A change in any is a different key. */
