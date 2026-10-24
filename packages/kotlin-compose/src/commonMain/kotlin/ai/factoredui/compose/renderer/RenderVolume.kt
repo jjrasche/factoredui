@@ -13,8 +13,11 @@ import ai.factoredui.compose.volume.VolumeBox
 import ai.factoredui.compose.volume.VolumeLegendEntry
 import ai.factoredui.compose.volume.VolumeRead
 import ai.factoredui.compose.volume.VolumeSpanMm
+import ai.factoredui.compose.volume.BoxRings
 import ai.factoredui.compose.volume.Direction
 import ai.factoredui.compose.volume.UP
+import ai.factoredui.compose.volume.boxFaceNormals
+import ai.factoredui.compose.volume.boxRings
 import ai.factoredui.compose.volume.footprintCorners
 import ai.factoredui.compose.volume.shadowOutline
 import ai.factoredui.compose.volume.sideNormal
@@ -131,12 +134,15 @@ private fun faceShades(ground: List<Pair<Double, Double>>, sun: Direction?): Lis
     if (sun == null) listOf(1f) + SIDE_SHADES.toList()
     else listOf(sunShade(UP, sun).toFloat()) + ground.indices.map { i -> sideNormal(ground[i], ground[(i + 1) % 4])?.let { sunShade(it, sun).toFloat() } ?: 1f }
 
+private fun pitchedFaceShades(rings: BoxRings, sun: Direction?): List<Float> =
+    if (sun == null) listOf(1f) + SIDE_SHADES.toList() else boxFaceNormals(rings).map { sunShade(it, sun).toFloat() }
+
 private fun projectBox(box: VolumeBox, eye: Vec3, sun: Direction?, project: (Vec3) -> Offset?): Pair<Float, ProjectedBox>? {
-    val ground = footprintCorners(box)
-    val low = ground.map { worldOf(it.first, it.second, box.zMm) }
-    val high = ground.map { worldOf(it.first, it.second, box.zMm + box.heightMm) }
+    val rings = boxRings(box)
+    val low = rings.low.map { worldOf(it.xMm, it.yMm, it.zMm) }
+    val high = rings.high.map { worldOf(it.xMm, it.yMm, it.zMm) }
     val faceCorners = listOf(high) + low.indices.map { i -> listOf(low[i], low[(i + 1) % 4], high[(i + 1) % 4], high[i]) }
-    val shades = faceShades(ground, sun)
+    val shades = if (box.pitchDeg == 0.0) faceShades(footprintCorners(box), sun) else pitchedFaceShades(rings, sun)
     val projected = faceCorners.map { corners -> corners.map(project) }
     if (projected.any { face -> face.any { it == null } }) return null
     val centre = (low + high).reduce { sum, point -> sum + point } * (1f / 8f)

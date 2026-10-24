@@ -51,10 +51,9 @@ fun convexHull(points: List<Pair<Double, Double>>): List<Pair<Double, Double>> {
 
 /** Where a box's shadow falls on the ground at [groundMm]: its eight corners slid along the sun's rays down to that height, as a convex outline in east-north pairs. */
 fun shadowOutline(box: VolumeBox, groundMm: Double, sun: Direction = SUN): List<Pair<Double, Double>> {
-    val corners = footprintCorners(box)
-    val points = listOf(box.zMm, box.zMm + box.heightMm).flatMap { z ->
-        val drop = max(0.0, z - groundMm)
-        corners.map { (x, y) -> (x - sun.x / sun.z * drop) to (y - sun.y / sun.z * drop) }
+    val points = boxRings(box).all.map { corner ->
+        val drop = max(0.0, corner.zMm - groundMm)
+        (corner.xMm - sun.x / sun.z * drop) to (corner.yMm - sun.y / sun.z * drop)
     }
     return convexHull(points)
 }
