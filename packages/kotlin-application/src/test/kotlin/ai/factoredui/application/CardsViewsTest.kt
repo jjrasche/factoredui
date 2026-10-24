@@ -27,7 +27,7 @@ class CardsViewsTest {
         val (world, file) = worldWithCards("w")
         val views = viewsOf(world)
         assertEquals(listOf("stool", "stool-blueprint", "overview"), views.map { it.id })
-        assertEquals(listOf("Stool", "Stool blueprint", "Overview"), views.map { it.label })
+        assertEquals(listOf("Stool", "Blueprint", "Overview"), views.map { it.label })
         assertEquals(file, views.first().cards)
         assertTrue(views[1].blueprint)
     }

@@ -33,6 +33,7 @@ private const val DIMENSION_STYLE = "dimension"
 private const val PIECE_STYLE = "piece"
 private const val END_CARD = "end"
 private const val VIEW_HEIGHT_DP = 240
+private const val STOOL_HEIGHT_DP = 260
 
 private fun gcdOf(a: Int, b: Int): Int = if (b == 0) a else gcdOf(b, a % b)
 
@@ -118,6 +119,25 @@ private fun navigation(index: Int, last: Int): JsonObject = specNode(
 private fun withAction(node: JsonObject, params: Map<String, Any?>): JsonObject =
     JsonObject(node + ("action" to jsonOf(mapOf("action" to "set_binding", "params" to params))))
 
+private val PART_STROKES = listOf("#5aa9ff", "#ffb347", "#7bd88f", "#f78fb3", "#c3a6ff")
+
+private fun boxOf(part: CardsPart): Map<String, Any?> = mapOf(
+    "id" to part.id, "style" to part.name, "x_mm" to part.xMm + part.dxMm / 2, "y_mm" to part.yMm + part.dyMm / 2, "z_mm" to part.zMm,
+    "width_mm" to part.dxMm, "depth_mm" to part.dyMm, "height_mm" to part.dzMm, "rotation_deg" to 0.0, "estimate" to false,
+)
+
+/** The whole stool in 3D, this step's boards drawn as normal and the rest ghosted; a step that adds no board shows the stool as it stands. */
+private fun stoolPicture(prefix: String, step: CardsStep, parts: List<CardsPart>): JsonObject {
+    val names = parts.map { it.name }.distinct()
+    return specNode(
+        "$prefix.stool", "volume",
+        mapOf(
+            "height" to STOOL_HEIGHT_DP, "boxes" to parts.map(::boxOf), "grade_mm" to 0, "styles" to names.mapIndexed { n, name -> name to mapOf("stroke" to PART_STROKES[n % PART_STROKES.size]) }.toMap(),
+            "legend" to names.mapIndexed { n, name -> mapOf("label" to name, "style" to name) }, "highlight" to step.parts, "empty_text" to "No boards to draw.",
+        ),
+    )
+}
+
 private fun stepCard(index: Int, count: Int, step: CardsStep, parts: List<CardsPart>): JsonObject {
     val prefix = "card.$index"
     val own = step.parts.map { id -> parts.first { it.id == id } }
@@ -125,10 +145,9 @@ private fun stepCard(index: Int, count: Int, step: CardsStep, parts: List<CardsP
     val screws = plainText("$prefix.screws", if (step.screws == 0) "No screws in this step." else "Screws: ${step.screws}", bold = true)
     val body = listOf(
         plainText("$prefix.title", "Step ${index + 1} of $count: ${step.title}", variant = "subheading", bold = true),
+        stoolPicture(prefix, step, parts),
         specNode("$prefix.parts", "column", mapOf("gap" to 4), partNodes), screws,
         plainText("$prefix.adult", "Adult: ${step.adult}", variant = "caption", color = MUTED),
-        plainText("$prefix.child46", "Child, ages 4 to 6: ${step.child46}", variant = "caption", color = MUTED),
-        plainText("$prefix.child710", "Child, ages 7 to 10: ${step.child710}", variant = "caption", color = MUTED),
         plainText("$prefix.ask46", "Ask, ages 4 to 6: ${step.ask46}", variant = "subheading"),
         plainText("$prefix.ask710", "Ask, ages 7 to 10: ${step.ask710}", variant = "subheading"),
         specNode("$prefix.reveal", "toggle", mapOf("label" to "Show what answers it", "value" to "{reveal.$index}")),
@@ -191,16 +210,16 @@ private const val TICK_FRACTION = 0.4
 private fun dimensionShapes(prefix: String, horizontalLow: Double, horizontalHigh: Double, verticalLow: Double, verticalHigh: Double): List<Map<String, Any?>> {
     val below = verticalLow - OFFSET_MM
     val left = horizontalLow - OFFSET_MM
-    fun label(id: String, x: Double, y: Double, text: String, dy: Int) = mapOf("id" to id, "kind" to "label", "style" to DIMENSION_STYLE, "x_mm" to x, "y_mm" to y, "text" to text, "align" to "center", "dx_dp" to 0, "dy_dp" to dy)
+    fun label(id: String, x: Double, y: Double, text: String, align: String, dx: Int, dy: Int) = mapOf("id" to id, "kind" to "label", "style" to DIMENSION_STYLE, "x_mm" to x, "y_mm" to y, "text" to text, "align" to align, "dx_dp" to dx, "dy_dp" to dy)
     return listOf(
         lineShape("$prefix.width", DIMENSION_STYLE, horizontalLow, below, horizontalHigh, below),
         lineShape("$prefix.width.start", DIMENSION_STYLE, horizontalLow, below - OFFSET_MM * TICK_FRACTION, horizontalLow, below + OFFSET_MM * TICK_FRACTION),
         lineShape("$prefix.width.end", DIMENSION_STYLE, horizontalHigh, below - OFFSET_MM * TICK_FRACTION, horizontalHigh, below + OFFSET_MM * TICK_FRACTION),
-        label("$prefix.width.text", (horizontalLow + horizontalHigh) / 2, below, "${inchesText(horizontalHigh - horizontalLow)} in", 14),
+        label("$prefix.width.text", (horizontalLow + horizontalHigh) / 2, below, "${inchesText(horizontalHigh - horizontalLow)} in", "center", 0, 14),
         lineShape("$prefix.height", DIMENSION_STYLE, left, verticalLow, left, verticalHigh),
         lineShape("$prefix.height.start", DIMENSION_STYLE, left - OFFSET_MM * TICK_FRACTION, verticalLow, left + OFFSET_MM * TICK_FRACTION, verticalLow),
         lineShape("$prefix.height.end", DIMENSION_STYLE, left - OFFSET_MM * TICK_FRACTION, verticalHigh, left + OFFSET_MM * TICK_FRACTION, verticalHigh),
-        label("$prefix.height.text", left, (verticalLow + verticalHigh) / 2, "${inchesText(verticalHigh - verticalLow)} in", -8),
+        label("$prefix.height.text", left, (verticalLow + verticalHigh) / 2, "${inchesText(verticalHigh - verticalLow)} in", "end", -10, 0),
     )
 }
 
@@ -210,12 +229,17 @@ private fun viewNode(projection: Projection, parts: List<CardsPart>): JsonObject
         val (vLow, vHigh) = projection.vertical(part)
         rectShape("blueprint.${projection.id}.${part.id}", PIECE_STYLE, hLow, vLow, hHigh - hLow, vHigh - vLow)
     }
+    val names = parts.map { part ->
+        val (hLow, hHigh) = projection.horizontal(part)
+        val (vLow, vHigh) = projection.vertical(part)
+        mapOf("id" to "name.${projection.id}.${part.id}", "kind" to "label", "style" to DIMENSION_STYLE, "x_mm" to (hLow + hHigh) / 2, "y_mm" to (vLow + vHigh) / 2, "text" to part.name, "align" to "center", "dx_dp" to 0, "dy_dp" to 0)
+    }
     val hLow = parts.minOf { projection.horizontal(it).first }
     val hHigh = parts.maxOf { projection.horizontal(it).second }
     val vLow = parts.minOf { projection.vertical(it).first }
     val vHigh = parts.maxOf { projection.vertical(it).second }
     val styles = mapOf(PIECE_STYLE to mapOf("stroke" to SHEET_INK, "weight" to 1.6), DIMENSION_STYLE to mapOf("stroke" to "#444444", "weight" to 1.0))
-    val plan = specNode("blueprint.${projection.id}", "plan", mapOf("flex" to 1, "ground" to SHEET_GROUND, "shapes" to bodies + dimensionShapes("dim.${projection.id}", hLow, hHigh, vLow, vHigh), "styles" to styles, "legend" to emptyList<Any>(), "empty_text" to "Nothing to draw."))
+    val plan = specNode("blueprint.${projection.id}", "plan", mapOf("flex" to 1, "ground" to SHEET_GROUND, "shapes" to bodies + names + dimensionShapes("dim.${projection.id}", hLow, hHigh, vLow, vHigh), "styles" to styles, "legend" to emptyList<Any>(), "empty_text" to "Nothing to draw."))
     return specNode("blueprint.${projection.id}.view", "column", mapOf("gap" to 4, "flex" to 1), listOf(plainText("blueprint.${projection.id}.title", projection.title, variant = "caption", bold = true, color = SHEET_INK), specNode("blueprint.${projection.id}.box", "column", mapOf("height" to VIEW_HEIGHT_DP), listOf(plan))))
 }
 

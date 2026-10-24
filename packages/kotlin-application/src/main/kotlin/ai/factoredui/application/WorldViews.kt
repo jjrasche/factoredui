@@ -77,7 +77,7 @@ private fun cardsBeside(world: EngineWorld): List<WorldView> {
     val files = Files.list(directory).use { listing -> listing.filter { it.fileName.toString().endsWith(CARDS_SUFFIX) && isCardsOf(world, it) }.sorted().toList() }
     return files.flatMap { file ->
         val id = file.fileName.toString().removeSuffix(CARDS_SUFFIX)
-        listOf(WorldView(id, viewLabelOf(id), null, null, null, file, false), WorldView(id + BLUEPRINT_SUFFIX, viewLabelOf(id) + " blueprint", null, null, null, file, true))
+        listOf(WorldView(id, viewLabelOf(id), null, null, null, file, false), WorldView(id + BLUEPRINT_SUFFIX, "Blueprint", null, null, null, file, true))
     }
 }
 

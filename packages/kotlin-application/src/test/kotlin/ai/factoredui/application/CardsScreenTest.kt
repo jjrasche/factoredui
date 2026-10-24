@@ -103,4 +103,31 @@ class CardsScreenTest {
         assertTrue(spec["root"]!!.jsonObject.nodes().any { it["id"]!!.jsonPrimitive.content == "blueprint.front" })
         assertTrue(Json.encodeToString(kotlinx.serialization.json.JsonElement.serializer(), spec).contains("12 in"))
     }
+
+    @Test
+    fun every_part_is_named_in_every_view_so_a_small_rectangle_never_reads_as_a_hole() {
+        val views = cardsBlueprintSpec(screen, planOf())["root"]!!.jsonObject.nodes().filter { it["type"]?.jsonPrimitive?.content == "plan" }
+        assertEquals(3, views.size)
+        views.forEach { view ->
+            val labels = (view["props"] as JsonObject)["shapes"]!!.jsonArray.map { it.jsonObject }.filter { it["kind"]!!.jsonPrimitive.content == "label" }.map { it["text"]!!.jsonPrimitive.content }
+            assertTrue("Side board" in labels && "Top step" in labels)
+        }
+    }
+
+    @Test
+    fun a_vertical_dimension_label_ends_beside_its_line_and_never_on_it() {
+        val front = cardsBlueprintSpec(screen, planOf())["root"]!!.jsonObject.nodes().first { it["id"]!!.jsonPrimitive.content == "blueprint.front" }
+        val label = (front["props"] as JsonObject)["shapes"]!!.jsonArray.map { it.jsonObject }.first { it["id"]!!.jsonPrimitive.content == "dim.front.height.text" }
+        assertEquals("end", label["align"]!!.jsonPrimitive.content)
+        assertTrue(label["dx_dp"]!!.jsonPrimitive.content.toInt() < 0)
+    }
+
+    @Test
+    fun each_card_shows_the_whole_stool_with_this_steps_boards_highlighted_and_the_rest_ghosted() {
+        val root = cardsSpec(screen, planOf())["root"]!!.jsonObject
+        fun props(id: String) = root.nodes().first { it["id"]!!.jsonPrimitive.content == id }["props"] as JsonObject
+        assertEquals(listOf("side", "top"), props("card.1.stool")["highlight"]!!.jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(emptyList(), props("card.0.stool")["highlight"]!!.jsonArray.toList())
+        assertEquals(listOf("side", "top"), props("card.0.stool")["boxes"]!!.jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.content })
+    }
 }
