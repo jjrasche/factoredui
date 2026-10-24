@@ -53,6 +53,9 @@ private fun siteOfView(engine: ServedEngine, siteFile: Path, timings: Timings): 
 private fun specOfView(engine: ServedEngine, world: EngineWorld, view: WorldView, timings: Timings): JsonObject =
     view.site?.let { siteOfView(engine, it, timings) } ?: view.field?.let { timings.timed("spec") { fieldSpecOfFile(it) } } ?: view.cards?.let { timings.timed("spec") { cardsSpecOfFile(it, view.blueprint) } } ?: view.screen?.let { screenSpec(engine, world, it, timings) } ?: overviewSpec(engine, world, timings)
 
+/** A view the reader prints is the page alone, with no world bar over it; every other view is framed by the bar. */
+internal fun framedPage(spec: JsonObject, bar: JsonObject, state: Map<String, Any?>, view: WorldView): JsonObject = if (view.blueprint) spec else withWorldBar(spec, bar, state)
+
 private fun drawFailure(problem: Throwable, subject: String): String = "Cannot draw $subject: ${problem.message ?: problem::class.simpleName}"
 
 private class DrawnWorldPage(val page: JsonObject, val worldId: String? = null, val worldFile: Path? = null)
@@ -68,7 +71,7 @@ private fun pageOf(engine: ServedEngine, worldId: String?, viewId: String?, timi
     val bar = worldBar(labels, chosen, views, view)
     val state = barState(chosen)
     if (view == null) return DrawnWorldPage(noticePage(bar, if (viewId == null) "${chosen.id} has no view to draw." else "${chosen.id} has no view named '$viewId'.", state))
-    return runCatching { DrawnWorldPage(withWorldBar(specOfView(engine, chosen, view, timings), bar, state), chosen.id, chosen.path) }
+    return runCatching { DrawnWorldPage(framedPage(specOfView(engine, chosen, view, timings), bar, state, view), chosen.id, chosen.path) }
         .getOrElse { DrawnWorldPage(noticePage(bar, drawFailure(it, "${view.label} of ${chosen.id}"), state)) }
 }
 

@@ -32,6 +32,7 @@ private const val SHEET_INK = "#111111"
 private const val DIMENSION_STYLE = "dimension"
 private const val PIECE_STYLE = "piece"
 private const val END_CARD = "end"
+private const val VIEW_HEIGHT_DP = 240
 
 private fun gcdOf(a: Int, b: Int): Int = if (b == 0) a else gcdOf(b, a % b)
 
@@ -214,18 +215,23 @@ private fun viewNode(projection: Projection, parts: List<CardsPart>): JsonObject
     val vLow = parts.minOf { projection.vertical(it).first }
     val vHigh = parts.maxOf { projection.vertical(it).second }
     val styles = mapOf(PIECE_STYLE to mapOf("stroke" to SHEET_INK, "weight" to 1.6), DIMENSION_STYLE to mapOf("stroke" to "#444444", "weight" to 1.0))
-    val plan = specNode("blueprint.${projection.id}", "plan", mapOf("ground" to SHEET_GROUND, "shapes" to bodies + dimensionShapes("dim.${projection.id}", hLow, hHigh, vLow, vHigh), "styles" to styles, "legend" to emptyList<Any>(), "empty_text" to "Nothing to draw."))
-    return specNode("blueprint.${projection.id}.view", "column", mapOf("gap" to 4), listOf(plainText("blueprint.${projection.id}.title", projection.title, variant = "caption", bold = true, color = SHEET_INK), plan))
+    val plan = specNode("blueprint.${projection.id}", "plan", mapOf("flex" to 1, "ground" to SHEET_GROUND, "shapes" to bodies + dimensionShapes("dim.${projection.id}", hLow, hHigh, vLow, vHigh), "styles" to styles, "legend" to emptyList<Any>(), "empty_text" to "Nothing to draw."))
+    return specNode("blueprint.${projection.id}.view", "column", mapOf("gap" to 4, "flex" to 1), listOf(plainText("blueprint.${projection.id}.title", projection.title, variant = "caption", bold = true, color = SHEET_INK), specNode("blueprint.${projection.id}.box", "column", mapOf("height" to VIEW_HEIGHT_DP), listOf(plan))))
 }
 
 /** One light page for black-and-white letter paper: the stool's front, side and top in inches, the parts list and the steps. */
 fun cardsBlueprintSpec(screen: CardsScreen, plan: CardsPlan): JsonObject {
     val parts = plan.parts.mapIndexed { n, part -> plainText("blueprint.part.$n", partLine(part), color = SHEET_INK) }
     val steps = plan.steps.mapIndexed { n, step -> plainText("blueprint.step.$n", "${n + 1}. ${step.title}" + (if (step.parts.isEmpty()) "" else ": " + step.parts.joinToString(", ") { id -> plan.parts.first { it.id == id }.name }) + (if (step.screws > 0) " (${step.screws} screws)" else ""), variant = "caption", color = SHEET_INK) }
-    val children = listOf(plainText("blueprint.title", "${screen.title.ifBlank { plan.title }}: blueprint", variant = "subheading", bold = true, color = SHEET_INK)) +
-        PROJECTIONS.map { viewNode(it, plan.parts) } +
-        listOf(plainText("blueprint.parts.title", "Parts", variant = "subheading", bold = true, color = SHEET_INK)) + parts +
-        listOf(plainText("blueprint.steps.title", "Steps", variant = "subheading", bold = true, color = SHEET_INK)) + steps
+    val views = specNode("blueprint.views", "row", mapOf("gap" to 8), PROJECTIONS.map { viewNode(it, plan.parts) })
+    val lists = specNode(
+        "blueprint.lists", "column", mapOf("gap" to 8),
+        listOf(
+            specNode("blueprint.parts", "column", mapOf("gap" to 2), listOf(plainText("blueprint.parts.title", "Parts", variant = "subheading", bold = true, color = SHEET_INK)) + parts),
+            specNode("blueprint.steps", "column", mapOf("gap" to 2), listOf(plainText("blueprint.steps.title", "Steps", variant = "subheading", bold = true, color = SHEET_INK)) + steps),
+        ),
+    )
+    val children = listOf(plainText("blueprint.title", "${screen.title.ifBlank { plan.title }}: blueprint", variant = "subheading", bold = true, color = SHEET_INK), lists, views)
     return page(children, "light", emptyMap(), SHEET_GROUND)
 }
 

@@ -53,4 +53,14 @@ class CardsViewsTest {
         assertNotEquals(cards, worldSpecKey("w", "stool", world.path))
         assertNotEquals(blueprint, worldSpecKey("w", "stool-blueprint", world.path))
     }
+
+    @Test
+    fun a_blueprint_view_is_the_page_alone_and_a_cards_view_is_framed_by_the_world_bar() {
+        val (world, _) = worldWithCards("w")
+        val views = viewsOf(world)
+        val spec = cardsSpecOfFile(views[0].cards!!, false)
+        val bar = worldBar(listOf(labelOf(world)), world, views, views[0])
+        assertEquals(spec, framedPage(spec, bar, emptyMap(), views[1]))
+        assertNotEquals(spec, framedPage(spec, bar, emptyMap(), views[0]))
+    }
 }
