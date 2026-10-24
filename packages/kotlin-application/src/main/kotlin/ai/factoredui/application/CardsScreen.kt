@@ -33,7 +33,7 @@ private const val DIMENSION_STYLE = "dimension"
 private const val PIECE_STYLE = "piece"
 private const val END_CARD = "end"
 private const val VIEW_HEIGHT_DP = 240
-private const val STOOL_HEIGHT_DP = 220
+private const val STOOL_HEIGHT_DP = 300
 
 private fun gcdOf(a: Int, b: Int): Int = if (b == 0) a else gcdOf(b, a % b)
 
