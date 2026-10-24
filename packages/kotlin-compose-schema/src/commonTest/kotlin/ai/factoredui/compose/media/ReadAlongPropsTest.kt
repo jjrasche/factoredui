@@ -19,7 +19,7 @@ private const val THREE_WORDS = """[{"t":"In","at":0.0,"end":0.4},{"t":"the","at
 
 class ReadAlongPropsTest {
     @Test
-    fun the_words_are_read_with_their_times_verse_labels_and_paragraph_starts() {
+    fun the_words_are_read_with_their_times_marker_labels_and_paragraph_starts() {
         val props = readFrom("""{"words":[{"t":"In","at":0,"end":0.4,"v":"1","p":true},{"t":"the","at":0.4,"end":0.7}]}""")
         assertEquals(listOf(ReadAlongWord("In", 0.0, 0.4, "1", true), ReadAlongWord("the", 0.4, 0.7, null, false)), props.words)
         assertEquals(emptyList(), props.notices)

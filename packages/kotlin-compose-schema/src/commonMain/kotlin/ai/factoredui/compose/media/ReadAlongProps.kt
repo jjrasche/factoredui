@@ -4,7 +4,7 @@ import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.schema.actionRefOf
 
-data class ReadAlongWord(val text: String, val at: Double, val end: Double, val verse: String?, val startsParagraph: Boolean)
+data class ReadAlongWord(val text: String, val at: Double, val end: Double, val marker: String?, val startsParagraph: Boolean)
 
 data class ReadAlongProps(
     val words: List<ReadAlongWord>,

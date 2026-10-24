@@ -268,7 +268,7 @@ A `row` with an `action` is tappable too, dispatching it like a card does.
 The `scene` family reads the engine's scene payload (`SceneView`, read by `readSceneView`).
 
 - Units are millimetres.
-- Layers: ground, surface, footprints, instances, water, boundaries and annotations. Each carries a version.
+- Layers: ground, surface, footprints, instances, flows (named water in older payloads, still read), boundaries and annotations. Each carries a version.
 - Every layer but annotations also carries provenance. Annotations carry a version only.
 - Footprints carry `stack_level` and `z_mm`.
 - Types carry an id, label, tags, `footprint_mm` and `height_mm`. Any other type key is ignored.
@@ -356,7 +356,7 @@ A `button` with `size: "xl"` is at least 72 dp tall with a large label, for a th
 
 - `words`: `[{ t, at, end, v?, p? }]`. `t` is the run as shown, `at` and `end` are where it starts and stops on the number line, `v` is an optional small marker label drawn before it (a verse number, a line number, a speaker), `p: true` starts a new paragraph.
 - `position`: the numeric binding. The run with `at <= position < end` is lit, the previous one stays lit between runs, and none is lit before the first. The node only reads it; whatever moves the number (an `audio` node writing the same path) moves the text.
-- A tap on a run writes that run's `at` to `position`, so the thing that follows the number (an `audio` node) seeks. `on_word_tap` is also told `index`, `at` and `verse`.
+- A tap on a run writes that run's `at` to `position`, so the thing that follows the number (an `audio` node) seeks. `on_word_tap` is also told `index`, `at` and `marker` (also given as `verse`, its older name).
 - `highlight_color` (a token name or `#rrggbb`; default the accent, with text chosen for contrast), `size` (sp), `follow` (default true: the lit run is kept in view; a drag pauses it until the next tap).
 - It scrolls inside itself, so the page does not. Give it `flex: 1` in a column to fill the space left under fixed controls, or a `height`; with neither it is at most 420 dp tall.
 - `/tree` node: `text` is the whole text, `props` carries `lit_index`, `lit_text` and `word_count`.

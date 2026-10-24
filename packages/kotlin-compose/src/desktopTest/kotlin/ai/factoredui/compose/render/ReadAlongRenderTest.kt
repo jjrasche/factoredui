@@ -84,9 +84,9 @@ class ReadAlongRenderTest {
     }
 
     @Test
-    fun a_tap_also_tells_the_word_tap_action_the_index_start_and_verse() = ReadAlongPage(""","on_word_tap":{"action":"tapped","params":{"book":"b1"}}""").use { page ->
+    fun a_tap_also_tells_the_word_tap_action_the_index_start_and_marker() = ReadAlongPage(""","on_word_tap":{"action":"tapped","params":{"book":"b1"}}""").use { page ->
         page.settle()
         page.tapLastLine()
-        assertEquals(listOf(mapOf<String, Any?>("book" to "b1", "index" to 3.0, "at" to 5.0, "verse" to "2")), page.tapped)
+        assertEquals(listOf(mapOf<String, Any?>("book" to "b1", "index" to 3.0, "at" to 5.0, "marker" to "2", "verse" to "2")), page.tapped)
     }
 }

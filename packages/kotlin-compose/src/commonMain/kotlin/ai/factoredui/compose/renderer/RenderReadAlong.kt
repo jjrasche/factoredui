@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
 private const val DEFAULT_MAX_HEIGHT_DP = 420
-private const val VERSE_SCALE = 0.65f
+private const val MARKER_SCALE = 0.65f
 private const val PARAGRAPH_BREAK = "\n\n"
 private const val LIT_LINE_BAND = 0.3f
 
@@ -54,7 +54,7 @@ private fun runTextOf(words: List<ReadAlongWord>, markerStyle: SpanStyle): RunTe
         words.forEachIndexed { index, word ->
             if (word.startsParagraph && index > 0) append(PARAGRAPH_BREAK)
             hitStarts[index] = length
-            word.verse?.let { label ->
+            word.marker?.let { label ->
                 pushStyle(markerStyle)
                 append(label)
                 pop()
@@ -98,7 +98,7 @@ internal fun RenderReadAlong(node: SpecNode, resolvedProps: Map<String, Any?>, c
     val position = (resolvedProps["position"] as? Number)?.toDouble() ?: 0.0
     val lit = litWordIndex(props.words, position)
     val bodySize = props.sizeSp?.sp ?: theme.type.body.size.sp
-    val marker = SpanStyle(fontSize = bodySize * VERSE_SCALE, baselineShift = BaselineShift.Superscript, color = theme.muted)
+    val marker = SpanStyle(fontSize = bodySize * MARKER_SCALE, baselineShift = BaselineShift.Superscript, color = theme.muted)
     val run = remember(props.words, bodySize, theme) { runTextOf(props.words, marker) }
     val (highlight, litInk) = litColoursOf(theme, props.highlightColor)
     val shown = remember(run, lit, highlight, litInk) { withLitWord(run, lit, highlight, litInk) }
@@ -184,7 +184,8 @@ private fun tapWord(props: ReadAlongProps, word: ReadAlongWord, index: Int, posi
     val params: Map<String, SpecValue> = action.params + mapOf(
         "index" to SpecValue.NumberValue(index.toDouble()),
         "at" to SpecValue.NumberValue(word.at),
-        "verse" to SpecValue.StringValue(word.verse.orEmpty()),
+        "marker" to SpecValue.StringValue(word.marker.orEmpty()),
+        "verse" to SpecValue.StringValue(word.marker.orEmpty()),
     )
     scope.launch { context.dispatch(nodeId, action.copy(params = params)) }
 }
