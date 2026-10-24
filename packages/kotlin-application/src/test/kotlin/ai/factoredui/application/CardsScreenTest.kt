@@ -128,6 +128,7 @@ class CardsScreenTest {
         fun props(id: String) = root.nodes().first { it["id"]!!.jsonPrimitive.content == id }["props"] as JsonObject
         assertEquals(listOf("side", "top"), props("card.1.stool")["highlight"]!!.jsonArray.map { it.jsonPrimitive.content })
         assertEquals(emptyList(), props("card.0.stool")["highlight"]!!.jsonArray.toList())
+        assertEquals(listOf("side", "top"), props("card.0.stool")["focus"]!!.jsonArray.map { it.jsonPrimitive.content })
         assertEquals(listOf("side", "top"), props("card.0.stool")["boxes"]!!.jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.content })
     }
 }

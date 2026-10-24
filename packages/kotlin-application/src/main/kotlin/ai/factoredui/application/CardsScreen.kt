@@ -33,7 +33,7 @@ private const val DIMENSION_STYLE = "dimension"
 private const val PIECE_STYLE = "piece"
 private const val END_CARD = "end"
 private const val VIEW_HEIGHT_DP = 240
-private const val STOOL_HEIGHT_DP = 260
+private const val STOOL_HEIGHT_DP = 220
 
 private fun gcdOf(a: Int, b: Int): Int = if (b == 0) a else gcdOf(b, a % b)
 
@@ -133,7 +133,7 @@ private fun stoolPicture(prefix: String, step: CardsStep, parts: List<CardsPart>
         "$prefix.stool", "volume",
         mapOf(
             "height" to STOOL_HEIGHT_DP, "boxes" to parts.map(::boxOf), "grade_mm" to 0, "styles" to names.mapIndexed { n, name -> name to mapOf("stroke" to PART_STROKES[n % PART_STROKES.size]) }.toMap(),
-            "legend" to names.mapIndexed { n, name -> mapOf("label" to name, "style" to name) }, "highlight" to step.parts, "empty_text" to "No boards to draw.",
+            "legend" to names.mapIndexed { n, name -> mapOf("label" to name, "style" to name) }, "highlight" to step.parts, "focus" to parts.map { it.id }, "empty_text" to "No boards to draw.",
         ),
     )
 }
