@@ -78,6 +78,7 @@ import kotlin.math.PI
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.sin
+import kotlin.math.tan
 
 private const val VOLUME_MAX_WIDTH_DP = 560f
 private const val PICK_REACH_DP = 12f
@@ -87,7 +88,9 @@ private const val FRAMING_YAW = -(PI / 4).toFloat()
 private const val FRAMING_PITCH = (PI / 6).toFloat()
 private const val FRAMING_SLACK = 1.1f
 private const val FIT_FILL = 0.95f
-private const val FIT_PASSES = 4
+private val OVERVIEW_FOV = (PI / 3).toFloat()
+private val CLOSE_FOV = (PI / 6).toFloat()
+private const val FIT_PASSES = 6
 private val FIT_PITCHES_DEG = listOf(10, 15, 20, 25, 30, 40, 50)
 private const val MIN_FIT_SCALE = 0.05f
 private const val SMALLEST_VIEW_DISTANCE = 0.02f
@@ -123,6 +126,7 @@ private val NOTICE_INK = Color(0xFFB3261E)
 private fun worldOf(xMm: Double, yMm: Double, zMm: Double) = Vec3((xMm / MM_PER_UNIT).toFloat(), (zMm / MM_PER_UNIT).toFloat(), (-yMm / MM_PER_UNIT).toFloat())
 
 private fun frameCamera(camera: Camera, span: VolumeSpanMm) {
+    camera.fovYRadians = OVERVIEW_FOV
     camera.target = worldOf((span.west + span.east) / 2, (span.south + span.north) / 2, (span.floor + span.ceiling) / 2)
     val radius = hypot(hypot(span.east - span.west, span.north - span.south), span.ceiling - span.floor).toFloat() / MM_PER_UNIT / 2
     camera.setOrbit(FRAMING_YAW, FRAMING_PITCH, radius / sin(camera.fovYRadians / 2) * FRAMING_SLACK)
@@ -133,32 +137,43 @@ private fun radiansOf(degrees: Int): Float = (degrees * PI / 180).toFloat()
 private fun spanCorners(span: VolumeSpanMm): List<Vec3> =
     listOf(span.west, span.east).flatMap { x -> listOf(span.south, span.north).flatMap { y -> listOf(span.floor, span.ceiling).map { z -> worldOf(x, y, z) } } }
 
-/** Moves the camera nearer or farther along its line of sight until the span's corners fill [FIT_FILL] of the drawing's width or height, whichever they reach first; false when a corner is behind the camera. */
-private fun settleDistance(camera: Camera, span: VolumeSpanMm, widthPx: Float, heightPx: Float): Boolean {
+/** Moves the camera's target so the span's corners are centred in the drawing, then nearer or farther along its line of sight until they fill [FIT_FILL] of its width or height, whichever they reach first; false when a corner is behind the camera. */
+private fun settleView(camera: Camera, span: VolumeSpanMm, widthPx: Float, heightPx: Float): Boolean {
     repeat(FIT_PASSES) {
         val view = camera.viewMatrix()
         val lens = camera.projectionMatrix(widthPx / heightPx)
         val corners = spanCorners(span).map { it.project(view, lens, widthPx, heightPx) }
         if (corners.any { !it.visible }) return false
-        val reachedX = (corners.maxOf { it.x } - corners.minOf { it.x }) / (widthPx * FIT_FILL)
-        val reachedY = (corners.maxOf { it.y } - corners.minOf { it.y }) / (heightPx * FIT_FILL)
+        val left = corners.minOf { it.x }
+        val right = corners.maxOf { it.x }
+        val top = corners.minOf { it.y }
+        val bottom = corners.maxOf { it.y }
+        val worldPerPx = 2f * camera.distance * tan(camera.fovYRadians / 2) / heightPx
+        val forward = (camera.target - camera.eyePosition()).normalize()
+        val rightward = forward.cross(Vec3(0f, 1f, 0f)).normalize()
+        val upward = rightward.cross(forward).normalize()
+        camera.target = camera.target + rightward * (((left + right) / 2 - widthPx / 2) * worldPerPx) + upward * (-((top + bottom) / 2 - heightPx / 2) * worldPerPx)
+        val reachedX = (right - left) / (widthPx * FIT_FILL)
+        val reachedY = (bottom - top) / (heightPx * FIT_FILL)
         camera.setOrbit(camera.yawRadians, camera.pitchRadians, camera.distance * max(reachedX, reachedY).coerceAtLeast(MIN_FIT_SCALE))
     }
     return true
 }
 
-/** Frames [span] as [frameCamera] does, then looks at it from whichever of [FIT_PITCHES_DEG] lets it fill the drawing most, so a wide short drawing is given a low view and a tall one a high view. */
+/** Frames [span] as [frameCamera] does, then looks at it through a narrower lens from whichever of [FIT_PITCHES_DEG] lets it fill the drawing most, so a wide short drawing is given a low view and a tall one a high view. */
 private fun fitCamera(camera: Camera, span: VolumeSpanMm, widthPx: Float, heightPx: Float) {
     frameCamera(camera, span)
     if (widthPx <= 0f || heightPx <= 0f) return
+    camera.fovYRadians = CLOSE_FOV
+    val framedTarget = camera.target
     val framedDistance = camera.distance
-    val best = FIT_PITCHES_DEG.mapNotNull { degrees ->
+    fun lookFrom(degrees: Int): Boolean {
+        camera.target = framedTarget
         camera.setOrbit(FRAMING_YAW, radiansOf(degrees), framedDistance)
-        if (settleDistance(camera, span, widthPx, heightPx)) camera.distance to degrees else null
-    }.minByOrNull { it.first }
-    val pitch = best?.second ?: return frameCamera(camera, span)
-    camera.setOrbit(FRAMING_YAW, radiansOf(pitch), framedDistance)
-    settleDistance(camera, span, widthPx, heightPx)
+        return settleView(camera, span, widthPx, heightPx)
+    }
+    val best = FIT_PITCHES_DEG.mapNotNull { degrees -> if (lookFrom(degrees)) degrees to camera.distance else null }.minByOrNull { it.second }?.first
+    if (best == null) frameCamera(camera, span) else lookFrom(best)
 }
 
 private data class ProjectedFace(val corners: List<Offset>, val shade: Float)
