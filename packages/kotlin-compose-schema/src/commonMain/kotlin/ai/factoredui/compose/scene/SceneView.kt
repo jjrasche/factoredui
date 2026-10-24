@@ -70,7 +70,7 @@ data class InstanceLayer(
 
 data class FlowLine(val id: String, val pointsMm: List<Pair<Long, Long>>, val quantity: Double, val unit: String, val kind: String)
 
-data class WaterLayer(val version: Long, val flow: List<FlowLine>, val provenance: Provenance)
+data class FlowLayer(val version: Long, val flow: List<FlowLine>, val provenance: Provenance)
 
 data class BoundaryPolygon(val id: String, val kind: String, val pointsMm: List<Pair<Long, Long>>)
 
@@ -99,7 +99,7 @@ data class SceneView(
     val surface: SurfaceLayer? = null,
     val footprints: FootprintLayer? = null,
     val instances: InstanceLayer? = null,
-    val water: WaterLayer? = null,
+    val flows: FlowLayer? = null,
     val boundaries: BoundaryLayer? = null,
     val grid: GridSpec? = null,
     val annotations: AnnotationLayer? = null,

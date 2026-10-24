@@ -32,7 +32,7 @@ private fun everyLayerScene(): SceneView = SceneView(
         ),
         provenance = RECORDED,
     ),
-    water = WaterLayer(6, listOf(FlowLine("f", listOf(0L to 0L, 10L to 20L), 1.5, "L/s", "swale")), RECORDED),
+    flows = FlowLayer(6, listOf(FlowLine("f", listOf(0L to 0L, 10L to 20L), 1.5, "L/s", "swale")), RECORDED),
     boundaries = BoundaryLayer(8, listOf(BoundaryPolygon("b", "parcel", listOf(0L to 0L, 610L to 0L, 610L to 610L))), RECORDED),
     grid = GridSpec("square", 1.0, 2, 2),
     annotations = AnnotationLayer(9, listOf(Annotation("FOOTPRINT", "b1", "share", "32% of its limit", "the host", 0.32), Annotation("INSTANCE", null, "note", "leaning", null))),
@@ -163,6 +163,14 @@ class SceneViewReaderTest {
             readSceneView(sceneWith(""""boundaries":{"polygons":[{"id":"b","kind":"parcel","points_mm":[[0,0],[610]]}]}"""))
         }
         assertEquals("points_mm[1] must be a pair of whole millimetres, not [610]", failure.message)
+    }
+
+    @Test
+    fun a_flow_layer_under_flows_or_under_its_older_key_water_is_the_same_layer() {
+        val layer = """{"flow":[{"id":"f","points_mm":[[0,5]],"quantity":1.0,"unit":"L/s","kind":"swale"}]}"""
+        val named = readSceneView(sceneWith(""""flows":$layer""")).flows
+        assertEquals(named, readSceneView(sceneWith(""""water":$layer""")).flows)
+        assertEquals(1, named?.flow?.size)
     }
 
     @Test

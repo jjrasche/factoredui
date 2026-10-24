@@ -23,7 +23,7 @@ private fun sceneObject(scene: SceneView, georeference: Georeference?): JsonObje
         scene.surface?.let { put("surface", surfaceJson(it)) }
         scene.footprints?.let { put("footprints", footprintsJson(it)) }
         scene.instances?.let { put("instances", instancesJson(it)) }
-        scene.water?.let { put("water", waterJson(it)) }
+        scene.flows?.let { put("flows", flowsJson(it)) }
         scene.boundaries?.let { put("boundaries", boundariesJson(it)) }
         scene.grid?.let { put("grid", gridJson(it)) }
         scene.annotations?.let { put("annotations", annotationsJson(it)) }
@@ -148,7 +148,7 @@ private fun flowJson(line: FlowLine): JsonObject = JsonObject(
     ),
 )
 
-private fun waterJson(layer: WaterLayer): JsonObject = JsonObject(
+private fun flowsJson(layer: FlowLayer): JsonObject = JsonObject(
     mapOf(
         "version" to JsonPrimitive(layer.version),
         "flow" to JsonArray(layer.flow.map(::flowJson)),

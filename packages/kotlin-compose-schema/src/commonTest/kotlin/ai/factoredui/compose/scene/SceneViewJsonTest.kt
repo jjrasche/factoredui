@@ -31,7 +31,7 @@ private fun everyLayerScene(): SceneView = SceneView(
         listOf(SceneInstance("t1", "oak", 1500, 1600, 12, 0.0, 9000, 2500, listOf("tree"), ProvenanceKind.MEASURED)),
         provenance = SURVEYED,
     ),
-    water = WaterLayer(6, listOf(FlowLine("f1", listOf(0L to 0L, 10L to 20L), 1.5, "L/s", "swale")), SURVEYED),
+    flows = FlowLayer(6, listOf(FlowLine("f1", listOf(0L to 0L, 10L to 20L), 1.5, "L/s", "swale")), SURVEYED),
     boundaries = BoundaryLayer(8, listOf(BoundaryPolygon("b1", "parcel", listOf(0L to 0L, 3048L to 0L, 3048L to 3048L))), SURVEYED),
     grid = GridSpec("square", 5.0, 2, 2),
     annotations = AnnotationLayer(9, listOf(Annotation("instance", "t1", "note", "leaning", null))),
@@ -54,7 +54,7 @@ class SceneViewJsonTest {
     @Test
     fun everyLayerKeepsItsVersionAndItsProvenance() {
         val json = parsed(everyLayerScene())
-        val expectedVersions = mapOf("ground" to 7, "surface" to 3, "footprints" to 4, "instances" to 5, "water" to 6, "boundaries" to 8, "annotations" to 9)
+        val expectedVersions = mapOf("ground" to 7, "surface" to 3, "footprints" to 4, "instances" to 5, "flows" to 6, "boundaries" to 8, "annotations" to 9)
         expectedVersions.forEach { (layer, version) ->
             assertEquals(version, json.getValue(layer).jsonObject.getValue("version").jsonPrimitive.int, layer)
         }
@@ -67,8 +67,8 @@ class SceneViewJsonTest {
     fun everyProvenanceKindIsNamedByItsTagRecordedComputedOrGuessed() {
         assertEquals(listOf("recorded", "computed", "guessed"), ProvenanceKind.entries.map { it.tag })
         val tags = ProvenanceKind.entries.map { kind ->
-            val scene = everyLayerScene().copy(ground = null, surface = null, footprints = null, instances = null, boundaries = null, water = WaterLayer(1, emptyList(), Provenance(kind)))
-            parsed(scene).getValue("water").jsonObject.getValue("provenance").jsonObject.getValue("tag").jsonPrimitive.content
+            val scene = everyLayerScene().copy(ground = null, surface = null, footprints = null, instances = null, boundaries = null, flows = FlowLayer(1, emptyList(), Provenance(kind)))
+            parsed(scene).getValue("flows").jsonObject.getValue("provenance").jsonObject.getValue("tag").jsonPrimitive.content
         }
         assertEquals(listOf("recorded", "computed", "guessed"), tags)
     }
@@ -105,7 +105,7 @@ class SceneViewJsonTest {
     fun landCoverAndWaterAndFootprintsCarryTheirOwnShapes() {
         val json = parsed(everyLayerScene())
         assertEquals(listOf(1, 1, 2, 2), json.getValue("surface").jsonObject.getValue("class_ids").jsonArray.map { it.jsonPrimitive.int })
-        assertEquals(1.5, json.getValue("water").jsonObject.getValue("flow").jsonArray.single().jsonObject.getValue("quantity").jsonPrimitive.double)
+        assertEquals(1.5, json.getValue("flows").jsonObject.getValue("flow").jsonArray.single().jsonObject.getValue("quantity").jsonPrimitive.double)
         assertEquals(2400, json.getValue("footprints").jsonObject.getValue("items").jsonArray.single().jsonObject.getValue("height_mm").jsonPrimitive.long)
     }
 
@@ -113,7 +113,7 @@ class SceneViewJsonTest {
     fun aLayerTheSceneLacksIsLeftOutNotWrittenEmpty() {
         val bare = SceneView(25, 25.0, 1, 1, WindowMm(0, 0, 7620, 7620), emptyList())
         val json = parsed(bare)
-        assertFalse(json.containsKey("water"))
+        assertFalse(json.containsKey("flows"))
         assertFalse(json.containsKey("georeference"))
     }
 

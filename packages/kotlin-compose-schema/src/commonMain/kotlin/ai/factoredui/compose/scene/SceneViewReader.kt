@@ -63,7 +63,7 @@ private fun sceneViewOf(root: JsonObject): SceneView {
         surface = root.obj("surface")?.let(::surfaceOf),
         footprints = root.obj("footprints")?.let(::footprintsOf),
         instances = root.obj("instances")?.let(::instancesOf),
-        water = root.obj("water")?.let(::waterOf),
+        flows = (root.obj("flows") ?: root.obj("water"))?.let(::flowsOf),
         boundaries = root.obj("boundaries")?.let(::boundariesOf),
         grid = root.obj("grid")?.let { gridOf(it, root.requiredDouble("tile_feet")) },
         annotations = root.obj("annotations")?.let(::annotationsOf),
@@ -218,7 +218,7 @@ private fun instanceOf(item: JsonObject): SceneInstance = SceneInstance(
 private fun instancesOf(layer: JsonObject): InstanceLayer =
     InstanceLayer(layer.long("version") ?: 0L, layer.objects("items").map(::instanceOf), provenance = provenanceOf(layer))
 
-private fun waterOf(layer: JsonObject): WaterLayer = WaterLayer(
+private fun flowsOf(layer: JsonObject): FlowLayer = FlowLayer(
     version = layer.long("version") ?: 0L,
     flow = layer.objects("flow").map { line ->
         FlowLine(
