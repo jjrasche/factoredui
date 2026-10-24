@@ -45,6 +45,7 @@ private val minimalNodeOf: Map<SpecNodeType, String> = mapOf(
     SpecNodeType.TABLE to """{ "id": "n", "type": "table", "props": {} }""",
     SpecNodeType.PLAN to """{ "id": "n", "type": "plan", "props": { "shapes": [ { "id": "a", "kind": "rect", "x_mm": 0, "y_mm": 0, "width_mm": 1000, "depth_mm": 600 } ] } }""",
     SpecNodeType.CHART to """{ "id": "n", "type": "chart", "props": { "rows": [ { "t": 0, "v": 1 }, { "t": 1, "v": 3 } ], "x": "t", "series": [ { "id": "v", "path": "v" } ] } }""",
+    SpecNodeType.HEATMAP to """{ "id": "n", "type": "heatmap", "props": { "x": { "origin": 0, "step": 1, "count": 2 }, "y": { "origin": 0, "step": 1, "count": 2 }, "frames": [ [1, 2, 3, 4] ], "min": 1, "max": 4, "ramp": "heat" } }""",
     SpecNodeType.STAT to """{ "id": "n", "type": "stat", "props": { "label": "Heat loss", "value": 1842, "unit": "W", "status": "warn" } }""",
     SpecNodeType.VOLUME to """{ "id": "n", "type": "volume", "props": { "boxes": [ { "id": "a", "x_mm": 0, "y_mm": 0, "z_mm": 0, "width_mm": 1000, "depth_mm": 600, "height_mm": 500 } ] } }""",
 )

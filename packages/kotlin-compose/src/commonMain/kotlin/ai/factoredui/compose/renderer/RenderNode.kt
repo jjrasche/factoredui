@@ -313,6 +313,7 @@ private fun RenderNodeByType(
         SpecNodeType.GRAPH -> RenderGraph(node, resolvedProps, context)
         SpecNodeType.PLAN -> RenderPlan(node, resolvedProps, context)
         SpecNodeType.CHART -> RenderChart(node, resolvedProps, context)
+        SpecNodeType.HEATMAP -> RenderHeatmap(node, resolvedProps)
         SpecNodeType.STAT -> RenderStat(node, resolvedProps)
         SpecNodeType.VOLUME -> RenderVolume(node, resolvedProps, context)
         SpecNodeType.SCENE -> RenderScene(node, resolvedProps, context)

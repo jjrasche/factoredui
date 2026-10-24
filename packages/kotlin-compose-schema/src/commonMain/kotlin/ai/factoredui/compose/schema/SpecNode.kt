@@ -96,6 +96,7 @@ enum class SpecNodeType {
     @SerialName("table") TABLE,
     @SerialName("plan") PLAN,
     @SerialName("chart") CHART,
+    @SerialName("heatmap") HEATMAP,
     @SerialName("stat") STAT,
     @SerialName("volume") VOLUME,
 }

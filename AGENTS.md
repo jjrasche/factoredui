@@ -109,7 +109,7 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart, stat, readalong, sheet.
+column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart, heatmap, stat, readalong, sheet.
 
 - There is no table and no ratio-against-a-limit widget.
 - A table of the engine's views is a `table` (see Tables). Any other table is a `list` with an `itemTemplate`.
@@ -324,6 +324,18 @@ A `chart` draws series of numbers against a numeric x: lines, or areas stacked a
 - `axes`: `{ left: { unit, label }, right: { unit, label } }`. An axis is drawn only when a series is on its side; it spans round tick values that enclose its series (and zero when it holds an area), with `unit` and `label` printed at its top and `unit` after each value read from a series on it. `x_label` is printed before the x end values and the hover's x.
 - Hover: a pointer over the drawing (or a touch pressed on it) reads the row nearest it: a crosshair, a dot on each series, and under the drawing each series' own value, not the edge it is stacked to. The legend, axes, x ticks, plotted values and the hover are in the node's `chart` field of `/tree`; the legend, axis and readout texts also carry accessibility labels `<id>/legend/<i>`, `<id>/axis/...` and `<id>/readout/...`, which are not `/tree` nodes.
 - `empty_text` is drawn when no series can be drawn.
+
+## Heatmap
+
+A `heatmap` draws a grid of numbers as colours, one frame at a time, and knows nothing about what the numbers are. The host names the axes, the range, the ramp and the unit.
+
+- `x`, `y`: each `{ origin, step, count, label }`. `step` is above 0 and `count` is 1 or more. The grid has `x.count` columns and `y.count` rows. `label` is printed under the grid with the axis's first and last value.
+- `frames`: a list of frames, each a flat row-major list of `x.count * y.count` numbers (the first `x.count` are the first row). A cell that is not a number, or missing from a short frame, is left blank, and a short or long frame is named in a notice.
+- `frame`: the index of the frame drawn (usually a binding, driven by a `slider` or a `button`'s `set_binding`); it is held between the first and last frame. With no frames the node draws `empty_text`.
+- Rows run down the screen from the first; `y_up: true` draws the first row at the bottom. The drawing is as wide as its parent and as tall as the axes' extents (`count * step`) make it, between half and four times as wide as tall.
+- `ramp`: `{ stops: [[value, colour], ...], over, legend }` as in `scene`'s colour scale, with values in the data's units, or one of the names `heat`, `cool_warm` and `viridis`, which are spread over `min`..`max`. `min` and `max` (max above min) are required with a name and otherwise default to the first and last stop. A value past the last stop takes the ramp's `over` colour.
+- `unit`: printed after the legend's minimum and maximum. The legend line is the minimum, a gradient bar and the maximum.
+- Tags: `<id>/cells` is the grid, `<id>/legend/min`, `<id>/legend/bar`, `<id>/legend/max`, `<id>/x/first`, `<id>/x/last`, `<id>/x/label` and `<id>/y/label` the texts. The node's record in `/tree` has `text` "frame N of M" and `frame_shown` (the index drawn).
 
 ## Audio and voice
 
