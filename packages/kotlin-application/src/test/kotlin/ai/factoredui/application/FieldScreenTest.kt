@@ -104,6 +104,16 @@ class FieldScreenTest {
     }
 
     @Test
+    fun an_underresolved_layout_says_so_with_both_lengths_and_a_resolved_one_says_nothing() {
+        val resolution = """"resolution": { "near_pipe_cell_m": 0.5, "daily_penetration_m": 0.12, "underresolved": %s, "reason": "r" },"""
+        val flagged = Json.parseToJsonElement(answer(10.0).replaceFirst("{", "{" + resolution.format("true"))).jsonObject
+        val clear = Json.parseToJsonElement(answer(20.0).replaceFirst("{", "{" + resolution.format("false"))).jsonObject
+        val root = fieldScreenSpec(readFieldScreen(VIEW), mapOf("serpentine" to flagged, "parallel-runs" to clear))["root"]!!.jsonObject
+        assertEquals("near-pipe soil coarse: daily storage underresolved (near-pipe cell 0.5 m, daily penetration 0.12 m)", root.props("serpentine.resolution")["value"]!!.jsonPrimitive.content)
+        assertTrue(root.nodes().none { it["id"]!!.jsonPrimitive.content == "parallel-runs.resolution" })
+    }
+
+    @Test
     fun a_layout_with_no_answer_is_refused_by_name() {
         val missing = assertFailsWith<FieldFormatException> { fieldScreenSpec(readFieldScreen(VIEW), answers().minus("parallel-runs")) }
         assertTrue("parallel-runs" in missing.message!!)

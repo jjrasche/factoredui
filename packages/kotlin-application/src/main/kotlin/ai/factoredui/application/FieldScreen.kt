@@ -5,6 +5,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import java.nio.file.Files
 import java.nio.file.Path
@@ -115,8 +116,19 @@ private fun heatmapNode(id: String, field: LayoutField, screen: FieldScreen, low
     )
 }
 
+private fun resolutionNotice(layout: String, answer: JsonObject): JsonObject? {
+    val resolution = answer["resolution"] as? JsonObject ?: return null
+    if ((resolution["underresolved"] as? JsonPrimitive)?.booleanOrNull != true) return null
+    val cell = (resolution["near_pipe_cell_m"] as? JsonPrimitive)?.content
+    val penetration = (resolution["daily_penetration_m"] as? JsonPrimitive)?.content
+    return textNode("$layout.resolution", "near-pipe soil coarse: daily storage underresolved (near-pipe cell $cell m, daily penetration $penetration m)", variant = "caption", bold = true, color = INK)
+}
+
 private fun layoutTab(field: LayoutField, answer: JsonObject, screen: FieldScreen, low: Double, high: Double): JsonObject =
-    specNode(field.layout, "column", mapOf("gap" to 12), listOf(heatmapNode("${field.layout}.heatmap", field, screen, low, high), chartNode("${field.layout}.chart", answer, screen)))
+    specNode(
+        field.layout, "column", mapOf("gap" to 12),
+        listOfNotNull(resolutionNotice(field.layout, answer), heatmapNode("${field.layout}.heatmap", field, screen, low, high), chartNode("${field.layout}.chart", answer, screen)),
+    )
 
 private fun frameControls(frameCount: Int, hours: List<Double>): List<JsonObject> = listOf(
     textNode("frame.caption", "Hour of the day, ${hours.firstOrNull()?.let { "%.0f".format(it) } ?: "0"} to ${hours.lastOrNull()?.let { "%.0f".format(it) } ?: "0"}", variant = "caption", color = MUTED),
