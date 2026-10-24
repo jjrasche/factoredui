@@ -64,7 +64,7 @@ private fun edgesOf(axis: JsonObject): List<Double>? = (axis["edges_mm"] as? Jso
 
 private fun cellCountOf(axis: JsonObject): Int = edgesOf(axis)?.let { it.size - 1 } ?: numberOf(axis, "count").toInt()
 
-private fun feet(millimetres: Double): Double = millimetres / MM_PER_FOOT
+private fun feet(millimetres: Double): Double = Math.round(millimetres / MM_PER_FOOT * 100.0) / 100.0
 
 /** A heatmap axis runs up from its origin; an axis that runs down (z below the floor) is drawn as its depth, so the first row sits at the top of the screen. Lengths in mm are drawn in feet. */
 private fun axisNode(axis: JsonObject, screen: FieldScreen): Map<String, Any?> {

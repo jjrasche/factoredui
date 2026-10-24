@@ -143,4 +143,12 @@ class FieldScreenTest {
     fun a_view_with_no_layouts_is_refused() {
         assertFailsWith<FieldFormatException> { readFieldScreen(VIEW.replace(""""layouts": ["serpentine", "parallel-runs"],""", """"layouts": [],""")) }
     }
+
+    @Test
+    fun feet_are_rounded_to_hundredths_so_an_axis_end_reads_cleanly() {
+        val long = answer(10.0).replace(""""origin_mm": 0, "step_mm": 609.6, "count": 3""", """"edges_mm": [0, 1000, 20500, 20501]""")
+        val answers = mapOf("serpentine" to Json.parseToJsonElement(long).jsonObject, "parallel-runs" to Json.parseToJsonElement(long).jsonObject)
+        val x = fieldScreenSpec(readFieldScreen(VIEW), answers)["root"]!!.jsonObject.props("serpentine.heatmap")["x"]!!.jsonObject
+        assertEquals(listOf(0.0, 3.28, 67.26, 67.26), x["edges"]!!.jsonArray.map { it.jsonPrimitive.double })
+    }
 }
