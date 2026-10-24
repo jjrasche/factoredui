@@ -102,4 +102,11 @@ class VolumeBoxesTest {
         val read = readVolume(listOf(sized + mapOf("id" to "placed", "stage" to 3), sized + mapOf("id" to "never")), null, null, null, null)
         assertEquals(listOf(3.0, null), read.boxes.map { it.stage })
     }
+
+    @Test
+    fun the_step_is_read_from_the_field_the_spec_names() {
+        val sized = mapOf("x_mm" to 0, "y_mm" to 0, "z_mm" to 0, "width_mm" to 1, "depth_mm" to 1, "height_mm" to 1)
+        val read = readVolume(listOf(sized + mapOf("id" to "a", "week" to 5, "stage" to 3)), null, null, null, null, stageField = "week")
+        assertEquals(listOf(5.0), read.boxes.map { it.stage })
+    }
 }

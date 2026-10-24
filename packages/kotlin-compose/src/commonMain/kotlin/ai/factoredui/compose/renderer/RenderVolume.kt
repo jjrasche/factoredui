@@ -256,8 +256,8 @@ private fun DrawScope.drawGhostBox(projected: ProjectedBox, style: PlanStyle, in
     }
 }
 
-private fun DrawScope.drawCurrentOutline(projected: ProjectedBox) {
-    projected.faces.forEach { face -> drawPath(pathOf(face.corners), CURRENT_INK, style = Stroke(width = CURRENT_OUTLINE_DP.dp.toPx())) }
+private fun DrawScope.drawCurrentOutline(projected: ProjectedBox, tint: Color) {
+    projected.faces.forEach { face -> drawPath(pathOf(face.corners), tint, style = Stroke(width = CURRENT_OUTLINE_DP.dp.toPx())) }
 }
 
 /** A box as its edges only: each face is filled with the ground, so a nearer face hides the edges behind it, and the edges are stroked in the style's line. */
@@ -338,8 +338,9 @@ private fun PublishDetailRecord(node: SpecNode, selection: Set<String>, rawDetai
 }
 @Composable
 internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
-    val read = remember(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"], resolvedProps["lines"], resolvedProps["labels"]) {
-        readVolume(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"], resolvedProps["lines"], resolvedProps["labels"])
+    val stageField = resolvedProps["stage_field"] as? String ?: "stage"
+    val read = remember(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"], resolvedProps["lines"], resolvedProps["labels"], stageField) {
+        readVolume(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"], resolvedProps["lines"], resolvedProps["labels"], stageField)
     }
     val details = remember(resolvedProps["details"]) { readSelectionDetails(resolvedProps["details"]) }
     val selection = rememberDrawingSelection(node, resolvedProps["selected"], context)
@@ -358,13 +359,14 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val bottomInsetDp = (resolvedProps["bottom_inset_dp"] as? Number)?.toFloat() ?: 0f
     val blueprint = resolvedProps["mode"] == "blueprint"
     val ground = planColour(resolvedProps["ground"] as? String)
+    val currentTint = planColour(resolvedProps["current_color"] as? String) ?: CURRENT_INK
     val gradeTint = (planColour(resolvedProps["grade_color"] as? String) ?: GRADE_COLOUR).let { it.copy(alpha = (resolvedProps["grade_opacity"] as? Number)?.toFloat()?.coerceIn(0f, 1f) ?: GRADE_OPACITY) }
     Column(modifier = (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).nodeTag(node.id)) {
         read.notices.forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, pickedPath, throughPath, context)
+            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, pickedPath, throughPath, context)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -372,7 +374,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, pickedPath: String?, throughPath: String?, context: RenderContext) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, pickedPath: String?, throughPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
     val camera = remember(span) { Camera().also { frameCamera(it, span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -406,7 +408,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                         sun != null -> drawLitBox(it, style, theme.ink)
                         else -> drawProjectedBox(it, style, theme.ink)
                     }
-                    if (phase == Phase.CURRENT && !blueprint) drawCurrentOutline(it)
+                    if (phase == Phase.CURRENT && !blueprint) drawCurrentOutline(it, currentTint)
                 }
                 val isBuried = { projected: ProjectedBox -> gradeMm != null && !blueprint && projected.box.zMm + projected.box.heightMm < gradeMm - BURIED_TOLERANCE_MM }
                 scene.boxes.filter(isBuried).forEach(::drawBox)

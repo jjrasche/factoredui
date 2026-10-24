@@ -44,7 +44,7 @@ private val SIZE_KEYS = listOf("width_mm", "depth_mm", "height_mm")
 
 private fun numberIn(fields: Map<*, *>, key: String): Double? = (fields[key] as? Number)?.toDouble()?.takeIf { it.isFinite() }
 
-private fun boxOf(index: Int, fields: Map<*, *>): Pair<VolumeBox?, String?> {
+private fun boxOf(index: Int, fields: Map<*, *>, stageField: String): Pair<VolumeBox?, String?> {
     val id = fields["id"] as? String ?: "box $index"
     val x = numberIn(fields, "x_mm")
     val y = numberIn(fields, "y_mm")
@@ -53,7 +53,7 @@ private fun boxOf(index: Int, fields: Map<*, *>): Pair<VolumeBox?, String?> {
     val sizes = SIZE_KEYS.map { numberIn(fields, it) }
     if (sizes.any { it == null || it < 0 }) return null to "volume box '$id': width_mm, depth_mm and height_mm must be numbers of 0 or more; it is not drawn."
     val (width, depth, height) = sizes.map { it!! }
-    return VolumeBox(id, x, y, z, width, depth, height, numberIn(fields, "rotation_deg") ?: 0.0, fields["style"] as? String, fields["estimate"] as? Boolean ?: false, numberIn(fields, "stage")) to null
+    return VolumeBox(id, x, y, z, width, depth, height, numberIn(fields, "rotation_deg") ?: 0.0, fields["style"] as? String, fields["estimate"] as? Boolean ?: false, numberIn(fields, stageField)) to null
 }
 
 private fun legendOf(resolved: Any?): List<VolumeLegendEntry> =
@@ -93,9 +93,9 @@ private fun labelsOf(resolved: Any?): Pair<List<VolumeLabel>, List<String>> {
     return entries.mapNotNull { it.first } to entries.mapNotNull { it.second }
 }
 
-fun readVolume(boxes: Any?, styles: Any?, legend: Any?, lines: Any? = null, labels: Any? = null): VolumeRead {
+fun readVolume(boxes: Any?, styles: Any?, legend: Any?, lines: Any? = null, labels: Any? = null, stageField: String = "stage"): VolumeRead {
     val entries = (boxes as? List<*>).orEmpty().mapIndexed { index, entry ->
-        (entry as? Map<*, *>)?.let { boxOf(index, it) } ?: (null to "volume box $index is not an object; it is not drawn.")
+        (entry as? Map<*, *>)?.let { boxOf(index, it, stageField) } ?: (null to "volume box $index is not an object; it is not drawn.")
     }
     val readStyles = readPlanStyles(styles)
     val drawn = entries.mapNotNull { it.first }
