@@ -18,13 +18,15 @@ private const val VIEW = """{
   "inlet": "series.pipe_inlet_air_c",
   "outlet": "series.pipe_outlet_air_c",
   "layouts": ["serpentine", "parallel-runs"],
+  "labels": { "parallel-runs": "Parallel" },
+  "axis_labels": { "y": "Across the house", "z": "Depth" },
   "ramp": "heat"
 }"""
 
 private fun answer(base: Double, fixture: Boolean = false): String = """{
   ${if (fixture) """"fixture": "made-up numbers, not a simulation",""" else ""}
   "grids": { "soil_temperature_c": { "plane": "across", "at_x_mm": 10000,
-    "axes": [ { "name": "y", "unit": "mm", "origin_mm": 0, "step_mm": 500, "count": 3 }, { "name": "z", "unit": "mm", "origin_mm": 0, "step_mm": -250, "count": 2 } ],
+    "axes": [ { "name": "y", "unit": "mm", "origin_mm": 0, "step_mm": 609.6, "count": 3 }, { "name": "z", "unit": "mm", "origin_mm": 0, "step_mm": -304.8, "count": 2 } ],
     "times_h": [0, 1],
     "values": [ $base, ${base + 1}, ${base + 2}, ${base + 3}, ${base + 4}, ${base + 5},  ${base + 6}, ${base + 7}, ${base + 8}, ${base + 9}, ${base + 10}, ${base + 11} ] } },
   "series": {
@@ -48,8 +50,8 @@ private fun rootOf(fixture: Boolean = false) = specOf(fixture)["root"]!!.jsonObj
 
 class FieldScreenTest {
     @Test
-    fun one_tab_per_layout_the_view_names() {
-        assertEquals(listOf("serpentine", "parallel-runs"), rootOf().props("layouts")["items"]!!.jsonArray.map { it.jsonPrimitive.content })
+    fun one_tab_per_layout_the_view_names_by_its_label_when_it_gives_one() {
+        assertEquals(listOf("serpentine", "Parallel"), rootOf().props("layouts")["items"]!!.jsonArray.map { it.jsonPrimitive.content })
     }
 
     @Test
@@ -63,18 +65,20 @@ class FieldScreenTest {
     @Test
     fun the_heatmap_axes_are_the_grids_axes_a_downward_axis_drawn_as_its_depth() {
         val axes = rootOf().props("parallel-runs.heatmap")
-        assertEquals(500.0, axes["x"]!!.jsonObject["step"]!!.jsonPrimitive.double)
+        assertEquals(2.0, axes["x"]!!.jsonObject["step"]!!.jsonPrimitive.double, 1e-9)
         assertEquals(3.0, axes["x"]!!.jsonObject["count"]!!.jsonPrimitive.double)
-        assertEquals(250.0, axes["y"]!!.jsonObject["step"]!!.jsonPrimitive.double)
-        assertEquals("mm", axes["y"]!!.jsonObject["unit"]!!.jsonPrimitive.content)
+        assertEquals(1.0, axes["y"]!!.jsonObject["step"]!!.jsonPrimitive.double, 1e-9)
+        assertEquals("ft", axes["y"]!!.jsonObject["unit"]!!.jsonPrimitive.content)
+        assertEquals("Depth", axes["y"]!!.jsonObject["label"]!!.jsonPrimitive.content)
+        assertEquals("Across the house", axes["x"]!!.jsonObject["label"]!!.jsonPrimitive.content)
     }
 
     @Test
     fun graded_cells_pass_their_edges_to_the_heatmap_and_count_one_fewer() {
-        val graded = answer(10.0).replace(""""origin_mm": 0, "step_mm": 500, "count": 3""", """"edges_mm": [0, 100, 300, 800]""")
+        val graded = answer(10.0).replace(""""origin_mm": 0, "step_mm": 609.6, "count": 3""", """"edges_mm": [0, 304.8, 914.4, 2438.4]""")
         val answers = mapOf("serpentine" to Json.parseToJsonElement(graded).jsonObject, "parallel-runs" to Json.parseToJsonElement(graded).jsonObject)
         val axes = fieldScreenSpec(readFieldScreen(VIEW), answers)["root"]!!.jsonObject.props("serpentine.heatmap")["x"]!!.jsonObject
-        assertEquals(listOf(0.0, 100.0, 300.0, 800.0), axes["edges"]!!.jsonArray.map { it.jsonPrimitive.double })
+        assertEquals(listOf(0.0, 1.0, 3.0, 8.0), axes["edges"]!!.jsonArray.map { Math.round(it.jsonPrimitive.double * 1e9) / 1e9 })
         assertEquals(3.0, axes["count"]!!.jsonPrimitive.double)
         assertTrue("step" !in axes)
     }
@@ -105,6 +109,12 @@ class FieldScreenTest {
         assertEquals(1.0, hourOne["t"]!!.jsonPrimitive.double)
         assertEquals(31.0, hourOne["inlet"]!!.jsonObject["p1"]!!.jsonPrimitive.double)
         assertEquals(11.0, hourOne["outlet"]!!.jsonObject["p1"]!!.jsonPrimitive.double)
+    }
+
+    @Test
+    fun the_frame_slider_has_its_own_row_above_the_layout_tabs() {
+        val ids = rootOf()["children"]!!.jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.content }
+        assertTrue(ids.indexOf("frame.slider") in 0 until ids.indexOf("layouts"))
     }
 
     @Test

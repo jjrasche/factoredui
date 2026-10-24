@@ -12,9 +12,10 @@ import java.nio.file.Path
 
 class FieldFormatException(message: String) : IllegalArgumentException(message)
 
-data class FieldScreen(val title: String, val world: String, val gridPath: String, val inletPath: String, val outletPath: String, val layouts: List<String>, val ramp: String, val answersFile: String? = null)
+data class FieldScreen(val title: String, val world: String, val gridPath: String, val inletPath: String, val outletPath: String, val layouts: List<String>, val ramp: String, val answersFile: String? = null, val labels: Map<String, String> = emptyMap(), val axisLabels: Map<String, String> = emptyMap())
 
 private const val FRAME_PATH = "frame"
+private const val MM_PER_FOOT = 304.8
 
 private fun textIn(root: JsonObject, key: String): String =
     (root[key] as? JsonPrimitive)?.takeIf { it.isString }?.content ?: throw FieldFormatException("the field view has no '$key' text")
@@ -27,9 +28,12 @@ fun readFieldScreen(text: String): FieldScreen {
     return FieldScreen(
         (root["title"] as? JsonPrimitive)?.content.orEmpty(), textIn(root, "world"), textIn(root, "grid"),
         textIn(root, "inlet"), textIn(root, "outlet"), layouts, (root["ramp"] as? JsonPrimitive)?.content ?: "heat",
-        (root["answers"] as? JsonPrimitive)?.takeIf { it.isString }?.content,
+        (root["answers"] as? JsonPrimitive)?.takeIf { it.isString }?.content, textMapIn(root, "labels"), textMapIn(root, "axis_labels"),
     )
 }
+
+private fun textMapIn(root: JsonObject, key: String): Map<String, String> =
+    (root[key] as? JsonObject).orEmpty().mapValues { (name, value) -> (value as? JsonPrimitive)?.takeIf { it.isString }?.content ?: throw FieldFormatException("the '$key' entry '$name' is not text") }
 
 /** The file of answers a field view names, beside the view; null when the view names none. */
 fun answersFileOf(viewFile: Path, screen: FieldScreen): Path? = screen.answersFile?.let { viewFile.toAbsolutePath().parent.resolve(it) }
@@ -60,13 +64,16 @@ private fun edgesOf(axis: JsonObject): List<Double>? = (axis["edges_mm"] as? Jso
 
 private fun cellCountOf(axis: JsonObject): Int = edgesOf(axis)?.let { it.size - 1 } ?: numberOf(axis, "count").toInt()
 
-/** A heatmap axis runs up from its origin; an axis that runs down (z below the floor) is drawn as its depth, so the first row sits at the top of the screen. */
-private fun axisNode(axis: JsonObject): Map<String, Any?> {
-    val shared = mapOf("count" to cellCountOf(axis), "label" to (axis["name"] as? JsonPrimitive)?.content, "unit" to (axis["unit"] as? JsonPrimitive)?.content)
+private fun feet(millimetres: Double): Double = millimetres / MM_PER_FOOT
+
+/** A heatmap axis runs up from its origin; an axis that runs down (z below the floor) is drawn as its depth, so the first row sits at the top of the screen. Lengths in mm are drawn in feet. */
+private fun axisNode(axis: JsonObject, screen: FieldScreen): Map<String, Any?> {
+    val name = (axis["name"] as? JsonPrimitive)?.content.orEmpty()
+    val shared = mapOf("count" to cellCountOf(axis), "label" to (screen.axisLabels[name] ?: name), "unit" to "ft")
     val edges = edgesOf(axis)
-    if (edges != null) return shared + ("edges" to edges)
-    val origin = numberOf(axis, "origin_mm")
-    val step = numberOf(axis, "step_mm")
+    if (edges != null) return shared + ("edges" to edges.map(::feet))
+    val origin = feet(numberOf(axis, "origin_mm"))
+    val step = feet(numberOf(axis, "step_mm"))
     return if (step < 0) shared + mapOf("origin" to (if (origin == 0.0) 0.0 else -origin), "step" to -step) else shared + mapOf("origin" to origin, "step" to step)
 }
 
@@ -119,7 +126,7 @@ private fun heatmapNode(id: String, field: LayoutField, screen: FieldScreen, low
     return specNode(
         id, "heatmap",
         mapOf(
-            "x" to axisNode(axes[0] as JsonObject), "y" to axisNode(axes[1] as JsonObject),
+            "x" to axisNode(axes[0] as JsonObject, screen), "y" to axisNode(axes[1] as JsonObject, screen),
             "frames" to field.frames, "frame" to "{$FRAME_PATH}", "min" to low, "max" to high, "ramp" to screen.ramp, "unit" to "C",
         ),
     )
@@ -153,8 +160,8 @@ fun fieldScreenSpec(screen: FieldScreen, answers: Map<String, JsonObject>): Json
     val first = fields.first()
     val hours = numbers(first.grid["times_h"])
     val notice = (answers.getValue(first.layout)["fixture"] as? JsonPrimitive)?.content?.let { textNode("fixture.notice", "FIXTURE: $it", variant = "caption", bold = true, color = MUTED) }
-    val tabs = specNode("layouts", "tabs", mapOf("items" to screen.layouts, "selectedIndex" to "{layout}"), fields.map { layoutTab(it, answers.getValue(it.layout), screen, low, high) })
-    val children = listOfNotNull(textNode("screen.title", screen.title, variant = "subheading", bold = true, color = INK), notice, tabs) + frameControls(first.frames.size, hours)
+    val tabs = specNode("layouts", "tabs", mapOf("items" to screen.layouts.map { screen.labels[it] ?: it }, "selectedIndex" to "{layout}"), fields.map { layoutTab(it, answers.getValue(it.layout), screen, low, high) })
+    val children = listOfNotNull(textNode("screen.title", screen.title, variant = "subheading", bold = true, color = INK), notice) + frameControls(first.frames.size, hours) + tabs
     val root = specNode("root", "column", mapOf("gap" to 12, "padding" to 16, "background" to HUD), children)
     return JsonObject(
         mapOf(

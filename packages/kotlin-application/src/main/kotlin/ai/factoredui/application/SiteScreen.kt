@@ -105,10 +105,31 @@ private fun siteVolume(site: SiteScreen, drawn: List<Pair<SiteMember, List<Map<S
     )
 }
 
-private fun assumedNodes(site: SiteScreen): List<JsonObject> =
-    if (site.assumed.isEmpty()) emptyList()
+private val SETTING_PLACEHOLDER = Regex("""\{([a-z0-9_]+)\.([a-z0-9_]+)\}""")
+
+private fun settingMm(world: JsonObject?, system: String, setting: String): Double? =
+    (((world?.get("systems") as? JsonObject)?.get(system) as? JsonObject)?.get("settings") as? JsonObject)?.get(setting)
+        ?.let { (it as? JsonPrimitive)?.takeIf { value -> !value.isString }?.content?.toDoubleOrNull() }
+
+/** A note's {system.setting} words are the world's own value of that setting, in feet and inches, so a changed setting cannot leave old words behind. */
+private fun resolvedNote(line: String, world: JsonObject?): String =
+    SETTING_PLACEHOLDER.replace(line) { match ->
+        val millimetres = settingMm(world, match.groupValues[1], match.groupValues[2])
+            ?: throw SiteFormatException("the note '$line' names ${match.groupValues[1]}.${match.groupValues[2]}, which the site's world does not set")
+        feetAndInches(millimetres)
+    }
+
+private fun siteWorldFile(site: SiteScreen, worlds: List<EngineWorld>): JsonObject? =
+    worlds.firstOrNull { it.id == site.world }?.takeIf { site.assumed.any(SETTING_PLACEHOLDER::containsMatchIn) }
+        ?.let { runCatching { Json.parseToJsonElement(java.nio.file.Files.readString(it.path)) as? JsonObject }.getOrNull() }
+
+private fun assumedNodes(lines: List<String>): List<JsonObject> =
+    if (lines.isEmpty()) emptyList()
     else listOf(textNode("site.assumed.title", "Assumed, not set by Jim", variant = "subheading", bold = true)) +
-        site.assumed.mapIndexed { index, line -> textNode("site.assumed.$index", line, variant = "caption", color = MUTED) }
+        lines.mapIndexed { index, line -> textNode("site.assumed.$index", line, variant = "caption", color = MUTED) }
+
+private fun memberCountNodes(drawn: List<Pair<SiteMember, List<Map<String, Any?>>>>): List<JsonObject> =
+    drawn.map { (member, boxes) -> textNode("site.member.${member.label}", "${member.label}: ${boxes.size} ${if (boxes.size == 1) "piece" else "pieces"}", variant = "caption", color = MUTED) }
 
 /** One solid drawing of every member of [site], each member's geometry moved to its place and repeated along east-west as the site says, with what the site assumes written under it. */
 internal fun siteSpec(engine: EngineRuntime, worlds: List<EngineWorld>, site: SiteScreen, timings: Timings): JsonObject {
@@ -118,5 +139,6 @@ internal fun siteSpec(engine: EngineRuntime, worlds: List<EngineWorld>, site: Si
         member to boxesOfMember(member, geometry)
     }
     val title = textNode("site.title", site.title, variant = "subheading", bold = true)
-    return dockedPage(listOf(shadedWorld(siteVolume(site, drawn))), false, listOf(title) + assumedNodes(site))
+    val world = siteWorldFile(site, worlds)
+    return dockedPage(listOf(shadedWorld(siteVolume(site, drawn))), false, listOf(title) + memberCountNodes(drawn) + assumedNodes(site.assumed.map { resolvedNote(it, world) }))
 }

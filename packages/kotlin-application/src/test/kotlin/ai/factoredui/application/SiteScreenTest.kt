@@ -100,4 +100,27 @@ class SiteScreenTest {
         assertEquals("Cabin: floor", (card["title"] as JsonPrimitive).content)
         assertTrue(Json.encodeToString(JsonElement.serializer(), card).contains("6 ft 7 in × 9 ft 10 in × 4 in"))
     }
+
+    @Test
+    fun a_note_reads_a_setting_of_the_sites_world_in_feet_and_inches() {
+        val shed = java.nio.file.Files.createTempFile("shed", ".json").also { java.nio.file.Files.writeString(it, """{"systems": {"wall": {"settings": {"height_mm": 6000}}}}""") }
+        val worlds = listOf(EngineWorld("shed", shed), EngineWorld("cabin", Path.of("cabin.json")))
+        val site = SITE.replace("the cabin sits 3 ft from the wall", "the wall stands {wall.height_mm}")
+        val notes = nodesIn(siteSpec(ENGINE, worlds, readSiteScreen(site), Timings())).map { ((it["props"] as? JsonObject)?.get("value") as? JsonPrimitive)?.content }
+        assertTrue("the wall stands 19 ft 8 in" in notes)
+    }
+
+    @Test
+    fun a_note_naming_a_setting_the_world_lacks_is_refused_by_name() {
+        val site = SITE.replace("the cabin sits 3 ft from the wall", "the wall stands {wall.height_mm}")
+        val failure = assertFailsWith<SiteFormatException> { siteSpec(ENGINE, WORLDS, readSiteScreen(site), Timings()) }
+        assertTrue("wall.height_mm" in failure.message!!)
+    }
+
+    @Test
+    fun each_member_says_how_many_pieces_it_draws() {
+        val notes = nodesIn(siteSpec(ENGINE, WORLDS, readSiteScreen(SITE), Timings())).map { ((it["props"] as? JsonObject)?.get("value") as? JsonPrimitive)?.content }
+        assertTrue("Shed: 3 pieces" in notes)
+        assertTrue("Cabin: 1 piece" in notes)
+    }
 }
