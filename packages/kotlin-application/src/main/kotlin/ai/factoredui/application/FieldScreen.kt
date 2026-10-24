@@ -56,13 +56,18 @@ private fun numbers(list: JsonElement?): List<Double> = (list as? JsonArray).orE
 
 private fun numberOf(axis: JsonObject, key: String): Double = (axis[key] as? JsonPrimitive)?.doubleOrNull ?: throw FieldFormatException("a grid axis has no number '$key'")
 
-private fun axisNode(axis: JsonObject): Map<String, Any?> = mapOf(
-    "origin" to numberOf(axis, "origin_mm"), "step" to numberOf(axis, "step_mm"), "count" to numberOf(axis, "count").toInt(),
-    "label" to (axis["name"] as? JsonPrimitive)?.content, "unit" to (axis["unit"] as? JsonPrimitive)?.content,
-)
+private fun edgesOf(axis: JsonObject): List<Double>? = (axis["edges_mm"] as? JsonArray)?.let(::numbers)
+
+private fun cellCountOf(axis: JsonObject): Int = edgesOf(axis)?.let { it.size - 1 } ?: numberOf(axis, "count").toInt()
+
+private fun axisNode(axis: JsonObject): Map<String, Any?> {
+    val shared = mapOf("count" to cellCountOf(axis), "label" to (axis["name"] as? JsonPrimitive)?.content, "unit" to (axis["unit"] as? JsonPrimitive)?.content)
+    val edges = edgesOf(axis)
+    return if (edges != null) shared + ("edges" to edges) else shared + mapOf("origin" to numberOf(axis, "origin_mm"), "step" to numberOf(axis, "step_mm"))
+}
 
 private fun framesOf(grid: JsonObject, layout: String): List<List<Double>> {
-    val cells = (grid["axes"] as JsonArray).fold(1) { total, axis -> total * numberOf(axis as JsonObject, "count").toInt() }
+    val cells = (grid["axes"] as JsonArray).fold(1) { total, axis -> total * cellCountOf(axis as JsonObject) }
     val values = numbers(grid["values"])
     if (cells == 0 || values.size % cells != 0) throw FieldFormatException("the grid for '$layout' holds ${values.size} values, not a whole number of $cells-cell frames")
     return values.chunked(cells)

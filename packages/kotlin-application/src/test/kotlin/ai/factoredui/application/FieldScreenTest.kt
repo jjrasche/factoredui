@@ -70,6 +70,16 @@ class FieldScreenTest {
     }
 
     @Test
+    fun graded_cells_pass_their_edges_to_the_heatmap_and_count_one_fewer() {
+        val graded = answer(10.0).replace(""""origin_mm": 0, "step_mm": 500, "count": 3""", """"edges_mm": [0, 100, 300, 800]""")
+        val answers = mapOf("serpentine" to Json.parseToJsonElement(graded).jsonObject, "parallel-runs" to Json.parseToJsonElement(graded).jsonObject)
+        val axes = fieldScreenSpec(readFieldScreen(VIEW), answers)["root"]!!.jsonObject.props("serpentine.heatmap")["axes"]!!.jsonObject["x"]!!.jsonObject
+        assertEquals(listOf(0.0, 100.0, 300.0, 800.0), axes["edges"]!!.jsonArray.map { it.jsonPrimitive.double })
+        assertEquals(3.0, axes["count"]!!.jsonPrimitive.double)
+        assertTrue("step" !in axes)
+    }
+
+    @Test
     fun every_layouts_colours_share_one_range_so_layouts_compare() {
         val low = rootOf().props("serpentine.heatmap")["min"]!!.jsonPrimitive.double
         val high = rootOf().props("serpentine.heatmap")["max"]!!.jsonPrimitive.double
