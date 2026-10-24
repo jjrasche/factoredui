@@ -92,8 +92,14 @@ private fun fieldOf(screen: FieldScreen, layout: String, answers: Map<String, Js
     return LayoutField(layout, grid, framesOf(grid, layout))
 }
 
-private fun pipeSeries(answer: JsonObject, path: String): Map<String, JsonObject> =
-    (elementAt(answer, path) as? JsonObject).orEmpty().mapValues { (pipe, series) -> series as? JsonObject ?: throw FieldFormatException("the series for pipe '$pipe' is not an object") }
+private const val SINGLE_TUBE = "tube"
+
+/** The pipe series of an answer: one series per pipe id, or a single series when the answer gives the one tube's own. */
+private fun pipeSeries(answer: JsonObject, path: String): Map<String, JsonObject> {
+    val found = elementAt(answer, path) as? JsonObject ?: return emptyMap()
+    if (found.containsKey("v")) return mapOf(SINGLE_TUBE to found)
+    return found.mapValues { (pipe, series) -> series as? JsonObject ?: throw FieldFormatException("the series for pipe '$pipe' is not an object") }
+}
 
 private fun chartRows(inlets: Map<String, JsonObject>, outlets: Map<String, JsonObject>): List<JsonObject> {
     val hours = numbers(inlets.values.firstOrNull()?.get("t_h"))
@@ -132,6 +138,17 @@ private fun heatmapNode(id: String, field: LayoutField, screen: FieldScreen, low
     )
 }
 
+private const val HASH_SHOWN = 8
+
+/** Where an answer came from, so a reader can tell it from a stale run: the engine, the domains and the config's hash. */
+private fun provenanceNote(provenance: JsonObject?): JsonObject? {
+    if (provenance == null) return null
+    fun part(key: String) = (provenance[key] as? JsonPrimitive)?.content
+    val config = part("config_sha256")?.take(HASH_SHOWN)
+    val line = listOfNotNull(part("engine")?.let { "engine $it" }, part("domains")?.let { "domains $it" }, config?.let { "config $it" }).joinToString(", ")
+    return if (line.isEmpty()) null else textNode("provenance.note", "From the engine: $line", variant = "caption", color = MUTED)
+}
+
 private fun resolutionNotice(layout: String, answer: JsonObject): JsonObject? {
     val resolution = answer["resolution"] as? JsonObject ?: return null
     if ((resolution["underresolved"] as? JsonPrimitive)?.booleanOrNull != true) return null
@@ -160,8 +177,9 @@ fun fieldScreenSpec(screen: FieldScreen, answers: Map<String, JsonObject>): Json
     val first = fields.first()
     val hours = numbers(first.grid["times_h"])
     val notice = (answers.getValue(first.layout)["fixture"] as? JsonPrimitive)?.content?.let { textNode("fixture.notice", "FIXTURE: $it", variant = "caption", bold = true, color = MUTED) }
+    val provenance = provenanceNote(answers["provenance"])
     val tabs = specNode("layouts", "tabs", mapOf("items" to screen.layouts.map { screen.labels[it] ?: it }, "selectedIndex" to "{layout}"), fields.map { layoutTab(it, answers.getValue(it.layout), screen, low, high) })
-    val children = listOfNotNull(textNode("screen.title", screen.title, variant = "subheading", bold = true, color = INK), notice) + frameControls(first.frames.size, hours) + tabs
+    val children = listOfNotNull(textNode("screen.title", screen.title, variant = "subheading", bold = true, color = INK), notice, provenance) + frameControls(first.frames.size, hours) + tabs
     val root = specNode("root", "column", mapOf("gap" to 12, "padding" to 16, "background" to HUD), children)
     return JsonObject(
         mapOf(

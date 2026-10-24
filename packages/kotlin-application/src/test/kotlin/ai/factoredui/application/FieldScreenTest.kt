@@ -151,4 +151,20 @@ class FieldScreenTest {
         val x = fieldScreenSpec(readFieldScreen(VIEW), answers)["root"]!!.jsonObject.props("serpentine.heatmap")["x"]!!.jsonObject
         assertEquals(listOf(0.0, 3.28, 67.26, 67.26), x["edges"]!!.jsonArray.map { it.jsonPrimitive.double })
     }
+
+    @Test
+    fun a_single_tube_series_without_pipe_ids_is_drawn_as_the_tubes_inlet_and_outlet() {
+        val single = answer(10.0).replace(""""pipe_inlet_air_c": { "p1": { "unit": "C", "t_h": [0, 1], "v": [30, 31] } }""", """"pipe_inlet_air_c": { "unit": "C", "t_h": [0, 1], "v": [30, 31] }""")
+            .replace(""""pipe_outlet_air_c": { "p1": { "unit": "C", "t_h": [0, 1], "v": [10.0, 11.0] } }""", """"pipe_outlet_air_c": { "unit": "C", "t_h": [0, 1], "v": [10.0, 11.0] }""")
+        val answers = mapOf("serpentine" to Json.parseToJsonElement(single).jsonObject, "parallel-runs" to Json.parseToJsonElement(single).jsonObject)
+        val chart = fieldScreenSpec(readFieldScreen(VIEW), answers)["root"]!!.jsonObject.props("serpentine.chart")
+        assertEquals(listOf("tube inlet", "tube outlet"), chart["series"]!!.jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.content })
+    }
+
+    @Test
+    fun an_answers_provenance_is_named_on_the_page_and_is_not_mistaken_for_a_layout() {
+        val provenance = Json.parseToJsonElement("""{ "engine": "5d5a58e", "domains": "798c048", "config_sha256": "dd281761f0711e1f6ba049cd52696f5457389ff6" }""").jsonObject
+        val root = fieldScreenSpec(readFieldScreen(VIEW), answers() + ("provenance" to provenance))["root"]!!.jsonObject
+        assertEquals("From the engine: engine 5d5a58e, domains 798c048, config dd281761", root.props("provenance.note")["value"]!!.jsonPrimitive.content)
+    }
 }
