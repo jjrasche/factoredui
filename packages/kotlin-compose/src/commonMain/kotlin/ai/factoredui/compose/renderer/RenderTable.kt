@@ -94,7 +94,7 @@ private fun sortTap(control: SortControl, column: String): ActionRef {
 }
 
 private fun sortMark(control: SortControl?, column: String): String =
-    control?.current?.takeIf { it.column == column }?.let { if (it.isDescending) " ▼" else " ▲" }.orEmpty()
+    control?.current?.takeIf { it.column == column }?.let { if (it.isDescending) " v" else " ^" }.orEmpty()
 
 private fun headerCell(id: String, column: String, text: String, slot: Pair<String, SpecValue>, align: String, control: SortControl?): SpecNode {
     val bold = mapOf("bold" to SpecValue.BooleanValue(true))

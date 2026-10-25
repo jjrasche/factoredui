@@ -84,10 +84,10 @@ class TableSortRenderTest {
         driving(sortableSpec(sorting)) { port, context ->
             assertEquals(200, call(port, "click", "air/head/low").first)
             assertEquals(listOf("Tray", "Bench", "Rafter"), labelsInOrder(port))
-            assertEquals("Low air ▲", textAt(port, "air/head/low"))
+            assertEquals("Low air ^", textAt(port, "air/head/low"))
             assertEquals(200, call(port, "click", "air/head/low").first)
             assertEquals(listOf("Rafter", "Bench", "Tray"), labelsInOrder(port))
-            assertEquals("Low air ▼", textAt(port, "air/head/low"))
+            assertEquals("Low air v", textAt(port, "air/head/low"))
             assertEquals(mapOf("by" to "low", "desc" to true), context.data["air_sort"])
         }
     }
