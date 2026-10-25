@@ -127,13 +127,22 @@ private fun airBoxes(zone: AirZone, siteBoxes: List<Map<String, Any?>>, steps: L
     }
 }
 
-private fun chartNode(steps: List<JsonObject>, day: Int, stocks: List<String>): JsonObject {
-    val rows = (0 until HOURS_IN_DAY).map { hour ->
-        val values = stocks.associate { stock -> readableStock(stock) to stockHours(steps, day, stock)[hour] }
-        jsonOf(mapOf("t" to hour, "outside" to outsideAir(steps[day * HOURS_IN_DAY + hour])) + values)
+private fun stockAt(step: JsonObject, stock: String): Double =
+    heatNumberAt((step["stocks"] as? JsonObject)?.get(stock)) ?: throw HeatFormatException("the season has no stock '$stock' in a step")
+
+/** The week's outside air and every stock that colours a box, on the same hours as the fan strip under it. */
+private fun chartNode(week: List<JsonObject>, stocks: List<String>): JsonObject {
+    val rows = week.mapIndexed { hour, step ->
+        val values = stocks.associate { stock -> readableStock(stock) to stockAt(step, stock) }
+        jsonOf(mapOf("t" to hour, "outside" to outsideAir(step)) + values)
     }
     val series = listOf(mapOf("id" to "outside air", "path" to "outside", "axis" to "right")) + stocks.map { mapOf("id" to readableStock(it), "path" to readableStock(it), "axis" to "right") }
-    return specNode("heat.chart", "chart", mapOf("x" to "t", "x_label" to "hour", "axes" to mapOf("right" to mapOf("unit" to "F")), "series" to series, "rows" to rows, "ink" to INK, "muted" to MUTED))
+    return specNode("heat.chart", "chart", mapOf("x" to "t", "x_label" to "hour of the week", "axes" to mapOf("right" to mapOf("unit" to "F")), "series" to series, "rows" to rows, "ink" to INK, "muted" to MUTED))
+}
+
+private fun weekOf(screen: HeatScreen, steps: List<JsonObject>, day: Int): List<JsonObject> {
+    val from = weekStartOf(screen, day, steps.size)
+    return steps.subList(from, minOf(steps.size, from + HOURS_IN_WEEK))
 }
 
 /** The site's boxes colouredByStock by their stock's temperature through the coldest day of the season, one slider through its hours, and the chart of the same series. */
@@ -161,7 +170,7 @@ fun heatSpec(screen: HeatScreen, siteBoxes: List<Map<String, Any?>>, season: Jso
     val slider = specNode("heat.slider", "slider", mapOf("value" to "{$HOUR_PATH}", "min" to 0, "max" to HOURS_IN_DAY - 1, "step" to 1))
     val stepButtons = specNode("heat.steps", "row", mapOf("gap" to 12), listOf(hourButton("heat.earlier", "Earlier", -1), playButton(), hourButton("heat.later", "Later", 1)))
     val hourLine = textNode("heat.hourlabel", "Hour of the day, 0 to ${HOURS_IN_DAY - 1}", variant = "caption", color = MUTED)
-    val children = listOf(title, dayLine) + nowNodes(season, steps, day) + listOf(volume, hourLine, slider, stepButtons, chartNode(steps, day, stocks)) + fanNodes(screen, steps, day)
+    val children = listOf(title, dayLine) + nowNodes(season, steps, day) + listOf(volume, hourLine, slider, stepButtons, chartNode(weekOf(screen, steps, day), stocks)) + fanNodes(screen, steps, day)
     return JsonObject(
         mapOf(
             "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(mapOf(HOUR_PATH to coldestHour, PLAYING_PATH to false)),

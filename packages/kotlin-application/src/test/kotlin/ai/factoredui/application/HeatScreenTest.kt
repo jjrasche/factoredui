@@ -82,7 +82,8 @@ class HeatScreenTest {
     fun the_chart_draws_the_outside_air_and_every_stock_that_colours_a_box() {
         val chart = rootOf().props("heat.chart")
         assertEquals(listOf("outside air", "air temperature", "water temperature"), chart["series"]!!.jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.content })
-        assertEquals(24, chart["rows"]!!.jsonArray.size)
+        assertEquals(72, chart["rows"]!!.jsonArray.size)
+        assertEquals("hour of the week", chart["x_label"]!!.jsonPrimitive.content)
     }
 
     @Test
