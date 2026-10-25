@@ -117,6 +117,20 @@ private fun siteVolume(site: SiteScreen, drawn: List<Pair<SiteMember, List<Map<S
 }
 
 private const val FOCUS_PATH = "site.focus"
+private const val SELECTION_CARD_PATH = "selection.card"
+private const val SITE_VOLUME_HEIGHT_DP = 440
+private const val SITE_GROUND = "#2b3c50"
+
+/** The site's volume as a block in the page's column: sunlit, on its ground, with the picked box's card under it. */
+private fun siteWorldNode(volume: JsonObject): JsonObject {
+    val props = (volume["props"] as JsonObject).toMutableMap()
+    props["legend"] = JsonArray(emptyList())
+    props["ground"] = JsonPrimitive(SITE_GROUND)
+    props["lighting"] = JsonPrimitive("sun")
+    props["detail_text"] = JsonPrimitive("{$SELECTION_CARD_PATH}")
+    props["height"] = JsonPrimitive(SITE_VOLUME_HEIGHT_DP)
+    return JsonObject(volume + ("props" to JsonObject(props)))
+}
 
 private fun idsOfGroup(group: FocusGroup, drawn: List<Pair<SiteMember, List<Map<String, Any?>>>>): List<String> =
     drawn.filter { (member, _) -> group.member == null || member.label == group.member }
@@ -172,7 +186,14 @@ internal fun siteSpec(engine: EngineRuntime, worlds: List<EngineWorld>, site: Si
     val drawn = siteDrawn(engine, worlds, site, timings)
     val title = textNode("site.title", site.title, variant = "subheading", bold = true)
     val world = siteWorldFile(site, worlds)
-    val page = dockedPage(listOf(shadedWorld(siteVolume(site, drawn))), false, focusNodes(site, drawn) + listOf(title) + memberCountNodes(drawn) + assumedNodes(site.assumed.map { resolvedNote(it, world) }))
     val everything = drawn.flatMap { (_, boxes) -> boxes.map { it["id"] as String } }
-    return JsonObject(page + ("state" to JsonObject(((page["state"] as? JsonObject) ?: JsonObject(emptyMap())) + (FOCUS_PATH to jsonOf(everything)))))
+    val world3d = siteWorldNode(siteVolume(site, drawn))
+    val tapped = JsonObject(textNode("site.tapped", "{$SELECTION_CARD_PATH}", color = INK) + ("visible" to JsonPrimitive("{$SELECTION_CARD_PATH}")))
+    val children = listOf(title) + focusNodes(site, drawn) + listOf(world3d, tapped) + memberCountNodes(drawn) + assumedNodes(site.assumed.map { resolvedNote(it, world) })
+    return JsonObject(
+        mapOf(
+            "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(mapOf(FOCUS_PATH to everything)),
+            "root" to specNode("root", "column", mapOf("gap" to 12, "padding" to 16, "background" to HUD), children),
+        ),
+    )
 }
