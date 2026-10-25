@@ -176,4 +176,13 @@ class HeatScreenTest {
         assertEquals("true", params["loop"]!!.jsonPrimitive.content)
         assertEquals("heat.playing", params["playing"]!!.jsonPrimitive.content)
     }
+
+    @Test
+    fun each_hour_has_a_line_with_its_clock_time_and_outside_air_shown_only_at_that_hour() {
+        val lines = rootOf().nodes().filter { it["id"]!!.jsonPrimitive.content.startsWith("heat.now.") }
+        assertEquals(24, lines.size)
+        val third = lines.first { it["id"]!!.jsonPrimitive.content == "heat.now.2" }
+        assertEquals("{heat.hour}=2", third["visible"]!!.jsonPrimitive.content)
+        assertEquals("Day 2, 02:00: outside air 7 F", third["props"]!!.jsonObject["value"]!!.jsonPrimitive.content)
+    }
 }

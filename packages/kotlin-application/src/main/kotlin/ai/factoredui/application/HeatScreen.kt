@@ -127,7 +127,7 @@ fun heatSpec(screen: HeatScreen, siteBoxes: List<Map<String, Any?>>, season: Jso
     val slider = specNode("heat.slider", "slider", mapOf("value" to "{$HOUR_PATH}", "min" to 0, "max" to HOURS_IN_DAY - 1, "step" to 1))
     val stepButtons = specNode("heat.steps", "row", mapOf("gap" to 12), listOf(hourButton("heat.earlier", "Earlier", -1), playButton(), hourButton("heat.later", "Later", 1)))
     val hourLine = textNode("heat.hourlabel", "Hour of the day, 0 to ${HOURS_IN_DAY - 1}", variant = "caption", color = MUTED)
-    val children = listOf(title, dayLine, volume, hourLine, slider, stepButtons, chartNode(steps, day, stocks))
+    val children = listOf(title, dayLine) + nowNodes(season, steps, day) + listOf(volume, hourLine, slider, stepButtons, chartNode(steps, day, stocks))
     return JsonObject(
         mapOf(
             "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(mapOf(HOUR_PATH to coldestHour, PLAYING_PATH to false)),
@@ -145,6 +145,16 @@ private fun playButton(): JsonObject =
         specNode("heat.play", "button", mapOf("label" to "Play", "flex" to 1)) +
             ("action" to jsonOf(mapOf("action" to "animate_binding", "params" to mapOf("path" to HOUR_PATH, "from" to 0, "to" to HOURS_IN_DAY - 1, "step" to 1, "interval_ms" to PLAY_INTERVAL_MILLIS, "loop" to true, "playing" to PLAYING_PATH)))),
     )
+
+/** One line per hour, shown only while the hour binding names it: the clock time and the outside air then, so the colour has a reason. */
+private fun nowNodes(season: JsonObject, steps: List<JsonObject>, day: Int): List<JsonObject> {
+    val clock = clockOf(season)
+    return (0 until HOURS_IN_DAY).map { hour ->
+        val step = day * HOURS_IN_DAY + hour
+        val line = "${stepLabel(clock, step.toDouble())}: outside air ${tidyDegrees(outsideAir(steps[step]))} F"
+        JsonObject(textNode("heat.now.$hour", line, variant = "subheading", bold = true, color = INK) + ("visible" to JsonPrimitive("{$HOUR_PATH}=$hour")))
+    }
+}
 
 private fun hourButton(id: String, label: String, add: Int): JsonObject =
     JsonObject(specNode(id, "button", mapOf("label" to label, "variant" to "outlined", "flex" to 1)) + ("action" to jsonOf(mapOf("action" to "set_binding", "params" to mapOf("path" to HOUR_PATH, "add" to add, "min" to 0, "max" to HOURS_IN_DAY - 1)))))
