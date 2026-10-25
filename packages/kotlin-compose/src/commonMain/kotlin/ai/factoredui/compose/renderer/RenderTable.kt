@@ -7,8 +7,14 @@ import ai.factoredui.compose.schema.ShownColumn
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.SpecValue
+import ai.factoredui.compose.schema.LABEL_SORT_COLUMN
 import ai.factoredui.compose.schema.TableLayout
+import ai.factoredui.compose.schema.TableSort
 import ai.factoredui.compose.schema.actionRefOf
+import ai.factoredui.compose.schema.bindingPath
+import ai.factoredui.compose.schema.nextTableSort
+import ai.factoredui.compose.schema.readTableSort
+import ai.factoredui.compose.schema.tableRowOrder
 import ai.factoredui.compose.schema.readColumnOverrides
 import ai.factoredui.compose.schema.mergedProfile
 import ai.factoredui.compose.schema.readDisplayProfile
@@ -72,10 +78,33 @@ private fun slotOf(column: ShownColumn): Pair<String, SpecValue> =
 
 private fun rowLayoutProps(): Map<String, SpecValue> = mapOf("gap" to SpecValue.NumberValue(ROW_GAP), "padding" to SpecValue.NumberValue(ROW_PADDING))
 
-private fun headerNode(columns: List<ShownColumn>, showLabel: Boolean, labelHeader: String): SpecNode {
+/** Where a table keeps its sort: the bound paths a header tap writes, and what they hold now. */
+private class SortControl(val sortPath: String, val descendingPath: String?, val current: TableSort?)
+
+private fun sortControlOf(node: SpecNode, resolvedProps: Map<String, Any?>): SortControl? {
+    val sortPath = node.props["sort_by"]?.bindingPath() ?: return null
+    return SortControl(sortPath, node.props["sort_desc"]?.bindingPath(), readTableSort(resolvedProps["sort_by"], resolvedProps["sort_desc"]))
+}
+
+private fun sortTap(control: SortControl, column: String): ActionRef {
+    val next = nextTableSort(control.current, column)
+    val writes = mapOf(control.sortPath to SpecValue.StringValue(next.column)) +
+        listOfNotNull(control.descendingPath?.let { it to SpecValue.BooleanValue(next.isDescending) })
+    return ActionRef(SET_BINDING_ACTION, mapOf("values" to SpecValue.ObjectValue(writes)))
+}
+
+private fun sortMark(control: SortControl?, column: String): String =
+    control?.current?.takeIf { it.column == column }?.let { if (it.isDescending) " ▼" else " ▲" }.orEmpty()
+
+private fun headerCell(id: String, column: String, text: String, slot: Pair<String, SpecValue>, align: String, control: SortControl?): SpecNode {
     val bold = mapOf("bold" to SpecValue.BooleanValue(true))
-    val label = listOfNotNull(cellNode("head/$LABEL_COLUMN", labelHeader, LABEL_SLOT, "left", bold).takeIf { showLabel })
-    val cells = columns.map { cellNode("head/${it.id}", it.header, slotOf(it), it.align, bold) }
+    val cell = cellNode("head/$id", text + sortMark(control, column), slot, align, bold)
+    return if (control == null) cell else cell.copy(action = sortTap(control, column))
+}
+
+private fun headerNode(columns: List<ShownColumn>, showLabel: Boolean, labelHeader: String, control: SortControl?): SpecNode {
+    val label = listOfNotNull(headerCell(LABEL_COLUMN, LABEL_SORT_COLUMN, labelHeader, LABEL_SLOT, "left", control).takeIf { showLabel })
+    val cells = columns.map { headerCell(it.id, it.id, it.header, slotOf(it), it.align, control) }
     return SpecNode(id = "head", type = SpecNodeType.ROW, props = rowLayoutProps(), children = label + cells)
 }
 
@@ -128,8 +157,10 @@ internal fun RenderTable(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     val emptyText = (resolvedProps["empty_text"] as? String).orEmpty()
     val rowTap = actionRefOf(node.props["on_row_tap"])
     val path = LocalNodeIdentity.current?.path ?: node.id
-    val header = headerNode(layout.columns, showLabel, (resolvedProps["label_header"] as? String).orEmpty())
-    val rows = view.rows.indices.map { rowNode(it, layout.columns, showLabel, rowTap) }
+    val sortControl = sortControlOf(node, resolvedProps)
+    val header = headerNode(layout.columns, showLabel, (resolvedProps["label_header"] as? String).orEmpty(), sortControl)
+    val drawnRows = tableRowOrder(view.rows, sortControl?.current).map { view.rows[it] }
+    val rows = drawnRows.indices.map { rowNode(it, layout.columns, showLabel, rowTap) }
     val isShowingEmpty = rows.isEmpty() && emptyText.isNotEmpty()
     RecordDrawn {
         text = title
@@ -147,9 +178,9 @@ internal fun RenderTable(node: SpecNode, resolvedProps: Map<String, Any?>, conte
             when {
                 isShowingEmpty -> Text(emptyText, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.emptyMessagePlacement())
                 isBounded -> LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
-                    itemsIndexed(rows) { index, row -> TableRow(path, row, view.rows[index], context) }
+                    itemsIndexed(rows) { index, row -> TableRow(path, row, drawnRows[index], context) }
                 }
-                else -> rows.forEachIndexed { index, row -> TableRow(path, row, view.rows[index], context) }
+                else -> rows.forEachIndexed { index, row -> TableRow(path, row, drawnRows[index], context) }
             }
         }
     }
