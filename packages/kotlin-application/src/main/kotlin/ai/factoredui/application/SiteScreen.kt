@@ -10,7 +10,9 @@ class SiteFormatException(message: String) : IllegalArgumentException(message)
 
 data class SiteMember(val label: String, val world: String, val atMm: List<Double>, val repeatCount: Int, val repeatStepMm: Double)
 
-data class SiteScreen(val title: String, val world: String, val members: List<SiteMember>, val styles: Map<String, JsonObject>, val assumed: List<String>)
+data class FocusGroup(val label: String, val systems: Set<String>, val member: String?)
+
+data class SiteScreen(val title: String, val world: String, val members: List<SiteMember>, val styles: Map<String, JsonObject>, val assumed: List<String>, val groups: List<FocusGroup> = emptyList())
 
 private const val MM_PER_INCH = 25.4
 private const val INCHES_PER_FOOT = 12
@@ -41,6 +43,11 @@ private fun memberOf(entry: JsonObject, index: Int): SiteMember {
 private fun stylesOf(root: JsonObject): Map<String, JsonObject> =
     (root["styles"] as? JsonObject).orEmpty().mapValues { (name, style) -> style as? JsonObject ?: throw SiteFormatException("the style '$name' is not an object") }
 
+private fun groupsOf(root: JsonObject): List<FocusGroup> = (root["focus_groups"] as? JsonArray).orEmpty().map { entry ->
+    val group = entry as? JsonObject ?: throw SiteFormatException("a focus group is not an object")
+    FocusGroup(textIn(group, "label", "a focus group"), (group["systems"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }.toSet(), (group["member"] as? JsonPrimitive)?.content)
+}
+
 private fun assumedOf(root: JsonObject): List<String> =
     (root["assumed"] as? JsonArray).orEmpty().map { (it as? JsonPrimitive)?.takeIf { line -> line.isString }?.content ?: throw SiteFormatException("an 'assumed' line is not text") }
 
@@ -51,7 +58,7 @@ fun readSiteScreen(text: String): SiteScreen {
         memberOf(entry as? JsonObject ?: throw SiteFormatException("member $index is not an object"), index)
     }
     if (members.isEmpty()) throw SiteFormatException("the site has an empty 'members' list")
-    return SiteScreen((root["title"] as? JsonPrimitive)?.content ?: "", textIn(root, "world", "the site"), members, stylesOf(root), assumedOf(root))
+    return SiteScreen((root["title"] as? JsonPrimitive)?.content ?: "", textIn(root, "world", "the site"), members, stylesOf(root), assumedOf(root), groupsOf(root))
 }
 
 internal fun feetAndInches(mm: Double): String {
@@ -73,10 +80,12 @@ private fun shifted(box: Map<String, Any?>, id: String, along: Double, offset: L
 private fun idInSite(member: SiteMember, boxId: String, copy: Int): String =
     if (member.repeatCount > 1) "${member.label}/$boxId~${copy + 1}" else "${member.label}/$boxId"
 
+private fun systemOf(geometry: Geometry, id: String): String = geometry.pieces.firstOrNull { it.id == id }?.system.orEmpty()
+
 private fun boxesOfMember(member: SiteMember, geometry: Geometry): List<Map<String, Any?>> {
     val whole = withCutsOpened(measuredBoxes(geometry), geometry)
     return (0 until member.repeatCount).flatMap { copy ->
-        whole.map { box -> shifted(box, idInSite(member, box["id"] as String, copy), copy * member.repeatStepMm, member.atMm) }
+        whole.map { box -> shifted(box, idInSite(member, box["id"] as String, copy), copy * member.repeatStepMm, member.atMm) + ("system" to systemOf(geometry, box["id"] as String)) }
     }
 }
 
@@ -100,9 +109,25 @@ private fun siteVolume(site: SiteScreen, drawn: List<Pair<SiteMember, List<Map<S
         mapOf(
             "boxes" to boxes, "grade_mm" to GRADE_MM, "styles" to names.associateWith { styleOf(site, names, it) },
             "legend" to names.map { mapOf("label" to it, "style" to it) },
-            "empty_text" to "The site has nothing to draw.", "selected" to SELECTION_PATH, "details" to details,
+            "empty_text" to "The site has nothing to draw.", "selected" to SELECTION_PATH, "details" to details, "focus" to "{$FOCUS_PATH}",
         ),
     )
+}
+
+private const val FOCUS_PATH = "site.focus"
+
+private fun idsOfGroup(group: FocusGroup, drawn: List<Pair<SiteMember, List<Map<String, Any?>>>>): List<String> =
+    drawn.filter { (member, _) -> group.member == null || member.label == group.member }
+        .flatMap { (_, boxes) -> boxes.filter { group.systems.isEmpty() || it["system"] in group.systems }.map { it["id"] as String } }
+
+private fun focusButton(label: String, ids: List<String>): JsonObject =
+    JsonObject(specNode("site.focus.$label", "button", mapOf("label" to label, "variant" to "outlined")) + ("action" to jsonOf(mapOf("action" to "set_binding", "params" to mapOf("path" to FOCUS_PATH, "value" to ids)))))
+
+private fun focusNodes(site: SiteScreen, drawn: List<Pair<SiteMember, List<Map<String, Any?>>>>): List<JsonObject> {
+    if (site.groups.isEmpty()) return emptyList()
+    val everything = drawn.flatMap { (_, boxes) -> boxes.map { it["id"] as String } }
+    val buttons = listOf(focusButton("Everything", everything)) + site.groups.map { focusButton(it.label, idsOfGroup(it, drawn)) }
+    return listOf(specNode("site.focus", "scrollview", mapOf("horizontal" to true), listOf(specNode("site.focus.row", "row", mapOf("gap" to 8), buttons))))
 }
 
 private val SETTING_PLACEHOLDER = Regex("""\{([a-z0-9_]+)\.([a-z0-9_]+)\}""")
@@ -140,5 +165,7 @@ internal fun siteSpec(engine: EngineRuntime, worlds: List<EngineWorld>, site: Si
     }
     val title = textNode("site.title", site.title, variant = "subheading", bold = true)
     val world = siteWorldFile(site, worlds)
-    return dockedPage(listOf(shadedWorld(siteVolume(site, drawn))), false, listOf(title) + memberCountNodes(drawn) + assumedNodes(site.assumed.map { resolvedNote(it, world) }))
+    val page = dockedPage(listOf(shadedWorld(siteVolume(site, drawn))), false, focusNodes(site, drawn) + listOf(title) + memberCountNodes(drawn) + assumedNodes(site.assumed.map { resolvedNote(it, world) }))
+    val everything = drawn.flatMap { (_, boxes) -> boxes.map { it["id"] as String } }
+    return JsonObject(page + ("state" to JsonObject(((page["state"] as? JsonObject) ?: JsonObject(emptyMap())) + (FOCUS_PATH to jsonOf(everything)))))
 }

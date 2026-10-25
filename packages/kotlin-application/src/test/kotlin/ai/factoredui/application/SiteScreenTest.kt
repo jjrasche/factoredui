@@ -19,6 +19,7 @@ private const val CABIN = """{"pieces": [{"id": "floor@0,0", "system": "floor", 
 
 private const val SITE = """{"title": "Both", "world": "shed", "assumed": ["the cabin sits 3 ft from the wall"],
     "styles": {"glass": {"stroke": "#9fd3e6", "opacity": 0.25}},
+    "focus_groups": [{"label": "The cabin", "member": "Cabin"}, {"label": "Walls", "systems": ["walls"]}],
     "members": [
       {"label": "Shed", "world": "shed", "repeat": {"count": 3, "step_mm": 3000}},
       {"label": "Cabin", "world": "cabin", "at_mm": [1000, 500, 610]}]}"""
@@ -122,5 +123,18 @@ class SiteScreenTest {
         val notes = nodesIn(siteSpec(ENGINE, WORLDS, readSiteScreen(SITE), Timings())).map { ((it["props"] as? JsonObject)?.get("value") as? JsonPrimitive)?.content }
         assertTrue("Shed: 3 pieces" in notes)
         assertTrue("Cabin: 1 piece" in notes)
+    }
+
+    @Test
+    fun the_site_opens_framed_on_every_box_and_each_focus_button_frames_its_group() {
+        val spec = siteSpec(ENGINE, WORLDS, readSiteScreen(SITE), Timings())
+        val volume = nodesIn(spec).first { (it["id"] as JsonPrimitive).content == "volume" }["props"] as JsonObject
+        assertEquals("{site.focus}", (volume["focus"] as JsonPrimitive).content)
+        val state = spec["state"] as JsonObject
+        assertEquals(4, (state["site.focus"] as JsonArray).size)
+        fun idsOf(button: String) = (((nodesIn(spec).first { (it["id"] as JsonPrimitive).content == button }["action"] as JsonObject)["params"] as JsonObject)["value"] as JsonArray).map { (it as JsonPrimitive).content }
+        assertEquals(listOf("Cabin/floor@0,0"), idsOf("site.focus.The cabin"))
+        assertEquals(3, idsOf("site.focus.Walls").size)
+        assertEquals(4, idsOf("site.focus.Everything").size)
     }
 }

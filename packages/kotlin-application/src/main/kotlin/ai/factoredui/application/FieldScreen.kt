@@ -12,7 +12,7 @@ import java.nio.file.Path
 
 class FieldFormatException(message: String) : IllegalArgumentException(message)
 
-data class FieldScreen(val title: String, val world: String, val gridPath: String, val inletPath: String, val outletPath: String, val layouts: List<String>, val ramp: String, val answersFile: String? = null, val labels: Map<String, String> = emptyMap(), val axisLabels: Map<String, String> = emptyMap())
+data class FieldScreen(val title: String, val world: String, val gridPath: String, val inletPath: String, val outletPath: String, val layouts: List<String>, val ramp: String, val answersFile: String? = null, val labels: Map<String, String> = emptyMap(), val axisLabels: Map<String, String> = emptyMap(), val temperatureUnit: String = "C")
 
 private const val FRAME_PATH = "frame"
 private const val MM_PER_FOOT = 304.8
@@ -28,7 +28,7 @@ fun readFieldScreen(text: String): FieldScreen {
     return FieldScreen(
         (root["title"] as? JsonPrimitive)?.content.orEmpty(), textIn(root, "world"), textIn(root, "grid"),
         textIn(root, "inlet"), textIn(root, "outlet"), layouts, (root["ramp"] as? JsonPrimitive)?.content ?: "heat",
-        (root["answers"] as? JsonPrimitive)?.takeIf { it.isString }?.content, textMapIn(root, "labels"), textMapIn(root, "axis_labels"),
+        (root["answers"] as? JsonPrimitive)?.takeIf { it.isString }?.content, textMapIn(root, "labels"), textMapIn(root, "axis_labels"), (root["temperature_unit"] as? JsonPrimitive)?.content ?: "C",
     )
 }
 
@@ -89,7 +89,7 @@ private data class LayoutField(val layout: String, val grid: JsonObject, val fra
 private fun fieldOf(screen: FieldScreen, layout: String, answers: Map<String, JsonObject>): LayoutField {
     val answer = answers[layout] ?: throw FieldFormatException("the engine gave no answer for the layout '$layout'")
     val grid = objectAt(answer, screen.gridPath, layout)
-    return LayoutField(layout, grid, framesOf(grid, layout))
+    return LayoutField(layout, grid, framesOf(grid, layout).map { frame -> frame.map { inUnit(it, screen) } })
 }
 
 private const val SINGLE_TUBE = "tube"
@@ -101,26 +101,32 @@ private fun pipeSeries(answer: JsonObject, path: String): Map<String, JsonObject
     return found.mapValues { (pipe, series) -> series as? JsonObject ?: throw FieldFormatException("the series for pipe '$pipe' is not an object") }
 }
 
-private fun chartRows(inlets: Map<String, JsonObject>, outlets: Map<String, JsonObject>): List<JsonObject> {
+private fun seriesIn(answer: JsonObject, key: String): JsonObject? = (answer[key] as? JsonObject)?.takeIf { it.containsKey("v") }
+
+private fun chartRows(inlets: Map<String, JsonObject>, outlets: Map<String, JsonObject>, house: JsonObject?, screen: FieldScreen): List<JsonObject> {
     val hours = numbers(inlets.values.firstOrNull()?.get("t_h"))
+    fun at(series: JsonObject, index: Int): Double? = numbers(series["v"]).getOrNull(index)?.let { inUnit(it, screen) }
     return hours.indices.map { index ->
-        val cells = inlets.map { (pipe, series) -> "inlet.$pipe" to numbers(series["v"]).getOrNull(index) } + outlets.map { (pipe, series) -> "outlet.$pipe" to numbers(series["v"]).getOrNull(index) }
+        val cells = inlets.map { (pipe, series) -> "inlet.$pipe" to at(series, index) } + outlets.map { (pipe, series) -> "outlet.$pipe" to at(series, index) }
         val nested = cells.groupBy({ it.first.substringBefore('.') }, { it.first.substringAfter('.') to it.second })
-        jsonOf(mapOf("t" to hours[index]) + nested.mapValues { (_, pipes) -> pipes.toMap() }) as JsonObject
+        val houseCell = house?.let { mapOf("house" to at(it, index)) } ?: emptyMap()
+        jsonOf(mapOf("t" to hours[index]) + nested.mapValues { (_, pipes) -> pipes.toMap() } + houseCell) as JsonObject
     }
 }
 
 private fun chartNode(id: String, answer: JsonObject, screen: FieldScreen): JsonObject {
     val inlets = pipeSeries(answer, screen.inletPath)
     val outlets = pipeSeries(answer, screen.outletPath)
-    val series = inlets.keys.map { mapOf("id" to "$it inlet", "path" to "inlet.$it", "axis" to "right") } + outlets.keys.map { mapOf("id" to "$it outlet", "path" to "outlet.$it", "axis" to "right") }
+    val house = seriesIn(answer, "house_air_c")
+    val series = inlets.keys.map { mapOf("id" to "$it inlet", "path" to "inlet.$it", "axis" to "right") } + outlets.keys.map { mapOf("id" to "$it outlet", "path" to "outlet.$it", "axis" to "right") } +
+        listOfNotNull(house?.let { mapOf("id" to "house air", "path" to "house", "axis" to "right") })
     return JsonObject(
         mapOf(
             "id" to JsonPrimitive(id), "type" to JsonPrimitive("chart"), "children" to JsonArray(emptyList()),
             "props" to JsonObject(
                 mapOf(
-                    "x" to JsonPrimitive("t"), "x_label" to JsonPrimitive("hour"), "axes" to jsonOf(mapOf("right" to mapOf("unit" to "C"))),
-                    "series" to jsonOf(series), "rows" to JsonArray(chartRows(inlets, outlets)), "ink" to JsonPrimitive(INK), "muted" to JsonPrimitive(MUTED),
+                    "x" to JsonPrimitive("t"), "x_label" to JsonPrimitive("hour"), "axes" to jsonOf(mapOf("right" to mapOf("unit" to screen.temperatureUnit))),
+                    "series" to jsonOf(series), "rows" to JsonArray(chartRows(inlets, outlets, house, screen)), "ink" to JsonPrimitive(INK), "muted" to JsonPrimitive(MUTED),
                 ),
             ),
         ),
@@ -133,13 +139,17 @@ private fun heatmapNode(id: String, field: LayoutField, screen: FieldScreen, low
         id, "heatmap",
         mapOf(
             "x" to axisNode(axes[0] as JsonObject, screen), "y" to axisNode(axes[1] as JsonObject, screen),
-            "frames" to field.frames, "frame" to "{$FRAME_PATH}", "min" to low, "max" to high, "ramp" to screen.ramp, "unit" to "C",
+            "frames" to field.frames, "frame" to "{$FRAME_PATH}", "min" to low, "max" to high, "ramp" to screen.ramp, "unit" to screen.temperatureUnit,
         ),
     )
 }
 
 private const val HASH_SHOWN = 8
 private const val TENTH = 10.0
+private const val FAHRENHEIT_PER_CELSIUS = 1.8
+private const val FAHRENHEIT_OFFSET = 32.0
+
+private fun inUnit(celsius: Double, screen: FieldScreen): Double = if (screen.temperatureUnit == "F") celsius * FAHRENHEIT_PER_CELSIUS + FAHRENHEIT_OFFSET else celsius
 
 /** A number to two decimals with no trailing zeros: 0.2915 reads 0.29 and 0.5 reads 0.5. */
 private fun tidy(value: Double): String = java.math.BigDecimal(value).setScale(2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
@@ -153,6 +163,17 @@ private fun provenanceNote(provenance: JsonObject?): JsonObject? {
     return if (line.isEmpty()) null else textNode("provenance.note", "From the engine: $line", variant = "caption", color = MUTED)
 }
 
+private const val SWITCH_ON_NOTE = "below the fan's switch-on temperature"
+
+/** Says why the soil picture is flat when the fan never ran: the house air stayed under the temperature that starts it. */
+private fun fanNote(layout: String, answer: JsonObject, screen: FieldScreen): JsonObject? {
+    val fan = seriesIn(answer, "fan_on") ?: return null
+    if (numbers(fan["v"]).any { it != 0.0 }) return null
+    val peak = seriesIn(answer, "house_air_c")?.let { numbers(it["v"]).maxOrNull() }?.let { inUnit(it, screen) }
+    val peakText = peak?.let { ", the house air peaked at ${tidy(it)} ${screen.temperatureUnit}," } ?: ""
+    return textNode("$layout.fan", "Fan off all day$peakText $SWITCH_ON_NOTE.", variant = "caption", color = MUTED)
+}
+
 private fun resolutionNotice(layout: String, answer: JsonObject): JsonObject? {
     val resolution = answer["resolution"] as? JsonObject ?: return null
     if ((resolution["underresolved"] as? JsonPrimitive)?.booleanOrNull != true) return null
@@ -164,7 +185,7 @@ private fun resolutionNotice(layout: String, answer: JsonObject): JsonObject? {
 private fun layoutTab(field: LayoutField, answer: JsonObject, screen: FieldScreen, low: Double, high: Double): JsonObject =
     specNode(
         field.layout, "column", mapOf("gap" to 12),
-        listOfNotNull(resolutionNotice(field.layout, answer), heatmapNode("${field.layout}.heatmap", field, screen, low, high), chartNode("${field.layout}.chart", answer, screen)),
+        listOfNotNull(resolutionNotice(field.layout, answer), fanNote(field.layout, answer, screen), heatmapNode("${field.layout}.heatmap", field, screen, low, high), chartNode("${field.layout}.chart", answer, screen)),
     )
 
 private fun frameControls(frameCount: Int, hours: List<Double>): List<JsonObject> = listOf(

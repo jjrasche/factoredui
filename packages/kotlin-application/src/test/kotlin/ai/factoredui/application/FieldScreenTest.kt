@@ -176,4 +176,22 @@ class FieldScreenTest {
         assertEquals(21.1, root.props("serpentine.heatmap")["max"]!!.jsonPrimitive.double, 1e-9)
         assertTrue("(near-pipe cell 0.29 m, daily penetration 0.12 m)" in root.props("serpentine.resolution")["value"]!!.jsonPrimitive.content)
     }
+
+    @Test
+    fun temperatures_read_in_fahrenheit_when_the_view_asks_for_it() {
+        val view = readFieldScreen(VIEW.replace("""  "ramp": "heat"""", """  "ramp": "heat", "temperature_unit": "F""""))
+        val root = fieldScreenSpec(view, answers())["root"]!!.jsonObject
+        assertEquals("F", root.props("serpentine.heatmap")["unit"]!!.jsonPrimitive.content)
+        assertEquals(50.0, root.props("serpentine.heatmap")["min"]!!.jsonPrimitive.double)
+        assertEquals("F", root.props("serpentine.chart")["axes"]!!.jsonObject["right"]!!.jsonObject["unit"]!!.jsonPrimitive.content)
+        assertEquals(86.0, root.props("serpentine.chart")["rows"]!!.jsonArray[0].jsonObject["inlet"]!!.jsonObject["p1"]!!.jsonPrimitive.double, 1e-9)
+    }
+
+    @Test
+    fun a_fan_that_never_ran_is_said_so_with_the_house_air_peak() {
+        val stalled = Json.parseToJsonElement(answer(10.0).replaceFirst("{", """{ "house_air_c": { "unit": "C", "t_h": [0, 1], "v": [5.0, 12.2] }, "fan_on": { "unit": "1", "t_h": [0, 1], "v": [0, 0] }, """)).jsonObject
+        val root = fieldScreenSpec(readFieldScreen(VIEW), mapOf("serpentine" to stalled, "parallel-runs" to stalled))["root"]!!.jsonObject
+        assertEquals("Fan off all day, the house air peaked at 12.2 C, below the fan's switch-on temperature.", root.props("serpentine.fan")["value"]!!.jsonPrimitive.content)
+        assertTrue(root.props("serpentine.chart")["series"]!!.jsonArray.any { it.jsonObject["id"]!!.jsonPrimitive.content == "house air" })
+    }
 }
