@@ -82,10 +82,12 @@ private fun idInSite(member: SiteMember, boxId: String, copy: Int): String =
 
 private fun systemOf(geometry: Geometry, id: String): String = geometry.pieces.firstOrNull { it.id == id }?.system.orEmpty()
 
+private fun stockOf(geometry: Geometry, id: String): String? = geometry.pieces.firstOrNull { it.id == id }?.stock
+
 private fun boxesOfMember(member: SiteMember, geometry: Geometry): List<Map<String, Any?>> {
     val whole = withCutsOpened(measuredBoxes(geometry), geometry)
     return (0 until member.repeatCount).flatMap { copy ->
-        whole.map { box -> shifted(box, idInSite(member, box["id"] as String, copy), copy * member.repeatStepMm, member.atMm) + ("system" to systemOf(geometry, box["id"] as String)) }
+        whole.map { box -> shifted(box, idInSite(member, box["id"] as String, copy), copy * member.repeatStepMm, member.atMm) + mapOf("system" to systemOf(geometry, box["id"] as String), "stock" to stockOf(geometry, box["id"] as String)) }
     }
 }
 
@@ -157,12 +159,17 @@ private fun memberCountNodes(drawn: List<Pair<SiteMember, List<Map<String, Any?>
     drawn.map { (member, boxes) -> textNode("site.member.${member.label}", "${member.label}: ${boxes.size} ${if (boxes.size == 1) "piece" else "pieces"}", variant = "caption", color = MUTED) }
 
 /** One solid drawing of every member of [site], each member's geometry moved to its place and repeated along east-west as the site says, with what the site assumes written under it. */
+internal fun siteDrawn(engine: EngineRuntime, worlds: List<EngineWorld>, site: SiteScreen, timings: Timings): List<Pair<SiteMember, List<Map<String, Any?>>>> = site.members.map { member ->
+    val world = worlds.firstOrNull { it.id == member.world } ?: throw SiteFormatException("the engine serves no world '${member.world}' for '${member.label}'")
+    val geometry = timings.timed("geometry") { readGeometry(geometrySystem(engine, world.path)) }
+    member to boxesOfMember(member, geometry)
+}
+
+/** Every box of the site as the volume draws it, with its system and the stock that gives its temperature. */
+internal fun siteBoxesOf(engine: EngineRuntime, worlds: List<EngineWorld>, site: SiteScreen, timings: Timings): List<Map<String, Any?>> = siteDrawn(engine, worlds, site, timings).flatMap { it.second }
+
 internal fun siteSpec(engine: EngineRuntime, worlds: List<EngineWorld>, site: SiteScreen, timings: Timings): JsonObject {
-    val drawn = site.members.map { member ->
-        val world = worlds.firstOrNull { it.id == member.world } ?: throw SiteFormatException("the engine serves no world '${member.world}' for '${member.label}'")
-        val geometry = timings.timed("geometry") { readGeometry(geometrySystem(engine, world.path)) }
-        member to boxesOfMember(member, geometry)
-    }
+    val drawn = siteDrawn(engine, worlds, site, timings)
     val title = textNode("site.title", site.title, variant = "subheading", bold = true)
     val world = siteWorldFile(site, worlds)
     val page = dockedPage(listOf(shadedWorld(siteVolume(site, drawn))), false, focusNodes(site, drawn) + listOf(title) + memberCountNodes(drawn) + assumedNodes(site.assumed.map { resolvedNote(it, world) }))

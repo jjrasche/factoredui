@@ -54,10 +54,17 @@ private fun cardsFileOf(worldFile: Path, viewId: String?): Path? =
 private fun cardsAnswersOf(cardsFile: Path?): Path? =
     cardsFile?.let { file -> runCatching { readCardsScreen(Files.readString(file)) }.getOrNull()?.let { cardsAnswersFileOf(file, it) } }
 
+private fun heatFileOf(worldFile: Path, viewId: String?): Path? =
+    viewId?.let { worldFile.toAbsolutePath().parent.resolve("views").resolve("$it.heat.json") }?.takeIf { Files.isRegularFile(it) }
+
+private fun heatSiteOf(heatFile: Path?): Path? =
+    heatFile?.let { file -> runCatching { readHeatScreen(Files.readString(file)) }.getOrNull()?.let { heatSiteFileOf(file, it) } }
+
 private fun viewFilesDigest(worldFile: Path, viewId: String?): String {
     val field = fieldFileOf(worldFile, viewId)
     val cards = cardsFileOf(worldFile, viewId)
-    return listOfNotNull(siteFileOf(worldFile, viewId), field, fieldAnswersOf(field), cards, cardsAnswersOf(cards)).joinToString(",") { sha256OfFile(it) }
+    val heat = heatFileOf(worldFile, viewId)
+    return listOfNotNull(siteFileOf(worldFile, viewId), field, fieldAnswersOf(field), cards, cardsAnswersOf(cards), heat, heatSiteOf(heat)).joinToString(",") { sha256OfFile(it) }
 }
 
 /** What one served page depends on: the world's id, the view asked for, the world file's bytes, each pinned domain file's bytes, the engine pin beside the world and the files of a site or field view. A change in any is a different key. */
