@@ -13,7 +13,7 @@ class HeatFormatException(message: String) : IllegalArgumentException(message)
 
 data class AirZone(val label: String, val member: String, val systems: Set<String>, val stock: String, val layers: Int = 1, val stopAt: String? = null)
 
-data class HeatScreen(val title: String, val world: String, val site: String, val ramp: String, val unit: String, val clearStyles: Set<String> = emptySet(), val clearBoxes: List<String> = emptyList(), val airZones: List<AirZone> = emptyList(), val rampStops: List<Pair<Double, String>>? = null, val weekStartDay: Int? = null)
+data class HeatScreen(val title: String, val world: String, val site: String, val ramp: String, val unit: String, val clearStyles: Set<String> = emptySet(), val clearBoxes: List<String> = emptyList(), val airZones: List<AirZone> = emptyList(), val rampStops: List<Pair<Double, String>>? = null, val weekStartsOn: String? = null, val sourceNote: String? = null, val fanSourceLabel: String? = null)
 
 private const val HOURS_IN_DAY = 24
 private const val HOUR_PATH = "heat.hour"
@@ -28,7 +28,7 @@ fun readHeatScreen(text: String): HeatScreen {
     val root = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject ?: throw HeatFormatException("the heat view is not a JSON object")
     return HeatScreen((root["title"] as? JsonPrimitive)?.content.orEmpty(), textIn(root, "world"), textIn(root, "site"), (root["ramp"] as? JsonPrimitive)?.content ?: "cool_warm", (root["unit"] as? JsonPrimitive)?.content ?: "F",
         (root["clear_styles"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }.toSet(),
-        (root["clear_boxes"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }, airZonesOf(root), rampStopsOf(root), (root["week_start_day"] as? JsonPrimitive)?.content?.toIntOrNull())
+        (root["clear_boxes"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }, airZonesOf(root), rampStopsOf(root), (root["week_starts_on"] as? JsonPrimitive)?.content, (root["source_note"] as? JsonPrimitive)?.content, (root["fan_source_label"] as? JsonPrimitive)?.content)
 }
 
 private fun airZonesOf(root: JsonObject): List<AirZone> = (root["air_zones"] as? JsonArray).orEmpty().map { entry ->
@@ -50,15 +50,24 @@ private const val FAN_STOCK = "fan_kwh"
 private fun fanKwhIn(step: JsonObject): Double =
     heatNumberAt((((step["flows"] as? JsonObject)?.get(FAN_FLOW) as? JsonObject)?.get("moves") as? JsonObject)?.get(FAN_STOCK)) ?: 0.0
 
-/** The first step of the week shown: the view's own start day, else three days before the shown day, kept inside the season. */
-private fun weekStartOf(screen: HeatScreen, day: Int, stepCount: Int): Int {
-    val wanted = (screen.weekStartDay ?: (day - DAYS_BEFORE)) * HOURS_IN_DAY
+/** The day of the season a month-and-day falls on, counted from the answer's own start date; null when the answer carries no start or the view asks for no date. */
+private fun dayOfDate(screen: HeatScreen, clock: SeasonClock): Int? {
+    val asked = screen.weekStartsOn?.let { runCatching { java.time.MonthDay.parse("--$it") }.getOrNull() } ?: return null
+    val start = clock.start?.toLocalDate() ?: return null
+    val sameYear = asked.atYear(start.year)
+    val onOrAfter = if (sameYear.isBefore(start)) asked.atYear(start.year + 1) else sameYear
+    return java.time.temporal.ChronoUnit.DAYS.between(start, onOrAfter).toInt()
+}
+
+/** The first step of the week shown: the asked date's day when the answer has a start date, else three days before the shown day, kept inside the season. */
+private fun weekStartOf(screen: HeatScreen, season: JsonObject, day: Int, stepCount: Int): Int {
+    val wanted = (dayOfDate(screen, clockOf(season)) ?: (day - DAYS_BEFORE)) * HOURS_IN_DAY
     return wanted.coerceIn(0, maxOf(0, stepCount - HOURS_IN_WEEK))
 }
 
 /** The fan hour by hour over a week, from the engine's own hourly fan energy: on when it is above zero, with the count of on-hours and the week's kWh. */
-private fun fanNodes(screen: HeatScreen, steps: List<JsonObject>, day: Int): List<JsonObject> {
-    val from = weekStartOf(screen, day, steps.size)
+private fun fanNodes(screen: HeatScreen, season: JsonObject, steps: List<JsonObject>, day: Int): List<JsonObject> {
+    val from = weekStartOf(screen, season, day, steps.size)
     val hours = steps.subList(from, minOf(steps.size, from + HOURS_IN_WEEK)).map(::fanKwhIn)
     val onHours = hours.count { it > 0.0 }
     val total = hours.sum()
@@ -70,11 +79,15 @@ private fun fanNodes(screen: HeatScreen, steps: List<JsonObject>, day: Int): Lis
             "ramp" to mapOf("stops" to listOf(listOf(0, "#1b2433"), listOf(1, "#f2d43d"))), "height" to FAN_STRIP_HEIGHT_DP,
         ),
     )
-    val label = textNode("heat.fan.label", "Fan: on ${onHours} of ${hours.size} hours, ${tidyDegrees(total)} kWh (days ${from / HOURS_IN_DAY + 1} to ${(from + hours.size - 1) / HOURS_IN_DAY + 1})", variant = "caption", bold = true, color = INK)
+    val label = textNode("heat.fan.label", "Fan: on ${onHours} of ${hours.size} hours, ${tidyDegrees(total)} kWh (days ${from / HOURS_IN_DAY + 1} to ${(from + hours.size - 1) / HOURS_IN_DAY + 1})${screen.fanSourceLabel?.let { " $it" } ?: ""}${weekDateNote(screen, season)}", variant = "caption", bold = true, color = INK)
     return listOf(label, strip)
 }
 
 private const val FAN_STRIP_HEIGHT_DP = 70
+
+/** Says so when the view asked for a date and the answer has no start date to place it. */
+private fun weekDateNote(screen: HeatScreen, season: JsonObject): String =
+    if (screen.weekStartsOn != null && dayOfDate(screen, clockOf(season)) == null) "; the answer has no start date, so this is the coldest day's week" else ""
 
 private fun heatStepsOf(season: JsonObject): List<JsonObject> = (season["steps"] as? JsonArray).orEmpty().map { it as? JsonObject ?: throw HeatFormatException("a step is not an object") }
 
@@ -140,8 +153,8 @@ private fun chartNode(week: List<JsonObject>, stocks: List<String>): JsonObject 
     return specNode("heat.chart", "chart", mapOf("x" to "t", "x_label" to "hour of the week", "axes" to mapOf("right" to mapOf("unit" to "F")), "series" to series, "rows" to rows, "ink" to INK, "muted" to MUTED))
 }
 
-private fun weekOf(screen: HeatScreen, steps: List<JsonObject>, day: Int): List<JsonObject> {
-    val from = weekStartOf(screen, day, steps.size)
+private fun weekOf(screen: HeatScreen, season: JsonObject, steps: List<JsonObject>, day: Int): List<JsonObject> {
+    val from = weekStartOf(screen, season, day, steps.size)
     return steps.subList(from, minOf(steps.size, from + HOURS_IN_WEEK))
 }
 
@@ -170,7 +183,8 @@ fun heatSpec(screen: HeatScreen, siteBoxes: List<Map<String, Any?>>, season: Jso
     val slider = specNode("heat.slider", "slider", mapOf("value" to "{$HOUR_PATH}", "min" to 0, "max" to HOURS_IN_DAY - 1, "step" to 1))
     val stepButtons = specNode("heat.steps", "row", mapOf("gap" to 12), listOf(hourButton("heat.earlier", "Earlier", -1), playButton(), hourButton("heat.later", "Later", 1)))
     val hourLine = textNode("heat.hourlabel", "Hour of the day, 0 to ${HOURS_IN_DAY - 1}", variant = "caption", color = MUTED)
-    val children = listOf(title, dayLine) + nowNodes(season, steps, day) + listOf(volume, hourLine, slider, stepButtons, chartNode(weekOf(screen, steps, day), stocks)) + fanNodes(screen, steps, day)
+    val sourceLine = screen.sourceNote?.let { textNode("heat.source", it, variant = "caption", bold = true, color = MUTED) }
+    val children = listOfNotNull(title, dayLine, sourceLine) + nowNodes(season, steps, day) + listOf(volume, hourLine, slider, stepButtons, chartNode(weekOf(screen, season, steps, day), stocks)) + fanNodes(screen, season, steps, day)
     return JsonObject(
         mapOf(
             "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(mapOf(HOUR_PATH to coldestHour, PLAYING_PATH to false)),

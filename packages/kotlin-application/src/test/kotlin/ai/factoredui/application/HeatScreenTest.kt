@@ -196,10 +196,32 @@ class HeatScreenTest {
         assertTrue(rootOf().props("heat.fan.label")["value"]!!.jsonPrimitive.content.startsWith("Fan: on 36 of 72 hours, 72 kWh"))
     }
 
+
+    private fun longSeason(start: String?): JsonObject {
+        val steps = (0 until 240).joinToString(",") { t -> """{ "t": $t, "stocks": { "air_temperature_f": 50.0, "water_temperature_f": 60.0 }, "series": { "outside_air_f": ${20 + t / 24} }, "flows": { "greenhouse-hour": { "moves": { "fan_kwh": 1.0 } } } }""" }
+        val clockStart = start?.let { """, "start": "$it"""" } ?: ""
+        return Json.parseToJsonElement("""{ "clock": { "step": 1, "unit": "hour", "until": 240$clockStart }, "steps": [ $steps ] }""").jsonObject
+    }
+
     @Test
-    fun a_week_starts_where_the_view_says() {
-        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "week_start_day": 0 }""")
-        val label = heatSpec(view, boxes(), season())["root"]!!.jsonObject.props("heat.fan.label")["value"]!!.jsonPrimitive.content
-        assertTrue("days 1 to 3" in label)
+    fun the_week_starts_on_the_asked_date_counted_from_the_answers_own_start() {
+        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "week_starts_on": "10-03" }""")
+        val label = heatSpec(view, boxes(), longSeason("2026-10-01T00:00:00"))["root"]!!.jsonObject.props("heat.fan.label")["value"]!!.jsonPrimitive.content
+        assertTrue("days 3 to 9" in label)
+    }
+
+    @Test
+    fun an_answer_with_no_start_date_cannot_place_the_asked_date_and_says_so() {
+        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "week_starts_on": "10-03" }""")
+        val label = heatSpec(view, boxes(), longSeason(null))["root"]!!.jsonObject.props("heat.fan.label")["value"]!!.jsonPrimitive.content
+        assertTrue("the answer has no start date" in label)
+    }
+
+    @Test
+    fun the_view_labels_the_source_of_the_strip_and_of_the_page() {
+        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "source_note": "Old hoop model", "fan_source_label": "(old hoop model)" }""")
+        val root = heatSpec(view, boxes(), season())["root"]!!.jsonObject
+        assertEquals("Old hoop model", root.props("heat.source")["value"]!!.jsonPrimitive.content)
+        assertTrue(root.props("heat.fan.label")["value"]!!.jsonPrimitive.content.contains("(old hoop model)"))
     }
 }
