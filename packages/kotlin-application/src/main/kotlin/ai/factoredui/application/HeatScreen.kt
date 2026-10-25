@@ -11,9 +11,9 @@ import java.nio.file.Path
 
 class HeatFormatException(message: String) : IllegalArgumentException(message)
 
-data class AirZone(val label: String, val member: String, val systems: Set<String>, val stock: String)
+data class AirZone(val label: String, val member: String, val systems: Set<String>, val stock: String, val layers: Int = 1, val stopAt: String? = null)
 
-data class HeatScreen(val title: String, val world: String, val site: String, val ramp: String, val unit: String, val clearStyles: Set<String> = emptySet(), val clearBoxes: List<String> = emptyList(), val airZones: List<AirZone> = emptyList())
+data class HeatScreen(val title: String, val world: String, val site: String, val ramp: String, val unit: String, val clearStyles: Set<String> = emptySet(), val clearBoxes: List<String> = emptyList(), val airZones: List<AirZone> = emptyList(), val rampStops: List<Pair<Double, String>>? = null)
 
 private const val HOURS_IN_DAY = 24
 private const val HOUR_PATH = "heat.hour"
@@ -28,12 +28,18 @@ fun readHeatScreen(text: String): HeatScreen {
     val root = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject ?: throw HeatFormatException("the heat view is not a JSON object")
     return HeatScreen((root["title"] as? JsonPrimitive)?.content.orEmpty(), textIn(root, "world"), textIn(root, "site"), (root["ramp"] as? JsonPrimitive)?.content ?: "cool_warm", (root["unit"] as? JsonPrimitive)?.content ?: "F",
         (root["clear_styles"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }.toSet(),
-        (root["clear_boxes"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }, airZonesOf(root))
+        (root["clear_boxes"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }, airZonesOf(root), rampStopsOf(root))
 }
 
 private fun airZonesOf(root: JsonObject): List<AirZone> = (root["air_zones"] as? JsonArray).orEmpty().map { entry ->
     val zone = entry as? JsonObject ?: throw HeatFormatException("an air zone is not an object")
-    AirZone(textIn(zone, "label"), textIn(zone, "member"), (zone["systems"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }.toSet(), textIn(zone, "stock"))
+    AirZone(textIn(zone, "label"), textIn(zone, "member"), (zone["systems"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }.toSet(), textIn(zone, "stock"),
+        (zone["layers"] as? JsonPrimitive)?.content?.toIntOrNull() ?: 1, (zone["stop_at"] as? JsonPrimitive)?.content)
+}
+
+private fun rampStopsOf(root: JsonObject): List<Pair<Double, String>>? = (root["ramp_stops"] as? JsonArray)?.map { stop ->
+    val pair = stop as? JsonArray ?: throw HeatFormatException("a ramp stop is not a [value, colour] pair")
+    (pair[0] as JsonPrimitive).doubleOrNull!! to (pair[1] as JsonPrimitive).content
 }
 
 private fun heatStepsOf(season: JsonObject): List<JsonObject> = (season["steps"] as? JsonArray).orEmpty().map { it as? JsonObject ?: throw HeatFormatException("a step is not an object") }
@@ -63,8 +69,8 @@ private fun colouredByStock(box: Map<String, Any?>, steps: List<JsonObject>, day
 
 private fun number(box: Map<String, Any?>, key: String): Double = (box[key] as Number).toDouble()
 
-/** The air of a zone as one translucent box over the pieces of its systems, coloured by the zone's air stock. */
-private fun airBox(zone: AirZone, siteBoxes: List<Map<String, Any?>>, steps: List<JsonObject>, day: Int): Map<String, Any?> {
+/** The air of a zone as translucent layers over the pieces of its systems, coloured by the zone's air stock; with a `stop_at` each layer ends where those pieces (the sloped glazing) reach its height, so no air sits outside. */
+private fun airBoxes(zone: AirZone, siteBoxes: List<Map<String, Any?>>, steps: List<JsonObject>, day: Int): List<Map<String, Any?>> {
     val own = siteBoxes.filter { (it["id"] as String).startsWith(zone.member + "/") && it["system"] in zone.systems }
     if (own.isEmpty()) throw HeatFormatException("the air zone '${zone.label}' has no pieces of ${zone.systems} in '${zone.member}'")
     val west = own.minOf { number(it, "x_mm") - number(it, "width_mm") / 2 }
@@ -73,11 +79,18 @@ private fun airBox(zone: AirZone, siteBoxes: List<Map<String, Any?>>, steps: Lis
     val north = own.maxOf { number(it, "y_mm") + number(it, "depth_mm") / 2 }
     val floor = own.minOf { number(it, "z_mm") }
     val ridge = own.maxOf { number(it, "z_mm") + number(it, "height_mm") }
-    return mapOf(
-        "id" to "air:${zone.label}", "style" to AIR_PREFIX + zone.label, "x_mm" to (west + east) / 2, "y_mm" to (south + north) / 2, "z_mm" to floor,
-        "width_mm" to east - west, "depth_mm" to north - south, "height_mm" to ridge - floor, "rotation_deg" to 0.0, "estimate" to false,
-        "values" to stockHours(steps, day, zone.stock),
-    )
+    val values = stockHours(steps, day, zone.stock)
+    val lids = zone.stopAt?.let { part -> own.filter { (it["id"] as String).contains(part) } }.orEmpty()
+    return (0 until zone.layers).mapNotNull { layer ->
+        val bottom = floor + (ridge - floor) * layer / zone.layers
+        val top = floor + (ridge - floor) * (layer + 1) / zone.layers
+        val from = if (lids.isEmpty()) south else lids.filter { number(it, "z_mm") + number(it, "height_mm") >= top }.minOfOrNull { number(it, "y_mm") - number(it, "depth_mm") / 2 }
+        if (from == null || from >= north) null
+        else mapOf(
+            "id" to "air:${zone.label}:$layer", "style" to AIR_PREFIX + zone.label, "x_mm" to (west + east) / 2, "y_mm" to (from + north) / 2, "z_mm" to bottom,
+            "width_mm" to east - west, "depth_mm" to north - from, "height_mm" to top - bottom, "rotation_deg" to 0.0, "estimate" to false, "values" to values,
+        )
+    }
 }
 
 private fun chartNode(steps: List<JsonObject>, day: Int, stocks: List<String>): JsonObject {
@@ -93,7 +106,7 @@ private fun chartNode(steps: List<JsonObject>, day: Int, stocks: List<String>): 
 fun heatSpec(screen: HeatScreen, siteBoxes: List<Map<String, Any?>>, season: JsonObject): JsonObject {
     val steps = heatStepsOf(season)
     val day = heatDayOf(season)
-    val air = screen.airZones.map { airBox(it, siteBoxes, steps, day) }
+    val air = screen.airZones.flatMap { airBoxes(it, siteBoxes, steps, day) }
     val boxes = (siteBoxes.map { colouredByStock(it, steps, day) } + air).map { box -> if (screen.clearBoxes.any { part -> (box["id"] as String).contains(part) }) box + ("style" to CLEAR_PREFIX + (box["style"] as String)) else box }
     val stocks = siteBoxes.mapNotNull { it["stock"] as? String }.distinct()
     val everyValue = boxes.flatMap { (it["values"] as? List<*>).orEmpty().filterIsInstance<Double>() }
@@ -104,7 +117,7 @@ fun heatSpec(screen: HeatScreen, siteBoxes: List<Map<String, Any?>>, season: Jso
         "heat.volume", "volume",
         mapOf(
             "boxes" to boxes, "grade_mm" to GRADE_MM, "styles" to styles, "empty_text" to "The site has nothing to draw.",
-            "frame" to "{$HOUR_PATH}", "value_ramp" to screen.ramp, "min" to low, "max" to high, "unit" to screen.unit, "height" to VOLUME_HEIGHT_DP,
+            "frame" to "{$HOUR_PATH}", "value_ramp" to (screen.rampStops?.let { stops -> mapOf("stops" to stops.map { listOf(it.first, it.second) }) } ?: screen.ramp), "min" to low, "max" to high, "unit" to screen.unit, "height" to VOLUME_HEIGHT_DP,
         ),
     )
     val outside = (0 until HOURS_IN_DAY).map { outsideAir(steps[day * HOURS_IN_DAY + it]) }

@@ -134,7 +134,7 @@ class HeatScreenTest {
     fun an_air_zone_is_one_translucent_box_over_its_pieces_coloured_by_the_zones_air_stock() {
         val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "air_zones": [ { "label": "House air", "member": "Site", "systems": ["house", "tank"], "stock": "air_temperature_f" } ] }""")
         val volume = heatSpec(view, boxes(), season())["root"]!!.jsonObject.props("heat.volume")
-        val air = volume["boxes"]!!.jsonArray.map { it.jsonObject }.first { it["id"]!!.jsonPrimitive.content == "air:House air" }
+        val air = volume["boxes"]!!.jsonArray.map { it.jsonObject }.first { it["id"]!!.jsonPrimitive.content == "air:House air:0" }
         assertEquals(30.0, air["width_mm"]!!.jsonPrimitive.double)
         assertEquals(10.0, air["height_mm"]!!.jsonPrimitive.double)
         assertEquals(10.0, air["x_mm"]!!.jsonPrimitive.double)
@@ -146,5 +146,23 @@ class HeatScreenTest {
     fun an_air_zone_with_no_pieces_is_refused_by_name() {
         val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "air_zones": [ { "label": "Loft air", "member": "Site", "systems": ["loft"], "stock": "air_temperature_f" } ] }""")
         assertTrue("Loft air" in assertFailsWith<HeatFormatException> { heatSpec(view, boxes(), season()) }.message!!)
+    }
+
+    @Test
+    fun air_layers_each_stop_where_the_lid_pieces_reach_their_height() {
+        val lids = listOf(
+            mapOf("id" to "Site/lid-a", "system" to "house", "style" to "glass", "x_mm" to 0.0, "y_mm" to 5.0, "z_mm" to 0.0, "width_mm" to 10.0, "depth_mm" to 10.0, "height_mm" to 20.0),
+            mapOf("id" to "Site/lid-b", "system" to "house", "style" to "glass", "x_mm" to 0.0, "y_mm" to 15.0, "z_mm" to 0.0, "width_mm" to 10.0, "depth_mm" to 10.0, "height_mm" to 40.0),
+        )
+        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "air_zones": [ { "label": "Air", "member": "Site", "systems": ["house"], "stock": "air_temperature_f", "layers": 4, "stop_at": "lid" } ] }""")
+        val layers = heatSpec(view, lids, season())["root"]!!.jsonObject.props("heat.volume")["boxes"]!!.jsonArray.map { it.jsonObject }.filter { it["id"]!!.jsonPrimitive.content.startsWith("air:") }
+        assertEquals(listOf(0.0, 0.0, 10.0, 10.0), layers.map { it["y_mm"]!!.jsonPrimitive.double - it["depth_mm"]!!.jsonPrimitive.double / 2 })
+    }
+
+    @Test
+    fun a_view_can_name_its_own_colour_stops_in_the_data_units() {
+        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "ramp_stops": [[25, "#2d1e6b"], [60, "#f2d43d"]] }""")
+        val ramp = heatSpec(view, boxes(), season())["root"]!!.jsonObject.props("heat.volume")["value_ramp"]!!.jsonObject
+        assertEquals(2, ramp["stops"]!!.jsonArray.size)
     }
 }
