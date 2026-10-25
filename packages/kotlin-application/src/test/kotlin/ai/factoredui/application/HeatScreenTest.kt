@@ -96,4 +96,26 @@ class HeatScreenTest {
         val short = Json.parseToJsonElement("""{ "steps": [ { "t": 0, "stocks": {}, "series": { "outside_air_f": 1 } } ] }""").jsonObject
         assertFailsWith<HeatFormatException> { heatSpec(screen, boxes(), short) }
     }
+
+    @Test
+    fun the_slider_starts_at_the_coldest_hour_of_the_day() {
+        val spec = heatSpec(screen, boxes(), season())
+        assertEquals(0.0, spec["state"]!!.jsonObject["heat.hour"]!!.jsonPrimitive.double)
+    }
+
+    @Test
+    fun the_hour_buttons_step_the_hour_within_the_day() {
+        val button = rootOf().nodes().first { it["id"]!!.jsonPrimitive.content == "heat.later" }
+        val params = button["action"]!!.jsonObject["params"]!!.jsonObject
+        assertEquals(1.0, params["add"]!!.jsonPrimitive.double)
+        assertEquals(23.0, params["max"]!!.jsonPrimitive.double)
+    }
+
+    @Test
+    fun the_styles_a_view_calls_clear_are_drawn_nearly_see_through_so_the_inside_carries_the_colour() {
+        val clear = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "clear_styles": ["glass"] }""")
+        val styles = heatSpec(clear, boxes(), season())["root"]!!.jsonObject.props("heat.volume")["styles"]!!.jsonObject
+        assertEquals(0.1, styles["glass"]!!.jsonObject["opacity"]!!.jsonPrimitive.double)
+        assertTrue("opacity" !in styles["wall"]!!.jsonObject)
+    }
 }

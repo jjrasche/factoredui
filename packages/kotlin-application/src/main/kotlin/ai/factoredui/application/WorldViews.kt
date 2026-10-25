@@ -97,4 +97,4 @@ private fun heatBeside(world: EngineWorld): List<WorldView> {
 
 private fun readsAsSystem(world: EngineWorld): Boolean = runCatching { readSystemFile(Files.readString(world.path)) }.isSuccess
 
-fun viewsOf(world: EngineWorld): List<WorldView> = screensBeside(world) + sitesBeside(world) + heatBeside(world) + fieldsBeside(world) + cardsBeside(world) + listOfNotNull(if (readsAsSystem(world)) WorldView(OVERVIEW, viewLabelOf(OVERVIEW), null) else null)
+fun viewsOf(world: EngineWorld): List<WorldView> = heatBeside(world) + screensBeside(world) + sitesBeside(world) + fieldsBeside(world) + cardsBeside(world) + listOfNotNull(if (readsAsSystem(world)) WorldView(OVERVIEW, viewLabelOf(OVERVIEW), null) else null)

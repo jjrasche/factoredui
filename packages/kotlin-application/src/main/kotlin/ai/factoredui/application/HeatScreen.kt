@@ -11,7 +11,7 @@ import java.nio.file.Path
 
 class HeatFormatException(message: String) : IllegalArgumentException(message)
 
-data class HeatScreen(val title: String, val world: String, val site: String, val ramp: String, val unit: String)
+data class HeatScreen(val title: String, val world: String, val site: String, val ramp: String, val unit: String, val clearStyles: Set<String> = emptySet())
 
 private const val HOURS_IN_DAY = 24
 private const val HOUR_PATH = "heat.hour"
@@ -24,7 +24,8 @@ private fun textIn(root: JsonObject, key: String): String =
 /** The heat view a world gives: the site whose boxes it colours and the ramp that colours them. */
 fun readHeatScreen(text: String): HeatScreen {
     val root = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject ?: throw HeatFormatException("the heat view is not a JSON object")
-    return HeatScreen((root["title"] as? JsonPrimitive)?.content.orEmpty(), textIn(root, "world"), textIn(root, "site"), (root["ramp"] as? JsonPrimitive)?.content ?: "cool_warm", (root["unit"] as? JsonPrimitive)?.content ?: "F")
+    return HeatScreen((root["title"] as? JsonPrimitive)?.content.orEmpty(), textIn(root, "world"), textIn(root, "site"), (root["ramp"] as? JsonPrimitive)?.content ?: "cool_warm", (root["unit"] as? JsonPrimitive)?.content ?: "F",
+        (root["clear_styles"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }.toSet())
 }
 
 private fun heatStepsOf(season: JsonObject): List<JsonObject> = (season["steps"] as? JsonArray).orEmpty().map { it as? JsonObject ?: throw HeatFormatException("a step is not an object") }
@@ -70,7 +71,7 @@ fun heatSpec(screen: HeatScreen, siteBoxes: List<Map<String, Any?>>, season: Jso
     val everyValue = boxes.flatMap { (it["values"] as? List<*>).orEmpty().filterIsInstance<Double>() }
     val low = Math.floor((everyValue.minOrNull() ?: 0.0) * TENTH) / TENTH
     val high = Math.ceil((everyValue.maxOrNull() ?: 0.0) * TENTH) / TENTH
-    val styles = boxes.map { it["style"] as String }.distinct().associateWith { mapOf("stroke" to "#8aa0b4") }
+    val styles = boxes.map { it["style"] as String }.distinct().associateWith { name -> if (name in screen.clearStyles) mapOf("stroke" to "#8aa0b4", "opacity" to CLEAR_OPACITY) else mapOf("stroke" to "#8aa0b4") }
     val volume = specNode(
         "heat.volume", "volume",
         mapOf(
@@ -79,20 +80,26 @@ fun heatSpec(screen: HeatScreen, siteBoxes: List<Map<String, Any?>>, season: Jso
         ),
     )
     val outside = (0 until HOURS_IN_DAY).map { outsideAir(steps[day * HOURS_IN_DAY + it]) }
+    val coldestHour = outside.indexOf(outside.min())
     val title = textNode("heat.title", screen.title, variant = "subheading", bold = true, color = INK)
     val dayLine = textNode("heat.day", "Day ${day + 1} of the season, the coldest by outside air: ${tidyDegrees(outside.min())} to ${tidyDegrees(outside.max())} F", variant = "caption", color = MUTED)
     val slider = specNode("heat.slider", "slider", mapOf("value" to "{$HOUR_PATH}", "min" to 0, "max" to HOURS_IN_DAY - 1, "step" to 1))
+    val stepButtons = specNode("heat.steps", "row", mapOf("gap" to 12), listOf(hourButton("heat.earlier", "Earlier hour", -1), hourButton("heat.later", "Later hour", 1)))
     val hourLine = textNode("heat.hourlabel", "Hour of the day, 0 to ${HOURS_IN_DAY - 1}", variant = "caption", color = MUTED)
-    val children = listOf(title, dayLine, volume, hourLine, slider, chartNode(steps, day, stocks))
+    val children = listOf(title, dayLine, volume, hourLine, slider, stepButtons, chartNode(steps, day, stocks))
     return JsonObject(
         mapOf(
-            "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(mapOf(HOUR_PATH to 0)),
+            "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(mapOf(HOUR_PATH to coldestHour)),
             "root" to specNode("root", "column", mapOf("gap" to 12, "padding" to 16, "background" to HUD), children),
         ),
     )
 }
 
+private fun hourButton(id: String, label: String, add: Int): JsonObject =
+    JsonObject(specNode(id, "button", mapOf("label" to label, "variant" to "outlined", "flex" to 1)) + ("action" to jsonOf(mapOf("action" to "set_binding", "params" to mapOf("path" to HOUR_PATH, "add" to add, "min" to 0, "max" to HOURS_IN_DAY - 1)))))
+
 private const val VOLUME_HEIGHT_DP = 360
+private const val CLEAR_OPACITY = 0.1
 
 private fun tidyDegrees(value: Double): String = java.math.BigDecimal(value).setScale(1, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
 
