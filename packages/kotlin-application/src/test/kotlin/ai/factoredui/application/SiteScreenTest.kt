@@ -137,4 +137,10 @@ class SiteScreenTest {
         assertEquals(3, idsOf("site.focus.Walls").size)
         assertEquals(4, idsOf("site.focus.Everything").size)
     }
+
+    @Test
+    fun the_material_styles_can_sit_in_the_views_style_block() {
+        val site = readSiteScreen("""{"world": "w", "members": [{"label": "a", "world": "w"}], "style": {"styles": {"glass": {"opacity": 0.2}}}}""")
+        assertEquals(0.2, ((site.styles.getValue("glass")["opacity"]) as JsonPrimitive).content.toDouble())
+    }
 }

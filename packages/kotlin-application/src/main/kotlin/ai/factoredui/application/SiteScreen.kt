@@ -40,8 +40,9 @@ private fun memberOf(entry: JsonObject, index: Int): SiteMember {
     return SiteMember(textIn(entry, "label", where), textIn(entry, "world", where), offsetOf(entry, where), count, step)
 }
 
+/** The material styles: those under the view's `style` block, which holds presentation only, else the older top-level `styles`. */
 private fun stylesOf(root: JsonObject): Map<String, JsonObject> =
-    (root["styles"] as? JsonObject).orEmpty().mapValues { (name, style) -> style as? JsonObject ?: throw SiteFormatException("the style '$name' is not an object") }
+    (((root["style"] as? JsonObject)?.get("styles") ?: root["styles"]) as? JsonObject).orEmpty().mapValues { (name, style) -> style as? JsonObject ?: throw SiteFormatException("the style '$name' is not an object") }
 
 private fun groupsOf(root: JsonObject): List<FocusGroup> = (root["focus_groups"] as? JsonArray).orEmpty().map { entry ->
     val group = entry as? JsonObject ?: throw SiteFormatException("a focus group is not an object")

@@ -23,7 +23,7 @@ private fun numberIn(root: JsonObject, key: String): Double? = (root[key] as? Js
 /** The screen a world gives for its rows: the chart's own props (x, series, axes, labels) and how a day is scrubbed. */
 fun readChartScreen(text: String): ChartScreen {
     val root = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject ?: throw ChartScreenFormatException("the screen is not a JSON object")
-    val chart = objectIn(root, "chart")
+    val chart = JsonObject(objectIn(root, "chart") + (root["style"] as? JsonObject).orEmpty())
     val series = chart["series"] as? JsonArray ?: throw ChartScreenFormatException("the screen's chart has no 'series' list")
     if (series.isEmpty()) throw ChartScreenFormatException("the screen's chart has an empty 'series' list")
     val scrub = root["scrub"] as? JsonObject ?: JsonObject(emptyMap())

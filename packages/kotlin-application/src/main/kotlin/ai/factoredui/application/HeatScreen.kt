@@ -32,9 +32,10 @@ fun readHeatScreen(text: String): HeatScreen {
 }
 
 private fun airZonesOf(root: JsonObject): List<AirZone> = (root["air_zones"] as? JsonArray).orEmpty().map { entry ->
+    val styleLayers = ((root["style"] as? JsonObject)?.get("air_layers") as? JsonPrimitive)?.content?.toIntOrNull()
     val zone = entry as? JsonObject ?: throw HeatFormatException("an air zone is not an object")
     AirZone(textIn(zone, "label"), textIn(zone, "member"), (zone["systems"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }.toSet(), textIn(zone, "stock"),
-        (zone["layers"] as? JsonPrimitive)?.content?.toIntOrNull() ?: 1, (zone["stop_at"] as? JsonPrimitive)?.content)
+        (zone["layers"] as? JsonPrimitive)?.content?.toIntOrNull() ?: styleLayers ?: 1, (zone["stop_at"] as? JsonPrimitive)?.content)
 }
 
 private fun rampStopsOf(root: JsonObject): List<Pair<Double, String>>? = (root["ramp_stops"] as? JsonArray)?.map { stop ->

@@ -146,4 +146,10 @@ class ChartScreenTest {
         assertFailsWith<ChartScreenFormatException> { chartScreenSpec(readChartScreen(SCREEN), JsonObject(mapOf("steps" to JsonPrimitive("x")))) }
         assertFailsWith<ChartScreenFormatException> { chartScreenSpec(readChartScreen(SCREEN), JsonObject(emptyMap())) }
     }
+
+    @Test
+    fun presentation_in_the_screens_style_block_joins_the_charts_props() {
+        val screen = readChartScreen(SCREEN.replace(""""title": "One day",""", """"title": "One day", "style": { "x_axis": { "every": 6 } },"""))
+        assertEquals(6.0, screen.chart["x_axis"]!!.jsonObject["every"]!!.jsonPrimitive.double)
+    }
 }

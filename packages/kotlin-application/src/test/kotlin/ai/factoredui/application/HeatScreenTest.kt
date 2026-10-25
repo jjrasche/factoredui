@@ -224,4 +224,10 @@ class HeatScreenTest {
         assertEquals("Old hoop model", root.props("heat.source")["value"]!!.jsonPrimitive.content)
         assertTrue(root.props("heat.fan.label")["value"]!!.jsonPrimitive.content.contains("(old hoop model)"))
     }
+
+    @Test
+    fun the_air_layer_count_can_sit_in_the_views_style_block() {
+        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "style": { "air_layers": 6 }, "air_zones": [ { "label": "Air", "member": "Site", "systems": ["house"], "stock": "air_temperature_f" } ] }""")
+        assertEquals(6, view.airZones.single().layers)
+    }
 }
