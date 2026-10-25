@@ -12,7 +12,10 @@ import java.nio.file.Path
 
 class FieldFormatException(message: String) : IllegalArgumentException(message)
 
-data class FieldScreen(val title: String, val world: String, val gridPath: String, val inletPath: String, val outletPath: String, val layouts: List<String>, val ramp: String, val answersFile: String? = null, val labels: Map<String, String> = emptyMap(), val axisLabels: Map<String, String> = emptyMap(), val temperatureUnit: String = "C")
+/** How a view gets its answers from the engine: the system whose solution each layout picks and the solver function whose values are drawn. */
+data class FieldSolve(val system: String, val function: String)
+
+data class FieldScreen(val title: String, val world: String, val gridPath: String, val inletPath: String, val outletPath: String, val layouts: List<String>, val ramp: String, val answersFile: String? = null, val labels: Map<String, String> = emptyMap(), val axisLabels: Map<String, String> = emptyMap(), val temperatureUnit: String = "C", val solve: FieldSolve? = null)
 
 private const val FRAME_PATH = "frame"
 private const val MM_PER_FOOT = 304.8
@@ -28,9 +31,11 @@ fun readFieldScreen(text: String): FieldScreen {
     return FieldScreen(
         (root["title"] as? JsonPrimitive)?.content.orEmpty(), textIn(root, "world"), textIn(root, "grid"),
         textIn(root, "inlet"), textIn(root, "outlet"), layouts, (root["ramp"] as? JsonPrimitive)?.content ?: "heat",
-        (root["answers"] as? JsonPrimitive)?.takeIf { it.isString }?.content, textMapIn(root, "labels"), textMapIn(root, "axis_labels"), (root["temperature_unit"] as? JsonPrimitive)?.content ?: "C",
+        (root["answers"] as? JsonPrimitive)?.takeIf { it.isString }?.content, textMapIn(root, "labels"), textMapIn(root, "axis_labels"), (root["temperature_unit"] as? JsonPrimitive)?.content ?: "C", solveOf(root),
     )
 }
+
+private fun solveOf(root: JsonObject): FieldSolve? = (root["solve"] as? JsonObject)?.let { FieldSolve(textIn(it, "system"), textIn(it, "function")) }
 
 private fun textMapIn(root: JsonObject, key: String): Map<String, String> =
     (root[key] as? JsonObject).orEmpty().mapValues { (name, value) -> (value as? JsonPrimitive)?.takeIf { it.isString }?.content ?: throw FieldFormatException("the '$key' entry '$name' is not text") }
@@ -42,6 +47,37 @@ private fun answersOf(viewFile: Path, screen: FieldScreen): Map<String, JsonObje
     val file = answersFileOf(viewFile, screen) ?: throw FieldFormatException("the field view names no 'answers' file, and the engine's solver is not wired to give one yet")
     val root = runCatching { Json.parseToJsonElement(Files.readString(file)) }.getOrNull() as? JsonObject ?: throw FieldFormatException("the answers file ${file.fileName} is not a JSON object")
     return root.mapValues { (layout, answer) -> answer as? JsonObject ?: throw FieldFormatException("the answer for '$layout' is not an object") }
+}
+
+private const val SOLVE_TIMEOUT_SECONDS = 900L
+private const val HEX_BYTE = "%02x"
+
+private fun solvedValues(engine: EngineRuntime, worldFile: Path, solve: FieldSolve, layout: String): JsonObject {
+    val text = engine.answer(listOf("solve", worldFile.toAbsolutePath().toString(), "--use", "${solve.system}=$layout"), SOLVE_TIMEOUT_SECONDS)
+    val root = Json.parseToJsonElement(text.substring(text.indexOf('{').coerceAtLeast(0))) as? JsonObject ?: throw FieldFormatException("the solve for '$layout' is not a JSON object")
+    val solver = (root["solvers"] as? JsonArray).orEmpty().map { it as JsonObject }.firstOrNull { (it["function"] as? JsonPrimitive)?.content == solve.function }
+        ?: throw FieldFormatException("the engine answered no '${solve.function}' for the layout '$layout': ${text.take(200)}")
+    val status = (solver["status"] as? JsonPrimitive)?.content
+    if (status != "known") throw FieldFormatException("the engine's ${solve.function} for the layout '$layout' is $status: ${(solver["detail"] as? JsonPrimitive)?.content.orEmpty()}")
+    return solver["values"] as? JsonObject ?: throw FieldFormatException("the engine's ${solve.function} for the layout '$layout' has no values")
+}
+
+private fun configHash(worldFile: Path): String =
+    java.security.MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(worldFile)).joinToString("") { HEX_BYTE.format(it) }
+
+/** The page a field view draws from what the engine solves, each layout asked by choosing its solution, nothing stored in the view. */
+fun fieldSpecBySolving(engine: EngineRuntime, worldFile: Path, screen: FieldScreen): JsonObject {
+    val solve = screen.solve ?: throw FieldFormatException("the field view names no 'solve'")
+    val answers = screen.layouts.associateWith { solvedValues(engine, worldFile, solve, it) } + ("provenance" to JsonObject(mapOf("config_sha256" to JsonPrimitive(configHash(worldFile)))))
+    return fieldScreenSpec(screen, answers)
+}
+
+/** The page a field view draws: solved by the engine when the view says how, else from the answers file it names. */
+internal fun fieldOfView(engine: EngineRuntime, worlds: List<EngineWorld>, viewFile: Path): JsonObject {
+    val screen = readFieldScreen(Files.readString(viewFile))
+    if (screen.solve == null) return fieldSpecOfFile(viewFile)
+    val world = worlds.firstOrNull { it.id == screen.world } ?: throw FieldFormatException("the engine serves no world '${screen.world}'")
+    return fieldSpecBySolving(engine, world.path, screen)
 }
 
 /** The page a field view file draws, from the answers file it names. */
