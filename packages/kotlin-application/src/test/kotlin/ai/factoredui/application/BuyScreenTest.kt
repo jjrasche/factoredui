@@ -60,4 +60,13 @@ class BuyScreenTest {
         assertEquals("scrollview", specOf()["root"]!!.jsonObject["type"]!!.jsonPrimitive.content)
         assertTrue(specOf().toString().contains("What to buy"))
     }
+
+    @Test
+    fun the_price_source_is_hidden_in_the_table_and_shown_for_the_line_tapped() {
+        val table = specOf()["root"]!!.jsonObject.nodes().first { it["type"]!!.jsonPrimitive.content == "table" }["props"]!!.jsonObject
+        assertEquals("true", table["columns"]!!.jsonObject["source"]!!.jsonObject["hidden"]!!.jsonPrimitive.content)
+        val tap = table["on_row_tap"]!!.jsonObject["params"]!!.jsonObject["values"]!!.jsonObject
+        assertEquals("{row.values.source}", tap["bom.picked_source"]!!.jsonPrimitive.content)
+        assertTrue(specOf()["root"]!!.jsonObject.nodes().any { it["id"]!!.jsonPrimitive.content == "buy.picked_source" })
+    }
 }

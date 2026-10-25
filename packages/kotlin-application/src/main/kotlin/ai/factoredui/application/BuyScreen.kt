@@ -37,6 +37,14 @@ private val COLUMNS = listOf(
     mapOf("id" to "source", "label" to "Priced from", "type" to "text", "kind" to "text"),
 )
 
+private val COLUMN_OVERRIDES = mapOf(
+    "source" to mapOf("hidden" to true), "count" to mapOf("width" to 52), "unit_price" to mapOf("width" to 84), "total" to mapOf("width" to 100),
+)
+
+private const val NOTHING_PICKED = "Tap a line to see where its price came from."
+
+private val PICK_LINE = mapOf("action" to "set_binding", "params" to mapOf("values" to mapOf("bom.picked_item" to "{row.label}", "bom.picked_source" to "{row.values.source}")))
+
 private val DISPLAY = mapOf("units" to mapOf("count" to mapOf("scale" to 1, "decimals" to 0), "usd" to "usd"))
 
 /** What to buy: the engine's bill of materials as one sortable table, its own total on top. */
@@ -49,12 +57,14 @@ fun buySpec(screen: BuyScreen, expanded: JsonObject): JsonObject {
         textNode("buy.title", screen.title, variant = "subheading", bold = true, color = INK),
         specNode("buy.total", "text", mapOf("value" to total, "format" to "usd", "variant" to "heading")),
         textNode("buy.note", "From the engine's bill of materials, ${lines.size} lines; each price names where it came from. Tap a heading to sort.", variant = "caption", color = MUTED),
-        specNode("buy.table", "table", mapOf("view" to "{$BOM_PATH.view}", "display" to DISPLAY, "label_header" to "Item", "sort_by" to "{$BOM_PATH.sort_by}", "sort_desc" to "{$BOM_PATH.sort_desc}", "title" to false)),
+        textNode("buy.picked_item", "{bom.picked_item}", variant = "subheading", bold = true, color = INK),
+        textNode("buy.picked_source", "{bom.picked_source}", variant = "caption", color = MUTED),
+        specNode("buy.table", "table", mapOf("view" to "{$BOM_PATH.view}", "display" to DISPLAY, "label_header" to "Item", "columns" to COLUMN_OVERRIDES, "on_row_tap" to PICK_LINE, "sort_by" to "{$BOM_PATH.sort_by}", "sort_desc" to "{$BOM_PATH.sort_desc}", "title" to false)),
     )
     return JsonObject(
         mapOf(
             "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"),
-            "state" to jsonOf(mapOf("$BOM_PATH.view" to view, "$BOM_PATH.sort_by" to "total", "$BOM_PATH.sort_desc" to true)),
+            "state" to jsonOf(mapOf("$BOM_PATH.view" to view, "$BOM_PATH.sort_by" to "total", "$BOM_PATH.sort_desc" to true, "$BOM_PATH.picked_item" to "", "$BOM_PATH.picked_source" to NOTHING_PICKED)),
             "root" to scrollingRoot(children, HUD),
         ),
     )
