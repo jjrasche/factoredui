@@ -139,6 +139,10 @@ private fun heatmapNode(id: String, field: LayoutField, screen: FieldScreen, low
 }
 
 private const val HASH_SHOWN = 8
+private const val TENTH = 10.0
+
+/** A number to two decimals with no trailing zeros: 0.2915 reads 0.29 and 0.5 reads 0.5. */
+private fun tidy(value: Double): String = java.math.BigDecimal(value).setScale(2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
 
 /** Where an answer came from, so a reader can tell it from a stale run: the engine, the domains and the config's hash. */
 private fun provenanceNote(provenance: JsonObject?): JsonObject? {
@@ -152,8 +156,8 @@ private fun provenanceNote(provenance: JsonObject?): JsonObject? {
 private fun resolutionNotice(layout: String, answer: JsonObject): JsonObject? {
     val resolution = answer["resolution"] as? JsonObject ?: return null
     if ((resolution["underresolved"] as? JsonPrimitive)?.booleanOrNull != true) return null
-    val cell = (resolution["near_pipe_cell_m"] as? JsonPrimitive)?.content
-    val penetration = (resolution["daily_penetration_m"] as? JsonPrimitive)?.content
+    val cell = (resolution["near_pipe_cell_m"] as? JsonPrimitive)?.doubleOrNull?.let(::tidy)
+    val penetration = (resolution["daily_penetration_m"] as? JsonPrimitive)?.doubleOrNull?.let(::tidy)
     return textNode("$layout.resolution", "near-pipe soil coarse: daily storage underresolved (near-pipe cell $cell m, daily penetration $penetration m)", variant = "caption", bold = true, color = INK)
 }
 
@@ -172,8 +176,8 @@ private fun frameControls(frameCount: Int, hours: List<Double>): List<JsonObject
 fun fieldScreenSpec(screen: FieldScreen, answers: Map<String, JsonObject>): JsonObject {
     val fields = screen.layouts.map { fieldOf(screen, it, answers) }
     val everyValue = fields.flatMap { it.frames.flatten() }
-    val low = everyValue.min()
-    val high = everyValue.max()
+    val low = Math.floor(everyValue.min() * TENTH) / TENTH
+    val high = Math.ceil(everyValue.max() * TENTH) / TENTH
     val first = fields.first()
     val hours = numbers(first.grid["times_h"])
     val notice = (answers.getValue(first.layout)["fixture"] as? JsonPrimitive)?.content?.let { textNode("fixture.notice", "FIXTURE: $it", variant = "caption", bold = true, color = MUTED) }

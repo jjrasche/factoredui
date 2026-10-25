@@ -167,4 +167,13 @@ class FieldScreenTest {
         val root = fieldScreenSpec(readFieldScreen(VIEW), answers() + ("provenance" to provenance))["root"]!!.jsonObject
         assertEquals("From the engine: engine 5d5a58e, domains 798c048, config dd281761", root.props("provenance.note")["value"]!!.jsonPrimitive.content)
     }
+
+    @Test
+    fun the_colour_range_and_the_resolution_figures_are_rounded_for_reading() {
+        val long = Json.parseToJsonElement(answer(10.04).replaceFirst("{", """{ "resolution": { "near_pipe_cell_m": 0.2915376005, "daily_penetration_m": 0.11839398, "underresolved": true, "reason": "r" }, """)).jsonObject
+        val root = fieldScreenSpec(readFieldScreen(VIEW), mapOf("serpentine" to long, "parallel-runs" to long))["root"]!!.jsonObject
+        assertEquals(10.0, root.props("serpentine.heatmap")["min"]!!.jsonPrimitive.double)
+        assertEquals(21.1, root.props("serpentine.heatmap")["max"]!!.jsonPrimitive.double, 1e-9)
+        assertTrue("(near-pipe cell 0.29 m, daily penetration 0.12 m)" in root.props("serpentine.resolution")["value"]!!.jsonPrimitive.content)
+    }
 }
