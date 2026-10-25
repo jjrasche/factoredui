@@ -178,6 +178,10 @@ suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
     val resolvedParams = ai.factoredui.compose.schema.BindingResolver
         .resolveProps(actionRef.params, data)
     observability.onInteraction(nodeId, actionRef, resolvedParams)
+    if (actionRef.action == ANIMATE_BINDING_ACTION) {
+        animateBinding(nodeId, resolvedParams)
+        return
+    }
     if (actionRef.action == SET_BINDING_ACTION) {
         writeBindingFrom(nodeId, resolvedParams)
         return

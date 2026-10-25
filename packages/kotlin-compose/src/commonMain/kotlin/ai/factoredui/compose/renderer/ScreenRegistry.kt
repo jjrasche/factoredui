@@ -124,6 +124,9 @@ class ScreenRegistry {
     private val records = LinkedHashMap<String, NodeRecord>()
     var root: SpecNode? = null
 
+    /** The paths a running `animate_binding` is playing; a second dispatch for one of them stops it. */
+    val animating = mutableSetOf<String>()
+
     @Volatile var frame: Long = 0L
         private set
 
