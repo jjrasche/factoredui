@@ -118,4 +118,15 @@ class HeatScreenTest {
         assertEquals(0.1, styles["glass"]!!.jsonObject["opacity"]!!.jsonPrimitive.double)
         assertTrue("opacity" !in styles["wall"]!!.jsonObject)
     }
+
+    @Test
+    fun a_box_a_view_names_is_drawn_nearly_see_through_whatever_its_style_so_the_pieces_inside_carry_the_colour() {
+        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "clear_boxes": ["water-box"] }""")
+        val volume = heatSpec(view, boxes(), season())["root"]!!.jsonObject.props("heat.volume")
+        val water = volume["boxes"]!!.jsonArray.map { it.jsonObject }.first { it["id"]!!.jsonPrimitive.content == "water-box" }
+        assertEquals("clear: water", water["style"]!!.jsonPrimitive.content)
+        assertEquals(0.1, volume["styles"]!!.jsonObject["clear: water"]!!.jsonObject["opacity"]!!.jsonPrimitive.double)
+        assertTrue("opacity" !in volume["styles"]!!.jsonObject["glass"]!!.jsonObject)
+        assertTrue("values" in water)
+    }
 }
