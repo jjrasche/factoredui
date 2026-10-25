@@ -125,16 +125,26 @@ fun heatSpec(screen: HeatScreen, siteBoxes: List<Map<String, Any?>>, season: Jso
     val title = textNode("heat.title", screen.title, variant = "subheading", bold = true, color = INK)
     val dayLine = textNode("heat.day", "Day ${day + 1} of the season, the coldest by outside air: ${tidyDegrees(outside.min())} to ${tidyDegrees(outside.max())} F", variant = "caption", color = MUTED)
     val slider = specNode("heat.slider", "slider", mapOf("value" to "{$HOUR_PATH}", "min" to 0, "max" to HOURS_IN_DAY - 1, "step" to 1))
-    val stepButtons = specNode("heat.steps", "row", mapOf("gap" to 12), listOf(hourButton("heat.earlier", "Earlier hour", -1), hourButton("heat.later", "Later hour", 1)))
+    val stepButtons = specNode("heat.steps", "row", mapOf("gap" to 12), listOf(hourButton("heat.earlier", "Earlier hour", -1), playButton(), hourButton("heat.later", "Later hour", 1)))
     val hourLine = textNode("heat.hourlabel", "Hour of the day, 0 to ${HOURS_IN_DAY - 1}", variant = "caption", color = MUTED)
     val children = listOf(title, dayLine, volume, hourLine, slider, stepButtons, chartNode(steps, day, stocks))
     return JsonObject(
         mapOf(
-            "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(mapOf(HOUR_PATH to coldestHour)),
+            "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(mapOf(HOUR_PATH to coldestHour, PLAYING_PATH to false)),
             "root" to specNode("root", "column", mapOf("gap" to 12, "padding" to 16, "background" to HUD), children),
         ),
     )
 }
+
+private const val PLAYING_PATH = "heat.playing"
+private const val PLAY_INTERVAL_MILLIS = 400
+
+/** One button that plays the hours round the day and, tapped again, stops where it is; it stays on screen while it plays, since the loop runs in its tap. */
+private fun playButton(): JsonObject =
+    JsonObject(
+        specNode("heat.play", "button", mapOf("label" to "Play / pause", "flex" to 1)) +
+            ("action" to jsonOf(mapOf("action" to "animate_binding", "params" to mapOf("path" to HOUR_PATH, "from" to 0, "to" to HOURS_IN_DAY - 1, "step" to 1, "interval_ms" to PLAY_INTERVAL_MILLIS, "loop" to true, "playing" to PLAYING_PATH)))),
+    )
 
 private fun hourButton(id: String, label: String, add: Int): JsonObject =
     JsonObject(specNode(id, "button", mapOf("label" to label, "variant" to "outlined", "flex" to 1)) + ("action" to jsonOf(mapOf("action" to "set_binding", "params" to mapOf("path" to HOUR_PATH, "add" to add, "min" to 0, "max" to HOURS_IN_DAY - 1)))))

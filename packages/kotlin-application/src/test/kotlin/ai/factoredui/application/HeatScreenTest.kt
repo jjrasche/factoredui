@@ -165,4 +165,15 @@ class HeatScreenTest {
         val ramp = heatSpec(view, boxes(), season())["root"]!!.jsonObject.props("heat.volume")["value_ramp"]!!.jsonObject
         assertEquals(2, ramp["stops"]!!.jsonArray.size)
     }
+
+    @Test
+    fun one_play_button_loops_the_hours_of_the_day_and_a_second_tap_stops_it() {
+        val action = rootOf().nodes().first { it["id"]!!.jsonPrimitive.content == "heat.play" }["action"]!!.jsonObject
+        assertEquals("animate_binding", action["action"]!!.jsonPrimitive.content)
+        val params = action["params"]!!.jsonObject
+        assertEquals("heat.hour", params["path"]!!.jsonPrimitive.content)
+        assertEquals(23.0, params["to"]!!.jsonPrimitive.double)
+        assertEquals("true", params["loop"]!!.jsonPrimitive.content)
+        assertEquals("heat.playing", params["playing"]!!.jsonPrimitive.content)
+    }
 }
