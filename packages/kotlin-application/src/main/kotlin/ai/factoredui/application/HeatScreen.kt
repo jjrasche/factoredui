@@ -13,7 +13,7 @@ class HeatFormatException(message: String) : IllegalArgumentException(message)
 
 data class AirZone(val label: String, val member: String, val systems: Set<String>, val stock: String, val layers: Int = 1, val stopAt: String? = null)
 
-data class HeatScreen(val title: String, val world: String, val site: String, val ramp: String, val unit: String, val clearStyles: Set<String> = emptySet(), val clearBoxes: List<String> = emptyList(), val airZones: List<AirZone> = emptyList(), val rampStops: List<Pair<Double, String>>? = null)
+data class HeatScreen(val title: String, val world: String, val site: String, val ramp: String, val unit: String, val clearStyles: Set<String> = emptySet(), val clearBoxes: List<String> = emptyList(), val airZones: List<AirZone> = emptyList(), val rampStops: List<Pair<Double, String>>? = null, val weekStartDay: Int? = null)
 
 private const val HOURS_IN_DAY = 24
 private const val HOUR_PATH = "heat.hour"
@@ -28,7 +28,7 @@ fun readHeatScreen(text: String): HeatScreen {
     val root = runCatching { Json.parseToJsonElement(text) }.getOrNull() as? JsonObject ?: throw HeatFormatException("the heat view is not a JSON object")
     return HeatScreen((root["title"] as? JsonPrimitive)?.content.orEmpty(), textIn(root, "world"), textIn(root, "site"), (root["ramp"] as? JsonPrimitive)?.content ?: "cool_warm", (root["unit"] as? JsonPrimitive)?.content ?: "F",
         (root["clear_styles"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }.toSet(),
-        (root["clear_boxes"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }, airZonesOf(root), rampStopsOf(root))
+        (root["clear_boxes"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }, airZonesOf(root), rampStopsOf(root), (root["week_start_day"] as? JsonPrimitive)?.content?.toIntOrNull())
 }
 
 private fun airZonesOf(root: JsonObject): List<AirZone> = (root["air_zones"] as? JsonArray).orEmpty().map { entry ->
@@ -41,6 +41,40 @@ private fun rampStopsOf(root: JsonObject): List<Pair<Double, String>>? = (root["
     val pair = stop as? JsonArray ?: throw HeatFormatException("a ramp stop is not a [value, colour] pair")
     (pair[0] as JsonPrimitive).doubleOrNull!! to (pair[1] as JsonPrimitive).content
 }
+
+private const val HOURS_IN_WEEK = 168
+private const val DAYS_BEFORE = 3
+private const val FAN_FLOW = "greenhouse-hour"
+private const val FAN_STOCK = "fan_kwh"
+
+private fun fanKwhIn(step: JsonObject): Double =
+    heatNumberAt((((step["flows"] as? JsonObject)?.get(FAN_FLOW) as? JsonObject)?.get("moves") as? JsonObject)?.get(FAN_STOCK)) ?: 0.0
+
+/** The first step of the week shown: the view's own start day, else three days before the shown day, kept inside the season. */
+private fun weekStartOf(screen: HeatScreen, day: Int, stepCount: Int): Int {
+    val wanted = (screen.weekStartDay ?: (day - DAYS_BEFORE)) * HOURS_IN_DAY
+    return wanted.coerceIn(0, maxOf(0, stepCount - HOURS_IN_WEEK))
+}
+
+/** The fan hour by hour over a week, from the engine's own hourly fan energy: on when it is above zero, with the count of on-hours and the week's kWh. */
+private fun fanNodes(screen: HeatScreen, steps: List<JsonObject>, day: Int): List<JsonObject> {
+    val from = weekStartOf(screen, day, steps.size)
+    val hours = steps.subList(from, minOf(steps.size, from + HOURS_IN_WEEK)).map(::fanKwhIn)
+    val onHours = hours.count { it > 0.0 }
+    val total = hours.sum()
+    val strip = specNode(
+        "heat.fan.strip", "heatmap",
+        mapOf(
+            "x" to mapOf("origin" to 0, "step" to 1, "count" to hours.size, "label" to "hour of the week"), "y" to mapOf("origin" to 0, "step" to 1, "count" to 1, "label" to ""),
+            "frames" to listOf(hours.map { if (it > 0.0) 1.0 else 0.0 }), "frame" to 0, "min" to 0, "max" to 1, "unit" to "on",
+            "ramp" to mapOf("stops" to listOf(listOf(0, "#1b2433"), listOf(1, "#f2d43d"))), "height" to FAN_STRIP_HEIGHT_DP,
+        ),
+    )
+    val label = textNode("heat.fan.label", "Fan: on ${onHours} of ${hours.size} hours, ${tidyDegrees(total)} kWh (days ${from / HOURS_IN_DAY + 1} to ${(from + hours.size - 1) / HOURS_IN_DAY + 1})", variant = "caption", bold = true, color = INK)
+    return listOf(label, strip)
+}
+
+private const val FAN_STRIP_HEIGHT_DP = 70
 
 private fun heatStepsOf(season: JsonObject): List<JsonObject> = (season["steps"] as? JsonArray).orEmpty().map { it as? JsonObject ?: throw HeatFormatException("a step is not an object") }
 
@@ -127,7 +161,7 @@ fun heatSpec(screen: HeatScreen, siteBoxes: List<Map<String, Any?>>, season: Jso
     val slider = specNode("heat.slider", "slider", mapOf("value" to "{$HOUR_PATH}", "min" to 0, "max" to HOURS_IN_DAY - 1, "step" to 1))
     val stepButtons = specNode("heat.steps", "row", mapOf("gap" to 12), listOf(hourButton("heat.earlier", "Earlier", -1), playButton(), hourButton("heat.later", "Later", 1)))
     val hourLine = textNode("heat.hourlabel", "Hour of the day, 0 to ${HOURS_IN_DAY - 1}", variant = "caption", color = MUTED)
-    val children = listOf(title, dayLine) + nowNodes(season, steps, day) + listOf(volume, hourLine, slider, stepButtons, chartNode(steps, day, stocks))
+    val children = listOf(title, dayLine) + nowNodes(season, steps, day) + listOf(volume, hourLine, slider, stepButtons, chartNode(steps, day, stocks)) + fanNodes(screen, steps, day)
     return JsonObject(
         mapOf(
             "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(mapOf(HOUR_PATH to coldestHour, PLAYING_PATH to false)),

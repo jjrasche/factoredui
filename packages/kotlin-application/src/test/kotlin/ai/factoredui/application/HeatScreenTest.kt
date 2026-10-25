@@ -20,7 +20,7 @@ private fun season(): JsonObject {
         val day = t / 24
         val hour = t % 24
         val air = outside[day] + hour
-        """{ "t": $t, "stocks": { "air_temperature_f": ${air + 20}, "water_temperature_f": 60.0, "soil_temperature_f": 50.0 }, "series": { "outside_air_f": $air, "sun_horizontal_w_per_m2": 0.0 } }"""
+        """{ "t": $t, "stocks": { "air_temperature_f": ${air + 20}, "water_temperature_f": 60.0, "soil_temperature_f": 50.0 }, "series": { "outside_air_f": $air, "sun_horizontal_w_per_m2": 0.0 }, "flows": { "greenhouse-hour": { "moves": { "fan_kwh": ${if (t % 2 == 0) 2.0 else 0.0} } } } }"""
     }
     return Json.parseToJsonElement("""{ "clock": { "step": 1, "unit": "hour", "until": 72 }, "steps": [ $steps ] }""").jsonObject
 }
@@ -184,5 +184,21 @@ class HeatScreenTest {
         val third = lines.first { it["id"]!!.jsonPrimitive.content == "heat.now.2" }
         assertEquals("{heat.hour}=2", third["visible"]!!.jsonPrimitive.content)
         assertEquals("Day 2, 02:00: outside air 7 F", third["props"]!!.jsonObject["value"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun the_fan_strip_has_one_cell_per_hour_of_the_week_on_where_the_engines_fan_energy_is_above_zero() {
+        val strip = rootOf().props("heat.fan.strip")
+        val cells = strip["frames"]!!.jsonArray[0].jsonArray.map { it.jsonPrimitive.double }
+        assertEquals(72, cells.size)
+        assertEquals(36, cells.count { it == 1.0 })
+        assertTrue(rootOf().props("heat.fan.label")["value"]!!.jsonPrimitive.content.startsWith("Fan: on 36 of 72 hours, 72 kWh"))
+    }
+
+    @Test
+    fun a_week_starts_where_the_view_says() {
+        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "week_start_day": 0 }""")
+        val label = heatSpec(view, boxes(), season())["root"]!!.jsonObject.props("heat.fan.label")["value"]!!.jsonPrimitive.content
+        assertTrue("days 1 to 3" in label)
     }
 }
