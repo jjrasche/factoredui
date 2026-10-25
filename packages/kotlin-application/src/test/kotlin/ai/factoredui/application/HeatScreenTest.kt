@@ -26,8 +26,8 @@ private fun season(): JsonObject {
 }
 
 private fun boxes() = listOf(
-    mapOf("id" to "air-box", "style" to "glass", "x_mm" to 0.0, "y_mm" to 0.0, "z_mm" to 0.0, "width_mm" to 10.0, "depth_mm" to 10.0, "height_mm" to 10.0, "stock" to "air_temperature_f"),
-    mapOf("id" to "water-box", "style" to "water", "x_mm" to 20.0, "y_mm" to 0.0, "z_mm" to 0.0, "width_mm" to 10.0, "depth_mm" to 10.0, "height_mm" to 10.0, "stock" to "water_temperature_f"),
+    mapOf("id" to "Site/air-box", "system" to "house", "style" to "glass", "x_mm" to 0.0, "y_mm" to 0.0, "z_mm" to 0.0, "width_mm" to 10.0, "depth_mm" to 10.0, "height_mm" to 10.0, "stock" to "air_temperature_f"),
+    mapOf("id" to "Site/water-box", "system" to "tank", "style" to "water", "x_mm" to 20.0, "y_mm" to 0.0, "z_mm" to 0.0, "width_mm" to 10.0, "depth_mm" to 10.0, "height_mm" to 10.0, "stock" to "water_temperature_f"),
     mapOf("id" to "plain-box", "style" to "wall", "x_mm" to 40.0, "y_mm" to 0.0, "z_mm" to 0.0, "width_mm" to 10.0, "depth_mm" to 10.0, "height_mm" to 10.0),
 )
 
@@ -49,7 +49,7 @@ class HeatScreenTest {
 
     @Test
     fun a_box_with_a_stock_carries_that_stocks_hours_of_the_coldest_day() {
-        val values = boxProps("air-box")["values"]!!.jsonArray.map { it.jsonPrimitive.double }
+        val values = boxProps("Site/air-box")["values"]!!.jsonArray.map { it.jsonPrimitive.double }
         assertEquals(24, values.size)
         assertEquals(25.0, values.first())
         assertEquals(48.0, values.last())
@@ -121,12 +121,30 @@ class HeatScreenTest {
 
     @Test
     fun a_box_a_view_names_is_drawn_nearly_see_through_whatever_its_style_so_the_pieces_inside_carry_the_colour() {
-        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "clear_boxes": ["water-box"] }""")
+        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "clear_boxes": ["Site/water-box"] }""")
         val volume = heatSpec(view, boxes(), season())["root"]!!.jsonObject.props("heat.volume")
-        val water = volume["boxes"]!!.jsonArray.map { it.jsonObject }.first { it["id"]!!.jsonPrimitive.content == "water-box" }
+        val water = volume["boxes"]!!.jsonArray.map { it.jsonObject }.first { it["id"]!!.jsonPrimitive.content == "Site/water-box" }
         assertEquals("clear: water", water["style"]!!.jsonPrimitive.content)
         assertEquals(0.1, volume["styles"]!!.jsonObject["clear: water"]!!.jsonObject["opacity"]!!.jsonPrimitive.double)
         assertTrue("opacity" !in volume["styles"]!!.jsonObject["glass"]!!.jsonObject)
         assertTrue("values" in water)
+    }
+
+    @Test
+    fun an_air_zone_is_one_translucent_box_over_its_pieces_coloured_by_the_zones_air_stock() {
+        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "air_zones": [ { "label": "House air", "member": "Site", "systems": ["house", "tank"], "stock": "air_temperature_f" } ] }""")
+        val volume = heatSpec(view, boxes(), season())["root"]!!.jsonObject.props("heat.volume")
+        val air = volume["boxes"]!!.jsonArray.map { it.jsonObject }.first { it["id"]!!.jsonPrimitive.content == "air:House air" }
+        assertEquals(30.0, air["width_mm"]!!.jsonPrimitive.double)
+        assertEquals(10.0, air["height_mm"]!!.jsonPrimitive.double)
+        assertEquals(10.0, air["x_mm"]!!.jsonPrimitive.double)
+        assertEquals(24, air["values"]!!.jsonArray.size)
+        assertEquals(0.14, volume["styles"]!!.jsonObject["air: House air"]!!.jsonObject["opacity"]!!.jsonPrimitive.double)
+    }
+
+    @Test
+    fun an_air_zone_with_no_pieces_is_refused_by_name() {
+        val view = readHeatScreen("""{ "title": "Heat", "world": "w", "site": "big", "air_zones": [ { "label": "Loft air", "member": "Site", "systems": ["loft"], "stock": "air_temperature_f" } ] }""")
+        assertTrue("Loft air" in assertFailsWith<HeatFormatException> { heatSpec(view, boxes(), season()) }.message!!)
     }
 }
