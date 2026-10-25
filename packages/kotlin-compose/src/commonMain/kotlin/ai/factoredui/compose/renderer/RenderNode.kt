@@ -267,7 +267,7 @@ private fun RenderNodeByType(
         SpecNodeType.STACK -> RenderStack(node, context)
         SpecNodeType.SCROLLVIEW -> RenderScrollView(node, context)
         SpecNodeType.GRID -> RenderGrid(node, context)
-        SpecNodeType.TEXT -> RenderText(node, resolvedProps)
+        SpecNodeType.TEXT -> RenderText(node, resolvedProps, context)
         SpecNodeType.BUTTON -> RenderButton(node, resolvedProps, context)
         SpecNodeType.IMAGE -> RenderImage(node, resolvedProps)
         SpecNodeType.ICON -> RenderIcon(node, resolvedProps)
@@ -820,8 +820,9 @@ private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: Re
 // --- Leaf nodes ---
 
 @Composable
-private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
+private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val theme = LocalSpecTheme.current
+    val scope = rememberCoroutineScope()
     val props = resolvedProps.asResolvedTextProps().let { read -> read.copy(colorValue = read.colorName?.let { named -> theme.tokenColor(named) ?: named.parseColor() }) }
     val style = when (props.variant) {
         "display" -> MaterialTheme.typography.displayMedium
@@ -853,6 +854,7 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
         },
         maxLines = props.numberOfLines ?: Int.MAX_VALUE,
         modifier = Modifier.nodeTag(node.id)
+            .let { modifier -> node.action?.let { action -> modifier.clickable { scope.launch { context.dispatch(node.id, action) } } } ?: modifier }
             .let { if (fills) it.fillMaxWidth() else it }
             .let { modifier -> paint.background?.let { modifier.background(it).padding(horizontal = 6.dp, vertical = 2.dp) } ?: modifier },
     )
