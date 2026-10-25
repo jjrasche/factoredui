@@ -11,10 +11,11 @@ private const val SITE_SUFFIX = ".site.json"
 private const val FIELD_SUFFIX = ".field.json"
 private const val CARDS_SUFFIX = ".cards.json"
 private const val HEAT_SUFFIX = ".heat.json"
+private const val BUY_SUFFIX = ".buy.json"
 private const val BLUEPRINT_SUFFIX = "-blueprint"
 private const val OVERVIEW = "overview"
 
-class WorldView(val id: String, val label: String, val screen: Path?, val site: Path? = null, val field: Path? = null, val cards: Path? = null, val blueprint: Boolean = false, val heat: Path? = null)
+class WorldView(val id: String, val label: String, val screen: Path?, val site: Path? = null, val field: Path? = null, val cards: Path? = null, val blueprint: Boolean = false, val heat: Path? = null, val buy: Path? = null)
 
 data class WorldLabel(val id: String, val short: String, val title: String?)
 
@@ -95,6 +96,16 @@ private fun heatBeside(world: EngineWorld): List<WorldView> {
     }
 }
 
+private fun isBuyOf(world: EngineWorld, file: Path): Boolean =
+    runCatching { readBuyScreen(Files.readString(file)).world == world.id }.getOrDefault(false)
+
+private fun buyBeside(world: EngineWorld): List<WorldView> {
+    val directory = world.path.toAbsolutePath().parent?.resolve("views") ?: return emptyList()
+    if (!Files.isDirectory(directory)) return emptyList()
+    val files = Files.list(directory).use { listing -> listing.filter { it.fileName.toString().endsWith(BUY_SUFFIX) && isBuyOf(world, it) }.sorted().toList() }
+    return files.map { file -> WorldView(file.fileName.toString().removeSuffix(BUY_SUFFIX), "What to buy", null, null, null, null, false, null, file) }
+}
+
 private fun readsAsSystem(world: EngineWorld): Boolean = runCatching { readSystemFile(Files.readString(world.path)) }.isSuccess
 
-fun viewsOf(world: EngineWorld): List<WorldView> = heatBeside(world) + screensBeside(world) + sitesBeside(world) + fieldsBeside(world) + cardsBeside(world) + listOfNotNull(if (readsAsSystem(world)) WorldView(OVERVIEW, viewLabelOf(OVERVIEW), null) else null)
+fun viewsOf(world: EngineWorld): List<WorldView> = heatBeside(world) + buyBeside(world) + screensBeside(world) + sitesBeside(world) + fieldsBeside(world) + cardsBeside(world) + listOfNotNull(if (readsAsSystem(world)) WorldView(OVERVIEW, viewLabelOf(OVERVIEW), null) else null)

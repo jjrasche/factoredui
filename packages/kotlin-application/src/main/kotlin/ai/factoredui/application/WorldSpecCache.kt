@@ -64,7 +64,8 @@ private fun viewFilesDigest(worldFile: Path, viewId: String?): String {
     val field = fieldFileOf(worldFile, viewId)
     val cards = cardsFileOf(worldFile, viewId)
     val heat = heatFileOf(worldFile, viewId)
-    return listOfNotNull(siteFileOf(worldFile, viewId), field, fieldAnswersOf(field), cards, cardsAnswersOf(cards), heat, heatSiteOf(heat)).joinToString(",") { sha256OfFile(it) }
+    val buy = viewId?.let { worldFile.toAbsolutePath().parent.resolve("views").resolve("$it.buy.json") }?.takeIf { Files.isRegularFile(it) }
+    return listOfNotNull(siteFileOf(worldFile, viewId), field, fieldAnswersOf(field), cards, cardsAnswersOf(cards), heat, heatSiteOf(heat), buy).joinToString(",") { sha256OfFile(it) }
 }
 
 /** What one served page depends on: the world's id, the view asked for, the world file's bytes, each pinned domain file's bytes, the engine pin beside the world and the files of a site or field view. A change in any is a different key. */
