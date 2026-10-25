@@ -184,7 +184,7 @@ private fun page(children: List<JsonObject>, theme: String, state: Map<String, A
     JsonObject(
         mapOf(
             "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive(theme), "state" to jsonOf(state),
-            "root" to specNode("root", "column", mapOf("gap" to 12, "padding" to 16, "background" to background), children),
+            "root" to scrollingRoot(children, background),
         ),
     )
 

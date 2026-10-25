@@ -205,7 +205,7 @@ fun fieldScreenSpec(screen: FieldScreen, answers: Map<String, JsonObject>): Json
     val provenance = provenanceNote(answers["provenance"])
     val tabs = specNode("layouts", "tabs", mapOf("items" to screen.layouts.map { screen.labels[it] ?: it }, "selectedIndex" to "{layout}"), fields.map { layoutTab(it, answers.getValue(it.layout), screen, low, high) })
     val children = listOfNotNull(textNode("screen.title", screen.title, variant = "subheading", bold = true, color = INK), notice, provenance) + frameControls(first.frames.size, hours) + tabs
-    val root = specNode("root", "column", mapOf("gap" to 12, "padding" to 16, "background" to HUD), children)
+    val root = scrollingRoot(children, HUD)
     return JsonObject(
         mapOf(
             "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"),

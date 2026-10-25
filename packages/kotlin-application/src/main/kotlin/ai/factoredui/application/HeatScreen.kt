@@ -165,7 +165,7 @@ fun heatSpec(screen: HeatScreen, siteBoxes: List<Map<String, Any?>>, season: Jso
     return JsonObject(
         mapOf(
             "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(mapOf(HOUR_PATH to coldestHour, PLAYING_PATH to false)),
-            "root" to specNode("root", "column", mapOf("gap" to 12, "padding" to 16, "background" to HUD), children),
+            "root" to scrollingRoot(children, HUD),
         ),
     )
 }

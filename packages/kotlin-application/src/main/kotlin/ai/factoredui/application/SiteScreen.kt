@@ -193,7 +193,7 @@ internal fun siteSpec(engine: EngineRuntime, worlds: List<EngineWorld>, site: Si
     return JsonObject(
         mapOf(
             "spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(mapOf(FOCUS_PATH to everything)),
-            "root" to specNode("root", "column", mapOf("gap" to 12, "padding" to 16, "background" to HUD), children),
+            "root" to scrollingRoot(children, HUD),
         ),
     )
 }

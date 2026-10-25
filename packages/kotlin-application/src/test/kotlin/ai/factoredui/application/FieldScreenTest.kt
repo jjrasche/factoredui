@@ -113,7 +113,8 @@ class FieldScreenTest {
 
     @Test
     fun the_frame_slider_has_its_own_row_above_the_layout_tabs() {
-        val ids = rootOf()["children"]!!.jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.content }
+        val page = rootOf().nodes().first { it["id"]!!.jsonPrimitive.content == "page" }
+        val ids = page["children"]!!.jsonArray.map { it.jsonObject["id"]!!.jsonPrimitive.content }
         assertTrue(ids.indexOf("frame.slider") in 0 until ids.indexOf("layouts"))
     }
 
@@ -193,5 +194,10 @@ class FieldScreenTest {
         val root = fieldScreenSpec(readFieldScreen(VIEW), mapOf("serpentine" to stalled, "parallel-runs" to stalled))["root"]!!.jsonObject
         assertEquals("Fan off all day, the house air peaked at 12.2 C, below the fan's switch-on temperature.", root.props("serpentine.fan")["value"]!!.jsonPrimitive.content)
         assertTrue(root.props("serpentine.chart")["series"]!!.jsonArray.any { it.jsonObject["id"]!!.jsonPrimitive.content == "house air" })
+    }
+
+    @Test
+    fun the_page_scrolls_so_what_is_below_the_first_screen_can_be_reached() {
+        assertEquals("scrollview", rootOf()["type"]!!.jsonPrimitive.content)
     }
 }

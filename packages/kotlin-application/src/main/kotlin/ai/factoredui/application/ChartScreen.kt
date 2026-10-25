@@ -81,7 +81,7 @@ private fun chartNode(screen: ChartScreen, rows: List<JsonObject>): JsonObject {
 }
 
 private fun page(children: List<JsonObject>, state: Map<String, Any?>): JsonObject {
-    val root = specNode("root", "column", mapOf("gap" to 12, "padding" to 16, "background" to HUD), children)
+    val root = scrollingRoot(children, HUD)
     return JsonObject(mapOf("spec_version" to JsonPrimitive(1), "renderer_min" to JsonPrimitive(1), "theme" to JsonPrimitive("dark"), "state" to jsonOf(state), "root" to root))
 }
 
