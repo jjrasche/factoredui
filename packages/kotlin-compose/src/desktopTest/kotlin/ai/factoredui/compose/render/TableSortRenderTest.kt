@@ -82,10 +82,10 @@ class TableSortRenderTest {
     fun tapping_a_header_sorts_ascending_then_descending_and_marks_the_column() {
         val sorting = ""","sort_by":"{air_sort.by}","sort_desc":"{air_sort.desc}""""
         driving(sortableSpec(sorting)) { port, context ->
-            assertEquals(200, call(port, "click", "air/head/low").first)
+            assertEquals(200, call(port, "click", "air/head/low/sort").first)
             assertEquals(listOf("Tray", "Bench", "Rafter"), labelsInOrder(port))
             assertEquals("Low air ▲", textAt(port, "air/head/low"))
-            assertEquals(200, call(port, "click", "air/head/low").first)
+            assertEquals(200, call(port, "click", "air/head/low/sort").first)
             assertEquals(listOf("Rafter", "Bench", "Tray"), labelsInOrder(port))
             assertEquals("Low air ▼", textAt(port, "air/head/low"))
             assertEquals(mapOf("by" to "low", "desc" to true), context.data["air_sort"])
@@ -96,9 +96,9 @@ class TableSortRenderTest {
     fun a_value_less_row_sorts_last_in_either_direction() {
         val sorting = ""","sort_by":"{air_sort.by}","sort_desc":"{air_sort.desc}""""
         driving(sortableSpec(sorting)) { port, _ ->
-            call(port, "click", "air/head/mid")
+            call(port, "click", "air/head/mid/sort")
             assertEquals("Tray", textAt(port, "air/row/2/label"))
-            call(port, "click", "air/head/mid")
+            call(port, "click", "air/head/mid/sort")
             assertEquals("Tray", textAt(port, "air/row/2/label"))
         }
     }
@@ -128,7 +128,7 @@ class TableSortRenderTest {
             cells.forEach { bounds ->
                 assertTrue(bounds.getValue("x").jsonPrimitive.int >= 0, "$bounds starts inside the pane")
                 assertTrue(bounds.getValue("x").jsonPrimitive.int + bounds.getValue("w").jsonPrimitive.int <= 390, "$bounds ends inside the pane")
-                assertTrue(bounds.getValue("w").jsonPrimitive.int >= 40, "$bounds is wide enough to read")
+                assertTrue(bounds.getValue("h").jsonPrimitive.int <= 28, "$bounds draws on one line")
             }
         }
     }

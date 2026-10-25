@@ -98,8 +98,9 @@ private fun sortMark(control: SortControl?, column: String): String =
 
 private fun headerCell(id: String, column: String, text: String, slot: Pair<String, SpecValue>, align: String, control: SortControl?): SpecNode {
     val bold = mapOf("bold" to SpecValue.BooleanValue(true))
-    val cell = cellNode("head/$id", text + sortMark(control, column), slot, align, bold)
-    return if (control == null) cell else cell.copy(action = sortTap(control, column))
+    if (control == null) return cellNode("head/$id", text, slot, align, bold)
+    val cell = cellNode("head/$id", text + sortMark(control, column), "flex" to SpecValue.NumberValue(VALUE_FLEX), align, bold)
+    return SpecNode(id = "head/$id/sort", type = SpecNodeType.ROW, props = mapOf(slot), children = listOf(cell), action = sortTap(control, column))
 }
 
 private fun headerNode(columns: List<ShownColumn>, showLabel: Boolean, labelHeader: String, control: SortControl?): SpecNode {
