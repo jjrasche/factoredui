@@ -429,9 +429,10 @@ private fun DrawScope.drawGeomapTessellation(
 
     for (layer in tessellation.layers) {
         if (!layer.isShownAt(viewport.zoom) || layer.kind == GeomapLayerKind.POINT) continue
+        val sharedStrokes = LinkedHashMap<Pair<Int, Float>, Path>()
         for (feature in layer.featuresIn(view)) {
             val strokeArgb = feature.strokeArgb ?: continue
-            val path = Path()
+            val path = if (feature.dash == null) sharedStrokes.getOrPut(strokeArgb to feature.strokeWidth) { Path() } else Path()
             for (ring in feature.worldRings) {
                 if (ring.size / 2 < 2) continue
                 path.addScreenRing(ring, ::screenX, ::screenY)
@@ -440,8 +441,9 @@ private fun DrawScope.drawGeomapTessellation(
             val dashEffect = feature.dash?.let { intervals ->
                 PathEffect.dashPathEffect(intervals.map { it * density }.toFloatArray())
             }
-            drawPath(path, color = Color(strokeArgb), style = Stroke(width = feature.strokeWidth * density, pathEffect = dashEffect))
+            if (dashEffect != null) drawPath(path, color = Color(strokeArgb), style = Stroke(width = feature.strokeWidth * density, pathEffect = dashEffect))
         }
+        sharedStrokes.forEach { (style, path) -> drawPath(path, color = Color(style.first), style = Stroke(width = style.second * density)) }
     }
 
     for (layer in tessellation.layers) {
