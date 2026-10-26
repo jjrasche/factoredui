@@ -202,7 +202,7 @@ private fun projectBox(box: VolumeBox, eye: Vec3, sun: Direction?, project: (Vec
     val low = rings.low.map { worldOf(it.xMm, it.yMm, it.zMm) }
     val high = rings.high.map { worldOf(it.xMm, it.yMm, it.zMm) }
     val faceCorners = listOf(high) + low.indices.map { i -> listOf(low[i], low[(i + 1) % 4], high[(i + 1) % 4], high[i]) }
-    val shades = if (box.pitchDeg == 0.0) faceShades(footprintCorners(box), sun) else pitchedFaceShades(rings, sun)
+    val shades = if (box.pitchDeg == 0.0 && box.topRiseMm == 0.0) faceShades(footprintCorners(box), sun) else pitchedFaceShades(rings, sun)
     val projected = faceCorners.map { corners -> corners.map(project) }
     if (projected.any { face -> face.any { it == null } }) return null
     val centre = (low + high).reduce { sum, point -> sum + point } * (1f / 8f)
