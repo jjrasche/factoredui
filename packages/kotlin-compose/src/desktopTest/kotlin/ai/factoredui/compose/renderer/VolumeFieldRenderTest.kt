@@ -80,10 +80,20 @@ class VolumeFieldRenderTest {
         val everyCell = COUNT_I * COUNT_J * COUNT_K
         val half = """, "mask": [${everyCell / 2}, ${everyCell - everyCell / 2}] """
         val insideCount = everyCell - everyCell / 2
-        val values = (0 until FRAMES).joinToString(",", "[", "]") { frame -> (0 until insideCount).joinToString(",", "[", "]") { 600 + frame } }
+        val values = (0 until FRAMES).joinToString(",", "[", "]") { frame -> (0 until insideCount).joinToString(",", "[", "]") { (600 + frame).toString() } }
         val masked = driveScreen(specWith(half, RAMP, values), widthDp = WIDTH_DP, heightDp = HEIGHT_DP).use { it.frame().png }
         val unmasked = driveScreen(specWith("", RAMP, framesJson()), widthDp = WIDTH_DP, heightDp = HEIGHT_DP).use { it.frame().png }
         assertFalse(masked.contentEquals(unmasked))
+    }
+
+    @Test
+    fun cells_with_no_reading_draw_clear_exactly_like_cells_outside_the_mask() {
+        val everyCell = COUNT_I * COUNT_J * COUNT_K
+        val noReadings = (0 until FRAMES).joinToString(",", "[", "]") { (0 until everyCell).joinToString(",", "[", "]") { "null" } }
+        val allOutside = (0 until FRAMES).joinToString(",", "[", "]") { "[]" }
+        val unread = driveScreen(specWith("", RAMP, noReadings), widthDp = WIDTH_DP, heightDp = HEIGHT_DP).use { it.frame().png }
+        val masked = driveScreen(specWith(""", "mask": [$everyCell] """, RAMP, allOutside), widthDp = WIDTH_DP, heightDp = HEIGHT_DP).use { it.frame().png }
+        assertTrue(unread.contentEquals(masked), "an unread cell leaves a mark")
     }
 
     @Test
