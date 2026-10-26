@@ -122,23 +122,85 @@ fun earClipTriangulate(ring: DoubleArray): IntArray {
     val vertexCount = openRingVertexCount(ring)
     if (vertexCount < 3) return IntArray(0)
     val counterClockwise = signedRingArea(ring, vertexCount) > 0.0
-    val active = (0 until vertexCount).toMutableList()
+    val links = RingLinks(ring, vertexCount, counterClockwise)
     val triangles = IntArray((vertexCount - 2) * 3)
     var filled = 0
-    while (active.size > 3) {
-        val earIndex = findEarIndex(ring, active, counterClockwise)
-        val clipIndex = earIndex ?: flattestCornerIndex(ring, active)
-        val previous = active[(clipIndex + active.size - 1) % active.size]
-        val next = active[(clipIndex + 1) % active.size]
-        triangles[filled++] = previous
-        triangles[filled++] = active[clipIndex]
-        triangles[filled++] = next
-        active.removeAt(clipIndex)
+    while (links.remaining > 3) {
+        val clip = links.findEar() ?: links.flattestCorner()
+        triangles[filled++] = links.previous[clip]
+        triangles[filled++] = clip
+        triangles[filled++] = links.next[clip]
+        links.remove(clip)
     }
-    triangles[filled++] = active[0]
-    triangles[filled++] = active[1]
-    triangles[filled++] = active[2]
+    val last = links.first
+    triangles[filled++] = last
+    triangles[filled++] = links.next[last]
+    triangles[filled++] = links.next[links.next[last]]
     return triangles.copyOf(filled)
+}
+
+/** The ring's vertices still to be clipped, as a doubly linked list in index order, with the ones that are not convex marked: only those can lie inside another corner's triangle. */
+private class RingLinks(private val ring: DoubleArray, vertexCount: Int, private val counterClockwise: Boolean) {
+    val previous = IntArray(vertexCount) { (it + vertexCount - 1) % vertexCount }
+    val next = IntArray(vertexCount) { (it + 1) % vertexCount }
+    private val isConvex = BooleanArray(vertexCount)
+    var remaining = vertexCount
+        private set
+    var first = 0
+        private set
+
+    init {
+        for (vertex in 0 until vertexCount) isConvex[vertex] = convexAt(vertex)
+    }
+
+    private fun convexAt(vertex: Int): Boolean {
+        val turn = crossAt(ring, previous[vertex], vertex, next[vertex])
+        return if (counterClockwise) turn > 0.0 else turn < 0.0
+    }
+
+    fun remove(vertex: Int) {
+        val before = previous[vertex]
+        val after = next[vertex]
+        next[before] = after
+        previous[after] = before
+        if (vertex == first) first = after
+        remaining--
+        isConvex[before] = convexAt(before)
+        isConvex[after] = convexAt(after)
+    }
+
+    fun findEar(): Int? {
+        var vertex = first
+        repeat(remaining) {
+            if (isConvex[vertex] && !anyNotConvexInside(previous[vertex], vertex, next[vertex])) return vertex
+            vertex = next[vertex]
+        }
+        return null
+    }
+
+    private fun anyNotConvexInside(a: Int, b: Int, c: Int): Boolean {
+        var candidate = first
+        repeat(remaining) {
+            if (!isConvex[candidate] && candidate != a && candidate != b && candidate != c && isPointInTriangle(ring[candidate * 2], ring[candidate * 2 + 1], ring, a, b, c)) return true
+            candidate = next[candidate]
+        }
+        return false
+    }
+
+    fun flattestCorner(): Int {
+        var flattest = first
+        var smallestTurn = Double.MAX_VALUE
+        var vertex = first
+        repeat(remaining) {
+            val turn = abs(crossAt(ring, previous[vertex], vertex, next[vertex]))
+            if (turn < smallestTurn) {
+                smallestTurn = turn
+                flattest = vertex
+            }
+            vertex = next[vertex]
+        }
+        return flattest
+    }
 }
 
 fun openRingVertexCount(ring: DoubleArray): Int {
@@ -159,55 +221,12 @@ fun signedRingArea(ring: DoubleArray, vertexCount: Int = openRingVertexCount(rin
     return doubledArea / 2.0
 }
 
-private fun findEarIndex(ring: DoubleArray, active: List<Int>, counterClockwise: Boolean): Int? {
-    for (i in active.indices) {
-        val previous = active[(i + active.size - 1) % active.size]
-        val current = active[i]
-        val next = active[(i + 1) % active.size]
-        val turn = crossAt(ring, previous, current, next)
-        val isConvex = if (counterClockwise) turn > 0.0 else turn < 0.0
-        if (!isConvex) continue
-        if (anyActiveVertexInsideTriangle(ring, active, previous, current, next)) continue
-        return i
-    }
-    return null
-}
-
-private fun flattestCornerIndex(ring: DoubleArray, active: List<Int>): Int {
-    var flattest = 0
-    var smallestTurn = Double.MAX_VALUE
-    for (i in active.indices) {
-        val previous = active[(i + active.size - 1) % active.size]
-        val next = active[(i + 1) % active.size]
-        val turn = abs(crossAt(ring, previous, active[i], next))
-        if (turn < smallestTurn) {
-            smallestTurn = turn
-            flattest = i
-        }
-    }
-    return flattest
-}
-
 private fun crossAt(ring: DoubleArray, a: Int, b: Int, c: Int): Double {
     val abX = ring[b * 2] - ring[a * 2]
     val abY = ring[b * 2 + 1] - ring[a * 2 + 1]
     val acX = ring[c * 2] - ring[a * 2]
     val acY = ring[c * 2 + 1] - ring[a * 2 + 1]
     return abX * acY - abY * acX
-}
-
-private fun anyActiveVertexInsideTriangle(
-    ring: DoubleArray,
-    active: List<Int>,
-    a: Int,
-    b: Int,
-    c: Int,
-): Boolean {
-    for (candidate in active) {
-        if (candidate == a || candidate == b || candidate == c) continue
-        if (isPointInTriangle(ring[candidate * 2], ring[candidate * 2 + 1], ring, a, b, c)) return true
-    }
-    return false
 }
 
 private fun isPointInTriangle(px: Double, py: Double, ring: DoubleArray, a: Int, b: Int, c: Int): Boolean {

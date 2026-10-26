@@ -319,15 +319,16 @@ internal fun drawnGeomapFeatureIds(
 }
 
 private fun expandTriangles(worldRings: List<DoubleArray>): DoubleArray {
-    val expanded = ArrayList<Double>()
-    for (ring in worldRings) {
-        val indices = earClipTriangulate(ring)
+    val triangulated = worldRings.map { ring -> ring to earClipTriangulate(ring) }
+    val expanded = DoubleArray(triangulated.sumOf { it.second.size } * 2)
+    var written = 0
+    for ((ring, indices) in triangulated) {
         for (vertexIndex in indices) {
-            expanded.add(ring[vertexIndex * 2])
-            expanded.add(ring[vertexIndex * 2 + 1])
+            expanded[written++] = ring[vertexIndex * 2]
+            expanded[written++] = ring[vertexIndex * 2 + 1]
         }
     }
-    return expanded.toDoubleArray()
+    return expanded
 }
 
 internal fun hitTestGeomap(
