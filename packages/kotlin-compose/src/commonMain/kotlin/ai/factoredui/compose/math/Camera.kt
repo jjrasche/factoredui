@@ -20,6 +20,7 @@ class Camera(
     var near: Float = 0.1f,
     var far: Float = 500f,
     var minDistance: Float = MIN_DISTANCE,
+    var orthoHalfHeight: Float? = null,
 ) {
 
     fun eyePosition(): Vec3 {
@@ -33,7 +34,7 @@ class Camera(
     fun viewMatrix(): Matrix4 = Matrix4.lookAt(eyePosition(), target, Vec3(0f, 1f, 0f))
 
     fun projectionMatrix(aspect: Float): Matrix4 =
-        Matrix4.perspective(fovYRadians, aspect, near, far)
+        orthoHalfHeight?.let { Matrix4.orthographic(it, aspect, near, far) } ?: Matrix4.perspective(fovYRadians, aspect, near, far)
 
     /**
      * Orbit by pointer delta. Dragging right increases yaw; dragging down

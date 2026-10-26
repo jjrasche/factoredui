@@ -11,6 +11,8 @@ class VolumeField(
     val frames: List<DoubleArray>,
     val radiusCells: Double,
     val opacity: Double,
+    val isCells: Boolean = false,
+    val notLoaded: Set<Int> = emptySet(),
 ) {
     fun centreOf(cell: Int): VolumePoint {
         val i = cell % countI
@@ -29,6 +31,7 @@ class VolumeFieldRead(val field: VolumeField?, val notices: List<String>)
 
 private const val DEFAULT_RADIUS_CELLS = 1.0
 private const val DEFAULT_OPACITY = 0.5
+private const val DEFAULT_CELL_OPACITY = 1.0
 
 private fun numberOf(raw: Any?): Double? = (raw as? Number)?.toDouble()?.takeIf { it.isFinite() }
 
@@ -46,15 +49,17 @@ fun fieldInsideCells(rawMask: Any?, total: Int): IntArray? {
     return cells.toIntArray()
 }
 
-private fun framesOf(rawValues: Any?, scale: Double, insideCount: Int): Pair<List<DoubleArray>, List<String>> {
+private class FramesRead(val frames: List<DoubleArray>, val notices: List<String>, val notLoaded: Set<Int>)
+
+private fun framesOf(rawValues: Any?, scale: Double, insideCount: Int): FramesRead {
     val raw = (rawValues as? List<*>).orEmpty()
     val notices = ArrayList<String>()
     val frames = raw.mapIndexed { index, frame ->
         val readings = (frame as? List<*>).orEmpty()
-        if (readings.size != insideCount) notices.add("volume field: frame $index has ${readings.size} values for $insideCount inside cells; the missing ones are not coloured.")
+        if (frame != null && readings.size != insideCount) notices.add("volume field: frame $index has ${readings.size} values for $insideCount inside cells; the missing ones are not coloured.")
         DoubleArray(insideCount) { cell -> numberOf(readings.getOrNull(cell))?.let { it / scale } ?: Double.NaN }
     }
-    return frames to notices
+    return FramesRead(frames, notices, raw.indices.filter { raw[it] == null }.toSet())
 }
 
 fun readVolumeField(raw: Any?): VolumeFieldRead {
@@ -70,13 +75,22 @@ fun readVolumeField(raw: Any?): VolumeFieldRead {
     val inside = fieldInsideCells(fields["mask"], total)
         ?: return VolumeFieldRead(null, listOf("volume field: mask must be whole run lengths, outside then inside alternating, adding up to $total cells; it is not drawn."))
     val scale = numberOf(fields["scale"])?.takeIf { it > 0.0 } ?: 1.0
-    val (frames, notices) = framesOf(fields["values"], scale, inside.size)
+    val read = framesOf(fields["values"], scale, inside.size)
+    val (isCells, styleNotices) = styleOf(fields["style"])
     val field = VolumeField(
-        VolumePoint(origin[0]!!, origin[1]!!, origin[2]!!), step, countI, countJ, countK, inside, frames,
+        VolumePoint(origin[0]!!, origin[1]!!, origin[2]!!), step, countI, countJ, countK, inside, read.frames,
         numberOf(fields["radius_cells"])?.takeIf { it > 0.0 } ?: DEFAULT_RADIUS_CELLS,
-        numberOf(fields["opacity"])?.coerceIn(0.0, 1.0) ?: DEFAULT_OPACITY,
+        numberOf(fields["opacity"])?.coerceIn(0.0, 1.0) ?: if (isCells) DEFAULT_CELL_OPACITY else DEFAULT_OPACITY,
+        isCells,
+        read.notLoaded,
     )
-    return VolumeFieldRead(field, notices)
+    return VolumeFieldRead(field, read.notices + styleNotices)
+}
+
+private fun styleOf(raw: Any?): Pair<Boolean, List<String>> = when (raw) {
+    null, "soft" -> false to emptyList()
+    "cells" -> true to emptyList()
+    else -> false to listOf("volume field: style must be soft or cells, not '$raw'; soft is drawn.")
 }
 
 /** The span of [first] and [second] together; whichever exists when only one does. */

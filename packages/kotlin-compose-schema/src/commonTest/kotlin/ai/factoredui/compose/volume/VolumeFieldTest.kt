@@ -72,4 +72,33 @@ class VolumeFieldTest {
         assertNull(readVolumeField(mapOf("origin_mm" to listOf(0, 0, 0), "step_mm" to 0, "counts" to listOf(1, 1, 1))).field)
         assertNull(readVolumeField(null).field)
     }
+
+    @Test
+    fun the_cells_style_is_solid_by_default_and_soft_is_the_default_style() {
+        assertTrue(readVolumeField(fieldWith(mapOf("style" to "cells"))).field!!.isCells)
+        assertEquals(1.0, readVolumeField(fieldWith(mapOf("style" to "cells"))).field!!.opacity)
+        assertEquals(0.5, readVolumeField(fieldWith(mapOf("style" to "soft"))).field!!.opacity)
+        assertEquals(false, readVolumeField(fieldWith(emptyMap())).field!!.isCells)
+    }
+
+    @Test
+    fun an_unknown_style_is_named_and_soft_is_used() {
+        val read = readVolumeField(fieldWith(mapOf("style" to "squares")))
+        assertEquals(false, read.field!!.isCells)
+        assertEquals("volume field: style must be soft or cells, not 'squares'; soft is drawn.", read.notices.single())
+    }
+
+    @Test
+    fun a_null_frame_is_one_that_has_not_arrived_and_draws_clear_without_a_notice() {
+        val read = readVolumeField(fieldWith(mapOf("values" to listOf(listOf(1, 2, 3, 4, 5, 6, 7, 8), null, listOf(8, 7, 6, 5, 4, 3, 2, 1)))))
+        assertEquals(setOf(1), read.field!!.notLoaded)
+        assertEquals(3, read.field!!.frames.size)
+        assertTrue(read.field!!.frames[1].all { it.isNaN() })
+        assertTrue(read.notices.isEmpty())
+    }
+
+    @Test
+    fun a_short_frame_is_still_named() {
+        assertTrue(readVolumeField(fieldWith(mapOf("values" to listOf(listOf(1, 2))))).notices.single().contains("frame 0 has 2 values for 8"))
+    }
 }
