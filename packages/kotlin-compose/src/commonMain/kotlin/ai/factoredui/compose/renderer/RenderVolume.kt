@@ -14,7 +14,10 @@ import ai.factoredui.compose.plan.PlanStyle
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.volume.VolumeBox
+import ai.factoredui.compose.volume.VolumeField
 import ai.factoredui.compose.volume.VolumeLegendEntry
+import ai.factoredui.compose.volume.readVolumeField
+import ai.factoredui.compose.volume.unionSpan
 import ai.factoredui.compose.volume.VolumeRead
 import ai.factoredui.compose.volume.VolumeSpanMm
 import ai.factoredui.compose.volume.BoxRings
@@ -127,7 +130,7 @@ private val VOLUME_TEXT = TextStyle(fontSize = 12.sp, lineHeight = 15.sp)
 private val NOTICE_INK = Color(0xFFB3261E)
 
 /** Engine frame (x east, y north, z up, mm) to the camera's frame (x east, y up, z south, metres). */
-private fun worldOf(xMm: Double, yMm: Double, zMm: Double) = Vec3((xMm / MM_PER_UNIT).toFloat(), (zMm / MM_PER_UNIT).toFloat(), (-yMm / MM_PER_UNIT).toFloat())
+internal fun worldOf(xMm: Double, yMm: Double, zMm: Double) = Vec3((xMm / MM_PER_UNIT).toFloat(), (zMm / MM_PER_UNIT).toFloat(), (-yMm / MM_PER_UNIT).toFloat())
 
 private fun frameCamera(camera: Camera, span: VolumeSpanMm) {
     camera.fovYRadians = OVERVIEW_FOV
@@ -420,7 +423,8 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     PublishDetailRecord(node, selection.ids, resolvedProps["details"], context)
     val shown = remember(read, hidden) { if (hidden.isEmpty()) read else read.copy(boxes = read.boxes.filter { it.id !in hidden }) }
     val pickedPath = node.props["picked"]?.bindingPath()
-    val span = volumeSpan(read.boxes)
+    val fieldRead = remember(resolvedProps["field"]) { readVolumeField(resolvedProps["field"]) }
+    val span = unionSpan(volumeSpan(read.boxes), fieldRead.field?.span())
     val fill = resolvedProps["fill"] == true
     val bottomInsetDp = (resolvedProps["bottom_inset_dp"] as? Number)?.toFloat() ?: 0f
     val blueprint = resolvedProps["mode"] == "blueprint"
@@ -428,14 +432,14 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val currentTint = planColour(resolvedProps["current_color"] as? String) ?: CURRENT_INK
     val highlighted = remember(read, resolvedProps["highlight"]) { highlightedIds(read, resolvedProps["highlight"]) }
     val focusSpan = remember(read, resolvedProps["focus"]) { volumeSpan(read.boxes.filter { it.id in idsIn(resolvedProps["focus"]) }) }
-    val colouring = remember(read, resolvedProps["value_ramp"], resolvedProps["min"], resolvedProps["max"], resolvedProps["frame"], resolvedProps["unit"]) { boxColouringOf(read, resolvedProps) }
+    val colouring = remember(read, resolvedProps["value_ramp"], resolvedProps["min"], resolvedProps["max"], resolvedProps["frame"], resolvedProps["unit"], fieldRead) { boxColouringOf(read, resolvedProps, fieldRead.field?.frames?.size ?: 0) }
     val gradeTint = (planColour(resolvedProps["grade_color"] as? String) ?: GRADE_COLOUR).let { it.copy(alpha = (resolvedProps["grade_opacity"] as? Number)?.toFloat()?.coerceIn(0f, 1f) ?: GRADE_OPACITY) }
     Column(modifier = (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).nodeTag(node.id)) {
-        (read.notices + listOfNotNull(colouring.notice)).forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
+        (read.notices + fieldRead.notices + listOfNotNull(colouring.notice, fieldRead.field?.takeIf { colouring.colouring == null }?.let { "volume field: give value_ramp to colour it; it is not drawn." })).forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, highlighted, focusSpan, colouring.colouring, pickedPath, throughPath, context)
+            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, highlighted, focusSpan, colouring.colouring, fieldRead.field, pickedPath, throughPath, context)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -443,7 +447,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, colouring: BoxColouring?, pickedPath: String?, throughPath: String?, context: RenderContext) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, colouring: BoxColouring?, field: VolumeField?, pickedPath: String?, throughPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
     val camera = remember(span, focusSpan) { Camera(near = NEAREST_SEEN, minDistance = SMALLEST_VIEW_DISTANCE).also { frameCamera(it, focusSpan ?: span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -456,6 +460,8 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
         val heightPx = with(density) { heightDp.toPx() }
         if (focusSpan != null) remember(camera, focusSpan, widthPx, heightPx) { fitCamera(camera, focusSpan, widthPx, heightPx) }
         val scene = remember(revision, read, span, widthPx, heightPx, sun, step, gradeMm) { projectScene(read, span, camera, widthPx, heightPx, sun, step, gradeMm) }
+        val splats = remember(revision, field, widthPx, heightPx) { field?.let { fieldSplatsOf(it, camera, widthPx, heightPx) } }
+        val splatColours = remember(splats, colouring) { if (field != null && splats != null && colouring != null) fieldSplatColours(field, splats, colouring.frame, colouring.ramp) else null }
         val reachPx = with(density) { PICK_REACH_DP.dp.toPx() }
         Box(
             modifier = Modifier.width(widthDp).height(heightDp).orbitGestures(camera) { revision += 1 }.pointerInput(scene, selection.ids, pickedPath, throughPath) {
@@ -485,6 +491,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                 scene.boxes.filter(isBuried).forEach(::drawBox)
                 if (gradeMm != null && !blueprint) scene.ground?.let { drawPath(pathOf(it), gradeTint, style = Fill) }
                 scene.shadows.forEach { drawShadow(it) }
+                if (splats != null && splatColours != null) drawFieldSplats(splats, splatColours)
                 scene.boxes.filterNot(isBuried).forEach(::drawBox)
                 scene.lines.forEach { drawProjectedLine(it, read.styles[it.style] ?: PlanStyle(), theme.ink) }
                 scene.boxes.filter { it.box.id in selection.ids }.forEach { drawSelectedBox(it, if (blueprint) Color.White else theme.ink) }
@@ -602,9 +609,9 @@ private class BoxColouring(val ramp: ColourRamp, val min: Double, val max: Doubl
 private class BoxColouringReading(val colouring: BoxColouring?, val notice: String?)
 
 /** The colouring boxes take from their `values` when `value_ramp` is given: the ramp, its range and the frame shown; no colouring when no box carries a value, and a notice when the ramp cannot be read. */
-private fun boxColouringOf(read: VolumeRead, props: Map<String, Any?>): BoxColouringReading {
+private fun boxColouringOf(read: VolumeRead, props: Map<String, Any?>, fieldFrames: Int): BoxColouringReading {
     val rampGiven = props["value_ramp"] ?: return BoxColouringReading(null, null)
-    val frames = read.boxes.maxOfOrNull { it.values.size } ?: 0
+    val frames = max(read.boxes.maxOfOrNull { it.values.size } ?: 0, fieldFrames)
     if (frames == 0) return BoxColouringReading(null, null)
     val min = (props["min"] as? Number)?.toDouble()
     val max = (props["max"] as? Number)?.toDouble()
