@@ -413,6 +413,10 @@ A `stat` is a card for one figure: a label, a big monospaced number, a unit and 
 - `fraction`: a number from 0 up (a value over its limit, 0.71 for 71%). Draws a bar under the figure, full at 1.0; past 1.0 it is full and in the fail colour. A negative one is ignored. It is how a check against a limit is drawn.
 - It reads back in `/tree` as one line of `text` (`label value unit`), `props.status_shown`, `props.fraction_shown` and its `notices`.
 
+## Page script (playground host)
+
+The playground's wasm page puts `window.factoredUi` on the page: `setState(path, json)` writes a dotted path (a numeric segment is a list index; an index past the end grows the list with null slots; a JS object is stringified for you), `getState(path)` returns JSON text, `onChange(path, fn)` calls `fn(json)` each time the value there is replaced and returns an id, and `off(id)` stops it. `setState` returns '' when written, else why not. A state string containing `{name}` is read as a binding and comes back empty, so a URL template needs another marker. A slider writes floats (12.000000953674316): round before using one as an index.
+
 ## Theme and tokens
 
 Every colour, size and step a node draws with comes from a theme, and a theme is a set of design tokens in the W3C Design Tokens format (DTCG): `design/dark.tokens.json` and `design/light.tokens.json` are the defaults, written by the code, and a test fails if they drift.
