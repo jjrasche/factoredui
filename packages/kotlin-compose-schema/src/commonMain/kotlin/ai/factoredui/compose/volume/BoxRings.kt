@@ -14,6 +14,13 @@ private fun degreesToRadians(degrees: Double) = degrees * PI / 180.0
 
 /** A box that is not pitched has its rings straight above its footprint; a pitched one is tipped about its own width axis through its centre and then turned, so a sheet tipped by 30 degrees lies on a 30 degree slope. */
 fun boxRings(box: VolumeBox): BoxRings {
+    val rings = tippedRings(box)
+    if (box.topRiseMm == 0.0) return rings
+    val farCorners = setOf(2, 3)
+    return rings.copy(high = rings.high.mapIndexed { index, corner -> if (index in farCorners) corner.copy(zMm = corner.zMm + box.topRiseMm) else corner })
+}
+
+private fun tippedRings(box: VolumeBox): BoxRings {
     val footprint = footprintCorners(box)
     if (box.pitchDeg == 0.0) {
         return BoxRings(footprint.map { VolumePoint(it.first, it.second, box.zMm) }, footprint.map { VolumePoint(it.first, it.second, box.zMm + box.heightMm) })
