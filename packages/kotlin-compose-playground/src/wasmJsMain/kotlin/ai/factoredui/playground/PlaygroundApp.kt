@@ -37,6 +37,7 @@ fun PlaygroundApp() {
             initialData = mapOf("theme" to mapOf("notices" to host.notices)),
         ).also { answered[0] = it }
     }
+    InstallFactoredUiBridge(context)
     val specFlow = remember { MutableStateFlow(placeholderSpec("Loading spec…")) }
     var editorText by remember { mutableStateOf("") }
     var parseError by remember { mutableStateOf<String?>(null) }
