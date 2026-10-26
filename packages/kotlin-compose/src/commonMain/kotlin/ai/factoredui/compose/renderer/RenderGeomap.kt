@@ -221,17 +221,28 @@ internal fun tessellateGeomapLayers(layers: List<GeomapLayer>): GeomapTessellati
     var bounds: WorldBounds? = null
     val shared = mutableMapOf<String, SharedGeometry>()
     val tessellatedLayers = layers.map { layer ->
+        val fillsAsPaths = isFilledAsPaths(layer)
         val features = layer.features.map { feature ->
             val geometry = feature.geometryId?.let { id ->
                 shared.getOrPut(id) { SharedGeometry(projectRings(feature.rings), worldBoundsOf(feature.rings)) }
             }
             val featureBounds = geometry?.bounds ?: worldBoundsOf(feature.rings)
             featureBounds?.let { bounds = bounds?.union(it) ?: it }
-            tessellateFeature(feature, layer.kind, featureBounds, geometry)
+            tessellateFeature(feature, layer.kind, featureBounds, geometry, fillsAsPaths)
         }
         TessellatedLayer(layer.id, layer.kind, layer.visible, features, layer.minZoom, layer.maxZoom)
     }
     return GeomapTessellation(tessellatedLayers, bounds)
+}
+
+private const val PATH_FILL_POINTS_PER_FEATURE = 24
+
+// A layer of big outlines (counties) is cheaper filled as one path each than as a triangle batch whose
+// vertices are rebuilt every frame; a layer of many small shapes (parcels) is the other way round.
+internal fun isFilledAsPaths(layer: GeomapLayer): Boolean {
+    if (layer.kind != GeomapLayerKind.FILL || layer.features.isEmpty()) return false
+    val points = layer.features.sumOf { feature -> feature.rings.sumOf { it.size } }
+    return points / layer.features.size >= PATH_FILL_POINTS_PER_FEATURE
 }
 
 private fun projectRings(rings: List<List<GeoPoint>>): List<DoubleArray> = rings.map { ring ->
@@ -248,6 +259,7 @@ private fun tessellateFeature(
     kind: GeomapLayerKind,
     bounds: WorldBounds?,
     shared: SharedGeometry?,
+    fillsAsPaths: Boolean,
 ): TessellatedFeature {
     val worldRings = shared?.worldRings ?: projectRings(feature.rings)
     val fillArgb = when (kind) {
@@ -255,7 +267,7 @@ private fun tessellateFeature(
         GeomapLayerKind.POINT -> parseGeomapColor(feature.fill) ?: DEFAULT_STROKE_ARGB
         GeomapLayerKind.LINE -> null
     }
-    val needsTriangles = kind == GeomapLayerKind.FILL && fillArgb != null && worldRings.size == 1
+    val needsTriangles = kind == GeomapLayerKind.FILL && fillArgb != null && worldRings.size == 1 && !fillsAsPaths
     val triangleWorld = when {
         !needsTriangles -> DoubleArray(0)
         shared != null -> shared.triangles ?: expandTriangles(worldRings).also { shared.triangles = it }
@@ -398,10 +410,10 @@ private fun DrawScope.drawGeomapTessellation(
             }
             drawIntoCanvas { canvas -> drawTriangleBatch(canvas, positions, colors, vertex) }
         }
-        // Inner rings are holes: even-odd fills them as empty, which the triangle batch cannot express.
+        // Inner rings are holes, which even-odd fills as empty and the triangle batch cannot express; a layer filled as paths has no triangles at all.
         for (feature in inView) {
             val fill = feature.fillArgb ?: continue
-            if (feature.worldRings.size < 2) continue
+            if (feature.triangleWorld.isNotEmpty()) continue
             drawPath(screenPathOf(feature.worldRings, closed = true, ::screenX, ::screenY), Color(fill))
         }
     }
