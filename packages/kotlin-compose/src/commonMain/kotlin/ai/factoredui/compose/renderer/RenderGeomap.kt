@@ -68,6 +68,7 @@ import ai.factoredui.compose.schema.resolveGeomapViewport
 import ai.factoredui.compose.schema.resolveGeomapSelection
 import ai.factoredui.compose.schema.DEFAULT_POINT_RADIUS
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 private const val DEFAULT_STROKE_ARGB = 0xFF2C3E50.toInt()
 private const val LABEL_FIT = 0.9f
@@ -432,12 +433,8 @@ private fun DrawScope.drawGeomapTessellation(
             val strokeArgb = feature.strokeArgb ?: continue
             val path = Path()
             for (ring in feature.worldRings) {
-                val pointCount = ring.size / 2
-                if (pointCount < 2) continue
-                path.moveTo(screenX(ring[0]), screenY(ring[1]))
-                for (index in 1 until pointCount) {
-                    path.lineTo(screenX(ring[index * 2]), screenY(ring[index * 2 + 1]))
-                }
+                if (ring.size / 2 < 2) continue
+                path.addScreenRing(ring, ::screenX, ::screenY)
                 if (layer.kind == GeomapLayerKind.FILL) path.close()
             }
             val dashEffect = feature.dash?.let { intervals ->
@@ -537,13 +534,30 @@ private fun screenPathOf(
 ): Path {
     val path = Path().apply { fillType = PathFillType.EvenOdd }
     for (ring in worldRings) {
-        val pointCount = ring.size / 2
-        if (pointCount < 2) continue
-        path.moveTo(screenX(ring[0]), screenY(ring[1]))
-        for (index in 1 until pointCount) path.lineTo(screenX(ring[index * 2]), screenY(ring[index * 2 + 1]))
+        if (ring.size / 2 < 2) continue
+        path.addScreenRing(ring, screenX, screenY)
         if (closed) path.close()
     }
     return path
+}
+
+private const val MIN_SCREEN_STEP_PX = 0.5f
+
+// A point less than half a pixel from the one before it adds nothing the eye can see, and a county
+// outline has several times more of them than pixels; the last point is always kept so the ring closes true.
+private fun Path.addScreenRing(ring: DoubleArray, screenX: (Double) -> Float, screenY: (Double) -> Float) {
+    val pointCount = ring.size / 2
+    var lastX = screenX(ring[0])
+    var lastY = screenY(ring[1])
+    moveTo(lastX, lastY)
+    for (index in 1 until pointCount) {
+        val x = screenX(ring[index * 2])
+        val y = screenY(ring[index * 2 + 1])
+        if (index < pointCount - 1 && abs(x - lastX) + abs(y - lastY) < MIN_SCREEN_STEP_PX) continue
+        lineTo(x, y)
+        lastX = x
+        lastY = y
+    }
 }
 
 @Composable
