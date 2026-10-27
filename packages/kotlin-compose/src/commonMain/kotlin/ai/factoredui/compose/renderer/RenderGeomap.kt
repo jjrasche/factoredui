@@ -68,6 +68,7 @@ import ai.factoredui.compose.schema.resolveGeomapViewport
 import ai.factoredui.compose.schema.resolveGeomapSelection
 import ai.factoredui.compose.schema.DEFAULT_POINT_RADIUS
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 private const val DEFAULT_STROKE_ARGB = 0xFF2C3E50.toInt()
 private const val LABEL_FIT = 0.9f
@@ -221,17 +222,28 @@ internal fun tessellateGeomapLayers(layers: List<GeomapLayer>): GeomapTessellati
     var bounds: WorldBounds? = null
     val shared = mutableMapOf<String, SharedGeometry>()
     val tessellatedLayers = layers.map { layer ->
+        val fillsAsPaths = isFilledAsPaths(layer)
         val features = layer.features.map { feature ->
             val geometry = feature.geometryId?.let { id ->
                 shared.getOrPut(id) { SharedGeometry(projectRings(feature.rings), worldBoundsOf(feature.rings)) }
             }
             val featureBounds = geometry?.bounds ?: worldBoundsOf(feature.rings)
             featureBounds?.let { bounds = bounds?.union(it) ?: it }
-            tessellateFeature(feature, layer.kind, featureBounds, geometry)
+            tessellateFeature(feature, layer.kind, featureBounds, geometry, fillsAsPaths)
         }
         TessellatedLayer(layer.id, layer.kind, layer.visible, features, layer.minZoom, layer.maxZoom)
     }
     return GeomapTessellation(tessellatedLayers, bounds)
+}
+
+private const val PATH_FILL_POINTS_PER_FEATURE = 24
+
+// A layer of big outlines (counties) is cheaper filled as one path each than as a triangle batch whose
+// vertices are rebuilt every frame; a layer of many small shapes (parcels) is the other way round.
+internal fun isFilledAsPaths(layer: GeomapLayer): Boolean {
+    if (layer.kind != GeomapLayerKind.FILL || layer.features.isEmpty()) return false
+    val points = layer.features.sumOf { feature -> feature.rings.sumOf { it.size } }
+    return points / layer.features.size >= PATH_FILL_POINTS_PER_FEATURE
 }
 
 private fun projectRings(rings: List<List<GeoPoint>>): List<DoubleArray> = rings.map { ring ->
@@ -248,6 +260,7 @@ private fun tessellateFeature(
     kind: GeomapLayerKind,
     bounds: WorldBounds?,
     shared: SharedGeometry?,
+    fillsAsPaths: Boolean,
 ): TessellatedFeature {
     val worldRings = shared?.worldRings ?: projectRings(feature.rings)
     val fillArgb = when (kind) {
@@ -255,7 +268,7 @@ private fun tessellateFeature(
         GeomapLayerKind.POINT -> parseGeomapColor(feature.fill) ?: DEFAULT_STROKE_ARGB
         GeomapLayerKind.LINE -> null
     }
-    val needsTriangles = kind == GeomapLayerKind.FILL && fillArgb != null && worldRings.size == 1
+    val needsTriangles = kind == GeomapLayerKind.FILL && fillArgb != null && worldRings.size == 1 && !fillsAsPaths
     val triangleWorld = when {
         !needsTriangles -> DoubleArray(0)
         shared != null -> shared.triangles ?: expandTriangles(worldRings).also { shared.triangles = it }
@@ -319,15 +332,16 @@ internal fun drawnGeomapFeatureIds(
 }
 
 private fun expandTriangles(worldRings: List<DoubleArray>): DoubleArray {
-    val expanded = ArrayList<Double>()
-    for (ring in worldRings) {
-        val indices = earClipTriangulate(ring)
+    val triangulated = worldRings.map { ring -> ring to earClipTriangulate(ring) }
+    val expanded = DoubleArray(triangulated.sumOf { it.second.size } * 2)
+    var written = 0
+    for ((ring, indices) in triangulated) {
         for (vertexIndex in indices) {
-            expanded.add(ring[vertexIndex * 2])
-            expanded.add(ring[vertexIndex * 2 + 1])
+            expanded[written++] = ring[vertexIndex * 2]
+            expanded[written++] = ring[vertexIndex * 2 + 1]
         }
     }
-    return expanded.toDoubleArray()
+    return expanded
 }
 
 internal fun hitTestGeomap(
@@ -397,10 +411,10 @@ private fun DrawScope.drawGeomapTessellation(
             }
             drawIntoCanvas { canvas -> drawTriangleBatch(canvas, positions, colors, vertex) }
         }
-        // Inner rings are holes: even-odd fills them as empty, which the triangle batch cannot express.
+        // Inner rings are holes, which even-odd fills as empty and the triangle batch cannot express; a layer filled as paths has no triangles at all.
         for (feature in inView) {
             val fill = feature.fillArgb ?: continue
-            if (feature.worldRings.size < 2) continue
+            if (feature.triangleWorld.isNotEmpty()) continue
             drawPath(screenPathOf(feature.worldRings, closed = true, ::screenX, ::screenY), Color(fill))
         }
     }
@@ -419,12 +433,8 @@ private fun DrawScope.drawGeomapTessellation(
             val strokeArgb = feature.strokeArgb ?: continue
             val path = Path()
             for (ring in feature.worldRings) {
-                val pointCount = ring.size / 2
-                if (pointCount < 2) continue
-                path.moveTo(screenX(ring[0]), screenY(ring[1]))
-                for (index in 1 until pointCount) {
-                    path.lineTo(screenX(ring[index * 2]), screenY(ring[index * 2 + 1]))
-                }
+                if (ring.size / 2 < 2) continue
+                path.addScreenRing(ring, ::screenX, ::screenY)
                 if (layer.kind == GeomapLayerKind.FILL) path.close()
             }
             val dashEffect = feature.dash?.let { intervals ->
@@ -524,13 +534,30 @@ private fun screenPathOf(
 ): Path {
     val path = Path().apply { fillType = PathFillType.EvenOdd }
     for (ring in worldRings) {
-        val pointCount = ring.size / 2
-        if (pointCount < 2) continue
-        path.moveTo(screenX(ring[0]), screenY(ring[1]))
-        for (index in 1 until pointCount) path.lineTo(screenX(ring[index * 2]), screenY(ring[index * 2 + 1]))
+        if (ring.size / 2 < 2) continue
+        path.addScreenRing(ring, screenX, screenY)
         if (closed) path.close()
     }
     return path
+}
+
+private const val MIN_SCREEN_STEP_PX = 0.5f
+
+// A point less than half a pixel from the one before it adds nothing the eye can see, and a county
+// outline has several times more of them than pixels; the last point is always kept so the ring closes true.
+private fun Path.addScreenRing(ring: DoubleArray, screenX: (Double) -> Float, screenY: (Double) -> Float) {
+    val pointCount = ring.size / 2
+    var lastX = screenX(ring[0])
+    var lastY = screenY(ring[1])
+    moveTo(lastX, lastY)
+    for (index in 1 until pointCount) {
+        val x = screenX(ring[index * 2])
+        val y = screenY(ring[index * 2 + 1])
+        if (index < pointCount - 1 && abs(x - lastX) + abs(y - lastY) < MIN_SCREEN_STEP_PX) continue
+        lineTo(x, y)
+        lastX = x
+        lastY = y
+    }
 }
 
 @Composable
