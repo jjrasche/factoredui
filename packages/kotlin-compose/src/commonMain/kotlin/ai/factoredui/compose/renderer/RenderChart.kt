@@ -12,6 +12,7 @@ import ai.factoredui.compose.chart.ChartSide
 import ai.factoredui.compose.chart.PlottedPoint
 import ai.factoredui.compose.chart.PlottedSeries
 import ai.factoredui.compose.chart.chartAreaPieces
+import ai.factoredui.compose.chart.chartBarStep
 import ai.factoredui.compose.chart.chartRange
 import ai.factoredui.compose.chart.chartReadout
 import ai.factoredui.compose.chart.chartXRange
@@ -65,6 +66,8 @@ private const val TOP_MARGIN_DP = 20f
 private const val BOTTOM_MARGIN_DP = 24f
 private const val SERIES_LINE_DP = 2f
 private const val AREA_FILL_ALPHA = 0.35f
+private const val BAR_FILL_ALPHA = 0.75f
+private const val BAR_FILL_SHARE = 0.7
 private const val GRID_ALPHA = 0.18f
 private const val HOVER_DOT_DP = 3.5f
 private const val LEGEND_SWATCH_DP = 12f
@@ -141,7 +144,7 @@ private fun ChartLegend(nodeId: String, plot: ChartPlot) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 val colour = colourOf(plot, series, palette)
                 Canvas(modifier = Modifier.size(LEGEND_SWATCH_DP.dp)) {
-                    if (series.def.kind == ChartSeriesKind.AREA) drawRect(colour.copy(alpha = AREA_FILL_ALPHA * 2)) else drawLine(colour, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = SERIES_LINE_DP.dp.toPx())
+                    if (series.def.kind != ChartSeriesKind.LINE) drawRect(colour.copy(alpha = AREA_FILL_ALPHA * 2)) else drawLine(colour, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), strokeWidth = SERIES_LINE_DP.dp.toPx())
                 }
                 Text(text = entry.label, style = READOUT_TEXT, color = ink, modifier = Modifier.nodeTag("$nodeId/legend/$index"))
             }
@@ -184,6 +187,8 @@ private fun DrawScope.drawChart(plot: ChartPlot, frame: ChartFrame, readout: Cha
     drawGrid(frame, ink)
     chartXTicks(plot).forEach { tick -> frame.xOf(tick.x).let { x -> drawLine(ink.copy(alpha = GRID_ALPHA), Offset(x, frame.top), Offset(x, frame.bottom), strokeWidth = 1.dp.toPx()) } }
     plot.series.filter { it.def.kind == ChartSeriesKind.AREA }.forEach { drawArea(it, frame, colourOf(plot, it, palette)) }
+    val barWidth = frame.xOf(frame.xLow + chartBarStep(plot) * BAR_FILL_SHARE) - frame.xOf(frame.xLow)
+    plot.series.filter { it.def.kind == ChartSeriesKind.BAR }.forEach { drawBars(it, frame, colourOf(plot, it, palette), barWidth) }
     plot.series.filter { it.def.kind == ChartSeriesKind.LINE }.forEach { drawLineSeries(it, frame, colourOf(plot, it, palette)) }
     readout?.let { drawHover(plot, frame, it, ink, palette) }
 }
@@ -211,6 +216,17 @@ private fun DrawScope.drawArea(series: PlottedSeries, frame: ChartFrame, colour:
     }
 }
 
+private fun DrawScope.drawBars(series: PlottedSeries, frame: ChartFrame, colour: Color, widthPx: Float) {
+    series.runs.flatten().forEach { point ->
+        val top = frame.yOf(series.def.side, maxOf(point.from, point.to))
+        val bottom = frame.yOf(series.def.side, minOf(point.from, point.to))
+        val corner = Offset(frame.xOf(point.x) - widthPx / 2, top)
+        val extent = androidx.compose.ui.geometry.Size(widthPx, bottom - top)
+        drawRect(colour.copy(alpha = BAR_FILL_ALPHA), corner, extent)
+        drawRect(colour, corner, extent, style = Stroke(width = 1.dp.toPx()))
+    }
+}
+
 private fun DrawScope.drawLineSeries(series: PlottedSeries, frame: ChartFrame, colour: Color) {
     series.runs.forEach { run ->
         if (run.size == 1) return@forEach drawCircle(colour, radius = SERIES_LINE_DP.dp.toPx() * 1.5f, center = Offset(frame.xOf(run[0].x), frame.yOf(series.def.side, run[0].value)))
@@ -229,7 +245,7 @@ private fun DrawScope.drawHover(plot: ChartPlot, frame: ChartFrame, readout: Cha
     drawLine(ink.copy(alpha = 0.5f), Offset(x, frame.top), Offset(x, frame.bottom), strokeWidth = 1.dp.toPx())
     plot.series.forEach { series ->
         val point = pointAt(series, readout.x) ?: return@forEach
-        val edge = if (series.def.kind == ChartSeriesKind.AREA) point.to else point.value
+        val edge = if (series.def.kind != ChartSeriesKind.LINE) point.to else point.value
         drawCircle(colourOf(plot, series, palette), radius = HOVER_DOT_DP.dp.toPx(), center = Offset(x, frame.yOf(series.def.side, edge)))
     }
 }
@@ -254,7 +270,7 @@ private fun ChartAxisLabels(nodeId: String, plot: ChartPlot, frame: ChartFrame, 
             }
         }
     }
-    val ticks = chartXTicks(plot)
+    val ticks = chartXTicks(plot).ifEmpty { plot.categories }
     val spacingPx = if (ticks.size > 1) frame.xOf(ticks[1].x) - frame.xOf(ticks[0].x) else Float.MAX_VALUE
     val stride = ceil(with(LocalDensity.current) { TICK_LABEL_GAP_DP.dp.toPx() } / spacingPx).toInt().coerceAtLeast(1)
     ticks.filterIndexed { index, _ -> index % stride == 0 }.forEachIndexed { index, tick ->

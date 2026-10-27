@@ -7,7 +7,7 @@ import kotlin.math.log10
 import kotlin.math.pow
 import kotlin.math.round
 
-enum class ChartSeriesKind(val wire: String) { LINE("line"), AREA("area") }
+enum class ChartSeriesKind(val wire: String) { LINE("line"), AREA("area"), BAR("bar") }
 
 enum class ChartSide(val wire: String) { LEFT("left"), RIGHT("right") }
 
@@ -19,11 +19,12 @@ data class ChartSeriesDef(
     val side: ChartSide,
     val colour: String?,
     val stack: String,
+    val basePath: String? = null,
 )
 
 data class ChartAxis(val unit: String?, val label: String?)
 
-/** A value at an x. A line has [from] and [to] equal to [value]; an area has the band it fills, where the stack puts it, below the zero line when [isBelow]. */
+/** A value at an x. A line has [from] and [to] equal to [value]; an area or bar has the band it fills, where the stack puts it (or from its base to its value), below the zero line when [isBelow]. */
 data class PlottedPoint(val x: Double, val value: Double, val from: Double, val to: Double, val isBelow: Boolean = false)
 
 /** A series as unbroken runs of points: a row with no number at the series' path ends a run. */
@@ -35,7 +36,7 @@ data class ChartXAxis(val every: Double, val label: ChartXLabel)
 
 data class ChartXTick(val x: Double, val label: String)
 
-data class ChartPlot(val series: List<PlottedSeries>, val axes: Map<ChartSide, ChartAxis>, val notices: List<String>, val xAxis: ChartXAxis? = null, val stackLabels: Map<String, String> = emptyMap())
+data class ChartPlot(val series: List<PlottedSeries>, val axes: Map<ChartSide, ChartAxis>, val notices: List<String>, val xAxis: ChartXAxis? = null, val stackLabels: Map<String, String> = emptyMap(), val categories: List<ChartXTick> = emptyList())
 
 data class ChartRange(val low: Double, val high: Double, val ticks: List<Double>)
 
@@ -62,9 +63,9 @@ private fun definitionOf(index: Int, entry: Any?): Pair<ChartSeriesDef?, String?
     val id = fields["id"] as? String
     val path = fields["path"] as? String
     if (id == null || path == null) return null to "chart series $index: it needs an id and a path; it is not drawn."
-    val kind = kindOf(fields["kind"]) ?: return null to "chart series '$id': kind must be line or area, not '${fields["kind"]}'; it is not drawn."
+    val kind = kindOf(fields["kind"]) ?: return null to "chart series '$id': kind must be line, area or bar, not '${fields["kind"]}'; it is not drawn."
     val side = sideOf(fields["axis"]) ?: return null to "chart series '$id': axis must be left or right, not '${fields["axis"]}'; it is not drawn."
-    return ChartSeriesDef(id, fields["label"] as? String ?: id, path, kind, side, fields["color"] as? String, fields["stack"] as? String ?: DEFAULT_STACK) to null
+    return ChartSeriesDef(id, fields["label"] as? String ?: id, path, kind, side, fields["color"] as? String, fields["stack"] as? String ?: DEFAULT_STACK, fields["base"] as? String) to null
 }
 
 private fun axisOf(raw: Any?): ChartAxis? {
@@ -109,10 +110,14 @@ private fun belowOf(values: List<Double?>): List<Boolean?> {
 }
 
 private fun plottedPoint(def: ChartSeriesDef, x: Double, value: Double, isBelow: Boolean, edges: StackEdges): PlottedPoint =
-    if (def.kind == ChartSeriesKind.AREA) bandOf(value, isBelow, edges).let { (from, to) -> PlottedPoint(x, value, from, to, isBelow) } else PlottedPoint(x, value, value, value)
+    if (def.kind != ChartSeriesKind.LINE) bandOf(value, isBelow, edges).let { (from, to) -> PlottedPoint(x, value, from, to, isBelow) } else PlottedPoint(x, value, value, value)
+
+private fun floatingPoint(def: ChartSeriesDef, x: Double, value: Double, base: Double?): PlottedPoint? =
+    if (def.kind == ChartSeriesKind.LINE) PlottedPoint(x, value, value, value) else base?.let { PlottedPoint(x, value, it, value) }
 
 private fun pointsOf(defs: List<ChartSeriesDef>, rows: List<Pair<Double, Map<*, *>>>): Map<String, List<PlottedPoint?>> {
     val values = defs.associate { def -> def.id to rows.map { (_, row) -> numberAt(row, def.path) } }
+    val bases = defs.associate { def -> def.id to rows.map { (_, row) -> def.basePath?.let { numberAt(row, it) } } }
     val below = values.mapValues { (_, series) -> belowOf(series) }
     val points = defs.associate { it.id to mutableListOf<PlottedPoint?>() }
     rows.forEachIndexed { index, (x, _) ->
@@ -120,7 +125,12 @@ private fun pointsOf(defs: List<ChartSeriesDef>, rows: List<Pair<Double, Map<*, 
         defs.forEach { def ->
             val value = values.getValue(def.id)[index]
             val isBelow = below.getValue(def.id)[index] ?: false
-            points.getValue(def.id).add(value?.let { plottedPoint(def, x, it, isBelow, edges.getOrPut(def.side to def.stack) { StackEdges() }) })
+            val point = when {
+                value == null -> null
+                def.basePath != null -> floatingPoint(def, x, value, bases.getValue(def.id)[index])
+                else -> plottedPoint(def, x, value, isBelow, edges.getOrPut(def.side to def.stack) { StackEdges() })
+            }
+            points.getValue(def.id).add(point)
         }
     }
     return points
@@ -182,8 +192,15 @@ fun plotChart(props: Map<String, Any?>): ChartPlot {
     val seriesNotices = entries.mapNotNull { entry -> entry.second ?: entry.first?.let { absentNotices[it.id] } }
     val plotted = drawn.map { PlottedSeries(it, runsOf(points.getValue(it.id))) }
     val (xAxis, xAxisNotices) = xAxisOf(props["x_axis"])
-    return ChartPlot(plotted, axes, listOfNotNull(skippedRowsNotice(rawRows.size - positioned.size, xPath)) + seriesNotices + xAxisNotices, xAxis, stackLabelsOf(props["stack_labels"]))
+    return ChartPlot(plotted, axes, listOfNotNull(skippedRowsNotice(rawRows.size - positioned.size, xPath)) + seriesNotices + xAxisNotices, xAxis, stackLabelsOf(props["stack_labels"]), categoriesOf(rows, props["x_text"]))
 }
+
+private fun categoriesOf(rows: List<Pair<Double, Map<*, *>>>, path: Any?): List<ChartXTick> {
+    val textPath = path as? String ?: return emptyList()
+    return rows.mapNotNull { (x, row) -> textAt(row, textPath)?.let { ChartXTick(x, it) } }
+}
+
+private fun textAt(row: Map<*, *>, path: String): String? = path.split('.').fold(row as Any?) { current, key -> (current as? Map<*, *>)?.get(key) }.let { it as? String }
 
 private fun stackLabelsOf(raw: Any?): Map<String, String> =
     (raw as? Map<*, *>).orEmpty().mapNotNull { (stack, label) -> (stack as? String)?.let { name -> (label as? String)?.takeIf { it.isNotEmpty() }?.let { name to it } } }.toMap()
@@ -201,7 +218,7 @@ data class ChartLegendEntry(val label: String, val seriesIds: List<String>)
 fun chartLegend(plot: ChartPlot): List<ChartLegendEntry> {
     val entries = mutableListOf<ChartLegendEntry>()
     plot.series.forEach { series ->
-        val group = plot.stackLabels[series.def.stack]?.takeIf { series.def.kind == ChartSeriesKind.AREA }
+        val group = plot.stackLabels[series.def.stack]?.takeIf { series.def.kind != ChartSeriesKind.LINE }
         val at = group?.let { label -> entries.indexOfFirst { it.label == label } } ?: -1
         if (at >= 0) entries[at] = entries[at].copy(seriesIds = entries[at].seriesIds + series.def.id) else entries += ChartLegendEntry(group ?: series.def.label, listOf(series.def.id))
     }
@@ -239,7 +256,7 @@ fun chartXTicks(plot: ChartPlot): List<ChartXTick> {
 private fun valuesOnSide(plot: ChartPlot, side: ChartSide): List<Double> =
     plot.series.filter { it.def.side == side }.flatMap { series ->
         val points = series.runs.flatten()
-        if (series.def.kind == ChartSeriesKind.AREA) points.flatMap { listOf(it.from, it.to) } + 0.0 else points.map { it.value }
+        if (series.def.kind != ChartSeriesKind.LINE) points.flatMap { listOf(it.from, it.to) } + 0.0 else points.map { it.value }
     }
 
 private fun stepFor(span: Double): Double {
@@ -268,9 +285,19 @@ fun chartRange(plot: ChartPlot, side: ChartSide): ChartRange? {
     return ChartRange(ticks.first(), ticks.last(), ticks)
 }
 
+/** The distance between neighbouring x values, which a bar's width and the room left beside the outer bars are taken from; 1 when there is one x. */
+fun chartBarStep(plot: ChartPlot): Double {
+    val xs = plot.series.flatMap { series -> series.runs.flatten().map { it.x } }.distinct().sorted()
+    return xs.zipWithNext { low, high -> high - low }.minOrNull() ?: 1.0
+}
+
+fun chartHasBars(plot: ChartPlot): Boolean = plot.series.any { it.def.kind == ChartSeriesKind.BAR }
+
+/** The x span drawn: the rows' own, widened by half a bar step each side when a bar is drawn so the outer bars fit. */
 fun chartXRange(plot: ChartPlot): Pair<Double, Double>? {
     val xs = plot.series.flatMap { series -> series.runs.flatten().map { it.x } }.ifEmpty { return null }
-    return xs.min() to xs.max()
+    val room = if (chartHasBars(plot)) chartBarStep(plot) / 2 else 0.0
+    return (xs.min() - room) to (xs.max() + room)
 }
 
 fun formatChartValue(value: Double): String {
