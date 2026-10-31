@@ -37,6 +37,7 @@ private val minimalNodeOf: Map<SpecNodeType, String> = mapOf(
     SpecNodeType.CANVAS to """{ "id": "n", "type": "canvas", "props": {} }""",
     SpecNodeType.GEOMAP to """{ "id": "n", "type": "geomap", "props": {} }""",
     SpecNodeType.GRAPH to """{ "id": "n", "type": "graph", "props": {} }""",
+    SpecNodeType.LINECHART to """{ "id": "n", "type": "linechart", "props": { "series": [{ "name": "a", "points": [{ "t": 0, "v": 1 }, { "t": 1, "v": 2 }] }] } }""",
     SpecNodeType.SCENE to """{ "id": "n", "type": "scene", "props": {} }""",
     SpecNodeType.TABLE to """{ "id": "n", "type": "table", "props": {} }""",
 )
