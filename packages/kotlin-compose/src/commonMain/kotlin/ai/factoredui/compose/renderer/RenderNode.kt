@@ -391,7 +391,7 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
             when {
                 fixedWidth != null -> Box(modifier = Modifier.width(fixedWidth.dp).then(fixedHeight), propagateMinConstraints = isHeightFixed) { RenderInFixedSlot(child, context) }
                 childLayout.flex > 0f -> Box(modifier = Modifier.weight(childLayout.flex).then(fixedHeight), propagateMinConstraints = isHeightFixed) {
-                    CompositionLocalProvider(LocalSlotWidth provides SlotWidth.GIVEN) { RenderNode(node = child, context = context) }
+                    CompositionLocalProvider(LocalSlotWidth provides SlotWidth.FLEX) { RenderNode(node = child, context = context) }
                 }
                 isHeightFixed -> Box(modifier = fixedHeight, propagateMinConstraints = true) {
                     CompositionLocalProvider(LocalSlotWidth provides SlotWidth.SHARED) { RenderNode(node = child, context = context) }
@@ -815,8 +815,8 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
     )
 }
 
-/** The width a node's slot gives it: what its parent gives (a flex share or the parent's width), shared with flex siblings in a row, or a fixed `width`. */
-internal enum class SlotWidth { GIVEN, SHARED, FIXED }
+/** The width a node's slot gives it: what its parent gives (the parent's width), a flex weight in a row, shared with flex siblings in a row, or a fixed `width`. */
+internal enum class SlotWidth { GIVEN, FLEX, SHARED, FIXED }
 
 internal val LocalSlotWidth = staticCompositionLocalOf { SlotWidth.GIVEN }
 
@@ -828,7 +828,7 @@ private fun isBindingToNull(node: SpecNode, resolvedProps: Map<String, Any?>): B
 private fun fillsItsSlot(align: String, hasBackground: Boolean, slot: SlotWidth): Boolean = when (slot) {
     SlotWidth.FIXED -> true
     SlotWidth.SHARED -> false
-    SlotWidth.GIVEN -> align == "center" || align == "right" || hasBackground
+    SlotWidth.GIVEN, SlotWidth.FLEX -> align == "center" || align == "right" || hasBackground
 }
 
 private class TextPaint(val ink: Color, val background: Color?, val notice: String?)
@@ -866,31 +866,33 @@ private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, conte
             scope.launch { context.dispatch(node.id, actionRef) }
         }
     }
+    val fillsFlexShare = LocalSlotWidth.current == SlotWidth.FLEX && node.props.asLayoutProps().flex > 0f
+    val modifier = Modifier.nodeTag(node.id).let { if (fillsFlexShare) it.fillMaxWidth() else it }
 
     when (props.variant) {
         ButtonVariant.OUTLINE -> OutlinedButton(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.nodeTag(node.id),
+            modifier = modifier,
         ) { ButtonContent(icon, label) }
 
         ButtonVariant.GHOST -> TextButton(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.nodeTag(node.id),
+            modifier = modifier,
         ) { ButtonContent(icon, label) }
 
         ButtonVariant.DESTRUCTIVE -> Button(
             onClick = onClickHandler,
             enabled = !isDisabled,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier.nodeTag(node.id),
+            modifier = modifier,
         ) { ButtonContent(icon, label) }
 
         else -> Button(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.nodeTag(node.id),
+            modifier = modifier,
         ) { ButtonContent(icon, label) }
     }
 }
