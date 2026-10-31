@@ -1,0 +1,127 @@
+{
+  "spec_version": 1,
+  "renderer_min": 1,
+  "root": {
+    "id": "fleet", "type": "column", "props": { "gap": 8, "padding": 12 },
+    "children": [
+      { "id": "fleet-title", "type": "text", "props": { "value": "Fleet", "variant": "heading" } },
+      {
+        "id": "fleet-views", "type": "tabs", "props": { "flex": 1, "items": ["Jobs", "Projects", "Seats"], "selectedIndex": "{ui.view}" },
+        "children": [
+          {
+            "id": "jobs-view", "type": "column", "props": { "gap": 8, "flex": 1 },
+            "children": [
+              {
+                "id": "jobs-filters", "type": "row", "props": { "gap": 6 },
+                "children": [
+                  { "id": "filter-needs-jim", "type": "button", "props": { "label": "Needs Jim", "flex": 1 }, "action": { "action": "set_binding", "params": { "values": { "ui.f.field": "needs_jim", "ui.f.in": ["true"] } } } },
+                  { "id": "filter-trouble", "type": "button", "props": { "label": "Stuck", "flex": 1 }, "action": { "action": "set_binding", "params": { "values": { "ui.f.field": "status", "ui.f.in": ["blocked", "stuck"] } } } },
+                  { "id": "filter-started", "type": "button", "props": { "label": "Running", "flex": 1 }, "action": { "action": "set_binding", "params": { "values": { "ui.f.field": "status", "ui.f.in": ["started"] } } } },
+                  { "id": "filter-all", "type": "button", "props": { "label": "All", "flex": 1 }, "action": { "action": "set_binding", "params": { "values": { "ui.f.field": "status", "ui.f.in": [] } } } }
+                ]
+              },
+              {
+                "id": "jobs", "type": "list",
+                "props": {
+                  "flex": 1, "data": "{fleet.jobs}", "emptyText": "Nothing here.",
+                  "where": { "field": "{ui.f.field}", "in": "{ui.f.in}" },
+                  "order": [
+                    { "field": "needs_jim", "rank": ["true"] },
+                    { "field": "status", "rank": ["blocked", "stuck", "started", "draft", "unknown", "done", "confirmed"] }
+                  ],
+                  "itemTemplate": {
+                    "id": "job", "type": "card", "props": { "padding": 10 },
+                    "children": [
+                      {
+                        "id": "job-body", "type": "column", "props": { "gap": 2 },
+                        "children": [
+                          {
+                            "id": "job-head", "type": "row", "props": { "gap": 8, "align": "center" },
+                            "children": [
+                              { "id": "job-name", "type": "text", "props": { "value": "{row.name}", "variant": "subheading", "flex": 1, "numberOfLines": 1 } },
+                              { "id": "job-status", "type": "text", "props": { "value": "{row.status}", "variant": "caption" } }
+                            ]
+                          },
+                          { "id": "job-why", "type": "text", "props": { "value": "{row.why}", "variant": "body", "numberOfLines": 2 } },
+                          { "id": "job-where", "type": "text", "props": { "value": "{row.project} · {row.milestone} · {row.performed_by}", "variant": "caption", "numberOfLines": 1 } },
+                          { "id": "job-needs-jim", "type": "text", "visible": "{row.needs_jim}", "props": { "value": "Needs Jim", "variant": "label", "color": "#b45309" } }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "projects-view", "type": "list",
+            "props": {
+              "flex": 1, "data": "{fleet.projects}", "row_name": "project", "emptyText": "No projects.",
+              "itemTemplate": {
+                "id": "project", "type": "card", "props": { "padding": 10 },
+                "children": [
+                  {
+                    "id": "project-body", "type": "column", "props": { "gap": 4 },
+                    "children": [
+                      { "id": "project-name", "type": "text", "props": { "value": "{project.name}", "variant": "subheading" } },
+                      {
+                        "id": "milestones", "type": "list",
+                        "props": {
+                          "stacked": true, "data": "{project.children}", "row_name": "milestone",
+                          "itemTemplate": {
+                            "id": "milestone", "type": "column", "props": { "gap": 2, "padding": 4 },
+                            "children": [
+                              { "id": "milestone-name", "type": "text", "props": { "value": "{milestone}", "variant": "label" } },
+                              {
+                                "id": "milestone-jobs", "type": "list",
+                                "props": {
+                                  "stacked": true, "data": "{fleet.jobs}",
+                                  "where": [
+                                    { "field": "project", "in": ["{project.name}"] },
+                                    { "field": "milestone", "in": ["{milestone}"] }
+                                  ],
+                                  "itemTemplate": {
+                                    "id": "milestone-job", "type": "row", "props": { "gap": 8, "padding": 2 },
+                                    "children": [
+                                      { "id": "milestone-job-name", "type": "text", "props": { "value": "{row.name}", "variant": "caption", "flex": 1, "numberOfLines": 1 } },
+                                      { "id": "milestone-job-status", "type": "text", "props": { "value": "{row.status}", "variant": "caption" } }
+                                    ]
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "seats-view", "type": "list",
+            "props": {
+              "flex": 1, "data": "{fleet.seats}", "emptyText": "No seats.",
+              "where": { "field": "retired", "in": ["false"] },
+              "order": [{ "field": "state", "rank": ["busy", "idle", "offline"] }],
+              "itemTemplate": {
+                "id": "seat", "type": "card", "props": { "padding": 10 },
+                "children": [
+                  {
+                    "id": "seat-row", "type": "row", "props": { "gap": 8, "align": "center" },
+                    "children": [
+                      { "id": "seat-name", "type": "text", "props": { "value": "{row.name}", "variant": "subheading", "flex": 1 } },
+                      { "id": "seat-up", "type": "text", "visible": "{row.up}", "props": { "value": "up · {row.state}", "variant": "label", "color": "#15803d" } },
+                      { "id": "seat-down", "type": "text", "visible": "{row.up}=false", "props": { "value": "down", "variant": "label", "color": "#b91c1c" } }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

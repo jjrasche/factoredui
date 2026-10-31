@@ -293,9 +293,15 @@ data class ListProps(
     val emptyText: String = "",
     val maxItems: Int? = null,
     val stacked: Boolean = false,
+    val where: SpecValue? = null,
+    val order: SpecValue? = null,
+    val rowName: String? = null,
 )
 
 fun Map<String, SpecValue>.asListProps(): ListProps = ListProps(
+    rowName = string("row_name"),
+    where = get("where"),
+    order = get("order"),
     data = string("data") ?: "",
     dataSource = string("data_source"),
     itemTemplate = (get("itemTemplate") as? SpecValue.NodeValue)?.value,

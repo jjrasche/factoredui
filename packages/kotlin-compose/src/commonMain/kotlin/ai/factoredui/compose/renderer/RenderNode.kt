@@ -83,6 +83,7 @@ import ai.factoredui.compose.schema.asImageProps
 import ai.factoredui.compose.schema.asLayoutProps
 import ai.factoredui.compose.schema.fillsParent
 import ai.factoredui.compose.schema.asListProps
+import ai.factoredui.compose.schema.selectListRows
 import ai.factoredui.compose.schema.asSpacerProps
 import ai.factoredui.compose.schema.asTextProps
 import ai.factoredui.compose.schema.bindingPath
@@ -758,7 +759,9 @@ private fun RenderStaticList(props: ListProps, context: RenderContext) {
  */
 @Composable
 private fun RenderRows(rows: List<Any?>, props: ListProps, context: RenderContext) {
-    val visibleRows = rows.filterNotNull().let { all ->
+    val liveData by context.dataFlow.collectAsState()
+    val selected = selectListRows(rows, props.where?.let { BindingResolver.resolveValue(it, liveData) }, props.order?.let { BindingResolver.resolveValue(it, liveData) })
+    val visibleRows = selected.filterNotNull().let { all ->
         val cap = props.maxItems
         if (cap != null && all.size > cap) all.take(cap) else all
     }
@@ -778,11 +781,17 @@ private fun RenderRows(rows: List<Any?>, props: ListProps, context: RenderContex
     RecordDrawn { rowCount = visibleRows.size }
     BoxWithConstraints(modifier = list?.let { Modifier.nodeTag(it.id) } ?: Modifier, propagateMinConstraints = true) {
         if (props.stacked || !constraints.hasBoundedHeight) {
-            StackedRows(visibleRows, itemTemplate, context, list?.path.orEmpty())
+            StackedRows(visibleRows, itemTemplate, context, list?.path.orEmpty(), props.rowName)
         } else {
-            LazyRows(visibleRows, itemTemplate, context, list?.path.orEmpty())
+            LazyRows(visibleRows, itemTemplate, context, list?.path.orEmpty(), props.rowName)
         }
     }
+}
+
+private fun rowData(row: Any, rowName: String?): Map<String, Any> = buildMap {
+    put("row", row)
+    put("item", row)
+    rowName?.let { put(it, row) }
 }
 
 @Composable
@@ -791,18 +800,18 @@ private fun RowScope(listPath: String, index: Int, content: @Composable () -> Un
 }
 
 @Composable
-private fun StackedRows(rows: List<Any>, itemTemplate: SpecNode, context: RenderContext, listPath: String) {
+private fun StackedRows(rows: List<Any>, itemTemplate: SpecNode, context: RenderContext, listPath: String, rowName: String?) {
     Column {
         rows.forEachIndexed { index, row ->
             RowScope(listPath, index) {
-                RenderNode(node = itemTemplate, context = context.withAdditionalData(mapOf("row" to row, "item" to row)))
+                RenderNode(node = itemTemplate, context = context.withAdditionalData(rowData(row, rowName)))
             }
         }
     }
 }
 
 @Composable
-private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: RenderContext, listPath: String) {
+private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: RenderContext, listPath: String, rowName: String?) {
     LazyColumn {
         itemsIndexed(visibleRows) { index, row ->
             // Scope the row under "row" (the requested "{row.x}" syntax) and
@@ -811,7 +820,7 @@ private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: Re
             // "{item.id}" resolve identically — and because the template renders
             // with this scoped context, action param interpolation in dispatch()
             // picks up the same row overlay for free.
-            val rowContext = context.withAdditionalData(mapOf("row" to row, "item" to row))
+            val rowContext = context.withAdditionalData(rowData(row, rowName))
             RowScope(listPath, index) { RenderNode(node = itemTemplate, context = rowContext) }
         }
     }
