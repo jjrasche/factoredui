@@ -546,6 +546,7 @@ data class GeomapFeature(
     val dash: List<Float>? = null,
     val geometryId: String? = null,
     val radius: Float = DEFAULT_POINT_RADIUS,
+    val values: Map<String, Double?> = emptyMap(),
 )
 
 const val DEFAULT_POINT_RADIUS = 5f
@@ -650,8 +651,14 @@ private fun resolveGeomapFeatures(
             dash = (fields["dash"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() }?.takeIf { it.size >= 2 },
             geometryId = geometryId,
             radius = (fields["radius"] as? Number)?.toFloat() ?: DEFAULT_POINT_RADIUS,
+            values = resolveGeomapValues(fields["values"]),
         )
     }
+
+private fun resolveGeomapValues(resolvedValues: Any?): Map<String, Double?> =
+    (resolvedValues as? Map<*, *>).orEmpty().mapNotNull { (key, value) ->
+        (key as? String)?.let { name -> name to (value as? Number)?.toDouble()?.takeIf { it.isFinite() } }
+    }.toMap()
 
 fun resolveGeomapPattern(resolvedPattern: Any?): GeomapPattern? {
     val fields = resolvedPattern as? Map<*, *> ?: return null

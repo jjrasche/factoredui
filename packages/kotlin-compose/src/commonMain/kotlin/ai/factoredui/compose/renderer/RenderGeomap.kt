@@ -59,6 +59,11 @@ import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.GeomapFeature
 import ai.factoredui.compose.schema.GeomapLayer
 import ai.factoredui.compose.schema.GeomapLayerKind
+import ai.factoredui.compose.score.ScoreShade
+import ai.factoredui.compose.score.ScoreShadeReading
+import ai.factoredui.compose.score.ShadedColour
+import ai.factoredui.compose.score.readScoreShade
+import ai.factoredui.compose.score.shadeFor
 import ai.factoredui.compose.schema.GeomapViewport
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecValue
@@ -86,7 +91,22 @@ internal class TessellatedFeature(
     val dash: List<Float>?,
     val labelCandidates: List<GeomapLabelAnchor>,
     val radius: Float = DEFAULT_POINT_RADIUS,
+    val values: Map<String, Double?> = emptyMap(),
 )
+
+/** The fill a feature draws with now: its own, or the colour its values earn under the node's `shade_by`; null when it has none or the shade hides it. */
+internal fun featureFillArgb(feature: TessellatedFeature, shade: ScoreShade?): Int? {
+    if (shade == null || feature.values.isEmpty()) return feature.fillArgb
+    return when (val shaded = shadeFor(shade, feature.values)) {
+        is ShadedColour.Coloured -> shaded.colour.toInt()
+        ShadedColour.Hidden -> null
+    }
+}
+
+internal fun isShadedOut(feature: TessellatedFeature, shade: ScoreShade?): Boolean =
+    shade != null && feature.values.isNotEmpty() && shadeFor(shade, feature.values) == ShadedColour.Hidden
+
+internal var geomapTessellationRuns = 0
 
 internal class TessellatedLayer(
     val layerId: String,
@@ -117,6 +137,10 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         tessellateGeomapLayers(resolveGeomapLayers(layersData, geometriesData))
     }
     val missingGeometries = remember(layersData, geometriesData) { unresolvedGeometryRefs(layersData, geometriesData) }
+    val shadeData = resolvedProps["shade_by"]
+    val shadeReading = remember(shadeData) { shadeData?.let { readScoreShade("shade_by", it) } }
+    val shade = (shadeReading as? ScoreShadeReading.Readable)?.shade
+    val shadeNotice = (shadeReading as? ScoreShadeReading.Refused)?.notice
     val hostCentreViewport = resolveGeomapViewport(resolvedProps["viewport"])
     val hostBounds = resolveGeomapBoundsRequest(resolvedProps["viewport"])
     val legend = resolveGeomapLegend(resolvedProps["legend"])
@@ -152,10 +176,10 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         LaunchedEffect(hostViewport) { hostViewport?.let { viewport = it } }
         Canvas(
             modifier = Modifier.fillMaxSize()
-                .pointerInput(shownTessellation, props.onFeatureTap, selection, selectedPath) {
+                .pointerInput(shownTessellation, props.onFeatureTap, selection, selectedPath, shade) {
                     val onFeatureTap = props.onFeatureTap
                     detectTapGestures(onTap = { offset ->
-                        val hit = hitTestGeomap(shownTessellation, viewport, widthPx, heightPx, offset.x, offset.y, density)
+                        val hit = hitTestGeomap(shownTessellation, viewport, widthPx, heightPx, offset.x, offset.y, density, shade)
                         val nextSelection = selectionAfterTap(selection, hit)
                         if (selectedPath != null) context.setBinding(selectedPath, nextSelection)
                         else localSelection = nextSelection.toSet()
@@ -184,7 +208,15 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
                     }
                 },
         ) {
-            drawGeomapTessellation(shownTessellation, viewport, widthPx, heightPx, labelMeasurer, labelInk, labelHalo, selection, selectionStyle)
+            drawGeomapTessellation(shownTessellation, viewport, widthPx, heightPx, labelMeasurer, labelInk, labelHalo, selection, selectionStyle, shade)
+        }
+        if (shadeNotice != null) {
+            Text(
+                text = shadeNotice,
+                modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalSpecTheme.current.ink,
+            )
         }
         if (legend.isNotEmpty()) {
             GeomapLegend(
@@ -218,6 +250,7 @@ private class SharedGeometry(val worldRings: List<DoubleArray>, val bounds: Worl
 }
 
 internal fun tessellateGeomapLayers(layers: List<GeomapLayer>): GeomapTessellation {
+    geomapTessellationRuns++
     var bounds: WorldBounds? = null
     val shared = mutableMapOf<String, SharedGeometry>()
     val tessellatedLayers = layers.map { layer ->
@@ -255,7 +288,7 @@ private fun tessellateFeature(
         GeomapLayerKind.POINT -> parseGeomapColor(feature.fill) ?: DEFAULT_STROKE_ARGB
         GeomapLayerKind.LINE -> null
     }
-    val needsTriangles = kind == GeomapLayerKind.FILL && fillArgb != null && worldRings.size == 1
+    val needsTriangles = kind == GeomapLayerKind.FILL && (fillArgb != null || feature.values.isNotEmpty()) && worldRings.size == 1
     val triangleWorld = when {
         !needsTriangles -> DoubleArray(0)
         shared != null -> shared.triangles ?: expandTriangles(worldRings).also { shared.triangles = it }
@@ -275,6 +308,7 @@ private fun tessellateFeature(
         dash = feature.dash,
         labelCandidates = if (feature.label.isNullOrBlank() || kind != GeomapLayerKind.FILL) emptyList() else geomapLabelCandidatesOf(worldRings),
         radius = feature.radius,
+        values = feature.values,
     )
 }
 
@@ -338,6 +372,7 @@ internal fun hitTestGeomap(
     tapXpx: Float,
     tapYpx: Float,
     density: Float = 1f,
+    shade: ScoreShade? = null,
 ): GeomapHit? {
     val scale = geomapScalePx(viewport.zoom)
     val worldX = lonToWorldX(viewport.lon) + (tapXpx - widthPx / 2.0) / scale
@@ -345,6 +380,7 @@ internal fun hitTestGeomap(
     for (layer in tessellation.layers.asReversed()) {
         if (!layer.isShownAt(viewport.zoom)) continue
         for (feature in layer.features.asReversed()) {
+            if (isShadedOut(feature, shade)) continue
             val isHit = if (layer.kind == GeomapLayerKind.POINT) {
                 isTapOnPoint(feature, worldX, worldY, (feature.radius + POINT_TAP_SLOP) * density / scale)
             } else {
@@ -368,6 +404,7 @@ private fun DrawScope.drawGeomapTessellation(
     labelHalo: Color,
     selection: Set<String>,
     selectionStyle: GeomapSelectionStyle,
+    shade: ScoreShade?,
 ) {
     val scale = geomapScalePx(viewport.zoom)
     val centerX = lonToWorldX(viewport.lon)
@@ -386,7 +423,7 @@ private fun DrawScope.drawGeomapTessellation(
             val colors = IntArray(vertexCount)
             var vertex = 0
             for (feature in inView) {
-                val fill = feature.fillArgb ?: continue
+                val fill = featureFillArgb(feature, shade) ?: continue
                 val triangles = feature.triangleWorld
                 for (index in 0 until triangles.size / 2) {
                     positions[vertex * 2] = screenX(triangles[index * 2])
@@ -399,7 +436,7 @@ private fun DrawScope.drawGeomapTessellation(
         }
         // Inner rings are holes: even-odd fills them as empty, which the triangle batch cannot express.
         for (feature in inView) {
-            val fill = feature.fillArgb ?: continue
+            val fill = featureFillArgb(feature, shade) ?: continue
             if (feature.worldRings.size < 2) continue
             drawPath(screenPathOf(feature.worldRings, closed = true, ::screenX, ::screenY), Color(fill))
         }
@@ -408,6 +445,7 @@ private fun DrawScope.drawGeomapTessellation(
     for (layer in tessellation.layers) {
         if (!layer.isShownAt(viewport.zoom)) continue
         for (feature in layer.featuresIn(view)) {
+            if (isShadedOut(feature, shade)) continue
             val pattern = feature.pattern ?: continue
             paintGeomapPattern(screenPathOf(feature.worldRings, closed = true, ::screenX, ::screenY), pattern)
         }
@@ -416,6 +454,7 @@ private fun DrawScope.drawGeomapTessellation(
     for (layer in tessellation.layers) {
         if (!layer.isShownAt(viewport.zoom) || layer.kind == GeomapLayerKind.POINT) continue
         for (feature in layer.featuresIn(view)) {
+            if (isShadedOut(feature, shade)) continue
             val strokeArgb = feature.strokeArgb ?: continue
             val path = Path()
             for (ring in feature.worldRings) {
@@ -438,7 +477,8 @@ private fun DrawScope.drawGeomapTessellation(
         if (!layer.isShownAt(viewport.zoom) || layer.kind != GeomapLayerKind.POINT) continue
         for (feature in layer.pointsIn(view, scale, density)) {
             val centre = Offset(screenX(feature.worldRings[0][0]), screenY(feature.worldRings[0][1]))
-            feature.fillArgb?.let { drawCircle(Color(it), radius = feature.radius * density, center = centre) }
+            if (isShadedOut(feature, shade)) continue
+            featureFillArgb(feature, shade)?.let { drawCircle(Color(it), radius = feature.radius * density, center = centre) }
             feature.strokeArgb?.let {
                 drawCircle(Color(it), radius = feature.radius * density, center = centre, style = Stroke(width = feature.strokeWidth * density))
             }
@@ -461,7 +501,7 @@ private fun DrawScope.drawGeomapTessellation(
                 continue
             }
             for (feature in layer.featuresIn(view)) {
-                if (feature.featureId !in selection) continue
+                if (feature.featureId !in selection || isShadedOut(feature, shade)) continue
                 drawPath(
                     screenPathOf(feature.worldRings, closed = layer.kind == GeomapLayerKind.FILL, ::screenX, ::screenY),
                     color = Color(selectionStyle.strokeArgb),
@@ -478,6 +518,7 @@ private fun DrawScope.drawGeomapTessellation(
         if (!layer.isShownAt(viewport.zoom)) continue
         val candidates = if (layer.kind == GeomapLayerKind.POINT) layer.pointsIn(view, scale, density) else layer.featuresIn(view)
         for (feature in candidates.asReversed()) {
+            if (isShadedOut(feature, shade)) continue
             val label = feature.label ?: continue
             val measured = labelMeasurer.measure(label, TextStyle(color = labelInk, fontSize = LABEL_FONT_SIZE))
             val labelSize = Size(measured.size.width.toFloat(), measured.size.height.toFloat())

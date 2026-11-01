@@ -121,6 +121,7 @@ fun RenderSpec(spec: Spec, context: RenderContext) {
         CompositionLocalProvider(LocalScreenRegistry provides context.screen) {
             ScreenFrameCounter(context.screen)
             Box(modifier = Modifier.fillMaxSize().background(context.theme.ground)) {
+                WindowSizeBindings(context)
                 if (spec.keybindings.isEmpty()) {
                     RenderNode(node = spec.root, context = context)
                 } else {

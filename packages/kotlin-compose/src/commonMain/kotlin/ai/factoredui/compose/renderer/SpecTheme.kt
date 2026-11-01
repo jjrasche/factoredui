@@ -10,7 +10,10 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import kotlin.math.abs
 
-data class SpecTheme(val ground: Color, val ink: Color, val muted: Color) {
+/** The window widths, in dp, at which the window size class steps up. */
+data class Breakpoints(val mediumFromDp: Float = 600f, val expandedFromDp: Float = 840f)
+
+data class SpecTheme(val ground: Color, val ink: Color, val muted: Color, val breakpoints: Breakpoints = Breakpoints()) {
     val isDark: Boolean get() = 0.2126f * ground.red + 0.7152f * ground.green + 0.0722f * ground.blue < 0.5f
 
     companion object {

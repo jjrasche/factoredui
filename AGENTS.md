@@ -167,7 +167,12 @@ A string `"{path.to.value}"` is resolved at render time from one state map. Insi
 - A `select` option is `{ "label": "Zoom 2 times", "value": 2 }`; its `value` is text, a number or true/false, and is written in that type. An option is chosen when the bound value reads as the same text (2, 2.0 and "2" all choose option 2), and `/click?id=<select id>/option/2` picks it. An option with no text `label` or with any other `value` is dropped, and the select shows one notice naming each dropped option's index: "select 'zoom' dropped options 1, 3: each needs a text 'label' and a 'value' that is text, a number or true/false".
 - Dense primitives take typed data, not children.
 - `geomap` shows a selection from a `selected` binding (list of ids), writes it on tap, and dispatches `on_feature_tap`.
+- `geomap` `shade_by` colours the features that carry `values` (a feature's `{ "field": number }`, usually 0 to 1) by a weighted score: `{ "weights": { "field": number }, "minimum": number, "ramp": { "stops": [[value, colour], ...], "over": colour, "no_figure": colour } }`. Bind it (`"shade_by": "{map.shade}"`) and move a weight with a `slider`: only the colours change, nothing is drawn again from scratch. The score is the mean of the weighted fields by their weights; a field with weight 0 is ignored. A feature missing a weighted field has no score: it takes the ramp's `no_figure` colour, or is hidden when a `minimum` is set. A feature whose score is under `minimum` is hidden (no fill, outline, label or tap). A feature without `values` keeps its own `fill`. A record that cannot be read (no weights, a negative weight, no ramp, a minimum that is not a number) draws its reason on the map.
 - `scene` picks a renderer from `view_state` (`level_feet`, `quarter_turns`, `centre_mm`, `renderer`).
+
+## Window size
+
+The renderer writes the window's size class as bindings, so one spec lays out for a phone, a tablet and a desktop with `visible`: `window.class` (`compact` under 600 dp wide, `medium` from 600, `expanded` from 840), `window.is_compact`, `window.is_medium`, `window.is_expanded`, `window.is_at_least_medium`, `window.width` and `window.height` in dp. The two breakpoints are the theme's (`SpecTheme.breakpoints`).
 
 ## Actions
 
