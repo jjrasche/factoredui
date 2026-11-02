@@ -1,5 +1,6 @@
 package ai.factoredui.compose.renderer
 
+import kotlin.math.round
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -84,6 +85,15 @@ internal fun RenderToggle(
     }
 }
 
+internal fun snapSliderValue(value: Float, min: Float, step: Float?): Double {
+    if (step == null || step <= 0f) return value.toDouble()
+    val steps = round((value - min).toDouble() / step)
+    val snapped = min.toDouble() + steps * step.toString().toDouble()
+    return round(snapped * SLIDER_DECIMAL_SCALE) / SLIDER_DECIMAL_SCALE
+}
+
+private const val SLIDER_DECIMAL_SCALE = 1_000_000.0
+
 @Composable
 internal fun RenderSlider(
     node: SpecNode,
@@ -106,7 +116,7 @@ internal fun RenderSlider(
     Slider(
         value = current,
         onValueChange = { next ->
-            writePath?.let { context.setBinding(it, next.toDouble()) }
+            writePath?.let { context.setBinding(it, snapSliderValue(next, props.min, props.step)) }
         },
         onValueChangeFinished = {
             node.action?.let { ref -> scope.launch { context.dispatch(node.id, ref) } }
