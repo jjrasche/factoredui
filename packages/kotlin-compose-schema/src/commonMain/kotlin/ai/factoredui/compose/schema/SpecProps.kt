@@ -597,6 +597,53 @@ data class GeomapLayer(
     val maxZoom: Float? = null,
 )
 
+const val DEFAULT_TILE_SIZE = 256
+const val DEFAULT_TILE_MAX_ZOOM = 18
+private const val HIGHEST_TILE_ZOOM = 30
+private val TILE_PLACEHOLDERS = listOf("[z]", "[x]", "[y]")
+
+/** A layer of map tiles drawn under the vector layers. The template names its own order with [z], [x] and [y]; braces would be taken for bindings and emptied before the layer sees them. */
+data class GeomapRasterLayer(
+    val id: String,
+    val urlTemplate: String,
+    val tileSize: Int = DEFAULT_TILE_SIZE,
+    val tileMaxZoom: Int = DEFAULT_TILE_MAX_ZOOM,
+    val attribution: String? = null,
+    val visible: Boolean = true,
+    val minZoom: Float? = null,
+    val maxZoom: Float? = null,
+)
+
+private fun rasterEntries(resolvedLayers: Any?): List<Map<*, *>> =
+    (resolvedLayers as? List<*>).orEmpty().mapNotNull { entry -> (entry as? Map<*, *>)?.takeIf { it["kind"] == "raster" } }
+
+private fun rasterProblem(entry: Map<*, *>): String? {
+    val id = entry["id"] as? String ?: return "a raster layer has no id"
+    val template = entry["url"] as? String ?: return "raster layer '$id' has no url"
+    val missing = TILE_PLACEHOLDERS.filter { it !in template }
+    if (missing.isNotEmpty()) return "raster layer '$id' url lacks ${missing.joinToString(", ")} (square brackets: a {z} in braces is replaced as a binding)"
+    val size = entry["tile_size"]
+    if (size != null && ((size as? Number)?.toInt() ?: 0) <= 0) return "raster layer '$id' has a tile_size that is not a positive whole number"
+    return null
+}
+
+/** One line for each raster layer entry that cannot be drawn, so a spec author sees why a basemap is missing. */
+fun geomapRasterProblems(resolvedLayers: Any?): List<String> = rasterEntries(resolvedLayers).mapNotNull(::rasterProblem)
+
+fun resolveGeomapRasterLayers(resolvedLayers: Any?): List<GeomapRasterLayer> =
+    rasterEntries(resolvedLayers).filter { rasterProblem(it) == null }.map { entry ->
+        GeomapRasterLayer(
+            id = entry["id"] as String,
+            urlTemplate = entry["url"] as String,
+            tileSize = (entry["tile_size"] as? Number)?.toInt() ?: DEFAULT_TILE_SIZE,
+            tileMaxZoom = ((entry["tile_max_zoom"] as? Number)?.toInt() ?: DEFAULT_TILE_MAX_ZOOM).coerceIn(0, HIGHEST_TILE_ZOOM),
+            attribution = (entry["attribution"] as? String)?.takeIf { it.isNotBlank() },
+            visible = entry["visible"] as? Boolean ?: true,
+            minZoom = (entry["min_zoom"] as? Number)?.toFloat(),
+            maxZoom = (entry["max_zoom"] as? Number)?.toFloat(),
+        )
+    }
+
 data class GeomapViewport(val lon: Double, val lat: Double, val zoom: Float)
 
 data class GeomapProps(
@@ -630,6 +677,7 @@ fun resolveGeomapLayers(resolvedLayers: Any?, resolvedGeometries: Any? = null): 
     return (resolvedLayers as? List<*>).orEmpty().mapNotNull { entry ->
         val fields = entry as? Map<*, *> ?: return@mapNotNull null
         val id = fields["id"] as? String ?: return@mapNotNull null
+        if (fields["kind"] == "raster") return@mapNotNull null
         val kind = when (fields["kind"]) {
             "line" -> GeomapLayerKind.LINE
             "point" -> GeomapLayerKind.POINT

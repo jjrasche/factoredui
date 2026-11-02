@@ -70,7 +70,9 @@ import ai.factoredui.compose.schema.GeomapViewport
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecValue
 import ai.factoredui.compose.schema.asGeomapProps
+import ai.factoredui.compose.schema.geomapRasterProblems
 import ai.factoredui.compose.schema.resolveGeomapLayers
+import ai.factoredui.compose.schema.resolveGeomapRasterLayers
 import ai.factoredui.compose.schema.resolveGeomapViewport
 import ai.factoredui.compose.schema.resolveGeomapSelection
 import ai.factoredui.compose.schema.DEFAULT_POINT_RADIUS
@@ -205,6 +207,9 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val hostCentreViewport = resolveGeomapViewport(resolvedProps["viewport"])
     val hostBounds = resolveGeomapBoundsRequest(resolvedProps["viewport"])
     val legend = resolveGeomapLegend(resolvedProps["legend"])
+    val rasterLayers = remember(layersData) { resolveGeomapRasterLayers(layersData) }
+    val rasterProblems = remember(layersData) { geomapRasterProblems(layersData) }
+    val rasterFailures = remember { RasterFailures() }
     val visibilityPath = node.props["layer_visibility"]?.bindingPath()
     val boundVisibility = (resolvedProps["layer_visibility"] as? Map<*, *>)
         ?.mapNotNull { (key, value) -> (key as? String)?.let { id -> (value as? Boolean)?.let { id to it } } }
@@ -254,6 +259,7 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
             mutableStateOf(hostViewport ?: fitGeomapViewport(tessellation.worldBounds, widthPx, heightPx))
         }
         LaunchedEffect(hostViewport) { hostViewport?.let { viewport = it } }
+        GeomapRasterTiles(rasterLayers, layerVisibility, viewport, widthPx, heightPx, context.tileLoader, theme.dimmed, rasterFailures)
         Canvas(
             modifier = Modifier.fillMaxSize()
                 .pointerInput(shownTessellation, props.onFeatureTap, selection, selectedPath, shade) {
@@ -290,6 +296,7 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         ) {
             drawGeomapTessellation(shownTessellation, viewport, widthPx, heightPx, labelMeasurer, labelInk, labelHalo, selection, selectionStyle, shade, dimArgb)
         }
+        GeomapRasterNotes(node.id, rasterLayers, layerVisibility, viewport.zoom, rasterProblems, rasterFailures)
         if (shadeNotice != null) {
             Text(
                 text = shadeNotice,

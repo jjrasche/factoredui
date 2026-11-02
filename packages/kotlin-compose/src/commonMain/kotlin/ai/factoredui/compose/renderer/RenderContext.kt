@@ -71,6 +71,8 @@ class RenderContext private constructor(
 
     var shareHost: ShareHost = NoShareHost
 
+    var tileLoader: coil3.ImageLoader? = null
+
     /** Reactive flow of the merged (overlay + store) data map. */
     val dataFlow: StateFlow<Map<String, Any?>> =
         if (overlay.isEmpty()) store

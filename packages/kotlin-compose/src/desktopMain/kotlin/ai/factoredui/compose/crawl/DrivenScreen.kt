@@ -40,10 +40,14 @@ class DrivenScreen internal constructor(
     private val heightDp: Int,
     theme: SpecTheme,
     shareHost: ShareHost,
+    tileLoader: coil3.ImageLoader?,
 ) : AutoCloseable {
 
     private val recorded = mutableListOf<DrivenIntent>()
-    private val context = RenderContext(initialData = store, observability = IntentRecorder(recorded), theme = theme).also { it.shareHost = shareHost }
+    private val context = RenderContext(initialData = store, observability = IntentRecorder(recorded), theme = theme).also {
+        it.shareHost = shareHost
+        it.tileLoader = tileLoader
+    }
     private var clock = 0L
 
     private val scene = ImageComposeScene(width = widthDp, height = heightDp, density = Density(1f)) {
@@ -231,7 +235,8 @@ fun driveScreen(
     heightDp: Int = 800,
     theme: SpecTheme = SpecTheme.LIGHT,
     shareHost: ShareHost = NoShareHost,
-): DrivenScreen = DrivenScreen(spec, store, widthDp, heightDp, theme, shareHost)
+    tileLoader: coil3.ImageLoader? = null,
+): DrivenScreen = DrivenScreen(spec, store, widthDp, heightDp, theme, shareHost, tileLoader)
 
 private class IntentRecorder(private val into: MutableList<DrivenIntent>) : Observability {
     override fun onRender(nodeId: String) = Unit
