@@ -50,7 +50,27 @@ private fun countOf(png: ByteArray, rgb: Int): Int {
     return count
 }
 
+private fun countInRows(png: ByteArray, rgb: Int, rows: IntRange): Int {
+    val image = ImageIO.read(ByteArrayInputStream(png))
+    var count = 0
+    for (y in rows) for (x in 0 until image.width) if ((image.getRGB(x, y) and 0xFFFFFF) == rgb) count++
+    return count
+}
+
 class GeomapRankedListTest {
+    @Test
+    fun a_framed_parcel_stays_in_the_part_of_the_map_a_bottom_inset_leaves_free() {
+        driveScreen(SPEC, widthDp = MAP_SIZE, heightDp = MAP_SIZE).use { screen ->
+            screen.type("map.shade", json.parseToJsonElement("""{"weights":{"a":1},"ramp":$RAMP}""").toPlain())
+            screen.type("map.viewport", json.parseToJsonElement("""{"bounds":[-85.20,42.80,-85.00,43.10],"margin":0.6,"inset_bottom":200}""").toPlain())
+            val frame = screen.frame().png
+            val image = ImageIO.read(ByteArrayInputStream(frame))
+            val inset = 200 * image.height / MAP_SIZE
+            assertTrue(countOf(frame, HIGH) > 1_000, "the parcel was not drawn at all")
+            assertEquals(0, countInRows(frame, HIGH, (image.height - inset) until image.height), "the parcel runs under the inset")
+        }
+    }
+
     @Test
     fun tapping_a_row_selects_its_parcel_and_frames_it_on_the_map() {
         driveScreen(SPEC, widthDp = MAP_SIZE, heightDp = MAP_SIZE).use { screen ->

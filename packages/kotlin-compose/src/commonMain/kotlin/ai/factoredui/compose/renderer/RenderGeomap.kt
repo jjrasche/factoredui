@@ -179,6 +179,7 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     }
     LaunchedEffect(topRows) { if (topRows != null && shadeOutPath != null) context.setBinding("$shadeOutPath.top", topRows) }
     LaunchedEffect(selectedOut, shadeOutPath) { if (shadeOutPath != null && shade != null) context.setBinding("$shadeOutPath.selected", selectedOut) }
+    val screenDensity = androidx.compose.ui.platform.LocalDensity.current.density
     val scope = rememberCoroutineScope()
     val labelMeasurer = rememberTextMeasurer()
     val labelInk = LocalSpecTheme.current.ink
@@ -189,7 +190,11 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         // Only the renderer knows its pixel size, so a host asking to frame a region hands over
         // bounds and the fit is done here rather than guessed from outside.
         val hostViewport = hostCentreViewport ?: hostBounds?.let { request ->
-            fitGeomapViewport(worldBoundsOfRequest(request), widthPx, heightPx)
+            fitGeomapViewport(
+                worldBoundsOfRequest(request), widthPx, heightPx,
+                margin = request.margin ?: FIT_MARGIN,
+                insetBottomPx = (request.insetBottomDp * screenDensity).toFloat(),
+            )
         }
         var viewport by remember(widthPx, heightPx) {
             mutableStateOf(hostViewport ?: fitGeomapViewport(tessellation.worldBounds, widthPx, heightPx))

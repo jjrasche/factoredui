@@ -121,6 +121,33 @@ class GeomapShadeOutTest {
     }
 
     @Test
+    fun a_parts_share_of_the_score_is_a_percent_with_one_decimal_so_a_small_one_does_not_read_zero() {
+        driveScreen(SPEC, widthDp = MAP_SIZE, heightDp = MAP_SIZE).use { screen ->
+            screen.type("map.shade", shade("""{"a":1,"b":0.004}"""))
+            screen.frame()
+            screen.tapAt(100f, 200f)
+            screen.frame()
+            val parts = (screen.store().at("map", "out", "selected", "parts") as List<*>).map { it as Map<*, *> }
+            assertEquals(listOf("100.0%", "0.0%"), parts.map { it["share_text"] })
+        }
+        val small = json.decodeFromString(
+            Spec.serializer(),
+            """{"spec_version":1,"renderer_min":1,"root":{"id":"map","type":"geomap","props":{
+              "shade_by": "{map.shade}", "shade_out": "{map.out}", "selected": "{map.picked}",
+              "layers": [{"id":"parcels","kind":"fill","features":[
+                {"id":"wide","values":{"a":0.5,"b":0.5},"rings":[[[-85.90,42.80],[-85.30,42.80],[-85.30,43.10],[-85.90,43.10]]]}]}]}}}""",
+        )
+        driveScreen(small, widthDp = MAP_SIZE, heightDp = MAP_SIZE).use { screen ->
+            screen.type("map.shade", shade("""{"a":1,"b":0.004}"""))
+            screen.frame()
+            screen.tapAt(200f, 200f)
+            screen.frame()
+            val parts = (screen.store().at("map", "out", "selected", "parts") as List<*>).map { it as Map<*, *> }
+            assertEquals(listOf("99.6%", "0.4%"), parts.map { it["share_text"] })
+        }
+    }
+
+    @Test
     fun with_nothing_tapped_nothing_is_selected() {
         driveScreen(SPEC, widthDp = MAP_SIZE, heightDp = MAP_SIZE).use { screen ->
             screen.type("map.shade", shade("""{"a":1,"b":0}"""))

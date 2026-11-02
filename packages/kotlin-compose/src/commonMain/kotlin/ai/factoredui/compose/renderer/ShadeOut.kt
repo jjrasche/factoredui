@@ -18,6 +18,14 @@ private fun scoredFeaturesOf(tessellation: GeomapTessellation): Map<String, Tess
 
 private fun roundedText(figure: Double): String = ((figure * PERCENT).roundToInt() / PERCENT).toString()
 
+private const val TENTH = 10.0
+
+/** A part's share of the whole score as a percent with one decimal, so a small share still reads as one. */
+private fun shareText(contribution: Double, score: Double?): String {
+    if (score == null || score == 0.0) return "0.0%"
+    return "${((contribution / score) * PERCENT * TENTH).roundToInt() / TENTH}%"
+}
+
 private fun percentText(percentile: Double): String = (percentile * PERCENT).roundToInt().toString()
 
 internal fun shadeOutTopCount(raw: Any?): Int = ((raw as? Number)?.toDouble() ?: DEFAULT_TOP).toInt().coerceAtLeast(0)
@@ -62,6 +70,7 @@ internal fun shadeOutSelected(shade: ScoreShade, tessellation: GeomapTessellatio
                 "weight" to part.weight,
                 "contribution" to part.contribution,
                 "contribution_text" to roundedText(part.contribution),
+                "share_text" to shareText(part.contribution, score),
             )
         },
     )

@@ -745,13 +745,23 @@ private fun resolveGeomapRings(resolvedRings: Any?, fewestPoints: Int = GeomapLa
     }
 }
 
-data class GeomapBoundsRequest(val minLon: Double, val minLat: Double, val maxLon: Double, val maxLat: Double)
+/** `margin` is the share (above 0, up to 1) of the free map the box may fill; `insetBottomDp` is a strip along the bottom that something else (a sheet) covers. */
+data class GeomapBoundsRequest(
+    val minLon: Double,
+    val minLat: Double,
+    val maxLon: Double,
+    val maxLat: Double,
+    val margin: Double? = null,
+    val insetBottomDp: Double = 0.0,
+)
 
 fun resolveGeomapBoundsRequest(resolvedViewport: Any?): GeomapBoundsRequest? {
     val fields = resolvedViewport as? Map<*, *> ?: return null
     val corners = (fields["bounds"] as? List<*>)?.mapNotNull { (it as? Number)?.toDouble() } ?: return null
     if (corners.size != 4) return null
-    return GeomapBoundsRequest(corners[0], corners[1], corners[2], corners[3])
+    val margin = (fields["margin"] as? Number)?.toDouble()?.takeIf { it > 0.0 && it <= 1.0 }
+    val inset = (fields["inset_bottom"] as? Number)?.toDouble()?.takeIf { it >= 0.0 } ?: 0.0
+    return GeomapBoundsRequest(corners[0], corners[1], corners[2], corners[3], margin, inset)
 }
 
 fun resolveGeomapViewport(resolvedViewport: Any?): GeomapViewport? {

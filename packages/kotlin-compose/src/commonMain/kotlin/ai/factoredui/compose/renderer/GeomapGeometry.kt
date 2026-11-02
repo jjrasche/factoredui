@@ -16,7 +16,7 @@ import kotlin.math.tan
 const val GEOMAP_TILE_PX = 256.0
 const val MIN_GEOMAP_ZOOM = 1f
 const val MAX_GEOMAP_ZOOM = 22f
-private const val FIT_MARGIN = 0.92
+const val FIT_MARGIN = 0.92
 
 fun lonToWorldX(lon: Double): Double = (lon + 180.0) / 360.0
 
@@ -78,16 +78,25 @@ fun WorldBounds.union(other: WorldBounds): WorldBounds = WorldBounds(
     maxY = kotlin.math.max(maxY, other.maxY),
 )
 
-fun fitGeomapViewport(bounds: WorldBounds?, widthPx: Float, heightPx: Float): GeomapViewport {
-    if (bounds == null || widthPx <= 0f || heightPx <= 0f) return GeomapViewport(0.0, 0.0, 2f)
-    val scaleForWidth = if (bounds.width > 0) widthPx * FIT_MARGIN / bounds.width else Double.MAX_VALUE
-    val scaleForHeight = if (bounds.height > 0) heightPx * FIT_MARGIN / bounds.height else Double.MAX_VALUE
+/** Frames [bounds] so they fill [margin] of the map's free part: the whole map less a strip of [insetBottomPx] along the bottom. */
+fun fitGeomapViewport(
+    bounds: WorldBounds?,
+    widthPx: Float,
+    heightPx: Float,
+    margin: Double = FIT_MARGIN,
+    insetBottomPx: Float = 0f,
+): GeomapViewport {
+    val freeHeightPx = heightPx - insetBottomPx
+    if (bounds == null || widthPx <= 0f || freeHeightPx <= 0f) return GeomapViewport(0.0, 0.0, 2f)
+    val scaleForWidth = if (bounds.width > 0) widthPx * margin / bounds.width else Double.MAX_VALUE
+    val scaleForHeight = if (bounds.height > 0) freeHeightPx * margin / bounds.height else Double.MAX_VALUE
     val scale = min(scaleForWidth, scaleForHeight)
     val zoom = if (scale == Double.MAX_VALUE) MAX_GEOMAP_ZOOM else
         log2(scale / GEOMAP_TILE_PX).toFloat().coerceIn(MIN_GEOMAP_ZOOM, MAX_GEOMAP_ZOOM)
+    val centreSouthOfBoxCentre = insetBottomPx / 2.0 / geomapScalePx(zoom)
     return GeomapViewport(
         lon = worldXToLon(bounds.centerX),
-        lat = worldYToLat(bounds.centerY),
+        lat = worldYToLat(bounds.centerY + centreSouthOfBoxCentre),
         zoom = zoom,
     )
 }
