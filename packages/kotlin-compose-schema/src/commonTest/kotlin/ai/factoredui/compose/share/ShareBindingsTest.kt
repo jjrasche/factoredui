@@ -37,6 +37,73 @@ private val CUTOFF = ShareEntry(path = "map.cutoff", query = "cut", format = Sha
 private val OPEN = ShareEntry(path = "panel.open", query = "open", store = "panel-open", format = ShareFormat.BOOL)
 private val LAYERS = ShareEntry(path = "map.layers", query = "layers", format = ShareFormat.LIST, keepEmpty = true)
 
+private val SNAPPED_PERCENT = ShareEntry(path = "map.cutoff", query = "cut", format = ShareFormat.NUMBER, step = 5.0, min = 0.0, max = 100.0)
+private val WEIGHT = ShareEntry(path = "weights.slope", query = "w", format = ShareFormat.NUMBER, step = 1.0, min = -10.0, max = 10.0)
+private val WEIGHTS = ShareEntry(path = "weights.all", query = "ws", format = ShareFormat.NUMBERS, step = 1.0, min = -10.0, max = 10.0)
+
+private fun valueOf(entry: ShareEntry, raw: String): Any? =
+    resolveShared(listOf(entry), FakeShareHost(query = mapOf(entry.query!! to raw))).values[entry.path]
+
+private fun noticesOf(entry: ShareEntry, raw: String): List<String> =
+    resolveShared(listOf(entry), FakeShareHost(query = mapOf(entry.query!! to raw))).notices
+
+class ShareRangeTest {
+    @Test
+    fun a_number_snaps_to_the_nearest_step_with_halves_going_up() {
+        assertEquals(45.0, valueOf(SNAPPED_PERCENT, "43"))
+        assertEquals(40.0, valueOf(SNAPPED_PERCENT, "42"))
+        assertEquals(45.0, valueOf(SNAPPED_PERCENT, "42.5"))
+    }
+
+    @Test
+    fun snapping_alone_gives_no_notice() {
+        assertEquals(emptyList(), noticesOf(SNAPPED_PERCENT, "43"))
+    }
+
+    @Test
+    fun a_number_past_the_range_is_clamped_with_a_notice_and_never_an_error() {
+        assertEquals(100.0, valueOf(SNAPPED_PERCENT, "250"))
+        assertEquals(0.0, valueOf(SNAPPED_PERCENT, "-3"))
+        assertTrue(noticesOf(SNAPPED_PERCENT, "250").single().contains("cut"))
+    }
+
+    @Test
+    fun a_value_is_snapped_first_and_the_snapped_value_is_clamped() {
+        assertEquals(100.0, valueOf(SNAPPED_PERCENT, "103"))
+        assertEquals(1, noticesOf(SNAPPED_PERCENT, "103").size)
+        assertEquals(emptyList(), noticesOf(SNAPPED_PERCENT, "98"))
+    }
+
+    @Test
+    fun weights_are_whole_numbers_from_minus_ten_to_ten() {
+        assertEquals(7.0, valueOf(WEIGHT, "7.4"))
+        assertEquals(10.0, valueOf(WEIGHT, "12"))
+        assertEquals(-10.0, valueOf(WEIGHT, "-11"))
+        assertEquals(-3.0, valueOf(WEIGHT, "-3"))
+    }
+
+    @Test
+    fun each_number_in_a_list_is_snapped_and_clamped_with_one_notice() {
+        assertEquals(listOf(3.0, 10.0, -10.0), valueOf(WEIGHTS, "3,12,-14"))
+        assertEquals(1, noticesOf(WEIGHTS, "3,12,-14").size)
+    }
+
+    @Test
+    fun an_entry_with_no_step_or_range_leaves_numbers_alone() {
+        assertEquals(43.3, valueOf(CUTOFF, "43.3"))
+        assertEquals(1000.0, valueOf(CUTOFF, "1000"))
+    }
+
+    @Test
+    fun a_clamped_stored_value_also_gives_a_notice() {
+        val entry = SNAPPED_PERCENT.copy(query = null, store = "cut-store")
+        val host = FakeShareHost(store = mutableMapOf("cut-store" to "400"))
+        val start = resolveShared(listOf(entry), host)
+        assertEquals(100.0, start.values["map.cutoff"])
+        assertTrue(start.notices.single().contains("cut-store"))
+    }
+}
+
 class ShareResolveTest {
     @Test
     fun a_value_in_the_address_wins_over_the_stored_one() {

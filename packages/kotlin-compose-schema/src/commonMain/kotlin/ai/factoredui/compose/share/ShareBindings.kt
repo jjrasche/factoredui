@@ -26,6 +26,9 @@ data class ShareEntry(
     val format: ShareFormat = ShareFormat.TEXT,
     val decimals: Int? = null,
     @SerialName("keep_empty") val keepEmpty: Boolean = false,
+    val step: Double? = null,
+    val min: Double? = null,
+    val max: Double? = null,
 )
 
 /** The page's address and browser storage, behind one seam so the rule is the same on every host. */
@@ -44,7 +47,7 @@ object NoShareHost : ShareHost {
 }
 
 sealed interface ShareParse {
-    data class Value(val value: Any) : ShareParse
+    data class Value(val value: Any, val notice: String? = null) : ShareParse
     data class Malformed(val reason: String) : ShareParse
 }
 
@@ -54,13 +57,33 @@ private val ID_PATTERN = Regex("""[A-Za-z0-9_.:#-]+""")
 
 fun ShareEntry.parse(raw: String): ShareParse = when (format) {
     ShareFormat.TEXT -> ShareParse.Value(raw)
-    ShareFormat.NUMBER -> numberOf(raw)?.let { ShareParse.Value(it) } ?: ShareParse.Malformed("'$raw' is not a number")
+    ShareFormat.NUMBER -> numberOf(raw)?.let { constrained(it) }?.let { ShareParse.Value(it.value, clampNotice(raw, it.value, it.clamped)) } ?: ShareParse.Malformed("'$raw' is not a number")
     ShareFormat.BOOL -> boolOf(raw)?.let { ShareParse.Value(it) } ?: ShareParse.Malformed("'$raw' is not 1 or 0")
     ShareFormat.LIST -> listValue(raw)
     ShareFormat.NUMBERS -> numbersValue(raw)
 }
 
 private fun numberOf(raw: String): Double? = raw.toDoubleOrNull()?.takeIf { it.isFinite() }
+
+private data class Constrained(val value: Double, val clamped: Boolean)
+
+private fun ShareEntry.constrained(value: Double): Constrained {
+    val snapped = step?.takeIf { it > 0 }?.let { cleaned(floor(value / it + HALF) * it) } ?: value
+    val low = min ?: Double.NEGATIVE_INFINITY
+    val high = max ?: Double.POSITIVE_INFINITY
+    if (low > high) return Constrained(snapped, false)
+    val inRange = snapped.coerceIn(low, high)
+    return Constrained(inRange, inRange != snapped)
+}
+
+private fun cleaned(value: Double): Double = round(value * FLOAT_DUST_SCALE) / FLOAT_DUST_SCALE
+
+private fun ShareEntry.clampNotice(raw: String, kept: Double, clamped: Boolean): String? =
+    if (clamped) "'$raw' is outside ${min ?: "any"} to ${max ?: "any"}; kept as ${numberText(kept, decimals)}" else null
+
+private const val HALF = 0.5
+
+private const val FLOAT_DUST_SCALE = 1e9
 
 private fun boolOf(raw: String): Boolean? = when (raw) {
     "1", "true" -> true
@@ -75,10 +98,13 @@ private fun listValue(raw: String): ShareParse {
     return if (bad == null) ShareParse.Value(parts) else ShareParse.Malformed("'$raw' is not a comma list of ids")
 }
 
-private fun numbersValue(raw: String): ShareParse {
+private fun ShareEntry.numbersValue(raw: String): ShareParse {
     if (raw.isEmpty()) return ShareParse.Value(emptyList<Double>())
     val parts = raw.split(",").map { numberOf(it) }
-    return if (parts.all { it != null }) ShareParse.Value(parts.filterNotNull()) else ShareParse.Malformed("'$raw' is not a comma list of numbers")
+    if (!parts.all { it != null }) return ShareParse.Malformed("'$raw' is not a comma list of numbers")
+    val kept = parts.filterNotNull().map { constrained(it) }
+    val firstClamped = kept.firstOrNull { it.clamped }
+    return ShareParse.Value(kept.map { it.value }, firstClamped?.let { clampNotice(raw, it.value, true) })
 }
 
 fun ShareEntry.render(value: Any?): String? = when {
@@ -124,7 +150,7 @@ private fun readFromAddress(entry: ShareEntry, address: Map<String, String>, not
     val name = entry.query ?: return null
     val raw = address[name] ?: return null
     return when (val parsed = entry.parse(raw)) {
-        is ShareParse.Value -> parsed
+        is ShareParse.Value -> parsed.also { value -> value.notice?.let { notices += "address parameter '$name': $it" } }
         is ShareParse.Malformed -> { notices += "address parameter '$name' was ignored: ${parsed.reason}"; null }
     }
 }
@@ -133,7 +159,7 @@ private fun readFromStore(entry: ShareEntry, host: ShareHost, notices: MutableLi
     val key = entry.store ?: return null
     val raw = runCatching { host.readStore(key) }.getOrNull() ?: return null
     return when (val parsed = entry.parse(raw)) {
-        is ShareParse.Value -> parsed
+        is ShareParse.Value -> parsed.also { value -> value.notice?.let { notices += "stored value '$key': $it" } }
         is ShareParse.Malformed -> { notices += "stored value '$key' was ignored: ${parsed.reason}"; null }
     }
 }
