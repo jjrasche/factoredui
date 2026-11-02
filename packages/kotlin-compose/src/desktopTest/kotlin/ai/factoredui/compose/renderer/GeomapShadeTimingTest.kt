@@ -58,10 +58,11 @@ class GeomapShadeTimingTest {
 
         val shades = (0 until FACTOR_COUNT).map(::shadeOf)
         var drawn = 0
+        val DIM = 0xFF808080.toInt()
         val start = System.nanoTime()
         repeat(PASSES) { pass ->
             val shade = shades[pass % FACTOR_COUNT]
-            drawn = parcels.count { featureFillArgb(it, shade) != null }
+            drawn = parcels.count { featureFillArgb(it, shade, DIM) != null }
         }
         val perPassMillis = nanosToMillis(System.nanoTime() - start) / PASSES
         println("GEOMAP-SHADE-TIMING parcels=$PARCEL_COUNT factors=$FACTOR_COUNT tessellate_ms=${"%.1f".format(tessellationMillis)} recolour_ms_per_pass=${"%.2f".format(perPassMillis)} drawn_last_pass=$drawn")

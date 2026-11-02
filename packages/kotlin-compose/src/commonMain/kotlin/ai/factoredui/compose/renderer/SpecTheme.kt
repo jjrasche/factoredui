@@ -81,6 +81,12 @@ private const val HAIRLINE_STEPS = 64
 val SpecTheme.hairline: Color
     get() = (0..HAIRLINE_STEPS).map { lerp(ground, ink, it / HAIRLINE_STEPS.toFloat()) }.minBy { abs(it.luminance() - EVEN_CONTRAST_LUMINANCE) }
 
+private const val DIM_STEP = 0.30f
+
+/** What a thing that is out of range is drawn in: the ground a third of the way to the ink, so it is neither the background nor a colour of any ramp that keeps off the background. */
+val SpecTheme.dimmed: Color
+    get() = Color(mixColours(ground.toArgbLong(), ink.toArgbLong(), DIM_STEP.toDouble()).toInt())
+
 fun SpecTheme.tokenColor(name: String): Color? = when (name) {
     "ground" -> ground
     "surface" -> surface

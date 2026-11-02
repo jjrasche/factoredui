@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 private val RAMP = mapOf("stops" to listOf(listOf(0, "#000000"), listOf(1, "#ffffff")), "no_figure" to "#ff00ff")
 
 private fun shadeOf(weights: Map<String, Any?>, minimum: Any? = null): ScoreShade {
-    val reading = readScoreShade("shade_by", mapOf("weights" to weights, "minimum" to minimum, "ramp" to RAMP))
+    val reading = readScoreShade("shade_by", mapOf("weights" to weights, "minimum" to minimum, "ramp" to RAMP, "below" to "hide"))
     return assertIs<ScoreShadeReading.Readable>(reading).shade
 }
 
@@ -108,7 +108,7 @@ class ScoreShadeTest {
 
     @Test
     fun a_minimum_in_rank_scale_keeps_the_top_share_of_the_scored_features() {
-        val record = readScoreShade("shade_by", mapOf("weights" to mapOf("a" to 1), "ramp" to RAMP, "scale" to "rank", "minimum" to 0.5))
+        val record = readScoreShade("shade_by", mapOf("weights" to mapOf("a" to 1), "ramp" to RAMP, "scale" to "rank", "minimum" to 0.5, "below" to "hide"))
         val ranked = assertIs<ScoreShadeReading.Readable>(record).shade.withRanksOf(listOf(0.10, 0.11, 0.12, 0.90))
         assertEquals(ShadedColour.Hidden, shadeFor(ranked, mapOf("a" to 0.10)))
         assertIs<ShadedColour.Coloured>(shadeFor(ranked, mapOf("a" to 0.90)))

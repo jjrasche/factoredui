@@ -7,6 +7,9 @@ import ai.factoredui.compose.ramp.readColourRamp
 
 enum class ShadeScale(val wire: String) { VALUE("value"), RANK("rank") }
 
+/** What a thing under the minimum looks like: still drawn, in the theme's dim colour, or not drawn at all. */
+enum class BelowMinimum(val wire: String) { DIM("dim"), HIDE("hide") }
+
 class ScoreRanks(scores: List<Double>) {
     private val sorted = scores.sorted().toDoubleArray()
 
@@ -40,6 +43,7 @@ data class ScoreShade(
     val scale: ShadeScale = ShadeScale.VALUE,
     val ranks: ScoreRanks? = null,
     val labels: Map<String, String> = emptyMap(),
+    val below: BelowMinimum = BelowMinimum.DIM,
 ) {
     fun withRanksOf(scores: List<Double>): ScoreShade = copy(ranks = ScoreRanks(scores))
 }
@@ -51,6 +55,7 @@ sealed interface ScoreShadeReading {
 
 sealed interface ShadedColour {
     data class Coloured(val colour: Long) : ShadedColour
+    data object Dimmed : ShadedColour
     data object Hidden : ShadedColour
 }
 
@@ -80,6 +85,12 @@ private fun knownShareReading(owner: String, raw: Any?): Pair<Double?, String?> 
     return if (share == null) null to "$owner min_known_share must be a number from 0 to 1, not '$raw'" else share to null
 }
 
+private fun belowReading(owner: String, raw: Any?): Pair<BelowMinimum?, String?> {
+    if (raw == null) return BelowMinimum.DIM to null
+    val below = BelowMinimum.entries.firstOrNull { it.wire == raw }
+    return if (below == null) null to "$owner below must be 'dim' or 'hide', not '$raw'" else below to null
+}
+
 private fun labelsReading(raw: Any?): Map<String, String> =
     (raw as? Map<*, *>).orEmpty().mapNotNull { (field, text) -> (field as? String)?.let { name -> (text as? String)?.let { name to it } } }.toMap()
 
@@ -93,11 +104,13 @@ fun readScoreShade(owner: String, raw: Any?): ScoreShadeReading {
     if (scale == null) return ScoreShadeReading.Refused(scaleNotice!!)
     val (knownShare, knownShareNotice) = knownShareReading(owner, fields["min_known_share"])
     if (knownShare == null) return ScoreShadeReading.Refused(knownShareNotice!!)
+    val (below, belowNotice) = belowReading(owner, fields["below"])
+    if (below == null) return ScoreShadeReading.Refused(belowNotice!!)
     if (fields["ramp"] == null) return ScoreShadeReading.Refused("$owner needs a ramp")
     return when (val ramp = readColourRamp("$owner ramp", fields["ramp"])) {
         is RampReading.Refused -> ScoreShadeReading.Refused(ramp.notice)
         is RampReading.Readable -> ScoreShadeReading.Readable(
-            ScoreShade(weights, minimumFigure, ramp.ramp, knownShare, scale, labels = labelsReading(fields["labels"])),
+            ScoreShade(weights, minimumFigure, ramp.ramp, knownShare, scale, labels = labelsReading(fields["labels"]), below = below),
         )
     }
 }
@@ -131,7 +144,7 @@ fun rankByScore(shade: ScoreShade, things: List<Pair<String, Map<String, Double?
         .sortedWith(compareByDescending<Pair<String, Double>> { it.second }.thenBy { it.first })
     val valuesById = things.toMap()
     return scored.mapIndexedNotNull { index, (id, score) ->
-        val isShown = shadeFor(shade, valuesById.getValue(id)) != ShadedColour.Hidden
+        val isShown = shadeFor(shade, valuesById.getValue(id)) is ShadedColour.Coloured
         if (isShown) ScoredThing(id, score, shade.ranks?.percentileOf(score), rankOfScore(scored, index)) else null
     }.take(top)
 }
@@ -159,10 +172,11 @@ fun shadeFor(shade: ScoreShade, values: Map<String, Double?>): ShadedColour {
     val score = scoreOf(shade, values)
     val quantity = score?.let { shadedQuantityOf(shade, it) }
     val minimum = shade.minimum
+    val outOfRange = if (shade.below == BelowMinimum.HIDE) ShadedColour.Hidden else ShadedColour.Dimmed
     return when {
-        quantity == null && minimum != null -> ShadedColour.Hidden
+        quantity == null && minimum != null -> outOfRange
         quantity == null -> ShadedColour.Coloured(rampColourFor(shade.ramp, null))
-        minimum != null && quantity < minimum -> ShadedColour.Hidden
+        minimum != null && quantity < minimum -> outOfRange
         else -> ShadedColour.Coloured(rampColourFor(shade.ramp, quantity))
     }
 }
