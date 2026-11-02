@@ -1,5 +1,7 @@
 package ai.factoredui.compose.renderer
 
+import ai.factoredui.compose.schema.GeomapPattern
+import ai.factoredui.compose.schema.GeomapPatternKind
 import ai.factoredui.compose.score.ScoreShade
 import ai.factoredui.compose.score.figureText
 import ai.factoredui.compose.score.rankAmong
@@ -11,6 +13,20 @@ import kotlin.math.roundToInt
 
 private const val DEFAULT_TOP = 20.0
 private const val PERCENT = 100.0
+
+private const val UNSETTLED_HATCH_SPACING = 7f
+
+internal fun unsettledMarkFor(
+    shade: ScoreShade,
+    values: Map<String, Double?>,
+    figures: Map<String, Double?>,
+    inkHex: String = "#000000",
+): GeomapPattern? {
+    if (!shade.isRaw) return null
+    val bounds = scoreBoundsOf(shade, values, figures) ?: return null
+    if (bounds.isSettled) return null
+    return GeomapPattern(GeomapPatternKind.HATCH, shade.unsettledMark ?: inkHex, spacing = UNSETTLED_HATCH_SPACING)
+}
 
 private fun TessellatedFeature.geoBounds(): List<Double>? = bounds?.let {
     listOf(worldXToLon(it.minX), worldYToLat(it.maxY), worldXToLon(it.maxX), worldYToLat(it.minY))
