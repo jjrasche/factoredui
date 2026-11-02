@@ -46,6 +46,8 @@ data class Factor(
     val factorTier: FactorTier,
     val value: Double,
     val computedAt: String,
+    val page: String? = null,
+    val device: String? = null,
 )
 
 /**

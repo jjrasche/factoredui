@@ -70,6 +70,12 @@ kotlin {
     }
 }
 
+tasks.register<JavaExec>("layoutScores") {
+    val jvmMain = kotlin.targets.getByName("jvm").compilations.getByName("main")
+    classpath = files(jvmMain.output.allOutputs, jvmMain.runtimeDependencyFiles)
+    mainClass.set("ai.factoredui.engine.layout.LayoutScoreCliKt")
+}
+
 extensions.configure<LibraryExtension>("android") {
     namespace = "ai.factoredui.engine"
     compileSdk = libs.versions.androidCompileSdk.get().toInt()

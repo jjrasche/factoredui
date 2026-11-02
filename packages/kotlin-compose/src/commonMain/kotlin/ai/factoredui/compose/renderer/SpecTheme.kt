@@ -1,5 +1,6 @@
 package ai.factoredui.compose.renderer
 
+import ai.factoredui.compose.schema.LayoutThresholdSet
 import ai.factoredui.compose.tokens.ColorValue
 import ai.factoredui.compose.tokens.DimensionValue
 import ai.factoredui.compose.tokens.NumberValue
@@ -37,6 +38,7 @@ data class SpecTheme(
     val control: ControlHeights,
     val elevation: ElevationSteps,
     val breakpoints: Breakpoints = Breakpoints(),
+    val layout: LayoutThresholdSet = LayoutThresholdSet(),
 ) {
     val isDark: Boolean get() = 0.2126f * ground.red + 0.7152f * ground.green + 0.0722f * ground.blue < 0.5f
 

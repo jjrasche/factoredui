@@ -1,6 +1,8 @@
 package ai.factoredui.compose.crawl
 
 import ai.factoredui.compose.observability.Observability
+import ai.factoredui.compose.render.screenJson
+import ai.factoredui.compose.render.screenNodes
 import ai.factoredui.compose.renderer.RenderContext
 import ai.factoredui.compose.renderer.RenderSpec
 import ai.factoredui.compose.renderer.SpecTheme
@@ -21,6 +23,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
+import kotlinx.serialization.json.JsonObject
 import org.jetbrains.skia.EncodedImageFormat
 
 data class DrivenIntent(val nodeId: String, val action: String, val params: Map<String, Any?>)
@@ -51,6 +54,12 @@ class DrivenScreen internal constructor(
     }
 
     fun intents(): List<DrivenIntent> = recorded.toList()
+
+    /** The same tree the window's control port serves at /tree, read from this headless screen. */
+    fun tree(): JsonObject? {
+        settle()
+        return screenNodes(context.screen)?.let(::screenJson)
+    }
 
     fun frame(): RenderedScreen {
         settle()
