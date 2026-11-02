@@ -10,6 +10,22 @@ enum class ShadeScale(val wire: String) { VALUE("value"), RANK("rank") }
 /** What a thing under the minimum looks like: still drawn, in the theme's dim colour, or not drawn at all. */
 enum class BelowMinimum(val wire: String) { DIM("dim"), HIDE("hide") }
 
+enum class GoodEnd(val wire: String) { HIGH("high"), LOW("low") }
+
+data class FigureScaling(val good: GoodEnd, val best: Double?, val worst: Double?) {
+    val hasRange: Boolean get() = best != null && worst != null
+}
+
+data class FigureExtent(val min: Double, val max: Double)
+
+data class ScoreBounds(val low: Double, val high: Double) {
+    val middle: Double get() = (low + high) / 2.0
+    val isSettled: Boolean get() = high - low < SETTLED_TOLERANCE
+}
+
+private const val SETTLED_TOLERANCE = 1e-12
+private const val NEUTRAL_FIGURE_SCORE = 0.5
+
 class ScoreRanks(scores: List<Double>) {
     private val sorted = scores.sorted().toDoubleArray()
 
@@ -40,7 +56,7 @@ data class FigureRange(val min: Double?, val max: Double?) {
 }
 
 /** How to say one figure to a reader: its name, unit and decimals. */
-data class FigureInfo(val label: String, val unit: String, val decimals: Int)
+data class FigureInfo(val label: String, val unit: String, val decimals: Int, val source: String? = null, val evidence: String? = null)
 
 /** How named fields of a thing's values become one score and then a colour: any node that draws things with values reads this one record. */
 data class ScoreShade(
@@ -55,8 +71,27 @@ data class ScoreShade(
     val ranges: Map<String, FigureRange> = emptyMap(),
     val figureInfo: Map<String, FigureInfo> = emptyMap(),
     val fieldFigures: Map<String, String> = emptyMap(),
+    val scalings: Map<String, FigureScaling> = emptyMap(),
+    val extents: Map<String, FigureExtent> = emptyMap(),
 ) {
+    val isRaw: Boolean get() = scalings.isNotEmpty()
+
     fun withRanksOf(scores: List<Double>): ScoreShade = copy(ranks = ScoreRanks(scores))
+
+    fun withExtentsOf(loaded: List<Map<String, Double?>>): ScoreShade {
+        val found = LinkedHashMap<String, FigureExtent>()
+        for (figures in loaded) {
+            for ((figure, value) in figures) {
+                if (figure !in scalings || value == null || !value.isFinite()) continue
+                val seen = found[figure]
+                found[figure] = if (seen == null) FigureExtent(value, value) else FigureExtent(minOf(seen.min, value), maxOf(seen.max, value))
+            }
+        }
+        return copy(extents = found)
+    }
+
+    fun hasScoreInput(values: Map<String, Double?>, figures: Map<String, Double?>): Boolean =
+        if (isRaw) figures.isNotEmpty() else values.isNotEmpty()
 }
 
 sealed interface ScoreShadeReading {
@@ -134,8 +169,46 @@ private fun figureInfoReading(raw: Any?): Map<String, FigureInfo> =
             label = fields["label"] as? String ?: figure,
             unit = fields["unit"] as? String ?: "",
             decimals = finiteNumberOf(fields["decimals"])?.toInt()?.coerceAtLeast(0) ?: 0,
+            source = fields["source"] as? String,
+            evidence = fields["evidence"] as? String,
         )
     }.toMap()
+
+private fun goodEndReading(owner: String, figure: String, raw: Any?): Pair<GoodEnd?, String?> {
+    val end = GoodEnd.entries.firstOrNull { it.wire == raw }
+    return if (end == null) null to "$owner figure_scaling '$figure' good must be 'high' or 'low', not '$raw'" else end to null
+}
+
+private fun scalingReading(owner: String, figure: String, raw: Any?): Pair<FigureScaling?, String?> {
+    val fields = raw as? Map<*, *> ?: return null to "$owner figure_scaling '$figure' must be an object with good and an optional best and worst, not '$raw'"
+    val (best, bestNotice) = boundReading(owner, figure, "best", fields["best"])
+    if (bestNotice != null) return null to bestNotice
+    val (worst, worstNotice) = boundReading(owner, figure, "worst", fields["worst"])
+    if (worstNotice != null) return null to worstNotice
+    if ((best == null) != (worst == null)) return null to "$owner figure_scaling '$figure' range needs both best and worst"
+    if (best != null && best == worst) return null to "$owner figure_scaling '$figure' range has the same best and worst ($best)"
+    if (best != null && worst != null && fields["good"] == null) {
+        return FigureScaling(if (best > worst) GoodEnd.HIGH else GoodEnd.LOW, best, worst) to null
+    }
+    val (good, goodNotice) = goodEndReading(owner, figure, fields["good"])
+    if (good == null) return null to goodNotice
+    return FigureScaling(good, best, worst) to null
+}
+
+private fun scalingsReading(owner: String, raw: Any?, weights: Map<String, Double>): Pair<Map<String, FigureScaling>?, String?> {
+    if (raw == null) return emptyMap<String, FigureScaling>() to null
+    val declared = raw as? Map<*, *> ?: return null to "$owner figure_scaling must be an object of figure name to scaling, not '$raw'"
+    val scalings = LinkedHashMap<String, FigureScaling>()
+    for ((name, entry) in declared) {
+        val figure = name as? String ?: continue
+        val (scaling, notice) = scalingReading(owner, figure, entry)
+        if (scaling == null) return null to notice
+        scalings[figure] = scaling
+    }
+    val unscaled = weights.filterValues { it > 0.0 }.keys.firstOrNull { it !in scalings }
+    if (scalings.isNotEmpty() && unscaled != null) return null to "$owner weighted figure '$unscaled' has no figure_scaling"
+    return scalings to null
+}
 
 fun readScoreShade(owner: String, raw: Any?): ScoreShadeReading {
     val fields = raw as? Map<*, *> ?: return ScoreShadeReading.Refused("$owner must be an object with weights and a ramp, not '$raw'")
@@ -151,6 +224,8 @@ fun readScoreShade(owner: String, raw: Any?): ScoreShadeReading {
     if (below == null) return ScoreShadeReading.Refused(belowNotice!!)
     val (ranges, rangesNotice) = rangesReading(owner, fields["ranges"])
     if (ranges == null) return ScoreShadeReading.Refused(rangesNotice!!)
+    val (scalings, scalingsNotice) = scalingsReading(owner, fields["figure_scaling"], weights)
+    if (scalings == null) return ScoreShadeReading.Refused(scalingsNotice!!)
     if (fields["ramp"] == null) return ScoreShadeReading.Refused("$owner needs a ramp")
     return when (val ramp = readColourRamp("$owner ramp", fields["ramp"])) {
         is RampReading.Refused -> ScoreShadeReading.Refused(ramp.notice)
@@ -159,6 +234,7 @@ fun readScoreShade(owner: String, raw: Any?): ScoreShadeReading {
                 weights, minimumFigure, ramp.ramp, knownShare, scale,
                 labels = labelsReading(fields["labels"]), below = below, ranges = ranges,
                 figureInfo = figureInfoReading(fields["figure_info"]), fieldFigures = labelsReading(fields["field_figures"]),
+                scalings = scalings,
             ),
         )
     }
@@ -183,7 +259,15 @@ fun weightedScore(values: Map<String, Double?>, weights: Map<String, Double>, mi
 fun scoreOf(shade: ScoreShade, values: Map<String, Double?>): Double? = weightedScore(values, shade.weights, shade.minimumKnownShare)
 
 /** One thing in a ranking: rank 1 is the best score among every thing that has one, hidden or not. */
-data class ScoredThing(val id: String, val score: Double, val percentile: Double?, val rank: Int)
+data class ScoredThing(
+    val id: String,
+    val score: Double,
+    val percentile: Double?,
+    val rank: Int,
+    val low: Double = score,
+    val high: Double = score,
+    val isSettled: Boolean = true,
+)
 
 /** One field's share of a score: the shares of all fields sum to the score. */
 data class ScorePart(val field: String, val label: String, val value: Double?, val weight: Double, val contribution: Double)
@@ -213,24 +297,73 @@ fun figureText(info: FigureInfo?, value: Double?): String {
     return listOf(sign + number, info.unit).filter { it.isNotEmpty() }.joinToString(" ")
 }
 
+fun scoreBoundsOf(shade: ScoreShade, values: Map<String, Double?>, figures: Map<String, Double?>): ScoreBounds? {
+    if (!shade.isRaw) return weightedScore(values, shade.weights, shade.minimumKnownShare)?.let { ScoreBounds(it, it) }
+    val weighted = shade.weights.filterValues { it > 0.0 }
+    val totalWeight = weighted.values.sum()
+    if (totalWeight == 0.0) return null
+    var low = 0.0
+    var high = 0.0
+    for ((figure, weight) in weighted) {
+        val score = figureScoreOf(shade, figure, figures[figure])
+        low += weight * (score ?: 0.0)
+        high += weight * (score ?: 1.0)
+    }
+    return ScoreBounds(low / totalWeight, high / totalWeight)
+}
+
+fun figureScoreOf(shade: ScoreShade, figure: String, value: Double?): Double? {
+    val scaling = shade.scalings[figure] ?: return null
+    if (value == null || !value.isFinite()) return null
+    if (scaling.best != null && scaling.worst != null) return ((value - scaling.worst) / (scaling.best - scaling.worst)).coerceIn(0.0, 1.0)
+    val extent = shade.extents[figure] ?: return NEUTRAL_FIGURE_SCORE
+    val span = extent.max - extent.min
+    if (span == 0.0) return NEUTRAL_FIGURE_SCORE
+    return when (scaling.good) {
+        GoodEnd.HIGH -> (value - extent.min) / span
+        GoodEnd.LOW -> (extent.max - value) / span
+    }
+}
+
+private val BY_LOW_THEN_HIGH_BEST_FIRST = compareByDescending<Pair<String, ScoreBounds>> { it.second.low }
+    .thenByDescending { it.second.high }
+    .thenBy { it.first }
+
 fun rankByScore(
     shade: ScoreShade,
     things: List<Pair<String, Map<String, Double?>>>,
     top: Int,
     figuresById: Map<String, Map<String, Double?>> = emptyMap(),
 ): List<ScoredThing> {
-    val scored = things.mapNotNull { (id, values) -> scoreOf(shade, values)?.let { id to it } }
-        .sortedWith(compareByDescending<Pair<String, Double>> { it.second }.thenBy { it.first })
+    val scored = things.mapNotNull { (id, values) -> scoreBoundsOf(shade, values, figuresById[id].orEmpty())?.let { id to it } }
+        .sortedWith(BY_LOW_THEN_HIGH_BEST_FIRST)
     val valuesById = things.toMap()
-    return scored.mapIndexedNotNull { index, (id, score) ->
+    return scored.mapIndexedNotNull { index, (id, bounds) ->
         val isShown = shadeFor(shade, valuesById.getValue(id), figuresById[id].orEmpty()) is ShadedColour.Coloured
-        if (isShown) ScoredThing(id, score, shade.ranks?.percentileOf(score), rankOfScore(scored, index)) else null
+        if (isShown) {
+            ScoredThing(id, bounds.middle, shade.ranks?.percentileOf(bounds.middle), rankOfBounds(scored, index), bounds.low, bounds.high, bounds.isSettled)
+        } else {
+            null
+        }
     }.take(top)
 }
 
-private fun rankOfScore(sortedDescending: List<Pair<String, Double>>, index: Int): Int {
-    val score = sortedDescending[index].second
-    return sortedDescending.indexOfFirst { it.second == score } + 1
+private fun rankOfBounds(sortedBest: List<Pair<String, ScoreBounds>>, index: Int): Int {
+    val own = sortedBest[index].second
+    return sortedBest.indexOfFirst { it.second.low == own.low && it.second.high == own.high } + 1
+}
+
+fun rankAmong(own: ScoreBounds, others: List<ScoreBounds>): Int =
+    others.count { it.low > own.low || (it.low == own.low && it.high > own.high) } + 1
+
+fun scorePartsOf(shade: ScoreShade, values: Map<String, Double?>, figures: Map<String, Double?>): List<ScorePart> {
+    if (!shade.isRaw) return scoreParts(shade, values)
+    val weighted = shade.weights.filterValues { it > 0.0 }
+    val totalWeight = weighted.values.sum()
+    return weighted.map { (figure, weight) ->
+        val score = figureScoreOf(shade, figure, figures[figure])
+        ScorePart(figure, shade.labels[figure] ?: figure, score, weight, if (score == null || totalWeight == 0.0) 0.0 else weight * score / totalWeight)
+    }
 }
 
 fun scoreParts(shade: ScoreShade, values: Map<String, Double?>): List<ScorePart> {
@@ -248,15 +381,16 @@ private fun shadedQuantityOf(shade: ScoreShade, score: Double): Double? = when (
 }
 
 fun shadeFor(shade: ScoreShade, values: Map<String, Double?>, figures: Map<String, Double?> = emptyMap()): ShadedColour {
-    val score = scoreOf(shade, values)
-    val quantity = score?.let { shadedQuantityOf(shade, it) }
+    val bounds = scoreBoundsOf(shade, values, figures)
+    val quantity = bounds?.let { shadedQuantityOf(shade, it.middle) }
+    val bestCase = bounds?.let { shadedQuantityOf(shade, it.high) }
     val minimum = shade.minimum
     val outOfRange = if (shade.below == BelowMinimum.HIDE) ShadedColour.Hidden else ShadedColour.Dimmed
     return when {
         !isInsideRanges(shade, figures) -> outOfRange
         quantity == null && minimum != null -> outOfRange
         quantity == null -> ShadedColour.Coloured(rampColourFor(shade.ramp, null))
-        minimum != null && quantity < minimum -> outOfRange
+        minimum != null && bestCase != null && bestCase < minimum -> outOfRange
         else -> ShadedColour.Coloured(rampColourFor(shade.ramp, quantity))
     }
 }

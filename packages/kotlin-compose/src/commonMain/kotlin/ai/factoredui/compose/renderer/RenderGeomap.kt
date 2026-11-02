@@ -63,7 +63,7 @@ import ai.factoredui.compose.score.ScoreShade
 import ai.factoredui.compose.score.ScoreShadeReading
 import ai.factoredui.compose.score.ShadeScale
 import ai.factoredui.compose.score.ShadedColour
-import ai.factoredui.compose.score.scoreOf
+import ai.factoredui.compose.score.scoreBoundsOf
 import ai.factoredui.compose.score.readScoreShade
 import ai.factoredui.compose.score.shadeFor
 import ai.factoredui.compose.schema.GeomapViewport
@@ -101,7 +101,7 @@ internal class TessellatedFeature(
 
 /** The fill a feature draws with now: its own, or the colour its values earn under the node's `shade_by`; null when it has none or the shade hides it. */
 internal fun featureFillArgb(feature: TessellatedFeature, shade: ScoreShade?, dimArgb: Int): Int? {
-    if (shade == null || feature.values.isEmpty()) return feature.fillArgb
+    if (shade == null || !shade.hasScoreInput(feature.values, feature.figures)) return feature.fillArgb
     return when (val shaded = shadeFor(shade, feature.values, feature.figures)) {
         is ShadedColour.Coloured -> shaded.colour.toInt()
         ShadedColour.Dimmed -> dimArgb
@@ -110,14 +110,16 @@ internal fun featureFillArgb(feature: TessellatedFeature, shade: ScoreShade?, di
 }
 
 internal fun shadeWithRanks(shade: ScoreShade, tessellation: GeomapTessellation): ScoreShade {
-    if (shade.scale != ShadeScale.RANK) return shade
-    val scores = tessellation.layers.flatMap { layer -> layer.features.mapNotNull { feature -> scoreOf(shade, feature.values) } }
-    return shade.withRanksOf(scores)
+    val features = tessellation.layers.flatMap { layer -> layer.features }
+    val loaded = if (shade.isRaw) shade.withExtentsOf(features.map { it.figures }) else shade
+    if (loaded.scale != ShadeScale.RANK) return loaded
+    return loaded.withRanksOf(features.mapNotNull { feature -> scoreBoundsOf(loaded, feature.values, feature.figures)?.middle })
 }
 
 /** Under the minimum, dimmed or hidden: it takes no outline, label or tap, and is not in the list. */
 internal fun isShadedOut(feature: TessellatedFeature, shade: ScoreShade?): Boolean =
-    shade != null && feature.values.isNotEmpty() && shadeFor(shade, feature.values, feature.figures) !is ShadedColour.Coloured
+    shade != null && shade.hasScoreInput(feature.values, feature.figures) &&
+        shadeFor(shade, feature.values, feature.figures) !is ShadedColour.Coloured
 
 /** The features a selection outlines: the first drawn feature of each selected id, so an id that two layers repeat is outlined once. */
 internal fun featuresToOutline(
@@ -378,7 +380,7 @@ private fun tessellateFeature(
         GeomapLayerKind.POINT -> parseGeomapColor(feature.fill) ?: DEFAULT_STROKE_ARGB
         GeomapLayerKind.LINE -> null
     }
-    val needsTriangles = kind == GeomapLayerKind.FILL && (fillArgb != null || feature.values.isNotEmpty()) && worldRings.size == 1 && !fillsAsPaths
+    val needsTriangles = kind == GeomapLayerKind.FILL && (fillArgb != null || feature.values.isNotEmpty() || feature.figures.isNotEmpty()) && worldRings.size == 1 && !fillsAsPaths
     val triangleWorld = when {
         !needsTriangles -> DoubleArray(0)
         shared != null -> shared.triangles ?: expandTriangles(worldRings).also { shared.triangles = it }
