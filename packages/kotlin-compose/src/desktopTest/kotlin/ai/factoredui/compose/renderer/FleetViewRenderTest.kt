@@ -76,9 +76,9 @@ class FleetViewRenderTest {
 
     @Test
     fun the_jobs_filter_changes_what_is_drawn() {
-        val needsJim = fleetPng(0, "needs_jim", listOf("true"))
+        val stuck = fleetPng(0, "status", listOf("blocked", "stuck"))
         val everything = fleetPng(0, "status", emptyList())
-        assertFalse(needsJim.contentEquals(everything))
-        assertTrue(needsJim.isNotEmpty())
+        assertFalse(stuck.contentEquals(everything))
+        assertTrue(stuck.isNotEmpty())
     }
 }
