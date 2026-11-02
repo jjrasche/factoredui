@@ -39,6 +39,7 @@ data class ScoreShade(
     val minimumKnownShare: Double = 1.0,
     val scale: ShadeScale = ShadeScale.VALUE,
     val ranks: ScoreRanks? = null,
+    val labels: Map<String, String> = emptyMap(),
 ) {
     fun withRanksOf(scores: List<Double>): ScoreShade = copy(ranks = ScoreRanks(scores))
 }
@@ -79,6 +80,9 @@ private fun knownShareReading(owner: String, raw: Any?): Pair<Double?, String?> 
     return if (share == null) null to "$owner min_known_share must be a number from 0 to 1, not '$raw'" else share to null
 }
 
+private fun labelsReading(raw: Any?): Map<String, String> =
+    (raw as? Map<*, *>).orEmpty().mapNotNull { (field, text) -> (field as? String)?.let { name -> (text as? String)?.let { name to it } } }.toMap()
+
 fun readScoreShade(owner: String, raw: Any?): ScoreShadeReading {
     val fields = raw as? Map<*, *> ?: return ScoreShadeReading.Refused("$owner must be an object with weights and a ramp, not '$raw'")
     val (weights, weightsNotice) = weightsReading(owner, fields["weights"])
@@ -92,7 +96,9 @@ fun readScoreShade(owner: String, raw: Any?): ScoreShadeReading {
     if (fields["ramp"] == null) return ScoreShadeReading.Refused("$owner needs a ramp")
     return when (val ramp = readColourRamp("$owner ramp", fields["ramp"])) {
         is RampReading.Refused -> ScoreShadeReading.Refused(ramp.notice)
-        is RampReading.Readable -> ScoreShadeReading.Readable(ScoreShade(weights, minimumFigure, ramp.ramp, knownShare, scale))
+        is RampReading.Readable -> ScoreShadeReading.Readable(
+            ScoreShade(weights, minimumFigure, ramp.ramp, knownShare, scale, labels = labelsReading(fields["labels"])),
+        )
     }
 }
 
@@ -113,6 +119,36 @@ fun weightedScore(values: Map<String, Double?>, weights: Map<String, Double>, mi
 }
 
 fun scoreOf(shade: ScoreShade, values: Map<String, Double?>): Double? = weightedScore(values, shade.weights, shade.minimumKnownShare)
+
+/** One thing in a ranking: rank 1 is the best score among every thing that has one, hidden or not. */
+data class ScoredThing(val id: String, val score: Double, val percentile: Double?, val rank: Int)
+
+/** One field's share of a score: the shares of all fields sum to the score. */
+data class ScorePart(val field: String, val label: String, val value: Double?, val weight: Double, val contribution: Double)
+
+fun rankByScore(shade: ScoreShade, things: List<Pair<String, Map<String, Double?>>>, top: Int): List<ScoredThing> {
+    val scored = things.mapNotNull { (id, values) -> scoreOf(shade, values)?.let { id to it } }
+        .sortedWith(compareByDescending<Pair<String, Double>> { it.second }.thenBy { it.first })
+    val valuesById = things.toMap()
+    return scored.mapIndexedNotNull { index, (id, score) ->
+        val isShown = shadeFor(shade, valuesById.getValue(id)) != ShadedColour.Hidden
+        if (isShown) ScoredThing(id, score, shade.ranks?.percentileOf(score), rankOfScore(scored, index)) else null
+    }.take(top)
+}
+
+private fun rankOfScore(sortedDescending: List<Pair<String, Double>>, index: Int): Int {
+    val score = sortedDescending[index].second
+    return sortedDescending.indexOfFirst { it.second == score } + 1
+}
+
+fun scoreParts(shade: ScoreShade, values: Map<String, Double?>): List<ScorePart> {
+    val weighted = shade.weights.filterValues { it > 0.0 }
+    val knownWeight = weighted.filterKeys { values[it] != null }.values.sum()
+    return weighted.map { (field, weight) ->
+        val value = values[field]
+        ScorePart(field, shade.labels[field] ?: field, value, weight, if (value == null || knownWeight == 0.0) 0.0 else weight * value / knownWeight)
+    }
+}
 
 private fun shadedQuantityOf(shade: ScoreShade, score: Double): Double? = when (shade.scale) {
     ShadeScale.VALUE -> score

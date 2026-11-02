@@ -95,6 +95,7 @@ internal class TessellatedFeature(
     val labelCandidates: List<GeomapLabelAnchor>,
     val radius: Float = DEFAULT_POINT_RADIUS,
     val values: Map<String, Double?> = emptyMap(),
+    val info: Map<String, Any> = emptyMap(),
 )
 
 /** The fill a feature draws with now: its own, or the colour its values earn under the node's `shade_by`; null when it has none or the shade hides it. */
@@ -168,6 +169,16 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
         strokeArgb = parseGeomapColor(resolvedProps["selection_stroke"] as? String) ?: LocalSpecTheme.current.ink.toArgb(),
         strokeWidth = (resolvedProps["selection_stroke_width"] as? Number)?.toFloat() ?: DEFAULT_SELECTION_STROKE_WIDTH,
     )
+    val shadeOutPath = node.props["shade_out"]?.bindingPath()
+    val shadeTop = shadeOutTopCount(resolvedProps["shade_top"])
+    val topRows = remember(shade, tessellation, shadeTop, shadeOutPath) {
+        if (shade != null && shadeOutPath != null) shadeOutTop(shade, tessellation, shadeTop) else null
+    }
+    val selectedOut = remember(shade, tessellation, selection, shadeOutPath) {
+        if (shade != null && shadeOutPath != null) shadeOutSelected(shade, tessellation, selection) else null
+    }
+    LaunchedEffect(topRows) { if (topRows != null && shadeOutPath != null) context.setBinding("$shadeOutPath.top", topRows) }
+    LaunchedEffect(selectedOut, shadeOutPath) { if (shadeOutPath != null && shade != null) context.setBinding("$shadeOutPath.selected", selectedOut) }
     val scope = rememberCoroutineScope()
     val labelMeasurer = rememberTextMeasurer()
     val labelInk = LocalSpecTheme.current.ink
@@ -331,6 +342,7 @@ private fun tessellateFeature(
         labelCandidates = if (feature.label.isNullOrBlank() || kind != GeomapLayerKind.FILL) emptyList() else geomapLabelCandidatesOf(worldRings),
         radius = feature.radius,
         values = feature.values,
+        info = feature.info,
     )
 }
 
