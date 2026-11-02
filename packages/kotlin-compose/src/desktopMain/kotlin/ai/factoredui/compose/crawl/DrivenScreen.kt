@@ -8,6 +8,8 @@ import ai.factoredui.compose.renderer.RenderSpec
 import ai.factoredui.compose.renderer.SpecTheme
 import ai.factoredui.compose.schema.ActionRef
 import ai.factoredui.compose.schema.Spec
+import ai.factoredui.compose.share.NoShareHost
+import ai.factoredui.compose.share.ShareHost
 import ai.factoredui.compose.testing.SpecShadowNode
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,10 +39,11 @@ class DrivenScreen internal constructor(
     private val widthDp: Int,
     private val heightDp: Int,
     theme: SpecTheme,
+    shareHost: ShareHost,
 ) : AutoCloseable {
 
     private val recorded = mutableListOf<DrivenIntent>()
-    private val context = RenderContext(initialData = store, observability = IntentRecorder(recorded), theme = theme)
+    private val context = RenderContext(initialData = store, observability = IntentRecorder(recorded), theme = theme).also { it.shareHost = shareHost }
     private var clock = 0L
 
     private val scene = ImageComposeScene(width = widthDp, height = heightDp, density = Density(1f)) {
@@ -227,7 +230,8 @@ fun driveScreen(
     widthDp: Int = 400,
     heightDp: Int = 800,
     theme: SpecTheme = SpecTheme.LIGHT,
-): DrivenScreen = DrivenScreen(spec, store, widthDp, heightDp, theme)
+    shareHost: ShareHost = NoShareHost,
+): DrivenScreen = DrivenScreen(spec, store, widthDp, heightDp, theme, shareHost)
 
 private class IntentRecorder(private val into: MutableList<DrivenIntent>) : Observability {
     override fun onRender(nodeId: String) = Unit

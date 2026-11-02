@@ -9,6 +9,8 @@ import ai.factoredui.compose.media.platformMediaHost
 import ai.factoredui.compose.observability.NoOpObservability
 import ai.factoredui.compose.observability.Observability
 import ai.factoredui.compose.schema.ActionRef
+import ai.factoredui.compose.share.NoShareHost
+import ai.factoredui.compose.share.ShareHost
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -66,6 +68,8 @@ class RenderContext private constructor(
         mediaHost = mediaHost,
         themes = themes,
     )
+
+    var shareHost: ShareHost = NoShareHost
 
     /** Reactive flow of the merged (overlay + store) data map. */
     val dataFlow: StateFlow<Map<String, Any?>> =

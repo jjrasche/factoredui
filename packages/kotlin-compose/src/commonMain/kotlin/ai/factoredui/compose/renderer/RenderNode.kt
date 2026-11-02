@@ -133,6 +133,8 @@ private fun windowGroundOf(root: SpecNode, theme: SpecTheme): Color {
 @Composable
 fun RenderSpec(spec: Spec, context: RenderContext) {
     remember(spec) { context.startBindings(spec.state.mapValues { (_, value) -> BindingResolver.resolveValue(value, emptyMap()) }) }
+    ShareBindingsStart(spec, context)
+    ShareBindingsWrite(spec, context)
     context.screen.root = spec.root
     ThemeScope(remember(spec.theme, context.theme) { themeOf(spec, context) }) {
         CompositionLocalProvider(LocalScreenRegistry provides context.screen) {

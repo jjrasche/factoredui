@@ -1,5 +1,6 @@
 package ai.factoredui.compose.schema
 
+import ai.factoredui.compose.share.ShareEntry
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -36,6 +37,7 @@ data class Spec(
     val keybindings: Map<ShortcutKey, ActionRef> = emptyMap(),
     val state: Map<String, SpecValue> = emptyMap(),
     val theme: String? = null,
+    val share: List<ShareEntry> = emptyList(),
 )
 
 /**

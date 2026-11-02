@@ -35,7 +35,7 @@ fun PlaygroundApp() {
             theme = host.theme,
             themes = host.themes,
             initialData = mapOf("theme" to mapOf("notices" to host.notices)),
-        ).also { answered[0] = it }
+        ).also { answered[0] = it; it.shareHost = WasmShareHost }
     }
     InstallFactoredUiBridge(context)
     val specFlow = remember { MutableStateFlow(placeholderSpec("Loading spec…")) }
