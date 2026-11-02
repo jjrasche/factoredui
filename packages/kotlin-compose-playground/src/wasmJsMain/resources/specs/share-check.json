@@ -1,0 +1,8 @@
+{"spec_version":1,"renderer_min":1,
+ "state":{"map":{"cutoff":5}},
+ "share":[{"path":"map.cutoff","query":"cut","store":"cut-store","format":"number"}],
+ "root":{"id":"page","type":"column","props":{"gap":12,"padding":24},"children":[
+   {"id":"label","type":"text","props":{"value":"Test case for shared bindings: the cutoff below is kept in the address as cut= and in browser storage.","variant":"caption"}},
+   {"id":"shown","type":"text","props":{"value":"cutoff {map.cutoff}","variant":"heading"}},
+   {"id":"set","type":"button","props":{"label":"set 45"},"action":{"action":"set_binding","params":{"path":"map.cutoff","value":45}}}
+ ]}}

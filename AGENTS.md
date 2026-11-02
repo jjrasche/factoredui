@@ -410,6 +410,15 @@ The rule for any new primitive: name it for what it does to data, not for the ap
 
 `stack` children take an `anchor`: `fill`, `top`, `bottom`, or `end` (the right edge, the full height; give the child a `width`).
 
+## Shared bindings
+
+A spec's `share` list names bindings the page keeps in its address and in browser storage, so a link or a later visit reopens it as it was. Each entry: `path` (the binding), `query` (the address parameter), `store` (the browser storage key), `format` (`text`, `number`, `bool` as 1 or 0, `list` of ids, or `numbers` as a comma list), `decimals` (numbers are rounded to this many places and lose trailing zeros) and `keep_empty` (an empty list is written as `name=` instead of left out).
+
+- On load a value in the address wins, else a stored value fills in, else the spec's own `state` stands. A malformed value (a list id with a space or a comma gap, a number that is not one, a bool that is not 1 or 0) is ignored with a notice in `renderer.error`, and the next source is tried. An address parameter the spec does not name is ignored and left in the address.
+- While the page runs a change is written back after the binding has rested a quarter of a second, with `replaceState` so Back does not step through states, and only when the text differs from the last write. Other parameters in the address stay. Storage that is blocked or refuses a write gives one notice and the page keeps drawing.
+- The host supplies the address and storage as a `ShareHost` on the `RenderContext`; the browser playground ships one, other hosts leave it empty and the list does nothing.
+- A selection link: share the geomap's `selected` binding as a `list` and its viewport as `numbers`. Two other uses: a job board's filter (`ui.f.field`, `ui.f.in`) so a filtered view can be sent to someone; a floor plan's zoom and pan so a drawing opens where the reader left it.
+
 A `row` may take `data` and an `itemTemplate` as a `list` does: it draws the template once per row, side by side, with the row bound as `{row.x}` and `{item.x}`. A template's `flex` may be a binding (`"flex": "{item.share}"`), so a proportional bar is a row of cells whose widths come from the data, and `background` may be too (`"{item.color}"`). With `scroll_to` bound to a number the row does not draw all its rows at once: it is one line that does not scroll by hand and brings the row at that number into view, so a chosen chip stays on screen (static `children` are not drawn then).
 
 `on_swipe` is a gesture any node may carry: `{ "left": <action>, "right": <action> }`. A horizontal drag of 48 dp or more, ending on that node, dispatches the action for its direction (left for a drag to the left); a shorter one does nothing. Either side may be left out. Use `set_binding` with `add` to step a number (`{ "path": "pick.through", "add": 1, "min": 0 }`), which keeps it in range. A node that scrolls sideways by itself takes the drag first.
