@@ -301,7 +301,7 @@ private fun tessellateFeature(
         GeomapLayerKind.POINT -> parseGeomapColor(feature.fill) ?: DEFAULT_STROKE_ARGB
         GeomapLayerKind.LINE -> null
     }
-    val needsTriangles = kind == GeomapLayerKind.FILL && fillArgb != null && worldRings.size == 1 && !fillsAsPaths
+    val needsTriangles = kind == GeomapLayerKind.FILL && (fillArgb != null || feature.values.isNotEmpty()) && worldRings.size == 1 && !fillsAsPaths
     val triangleWorld = when {
         !needsTriangles -> DoubleArray(0)
         shared != null -> shared.triangles ?: expandTriangles(worldRings).also { shared.triangles = it }
@@ -450,7 +450,7 @@ private fun DrawScope.drawGeomapTessellation(
         }
         // Inner rings are holes, which even-odd fills as empty and the triangle batch cannot express; a layer filled as paths has no triangles at all.
         for (feature in inView) {
-            val fill = feature.fillArgb ?: continue
+            val fill = featureFillArgb(feature, shade) ?: continue
             if (feature.triangleWorld.isNotEmpty()) continue
             drawPath(screenPathOf(feature.worldRings, closed = true, ::screenX, ::screenY), Color(fill))
         }
