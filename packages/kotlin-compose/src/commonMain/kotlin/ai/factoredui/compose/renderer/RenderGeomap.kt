@@ -61,7 +61,9 @@ import ai.factoredui.compose.schema.GeomapLayer
 import ai.factoredui.compose.schema.GeomapLayerKind
 import ai.factoredui.compose.score.ScoreShade
 import ai.factoredui.compose.score.ScoreShadeReading
+import ai.factoredui.compose.score.ShadeScale
 import ai.factoredui.compose.score.ShadedColour
+import ai.factoredui.compose.score.scoreOf
 import ai.factoredui.compose.score.readScoreShade
 import ai.factoredui.compose.score.shadeFor
 import ai.factoredui.compose.schema.GeomapViewport
@@ -104,6 +106,12 @@ internal fun featureFillArgb(feature: TessellatedFeature, shade: ScoreShade?): I
     }
 }
 
+internal fun shadeWithRanks(shade: ScoreShade, tessellation: GeomapTessellation): ScoreShade {
+    if (shade.scale != ShadeScale.RANK) return shade
+    val scores = tessellation.layers.flatMap { layer -> layer.features.mapNotNull { feature -> scoreOf(shade, feature.values) } }
+    return shade.withRanksOf(scores)
+}
+
 internal fun isShadedOut(feature: TessellatedFeature, shade: ScoreShade?): Boolean =
     shade != null && feature.values.isNotEmpty() && shadeFor(shade, feature.values) == ShadedColour.Hidden
 
@@ -140,7 +148,8 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val missingGeometries = remember(layersData, geometriesData) { unresolvedGeometryRefs(layersData, geometriesData) }
     val shadeData = resolvedProps["shade_by"]
     val shadeReading = remember(shadeData) { shadeData?.let { readScoreShade("shade_by", it) } }
-    val shade = (shadeReading as? ScoreShadeReading.Readable)?.shade
+    val readShade = (shadeReading as? ScoreShadeReading.Readable)?.shade
+    val shade = remember(readShade, tessellation) { readShade?.let { shadeWithRanks(it, tessellation) } }
     val shadeNotice = (shadeReading as? ScoreShadeReading.Refused)?.notice
     val hostCentreViewport = resolveGeomapViewport(resolvedProps["viewport"])
     val hostBounds = resolveGeomapBoundsRequest(resolvedProps["viewport"])

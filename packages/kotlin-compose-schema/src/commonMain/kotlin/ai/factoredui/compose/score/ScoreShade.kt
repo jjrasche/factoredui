@@ -5,8 +5,43 @@ import ai.factoredui.compose.ramp.RampReading
 import ai.factoredui.compose.ramp.rampColourFor
 import ai.factoredui.compose.ramp.readColourRamp
 
+enum class ShadeScale(val wire: String) { VALUE("value"), RANK("rank") }
+
+class ScoreRanks(scores: List<Double>) {
+    private val sorted = scores.sorted().toDoubleArray()
+
+    fun percentileOf(score: Double): Double {
+        val below = firstIndexAtOrAbove(score)
+        val atOrBelow = firstIndexAbove(score)
+        return (below + (atOrBelow - below) / 2.0) / sorted.size
+    }
+
+    private fun firstIndexAtOrAbove(score: Double): Int = partitionPoint { it < score }
+
+    private fun firstIndexAbove(score: Double): Int = partitionPoint { it <= score }
+
+    private fun partitionPoint(isBefore: (Double) -> Boolean): Int {
+        var low = 0
+        var high = sorted.size
+        while (low < high) {
+            val middle = (low + high) / 2
+            if (isBefore(sorted[middle])) low = middle + 1 else high = middle
+        }
+        return low
+    }
+}
+
 /** How named fields of a thing's values become one score and then a colour: any node that draws things with values reads this one record. */
-data class ScoreShade(val weights: Map<String, Double>, val minimum: Double?, val ramp: ColourRamp)
+data class ScoreShade(
+    val weights: Map<String, Double>,
+    val minimum: Double?,
+    val ramp: ColourRamp,
+    val minimumKnownShare: Double = 1.0,
+    val scale: ShadeScale = ShadeScale.VALUE,
+    val ranks: ScoreRanks? = null,
+) {
+    fun withRanksOf(scores: List<Double>): ScoreShade = copy(ranks = ScoreRanks(scores))
+}
 
 sealed interface ScoreShadeReading {
     data class Readable(val shade: ScoreShade) : ScoreShadeReading
@@ -32,39 +67,66 @@ private fun weightsReading(owner: String, raw: Any?): Pair<Map<String, Double>?,
     return weights to null
 }
 
+private fun scaleReading(owner: String, raw: Any?): Pair<ShadeScale?, String?> {
+    if (raw == null) return ShadeScale.VALUE to null
+    val scale = ShadeScale.entries.firstOrNull { it.wire == raw }
+    return if (scale == null) null to "$owner scale must be 'value' or 'rank', not '$raw'" else scale to null
+}
+
+private fun knownShareReading(owner: String, raw: Any?): Pair<Double?, String?> {
+    if (raw == null) return 1.0 to null
+    val share = finiteNumberOf(raw)?.takeIf { it in 0.0..1.0 }
+    return if (share == null) null to "$owner min_known_share must be a number from 0 to 1, not '$raw'" else share to null
+}
+
 fun readScoreShade(owner: String, raw: Any?): ScoreShadeReading {
     val fields = raw as? Map<*, *> ?: return ScoreShadeReading.Refused("$owner must be an object with weights and a ramp, not '$raw'")
     val (weights, weightsNotice) = weightsReading(owner, fields["weights"])
     if (weights == null) return ScoreShadeReading.Refused(weightsNotice!!)
     val minimum = fields["minimum"]
     val minimumFigure = if (minimum == null) null else finiteNumberOf(minimum) ?: return ScoreShadeReading.Refused("$owner minimum must be a number, not '$minimum'")
+    val (scale, scaleNotice) = scaleReading(owner, fields["scale"])
+    if (scale == null) return ScoreShadeReading.Refused(scaleNotice!!)
+    val (knownShare, knownShareNotice) = knownShareReading(owner, fields["min_known_share"])
+    if (knownShare == null) return ScoreShadeReading.Refused(knownShareNotice!!)
     if (fields["ramp"] == null) return ScoreShadeReading.Refused("$owner needs a ramp")
     return when (val ramp = readColourRamp("$owner ramp", fields["ramp"])) {
         is RampReading.Refused -> ScoreShadeReading.Refused(ramp.notice)
-        is RampReading.Readable -> ScoreShadeReading.Readable(ScoreShade(weights, minimumFigure, ramp.ramp))
+        is RampReading.Readable -> ScoreShadeReading.Readable(ScoreShade(weights, minimumFigure, ramp.ramp, knownShare, scale))
     }
 }
 
-/** The mean of the weighted fields, each weighted by its weight; unknown when a weighted field is missing or no weight is above zero. */
-fun weightedScore(values: Map<String, Double?>, weights: Map<String, Double>): Double? {
+/** The weighted mean of the known fields; unknown when their weights fall under [minimumKnownShare] of all weights. */
+fun weightedScore(values: Map<String, Double?>, weights: Map<String, Double>, minimumKnownShare: Double = 1.0): Double? {
     var total = 0.0
-    var weightSum = 0.0
+    var knownWeight = 0.0
+    var allWeight = 0.0
     for ((field, weight) in weights) {
         if (weight == 0.0) continue
-        val value = values[field] ?: return null
+        allWeight += weight
+        val value = values[field] ?: continue
         total += weight * value
-        weightSum += weight
+        knownWeight += weight
     }
-    return if (weightSum > 0.0) total / weightSum else null
+    val isKnownEnough = allWeight > 0.0 && knownWeight > 0.0 && knownWeight >= allWeight * minimumKnownShare
+    return if (isKnownEnough) total / knownWeight else null
+}
+
+fun scoreOf(shade: ScoreShade, values: Map<String, Double?>): Double? = weightedScore(values, shade.weights, shade.minimumKnownShare)
+
+private fun shadedQuantityOf(shade: ScoreShade, score: Double): Double? = when (shade.scale) {
+    ShadeScale.VALUE -> score
+    ShadeScale.RANK -> shade.ranks?.percentileOf(score)
 }
 
 fun shadeFor(shade: ScoreShade, values: Map<String, Double?>): ShadedColour {
-    val score = weightedScore(values, shade.weights)
+    val score = scoreOf(shade, values)
+    val quantity = score?.let { shadedQuantityOf(shade, it) }
     val minimum = shade.minimum
     return when {
-        score == null && minimum != null -> ShadedColour.Hidden
-        score == null -> ShadedColour.Coloured(rampColourFor(shade.ramp, null))
-        minimum != null && score < minimum -> ShadedColour.Hidden
-        else -> ShadedColour.Coloured(rampColourFor(shade.ramp, score))
+        quantity == null && minimum != null -> ShadedColour.Hidden
+        quantity == null -> ShadedColour.Coloured(rampColourFor(shade.ramp, null))
+        minimum != null && quantity < minimum -> ShadedColour.Hidden
+        else -> ShadedColour.Coloured(rampColourFor(shade.ramp, quantity))
     }
 }

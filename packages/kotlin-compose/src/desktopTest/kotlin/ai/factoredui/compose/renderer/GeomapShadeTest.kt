@@ -105,6 +105,18 @@ class GeomapShadeTest {
     }
 
     @Test
+    fun in_rank_scale_a_minimum_keeps_the_top_share_of_the_parcels_whatever_their_scores() {
+        val rankRamp = mapOf("stops" to listOf(listOf(0.25, "#2E86DE"), listOf(0.75, "#E67E22")), "no_figure" to "#FF00FF")
+        val shadeInRank = (shade("""{"a":1}""", minimum = "0.6") as Map<*, *>) + mapOf("scale" to "rank", "ramp" to rankRamp)
+        driveScreen(spec(), widthDp = MAP_SIZE, heightDp = MAP_SIZE).use { screen ->
+            screen.type("map.shade", shadeInRank)
+            val frame = screen.frame().png
+            assertTrue(countOf(frame, HIGH) > DRAWN_ALLOWANCE, "the top-ranked parcel was not drawn")
+            assertTrue(countOf(frame, LOW) < DRAWN_ALLOWANCE, "the bottom-ranked parcel drew under a minimum of 0.6")
+        }
+    }
+
+    @Test
     fun a_tap_on_a_hidden_parcel_hits_nothing() {
         val layers = resolveGeomapLayers(
             json.parseToJsonElement(

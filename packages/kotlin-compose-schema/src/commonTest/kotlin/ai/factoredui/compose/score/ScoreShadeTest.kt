@@ -1,5 +1,6 @@
 package ai.factoredui.compose.score
 
+import ai.factoredui.compose.ramp.rampColourFor
 import ai.factoredui.compose.ramp.rampColourOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -79,6 +80,44 @@ class ScoreShadeTest {
         assertTrue(reasons[0].contains("weights"), reasons[0])
         assertTrue(reasons[1].contains("ramp"), reasons[1])
         assertTrue(reasons[2].contains("negative") || reasons[2].contains("-1"), reasons[2])
+    }
+
+    @Test
+    fun a_missing_field_is_left_out_when_the_known_weights_reach_the_share_asked_for() {
+        val weights = mapOf("a" to 3.0, "b" to 1.0)
+        assertEquals(0.2, weightedScore(mapOf("a" to 0.2), weights, minimumKnownShare = 0.5)!!, 1e-9)
+        assertNull(weightedScore(mapOf("b" to 0.2), weights, minimumKnownShare = 0.5))
+    }
+
+    @Test
+    fun a_known_share_is_read_from_the_record_and_must_lie_between_zero_and_one() {
+        val readable = readScoreShade("shade_by", mapOf("weights" to mapOf("a" to 1), "ramp" to RAMP, "min_known_share" to 0.5))
+        assertEquals(0.5, assertIs<ScoreShadeReading.Readable>(readable).shade.minimumKnownShare, 0.0)
+        val refused = readScoreShade("shade_by", mapOf("weights" to mapOf("a" to 1), "ramp" to RAMP, "min_known_share" to 1.5))
+        assertTrue(assertIs<ScoreShadeReading.Refused>(refused).notice.contains("min_known_share"))
+    }
+
+    @Test
+    fun in_rank_scale_the_colour_follows_the_share_of_scores_below_not_the_score() {
+        val record = readScoreShade("shade_by", mapOf("weights" to mapOf("a" to 1), "ramp" to RAMP, "scale" to "rank"))
+        val shade = assertIs<ScoreShadeReading.Readable>(record).shade
+        val ranked = shade.withRanksOf(listOf(0.10, 0.11, 0.12, 0.90))
+        assertEquals(rampColourFor(shade.ramp, 0.625), colourOf(ranked, mapOf("a" to 0.12)))
+        assertEquals(rampColourFor(shade.ramp, 0.875), colourOf(ranked, mapOf("a" to 0.90)))
+    }
+
+    @Test
+    fun a_minimum_in_rank_scale_keeps_the_top_share_of_the_scored_features() {
+        val record = readScoreShade("shade_by", mapOf("weights" to mapOf("a" to 1), "ramp" to RAMP, "scale" to "rank", "minimum" to 0.5))
+        val ranked = assertIs<ScoreShadeReading.Readable>(record).shade.withRanksOf(listOf(0.10, 0.11, 0.12, 0.90))
+        assertEquals(ShadedColour.Hidden, shadeFor(ranked, mapOf("a" to 0.10)))
+        assertIs<ShadedColour.Coloured>(shadeFor(ranked, mapOf("a" to 0.90)))
+    }
+
+    @Test
+    fun a_scale_that_is_neither_value_nor_rank_is_refused() {
+        val refused = readScoreShade("shade_by", mapOf("weights" to mapOf("a" to 1), "ramp" to RAMP, "scale" to "log"))
+        assertTrue(assertIs<ScoreShadeReading.Refused>(refused).notice.contains("scale"))
     }
 
     @Test
