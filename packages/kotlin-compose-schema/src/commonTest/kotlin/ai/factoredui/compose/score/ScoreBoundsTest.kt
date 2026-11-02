@@ -171,6 +171,29 @@ class ScoreBoundsTest {
         assertIs<ScoreShadeReading.Refused>(neither)
     }
 
+    @Test
+    fun a_tie_shares_a_rank_the_next_rank_skips_and_the_list_orders_by_rank_then_id_whatever_order_it_arrives_in() {
+        val loaded = listOf(mapOf("spring" to 0.0), mapOf("spring" to 10.0))
+        val shade = rawShade(mapOf("spring" to 1.0), mapOf("spring" to SPRING_HIGH), loaded)
+        val arrival = listOf("c-mid", "b-top", "d-mid", "a-top").map { it to emptyMap<String, Double?>() }
+        val figures = mapOf(
+            "a-top" to mapOf("spring" to 10.0), "b-top" to mapOf("spring" to 10.0),
+            "c-mid" to mapOf("spring" to 5.0), "d-mid" to mapOf("spring" to 5.0),
+        )
+        val ranked = rankByScore(shade, arrival, top = 10, figuresById = figures)
+        assertEquals(listOf("a-top", "b-top", "c-mid", "d-mid"), ranked.map { it.id })
+        assertEquals(listOf(1, 1, 3, 3), ranked.map { it.rank })
+    }
+
+    @Test
+    fun a_figure_with_no_spread_among_the_loaded_things_scores_one_for_every_one_of_them() {
+        val loaded = listOf(mapOf("drive" to 7.0), mapOf("drive" to 7.0))
+        val shade = rawShade(mapOf("drive" to 1.0), mapOf("drive" to DRIVE_LOW), loaded)
+        assertEquals(1.0, bounds(shade, mapOf("drive" to 7.0)).low)
+        val high = rawShade(mapOf("drive" to 1.0), mapOf("drive" to SPRING_HIGH), loaded)
+        assertEquals(1.0, bounds(high, mapOf("drive" to 7.0)).low)
+    }
+
     private fun record(scaling: Map<String, Any?>, weights: Map<String, Double>): Map<String, Any?> = mapOf(
         "weights" to weights,
         "figure_scaling" to scaling,

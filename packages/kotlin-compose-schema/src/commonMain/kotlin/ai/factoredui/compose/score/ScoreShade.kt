@@ -24,7 +24,7 @@ data class ScoreBounds(val low: Double, val high: Double) {
 }
 
 private const val SETTLED_TOLERANCE = 1e-12
-private const val NEUTRAL_FIGURE_SCORE = 0.5
+private const val NO_SPREAD_FIGURE_SCORE = 1.0
 
 class ScoreRanks(scores: List<Double>) {
     private val sorted = scores.sorted().toDoubleArray()
@@ -73,6 +73,7 @@ data class ScoreShade(
     val fieldFigures: Map<String, String> = emptyMap(),
     val scalings: Map<String, FigureScaling> = emptyMap(),
     val extents: Map<String, FigureExtent> = emptyMap(),
+    val unsettledMark: String? = null,
 ) {
     val isRaw: Boolean get() = scalings.isNotEmpty()
 
@@ -234,7 +235,7 @@ fun readScoreShade(owner: String, raw: Any?): ScoreShadeReading {
                 weights, minimumFigure, ramp.ramp, knownShare, scale,
                 labels = labelsReading(fields["labels"]), below = below, ranges = ranges,
                 figureInfo = figureInfoReading(fields["figure_info"]), fieldFigures = labelsReading(fields["field_figures"]),
-                scalings = scalings,
+                scalings = scalings, unsettledMark = fields["unsettled_mark"] as? String,
             ),
         )
     }
@@ -316,9 +317,9 @@ fun figureScoreOf(shade: ScoreShade, figure: String, value: Double?): Double? {
     val scaling = shade.scalings[figure] ?: return null
     if (value == null || !value.isFinite()) return null
     if (scaling.best != null && scaling.worst != null) return ((value - scaling.worst) / (scaling.best - scaling.worst)).coerceIn(0.0, 1.0)
-    val extent = shade.extents[figure] ?: return NEUTRAL_FIGURE_SCORE
+    val extent = shade.extents[figure] ?: return NO_SPREAD_FIGURE_SCORE
     val span = extent.max - extent.min
-    if (span == 0.0) return NEUTRAL_FIGURE_SCORE
+    if (span == 0.0) return NO_SPREAD_FIGURE_SCORE
     return when (scaling.good) {
         GoodEnd.HIGH -> (value - extent.min) / span
         GoodEnd.LOW -> (extent.max - value) / span

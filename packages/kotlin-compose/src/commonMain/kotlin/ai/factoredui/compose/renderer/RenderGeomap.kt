@@ -542,7 +542,7 @@ private fun DrawScope.drawGeomapTessellation(
         if (!layer.isShownAt(viewport.zoom)) continue
         for (feature in layer.featuresIn(view)) {
             if (isShadedOut(feature, shade)) continue
-            val pattern = feature.pattern ?: continue
+            val pattern = feature.pattern ?: shade?.let { unsettledMarkFor(it, feature.values, feature.figures, colourHex(labelInk.toArgb().toLong())) } ?: continue
             paintGeomapPattern(screenPathOf(feature.worldRings, closed = true, ::screenX, ::screenY), pattern)
         }
     }
