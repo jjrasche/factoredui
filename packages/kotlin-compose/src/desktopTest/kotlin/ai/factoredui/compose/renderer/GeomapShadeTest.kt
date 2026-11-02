@@ -71,6 +71,19 @@ class GeomapShadeTest {
     }
 
     @Test
+    fun a_weight_written_at_its_own_path_inside_the_record_recolours_the_parcels() {
+        driveScreen(spec(), widthDp = MAP_SIZE, heightDp = MAP_SIZE).use { screen ->
+            screen.type("map.shade", shade("""{"a":1,"b":0}"""))
+            val before = screen.frame().png
+            screen.type("map.shade.weights.a", 0.0)
+            screen.type("map.shade.weights.b", 1.0)
+            val after = screen.frame().png
+            assertTrue(countOf(before, HIGH) > countOf(before, LOW) + DRAWN_ALLOWANCE, "by a, the wide parcel should be the high colour")
+            assertTrue(countOf(after, LOW) > countOf(after, HIGH) + DRAWN_ALLOWANCE, "after the two writes, the wide parcel should be the low colour")
+        }
+    }
+
+    @Test
     fun a_minimum_hides_the_parcels_whose_score_falls_under_it() {
         driveScreen(spec(), widthDp = MAP_SIZE, heightDp = MAP_SIZE).use { screen ->
             screen.type("map.shade", shade("""{"a":1,"b":0}""", minimum = "0.5"))
