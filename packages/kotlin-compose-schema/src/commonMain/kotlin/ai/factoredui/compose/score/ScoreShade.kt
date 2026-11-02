@@ -34,6 +34,14 @@ class ScoreRanks(scores: List<Double>) {
     }
 }
 
+/** A bound on one named figure of a thing (real units, not a 0-to-1 value); a missing bound is open, and a range with neither bound is off. */
+data class FigureRange(val min: Double?, val max: Double?) {
+    val isActive: Boolean get() = min != null || max != null
+}
+
+/** How to say one figure to a reader: its name, unit and decimals. */
+data class FigureInfo(val label: String, val unit: String, val decimals: Int)
+
 /** How named fields of a thing's values become one score and then a colour: any node that draws things with values reads this one record. */
 data class ScoreShade(
     val weights: Map<String, Double>,
@@ -44,6 +52,9 @@ data class ScoreShade(
     val ranks: ScoreRanks? = null,
     val labels: Map<String, String> = emptyMap(),
     val below: BelowMinimum = BelowMinimum.DIM,
+    val ranges: Map<String, FigureRange> = emptyMap(),
+    val figureInfo: Map<String, FigureInfo> = emptyMap(),
+    val fieldFigures: Map<String, String> = emptyMap(),
 ) {
     fun withRanksOf(scores: List<Double>): ScoreShade = copy(ranks = ScoreRanks(scores))
 }
@@ -94,6 +105,38 @@ private fun belowReading(owner: String, raw: Any?): Pair<BelowMinimum?, String?>
 private fun labelsReading(raw: Any?): Map<String, String> =
     (raw as? Map<*, *>).orEmpty().mapNotNull { (field, text) -> (field as? String)?.let { name -> (text as? String)?.let { name to it } } }.toMap()
 
+private fun boundReading(owner: String, figure: String, side: String, raw: Any?): Pair<Double?, String?> {
+    if (raw == null) return null to null
+    val bound = finiteNumberOf(raw) ?: return null to "$owner range '$figure' $side must be a number, not '$raw'"
+    return bound to null
+}
+
+private fun rangesReading(owner: String, raw: Any?): Pair<Map<String, FigureRange>?, String?> {
+    val ranges = LinkedHashMap<String, FigureRange>()
+    for ((name, entry) in (raw as? Map<*, *>).orEmpty()) {
+        val figure = name as? String ?: continue
+        val bounds = entry as? Map<*, *> ?: return null to "$owner range '$figure' must be an object with min and max, not '$entry'"
+        val (min, minNotice) = boundReading(owner, figure, "min", bounds["min"])
+        if (minNotice != null) return null to minNotice
+        val (max, maxNotice) = boundReading(owner, figure, "max", bounds["max"])
+        if (maxNotice != null) return null to maxNotice
+        if (min != null && max != null && min > max) return null to "$owner range '$figure' has a min ($min) over its max ($max)"
+        ranges[figure] = FigureRange(min, max)
+    }
+    return ranges to null
+}
+
+private fun figureInfoReading(raw: Any?): Map<String, FigureInfo> =
+    (raw as? Map<*, *>).orEmpty().mapNotNull { (name, entry) ->
+        val figure = name as? String ?: return@mapNotNull null
+        val fields = entry as? Map<*, *> ?: return@mapNotNull null
+        figure to FigureInfo(
+            label = fields["label"] as? String ?: figure,
+            unit = fields["unit"] as? String ?: "",
+            decimals = finiteNumberOf(fields["decimals"])?.toInt()?.coerceAtLeast(0) ?: 0,
+        )
+    }.toMap()
+
 fun readScoreShade(owner: String, raw: Any?): ScoreShadeReading {
     val fields = raw as? Map<*, *> ?: return ScoreShadeReading.Refused("$owner must be an object with weights and a ramp, not '$raw'")
     val (weights, weightsNotice) = weightsReading(owner, fields["weights"])
@@ -106,11 +149,17 @@ fun readScoreShade(owner: String, raw: Any?): ScoreShadeReading {
     if (knownShare == null) return ScoreShadeReading.Refused(knownShareNotice!!)
     val (below, belowNotice) = belowReading(owner, fields["below"])
     if (below == null) return ScoreShadeReading.Refused(belowNotice!!)
+    val (ranges, rangesNotice) = rangesReading(owner, fields["ranges"])
+    if (ranges == null) return ScoreShadeReading.Refused(rangesNotice!!)
     if (fields["ramp"] == null) return ScoreShadeReading.Refused("$owner needs a ramp")
     return when (val ramp = readColourRamp("$owner ramp", fields["ramp"])) {
         is RampReading.Refused -> ScoreShadeReading.Refused(ramp.notice)
         is RampReading.Readable -> ScoreShadeReading.Readable(
-            ScoreShade(weights, minimumFigure, ramp.ramp, knownShare, scale, labels = labelsReading(fields["labels"]), below = below),
+            ScoreShade(
+                weights, minimumFigure, ramp.ramp, knownShare, scale,
+                labels = labelsReading(fields["labels"]), below = below, ranges = ranges,
+                figureInfo = figureInfoReading(fields["figure_info"]), fieldFigures = labelsReading(fields["field_figures"]),
+            ),
         )
     }
 }
@@ -139,12 +188,42 @@ data class ScoredThing(val id: String, val score: Double, val percentile: Double
 /** One field's share of a score: the shares of all fields sum to the score. */
 data class ScorePart(val field: String, val label: String, val value: Double?, val weight: Double, val contribution: Double)
 
-fun rankByScore(shade: ScoreShade, things: List<Pair<String, Map<String, Double?>>>, top: Int): List<ScoredThing> {
+/** Whether a thing's figures sit inside every range that is on: a figure it has no number for is outside, since the reader asked for a number. */
+private fun isInsideRanges(shade: ScoreShade, figures: Map<String, Double?>): Boolean =
+    shade.ranges.filterValues { it.isActive }.all { (figure, range) ->
+        val value = figures[figure]
+        value != null && (range.min == null || value >= range.min) && (range.max == null || value <= range.max)
+    }
+
+/** The figures a thing has no number for among the ranges that are on: what a reader should be told the filter could not judge. */
+fun unmeasuredFigures(shade: ScoreShade, figures: Map<String, Double?>): List<String> =
+    shade.ranges.filterValues { it.isActive }.keys.filter { figures[it] == null }
+
+/** A figure as a reader says it: its number to the decimals asked, then its unit; no number says so. */
+fun figureText(info: FigureInfo?, value: Double?): String {
+    if (value == null) return "no figure"
+    if (info == null) return value.toString().removeSuffix(".0")
+    val digits = info.decimals
+    var scaled: Double = value
+    repeat(digits) { scaled *= 10.0 }
+    val rounded = kotlin.math.round(scaled).toLong()
+    val sign = if (rounded < 0) "-" else ""
+    val absolute = kotlin.math.abs(rounded).toString().padStart(digits + 1, '0')
+    val number = if (digits == 0) absolute else absolute.dropLast(digits) + "." + absolute.takeLast(digits)
+    return listOf(sign + number, info.unit).filter { it.isNotEmpty() }.joinToString(" ")
+}
+
+fun rankByScore(
+    shade: ScoreShade,
+    things: List<Pair<String, Map<String, Double?>>>,
+    top: Int,
+    figuresById: Map<String, Map<String, Double?>> = emptyMap(),
+): List<ScoredThing> {
     val scored = things.mapNotNull { (id, values) -> scoreOf(shade, values)?.let { id to it } }
         .sortedWith(compareByDescending<Pair<String, Double>> { it.second }.thenBy { it.first })
     val valuesById = things.toMap()
     return scored.mapIndexedNotNull { index, (id, score) ->
-        val isShown = shadeFor(shade, valuesById.getValue(id)) is ShadedColour.Coloured
+        val isShown = shadeFor(shade, valuesById.getValue(id), figuresById[id].orEmpty()) is ShadedColour.Coloured
         if (isShown) ScoredThing(id, score, shade.ranks?.percentileOf(score), rankOfScore(scored, index)) else null
     }.take(top)
 }
@@ -168,12 +247,13 @@ private fun shadedQuantityOf(shade: ScoreShade, score: Double): Double? = when (
     ShadeScale.RANK -> shade.ranks?.percentileOf(score)
 }
 
-fun shadeFor(shade: ScoreShade, values: Map<String, Double?>): ShadedColour {
+fun shadeFor(shade: ScoreShade, values: Map<String, Double?>, figures: Map<String, Double?> = emptyMap()): ShadedColour {
     val score = scoreOf(shade, values)
     val quantity = score?.let { shadedQuantityOf(shade, it) }
     val minimum = shade.minimum
     val outOfRange = if (shade.below == BelowMinimum.HIDE) ShadedColour.Hidden else ShadedColour.Dimmed
     return when {
+        !isInsideRanges(shade, figures) -> outOfRange
         quantity == null && minimum != null -> outOfRange
         quantity == null -> ShadedColour.Coloured(rampColourFor(shade.ramp, null))
         minimum != null && quantity < minimum -> outOfRange

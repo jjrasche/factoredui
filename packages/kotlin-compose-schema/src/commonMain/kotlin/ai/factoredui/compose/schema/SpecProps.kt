@@ -576,6 +576,7 @@ data class GeomapFeature(
     val radius: Float = DEFAULT_POINT_RADIUS,
     val values: Map<String, Double?> = emptyMap(),
     val info: Map<String, Any> = emptyMap(),
+    val figures: Map<String, Double?> = emptyMap(),
 )
 
 const val DEFAULT_POINT_RADIUS = 5f
@@ -682,6 +683,7 @@ private fun resolveGeomapFeatures(
             radius = (fields["radius"] as? Number)?.toFloat() ?: DEFAULT_POINT_RADIUS,
             values = resolveGeomapValues(fields["values"]),
             info = resolveGeomapInfo(fields["info"]),
+            figures = resolveGeomapValues(fields["figures"]),
         )
     }
 

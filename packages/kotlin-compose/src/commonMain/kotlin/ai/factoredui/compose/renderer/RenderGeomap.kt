@@ -96,12 +96,13 @@ internal class TessellatedFeature(
     val radius: Float = DEFAULT_POINT_RADIUS,
     val values: Map<String, Double?> = emptyMap(),
     val info: Map<String, Any> = emptyMap(),
+    val figures: Map<String, Double?> = emptyMap(),
 )
 
 /** The fill a feature draws with now: its own, or the colour its values earn under the node's `shade_by`; null when it has none or the shade hides it. */
 internal fun featureFillArgb(feature: TessellatedFeature, shade: ScoreShade?, dimArgb: Int): Int? {
     if (shade == null || feature.values.isEmpty()) return feature.fillArgb
-    return when (val shaded = shadeFor(shade, feature.values)) {
+    return when (val shaded = shadeFor(shade, feature.values, feature.figures)) {
         is ShadedColour.Coloured -> shaded.colour.toInt()
         ShadedColour.Dimmed -> dimArgb
         ShadedColour.Hidden -> null
@@ -116,7 +117,7 @@ internal fun shadeWithRanks(shade: ScoreShade, tessellation: GeomapTessellation)
 
 /** Under the minimum, dimmed or hidden: it takes no outline, label or tap, and is not in the list. */
 internal fun isShadedOut(feature: TessellatedFeature, shade: ScoreShade?): Boolean =
-    shade != null && feature.values.isNotEmpty() && shadeFor(shade, feature.values) !is ShadedColour.Coloured
+    shade != null && feature.values.isNotEmpty() && shadeFor(shade, feature.values, feature.figures) !is ShadedColour.Coloured
 
 /** The features a selection outlines: the first drawn feature of each selected id, so an id that two layers repeat is outlined once. */
 internal fun featuresToOutline(
@@ -224,7 +225,11 @@ internal fun RenderGeomap(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val selectedOut = remember(shade, tessellation, selection, shadeOutPath) {
         if (shade != null && shadeOutPath != null) shadeOutSelected(shade, tessellation, selection) else null
     }
+    val unmeasuredText = remember(shade, tessellation, shadeOutPath) {
+        if (shade != null && shadeOutPath != null) shadeOutUnmeasuredText(shade, tessellation) else null
+    }
     LaunchedEffect(topRows) { if (topRows != null && shadeOutPath != null) context.setBinding("$shadeOutPath.top", topRows) }
+    LaunchedEffect(unmeasuredText) { if (unmeasuredText != null && shadeOutPath != null) context.setBinding("$shadeOutPath.unmeasured_text", unmeasuredText) }
     LaunchedEffect(selectedOut, shadeOutPath) { if (shadeOutPath != null && shade != null) context.setBinding("$shadeOutPath.selected", selectedOut) }
     val screenDensity = androidx.compose.ui.platform.LocalDensity.current.density
     val scope = rememberCoroutineScope()
@@ -395,6 +400,7 @@ private fun tessellateFeature(
         radius = feature.radius,
         values = feature.values,
         info = feature.info,
+        figures = feature.figures,
     )
 }
 

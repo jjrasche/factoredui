@@ -1,7 +1,9 @@
 package ai.factoredui.compose.renderer
 
 import ai.factoredui.compose.score.ScoreShade
+import ai.factoredui.compose.score.figureText
 import ai.factoredui.compose.score.rankByScore
+import ai.factoredui.compose.score.unmeasuredFigures
 import ai.factoredui.compose.score.scoreOf
 import ai.factoredui.compose.score.scoreParts
 import kotlin.math.roundToInt
@@ -33,7 +35,7 @@ internal fun shadeOutTopCount(raw: Any?): Int = ((raw as? Number)?.toDouble() ?:
 /** The best things under the live score, best first, as rows a spec's list can bind: rank, score, text for both, and the lon/lat box to frame it. */
 internal fun shadeOutTop(shade: ScoreShade, tessellation: GeomapTessellation, top: Int): List<Map<String, Any?>> {
     val features = scoredFeaturesOf(tessellation)
-    return rankByScore(shade, features.map { it.key to it.value.values }, top).map { thing ->
+    return rankByScore(shade, features.map { it.key to it.value.values }, top, features.mapValues { it.value.figures }).map { thing ->
         mapOf(
             "id" to thing.id,
             "rank" to thing.rank.toDouble(),
@@ -45,6 +47,12 @@ internal fun shadeOutTop(shade: ScoreShade, tessellation: GeomapTessellation, to
             "info" to features.getValue(thing.id).info,
         )
     }
+}
+
+internal fun shadeOutUnmeasuredText(shade: ScoreShade, tessellation: GeomapTessellation): String {
+    val missing = scoredFeaturesOf(tessellation).values.flatMap { unmeasuredFigures(shade, it.figures) }
+    return missing.groupingBy { it }.eachCount().entries.sortedBy { it.key }
+        .joinToString("; ") { (figure, count) -> "$count have no ${shade.figureInfo[figure]?.label ?: figure}" }
 }
 
 /** The first selected thing that has values, with each weighted field's value, weight and share of its score; null when none is selected. */
@@ -61,12 +69,17 @@ internal fun shadeOutSelected(shade: ScoreShade, tessellation: GeomapTessellatio
         "percentile" to score?.let { shade.ranks?.percentileOf(it) },
         "bounds" to feature.geoBounds(),
         "info" to feature.info,
+        "figures" to shade.figureInfo.map { (figure, info) ->
+            mapOf("figure" to figure, "label" to info.label, "value" to feature.figures[figure], "text" to figureText(info, feature.figures[figure]))
+        },
         "parts" to scoreParts(shade, feature.values).map { part ->
+            val figure = shade.fieldFigures[part.field]
             mapOf(
                 "field" to part.field,
                 "label" to part.label,
                 "value" to part.value,
                 "value_text" to (part.value?.let(::roundedText) ?: "no figure"),
+                "figure_text" to (figure?.let { figureText(shade.figureInfo[it], feature.figures[it]) } ?: ""),
                 "weight" to part.weight,
                 "contribution" to part.contribution,
                 "contribution_text" to roundedText(part.contribution),
