@@ -61,7 +61,12 @@ fun RenderedSpecPanel(
     specFlow: StateFlow<Spec>,
     context: RenderContext,
     modifier: Modifier = Modifier,
+    isBare: Boolean = false,
 ) {
+    if (isBare) {
+        Box(modifier) { RenderSpec(specFlow = specFlow, context = context) }
+        return
+    }
     Column(modifier.padding(16.dp)) {
         PanelHeader("rendered spec")
         Box(Modifier.weight(1f).fillMaxWidth()) {

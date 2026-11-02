@@ -38,6 +38,25 @@ private const val SCENE_FIELDS_CLOSE = "<!-- /scene-record-fields -->"
 private fun documentedSceneFields(guide: String): Set<String> =
     guide.substringAfter(SCENE_FIELDS_OPEN, "").substringBefore(SCENE_FIELDS_CLOSE, "").replace("`", " ").split(Regex("[\\s,]+")).filter { it.isNotEmpty() }.toSet()
 
+private const val CHART_FIELDS_OPEN = "<!-- chart-record-fields -->"
+private const val CHART_FIELDS_CLOSE = "<!-- /chart-record-fields -->"
+
+private fun documentedChartFields(guide: String): Set<String> =
+    guide.substringAfter(CHART_FIELDS_OPEN, "").substringBefore(CHART_FIELDS_CLOSE, "").replace("`", " ").split(Regex("[\\s,]+")).filter { it.isNotEmpty() }.toSet()
+
+private val CHART_PAGE = Json.decodeFromString(
+    Spec.serializer(),
+    """{"spec_version":1,"renderer_min":1,"root":{"id":"chart","type":"chart","props":{"rows":[{"t":0,"v":1},{"t":1,"v":2}],"x":"t","series":[{"id":"v","path":"v"}]}}}""",
+)
+
+private fun emittedChartFields(): Set<String> {
+    val context = RenderContext()
+    SceneSurface(CHART_PAGE, context, 400, 300).use { surface ->
+        val tree = surface.onScreenThread { screenNodes(context.screen) }
+        return screenJson(tree!!).getValue("chart").jsonObject.keys
+    }
+}
+
 private val BOARD_PAGE = Json.decodeFromString(
     Spec.serializer(),
     """{"spec_version":1,"renderer_min":1,"root":{"id":"board","type":"scene","props":{"view_state":{"renderer":"stacked_scene"},"scene_view":"{board.scene}","view":"iso"}}}""",
@@ -91,6 +110,13 @@ class ControlPortDocTest {
         val documented = documentedSceneFields(GUIDE.readText())
         assertTrue(documented.isNotEmpty(), "AGENTS.md has no $SCENE_FIELDS_OPEN block")
         assertEquals(emittedSceneFields(), documented)
+    }
+
+    @Test
+    fun the_guides_chart_field_list_names_exactly_the_fields_a_chart_record_carries() {
+        val documented = documentedChartFields(GUIDE.readText())
+        assertTrue(documented.isNotEmpty(), "AGENTS.md has no $CHART_FIELDS_OPEN block")
+        assertEquals(emittedChartFields(), documented)
     }
 
     @Test

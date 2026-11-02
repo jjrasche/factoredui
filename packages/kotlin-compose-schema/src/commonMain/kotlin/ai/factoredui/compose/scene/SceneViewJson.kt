@@ -23,7 +23,7 @@ private fun sceneObject(scene: SceneView, georeference: Georeference?): JsonObje
         scene.surface?.let { put("surface", surfaceJson(it)) }
         scene.footprints?.let { put("footprints", footprintsJson(it)) }
         scene.instances?.let { put("instances", instancesJson(it)) }
-        scene.water?.let { put("water", waterJson(it)) }
+        scene.flows?.let { put("flows", flowsJson(it)) }
         scene.boundaries?.let { put("boundaries", boundariesJson(it)) }
         scene.grid?.let { put("grid", gridJson(it)) }
         scene.annotations?.let { put("annotations", annotationsJson(it)) }
@@ -138,14 +138,6 @@ private fun instancesJson(layer: InstanceLayer): JsonObject = JsonObject(
     mapOf("version" to JsonPrimitive(layer.version), "items" to JsonArray(layer.items.map(::instanceJson)), "provenance" to provenanceJson(layer.provenance)),
 )
 
-private fun pondJson(pond: Pond): JsonObject = JsonObject(
-    mapOf(
-        "id" to JsonPrimitive(pond.id),
-        "level_mm" to JsonPrimitive(pond.levelMm),
-        "tiles" to JsonArray(pond.tiles.map { JsonObject(mapOf("col" to JsonPrimitive(it.col), "row" to JsonPrimitive(it.row), "depth_mm" to JsonPrimitive(it.depthMm))) }),
-    ),
-)
-
 private fun flowJson(line: FlowLine): JsonObject = JsonObject(
     mapOf(
         "id" to JsonPrimitive(line.id),
@@ -156,10 +148,9 @@ private fun flowJson(line: FlowLine): JsonObject = JsonObject(
     ),
 )
 
-private fun waterJson(layer: WaterLayer): JsonObject = JsonObject(
+private fun flowsJson(layer: FlowLayer): JsonObject = JsonObject(
     mapOf(
         "version" to JsonPrimitive(layer.version),
-        "ponds" to JsonArray(layer.ponds.map(::pondJson)),
         "flow" to JsonArray(layer.flow.map(::flowJson)),
         "provenance" to provenanceJson(layer.provenance),
     ),

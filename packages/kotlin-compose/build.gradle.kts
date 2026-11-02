@@ -241,9 +241,20 @@ tasks.register<JavaExec>("renderSpecCli") {
     mainClass.set("ai.factoredui.compose.render.RenderSpecCliKt")
 }
 
+tasks.register<JavaExec>("designSpecimen") {
+    group = "render"
+    description = "Write the design system specimen (a spec and a screenshot for each theme) into design/specimen."
+    val desktopCompilation = kotlin.jvm("desktop").compilations.getByName("main")
+    classpath(
+        desktopCompilation.output.allOutputs,
+        desktopCompilation.runtimeDependencyFiles,
+        desktopNativeRuntime,
+    )
+    mainClass.set("ai.factoredui.compose.design.DesignSpecimenKt")
+}
 tasks.register<JavaExec>("specWindow") {
     group = "render"
-    description = "Open a real window on a spec (or a bare world_state_url) — drag to orbit, scroll to zoom."
+    description = "Open a real window on a spec — drag to orbit, scroll to zoom."
     val desktopCompilation = kotlin.jvm("desktop").compilations.getByName("main")
     classpath(
         desktopCompilation.output.allOutputs,
@@ -263,18 +274,6 @@ tasks.register<Sync>("installSpecWindow") {
     from(desktopCompilation.runtimeDependencyFiles)
     from(desktopNativeRuntime)
     into(layout.buildDirectory.dir("spec-window/lib"))
-}
-
-tasks.register<JavaExec>("servedSceneReceipt") {
-    group = "render"
-    description = "Capture a served scene3d world headlessly and print what it drew, as JSON."
-    val desktopCompilation = kotlin.jvm("desktop").compilations.getByName("main")
-    classpath(
-        desktopCompilation.output.allOutputs,
-        desktopCompilation.runtimeDependencyFiles,
-        desktopNativeRuntime,
-    )
-    mainClass.set("ai.factoredui.compose.render.ServedSceneReceiptKt")
 }
 
 // Deterministic flow regression: crawl every action of a spec against a host action map, grade

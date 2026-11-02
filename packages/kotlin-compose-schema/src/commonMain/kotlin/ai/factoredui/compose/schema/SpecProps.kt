@@ -154,7 +154,7 @@ data class ButtonProps(
 )
 
 enum class ButtonVariant { PRIMARY, SECONDARY, OUTLINE, GHOST, DESTRUCTIVE }
-enum class ButtonSize { SM, MD, LG }
+enum class ButtonSize { SM, MD, LG, XL }
 
 fun Map<String, SpecValue>.asButtonProps(): ButtonProps = ButtonProps(
     label = string("label") ?: "",
@@ -168,6 +168,7 @@ fun Map<String, SpecValue>.asButtonProps(): ButtonProps = ButtonProps(
     size = when (string("size")) {
         "sm" -> ButtonSize.SM
         "lg" -> ButtonSize.LG
+        "xl" -> ButtonSize.XL
         else -> ButtonSize.MD
     },
     icon = string("icon"),
@@ -292,9 +293,15 @@ data class ListProps(
     val emptyText: String = "",
     val maxItems: Int? = null,
     val stacked: Boolean = false,
+    val where: SpecValue? = null,
+    val order: SpecValue? = null,
+    val rowName: String? = null,
 )
 
 fun Map<String, SpecValue>.asListProps(): ListProps = ListProps(
+    rowName = string("row_name"),
+    where = get("where"),
+    order = get("order"),
     data = string("data") ?: "",
     dataSource = string("data_source"),
     itemTemplate = (get("itemTemplate") as? SpecValue.NodeValue)?.value,
@@ -340,11 +347,32 @@ fun Map<String, SpecValue>.asGridProps(): GridProps = GridProps(
 
 data class ToggleProps(
     val label: String = "",
+    val color: String? = null,
 )
 
 fun Map<String, SpecValue>.asToggleProps(): ToggleProps = ToggleProps(
     label = string("label") ?: "",
+    color = string("color"),
 )
+
+// --- StackPlacement ---
+
+enum class StackAnchor { FILL, TOP, BOTTOM, END }
+
+data class StackPlacement(val anchor: StackAnchor? = null)
+
+/** Where a child of a `stack` sits: `anchor` is `fill`, `top`, `bottom` or `end`. */
+fun Map<String, SpecValue>.asStackPlacement(): StackPlacement = StackPlacement(
+    anchor = when (string("anchor")) {
+        "fill" -> StackAnchor.FILL
+        "top" -> StackAnchor.TOP
+        "bottom" -> StackAnchor.BOTTOM
+        "end" -> StackAnchor.END
+        else -> null
+    },
+)
+
+fun Map<String, SpecValue>.fillsParent(): Boolean = boolean("fill") ?: false
 
 // --- SliderProps ---
 

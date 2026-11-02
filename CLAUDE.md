@@ -42,6 +42,10 @@ The rendering half of agent-platform. Kotlin Multiplatform + Compose Multiplatfo
 - **Widget leaves** — text, button, image, video, icon, divider, spacer, textinput, toggle, select, slider, chip. `video` plays a local file on Android; other targets render a visible unsupported notice.
 - **Dense/semantic primitives** — `scene3d`, `canvas`, `geomap`, `graph`, `scene`, `table`. Take typed data (a world, a drawing, a topology, a stock-and-flow diagram, a scene payload, an engine view) instead of child components; scene3d runs its own simulation loop, and `scene` picks a renderer from `view_state` (today only `stacked_scene`). Future members: timeline, heatmap, flow-field, scatterplot3d.
 
+### Generic by construction
+
+An app asks for a feature; the renderer gets a primitive that any app could use, and the app's spec carries the specifics. Name a primitive for what it does to data, never for the app that asked. Vocabulary (labels, units, colours, what a number means) comes from props, not the renderer; values move through bindings so another node can drive them. The test: could an unrelated app use it with no code change? If not, it is not done. The goal is for each app's UI to be built up from its spec, so nothing app-specific lands in `kotlin-compose`. The worked example is `readalong` in AGENTS.md.
+
 ### Spec schema
 
 `Spec { spec_version, renderer_min, root: SpecNode }`. `SpecNode { id, type, props, children, visible, action }`. Props are polymorphic `SpecValue` (string / number / bool / null / nested-node / array / object). Binding refs are `"{path.to.value}"` strings, resolved at render time from a `StateFlow<Map<String, Any?>>`.

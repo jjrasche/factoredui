@@ -8,7 +8,7 @@ class FlowGradeTest {
 
     @Test
     fun a_tap_target_smaller_than_48dp_costs_the_flow_points() {
-        val cramped = specOf(columnNode("root", listOf(buttonNode("tiny_button", "x", "go_a"))))
+        val cramped = specOf(columnNode("root", listOf(buttonNode("tiny_button", "x", "go_a").let { it.copy(props = it.props + ("size" to ai.factoredui.compose.schema.SpecValue.StringValue("sm"))) })))
         val roomy = specOf(columnNode("root", listOf(roomyCardNode("roomy_card", "go_a"))))
 
         val crampedFlow = crawlFlows(cramped, TwoPageHost(), CrawlOptions(maxDepth = 1)).flows.single()

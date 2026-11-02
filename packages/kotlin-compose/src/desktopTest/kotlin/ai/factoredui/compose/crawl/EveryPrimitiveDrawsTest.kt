@@ -20,6 +20,10 @@ private val minimalNodeOf: Map<SpecNodeType, String> = mapOf(
     SpecNodeType.TEXT to """{ "id": "n", "type": "text", "props": { "value": "drawn" } }""",
     SpecNodeType.IMAGE to """{ "id": "n", "type": "image", "props": { "source": "" } }""",
     SpecNodeType.VIDEO to """{ "id": "n", "type": "video", "props": { "source": "/tmp/x.mp4" } }""",
+    SpecNodeType.AUDIO to """{ "id": "n", "type": "audio", "props": { "source": "/tmp/x.mp3", "title": "A chapter" } }""",
+    SpecNodeType.SHEET to """{ "id": "n", "type": "sheet", "children": [{ "id": "t", "type": "text", "props": { "value": "Wall 3", "slot": "peek" } }] }""",
+    SpecNodeType.READALONG to """{ "id": "n", "type": "readalong", "props": { "words": [{ "t": "In", "at": 0, "end": 1 }, { "t": "the", "at": 1, "end": 2 }], "position": "{pos}" } }""",
+    SpecNodeType.VOICE to """{ "id": "n", "type": "voice", "props": { "label": "Hold to talk" } }""",
     SpecNodeType.ICON to """{ "id": "n", "type": "icon", "props": { "name": "check" } }""",
     SpecNodeType.DIVIDER to """{ "id": "n", "type": "divider", "props": {} }""",
     SpecNodeType.SPACER to """{ "id": "n", "type": "spacer", "props": { "size": 24 } }""",
@@ -39,6 +43,11 @@ private val minimalNodeOf: Map<SpecNodeType, String> = mapOf(
     SpecNodeType.GRAPH to """{ "id": "n", "type": "graph", "props": {} }""",
     SpecNodeType.SCENE to """{ "id": "n", "type": "scene", "props": {} }""",
     SpecNodeType.TABLE to """{ "id": "n", "type": "table", "props": {} }""",
+    SpecNodeType.PLAN to """{ "id": "n", "type": "plan", "props": { "shapes": [ { "id": "a", "kind": "rect", "x_mm": 0, "y_mm": 0, "width_mm": 1000, "depth_mm": 600 } ] } }""",
+    SpecNodeType.CHART to """{ "id": "n", "type": "chart", "props": { "rows": [ { "t": 0, "v": 1 }, { "t": 1, "v": 3 } ], "x": "t", "series": [ { "id": "v", "path": "v" } ] } }""",
+    SpecNodeType.HEATMAP to """{ "id": "n", "type": "heatmap", "props": { "x": { "origin": 0, "step": 1, "count": 2 }, "y": { "origin": 0, "step": 1, "count": 2 }, "frames": [ [1, 2, 3, 4] ], "min": 1, "max": 4, "ramp": "heat" } }""",
+    SpecNodeType.STAT to """{ "id": "n", "type": "stat", "props": { "label": "Heat loss", "value": 1842, "unit": "W", "status": "warn" } }""",
+    SpecNodeType.VOLUME to """{ "id": "n", "type": "volume", "props": { "boxes": [ { "id": "a", "x_mm": 0, "y_mm": 0, "z_mm": 0, "width_mm": 1000, "depth_mm": 600, "height_mm": 500 } ] } }""",
 )
 
 // A spacer reserves space and paints nothing — that is its whole job, so it is held to

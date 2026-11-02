@@ -41,6 +41,7 @@ Eyes:
 - A node that paints colour says which, in the values the drawing used. A `text` gives its `ink`, and its `fill` when it has a `background_ramp`. A `card`, `column` or `row` with a background gives its `fill`. Colours are `#rrggbb`, or `#rrggbbaa` when translucent.
 - A `select` gives `options` (`value` and `label`) and its current `value` in `props`. While its menu is open, the items are its children, with ids `<select id>/option/<value>`, `text`, `selected` and `bounds`. A `modal`'s children are ordinary nodes.
 - A `stacked_scene` adds `scene` with these fields (the test `ControlPortDocTest` keeps this list equal to the fields a scene record carries): <!-- scene-record-fields -->`view, focus, hide_top, show_lower, y_axis, north, active_scheme, quarter_turns, zoom, pan_x, pan_y, legend, notices, parts, popup`<!-- /scene-record-fields -->.
+- A `chart` adds `chart` with these fields (kept equal to the record by `ControlPortDocTest`): <!-- chart-record-fields -->`x, axes, series, hover, legend`<!-- /chart-record-fields -->. `x` is `{low, high, ticks}`, the span of the plotted rows and its labelled ticks `[{x, label}]`; `axes` lists each drawn axis as `{side, unit, label, low, high, ticks}`; `series` lists each as `{id, label, kind, axis, color, runs}` where `runs` is its unbroken stretches, each a list of `[x, value, from, to]`; `hover` is null or `{x, values: [{id, text}]}`, what the pointer is reading.
   - `quarter_turns`, `zoom`, `pan_x` and `pan_y` are the values the drawing was made with: `quarter_turns` 0 to 3, `zoom` held between 0.25 and 16.
   - Each part has `{id, type_id, level, fill, outline, value, bounds, centre, covered_by}`. `outline` is `normal`, `highlight`, `selected` or `faded`.
   - `fill` is the colour painted at the part's centre (the top face in the iso).
@@ -98,6 +99,8 @@ Write JSON; never HTML or canvas code.
   "root": { "id": "root", "type": "column", "props": {}, "children": [] } }
 ```
 
+- `theme` (optional): `light` or `dark`. It sets the ink and surfaces of every node that takes them from the theme (text, buttons, sliders, the `audio` and `voice` controls) and the window's ground when the root names no `background`. It overrides the host's choice; a name it does not know is written to `renderer.error` and the host's theme is used. The stock browser host takes `?theme=dark` or `?theme=light`, else the browser's `prefers-color-scheme`, else light. A node that names its own colour keeps it. A root `background` alone does not change the theme: a dark ground with the light theme draws dark ink on it.
+- `state` (optional): dotted binding paths to the values they start at, `{ "day.from": 2757 }`. The first frame already shows them; a path that already has a value (set by the host or by a person) keeps it.
 - A node is `{ id, type, props, children, visible, action }`.
 - `id` is unique in the spec.
 - `props` values are literals, binding refs, or nested nodes.
@@ -106,7 +109,7 @@ Write JSON; never HTML or canvas code.
 
 ## Primitives (closed set; the test `AgentsGuideTest` keeps this list equal to the enum)
 
-column, row, stack, scrollview, grid, text, image, video, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table.
+column, row, stack, scrollview, grid, text, image, video, audio, voice, icon, divider, spacer, textinput, button, toggle, select, slider, card, list, tabs, modal, chip, scene3d, canvas, geomap, graph, scene, table, plan, volume, chart, heatmap, stat, readalong, sheet.
 
 - There is no table and no ratio-against-a-limit widget.
 - A table of the engine's views is a `table` (see Tables). Any other table is a `list` with an `itemTemplate`.
@@ -160,15 +163,19 @@ A string `"{path.to.value}"` is resolved at render time from one state map. Insi
 - `emptyText` (text) is drawn in place of the rows when there are none. With no `emptyText` an empty list draws nothing.
 - `maxItems` (whole number) draws only that many rows.
 - `stacked` (bool, default false) lays the rows out in a plain column instead of a lazy list that scrolls itself. A list whose height is unbounded, as inside a `scrollview`, stacks its rows (or children) whether or not it says so, and takes the height of its content. A list with a bounded height, such as one with a `flex` in a `column` outside any scroll, or one with a `height` even inside a scroll, is a fixed pane: it is lazy and scrolls its own rows.
-- `flex` (number) on a child of a `column` or `row` gives it that share of the space left over, as a weight. A `column` with a flex child fills its height.
+- `where` narrows a list's rows: `{ "field": "status", "in": ["blocked", "stuck"] }` keeps rows whose `field` (a dotted path in the row) reads as one of the `in` texts (a boolean reads `true`/`false`). `field` and `in` may be bindings, so a button can change the filter; an empty `in` keeps every row. A list of such objects keeps rows that pass all of them.
+- `order` sorts the kept rows: `[{ "field": "needs_jim", "rank": ["true"] }, { "field": "status", "rank": ["blocked", "stuck"] }]` puts rows by the first key's rank, then the next; a value not in `rank` comes after those that are, and ties keep their order.
+- `row_name` names the row for the template as well as `row` and `item`, so a list nested in a row can still reach the outer row: `{project.name}` inside a list that is inside the template of a list with `"row_name": "project"`. A list of plain texts has the text itself as the row (`{row}`).
+- `flex` (number) on a child of a `column` or `row` gives it that share of the space left over, as a weight. A `column` with a flex child fills its height. A `button` with a `flex` in a `row` fills its share, so buttons of equal flex are equally wide whatever their labels.
 - `width` and `height` (numbers, dp above 0) on a child of a `column`, `row`, `stack` or `scrollview` draw it exactly that wide or that tall. In a row a `width` takes the place of `flex`, and in a column a `height` does; the flex siblings share what is left. In a scroll, whose height is unbounded, a `height` is what gives a child with no flex a height. A size of 0 or less, or one that is not a number, is ignored, and the parent shows a notice naming the child: "'chart' height must be a number of dp above 0, not '0'; it is ignored." A size is a literal number, not a binding. Other layout props: `gap` and `padding` (whole numbers), `align` (`start`, `center`, `end`, `stretch`), `justify` (`start`, `center`, `end`, `between`, `around`) and `background` (a theme token `ground`, `surface`, `ink` or `muted`, or a colour).
 - A `scene` inside a `scrollview` takes the shape of its window at the available width (at least 200 tall, at most 1.5 times its width) instead of filling the height. A `height` gives it that height instead.
 - Controls (`toggle`, `select`, `slider`, `textinput`) write their new value back to the bound path.
+- A `toggle` takes `label` and `color` (the label's ink, `#rrggbb`), for a toggle on a coloured ground.
+- A `stack` with `fill: true` fills the space its parent gives it, and takes a `background`. Its children sit at the top-left unless one carries `anchor`: `fill` fills the stack, `top` or `bottom` spans its width at that edge, and `end` is the right edge, the full height. A bottom panel that opens is a `sheet` node (see Sheet).
 - A `select` option is `{ "label": "Zoom 2 times", "value": 2 }`; its `value` is text, a number or true/false, and is written in that type. An option is chosen when the bound value reads as the same text (2, 2.0 and "2" all choose option 2), and `/click?id=<select id>/option/2` picks it. An option with no text `label` or with any other `value` is dropped, and the select shows one notice naming each dropped option's index: "select 'zoom' dropped options 1, 3: each needs a text 'label' and a 'value' that is text, a number or true/false".
 - Dense primitives take typed data, not children.
 - `geomap` shows a selection from a `selected` binding (list of ids), writes it on tap, and dispatches `on_feature_tap`.
-- `geomap` `shade_by` colours the features that carry `values` (a feature's `{ "field": number }`, usually 0 to 1) by a weighted score: `{ "weights": { "field": number }, "minimum": number, "ramp": { "stops": [[value, colour], ...], "over": colour, "no_figure": colour } }`. Bind it (`"shade_by": "{map.shade}"`) and move a weight with a `slider`: only the colours change, nothing is drawn again from scratch. The score is the mean of the weighted fields by their weights; a field with weight 0 is ignored. A feature missing a weighted field has no score: it takes the ramp's `no_figure` colour, or is hidden when a `minimum` is set. A feature whose score is under `minimum` is hidden (no fill, outline, label or tap). A feature without `values` keeps its own `fill`. A record that cannot be read (no weights, a negative weight, no ramp, a minimum that is not a number) draws its reason on the map.
-- `scene` picks a renderer from `view_state` (`level_feet`, `quarter_turns`, `centre_mm`, `renderer`).
+- `scene` picks a renderer by its `renderer` prop (or `view_state.renderer`, its older place), else by the zoom the view_state (`level_feet`, `quarter_turns`, `centre_mm`) is at.
 
 ## Window size
 
@@ -180,6 +187,9 @@ The renderer writes the window's size class as bindings, so one spec lays out fo
 - Every param is resolved against the data first. Inside a list row, `"{row.ids}"` is that row's ids.
 - One action is built in: `set_binding` with params `{ "path": "a.b", "value": ... }`. It writes `value` to `path` and never reaches the host.
 - `set_binding` with params `{ "values": { "a.turns": 0, "a.zoom": 1 } }` writes every path in one tap, in the object's key order, each value resolved as `value` is. It refuses `values` beside `path` or `value`, an empty `values`, a `values` that is not an object, or an empty path, and then writes none of them.
+- `set_binding` with params `{ "path": "ui.step", "add": 1, "min": 0, "max": 9 }` adds `add` to the number at `path` (`min`, else 0, when there is none) and keeps it between `min` and `max` when given: a next or previous button. It refuses `add` beside `value` or one that is not a number.
+- `animate_binding` is built in too, with params `{ "path": "heat.hour", "from": 0, "to": 23, "step": 1, "interval_ms": 400, "loop": true, "playing": "ui.playing" }`. A tap starts the number at `path` playing: every `interval_ms` (50 or more, default 1000) it adds `step` (above 0, default 1) until it would pass `to`, then stops there, or with `loop` goes back to `from`. A second tap while it plays stops it where it is. A start from `to` without `loop` begins again at `from`. `playing` names a path that holds true while it plays, to label the button. A bad parameter is written to `renderer.error` and nothing plays.
+- `visible` takes `"{ui.step}=3"` too: the node shows when the value at the path equals what follows the `=`, numbers compared as numbers. One card per step then shows only for its own step.
 - A row tap changes state with it, for example a report row that picks its parts: `{ "action": "set_binding", "params": { "path": "board.picked", "value": "{row.object_ids}" } }`.
 - Dotted paths reach into row maps: `{row.values.worth}` is the `worth` entry of the row's `values`.
 - `set_binding` refuses an empty `path` or a missing `value`. It writes nothing to the path and writes the reason to `renderer.error`. Bind a text node to `"{renderer.error}"` to show it.
@@ -187,7 +197,7 @@ The renderer writes the window's size class as bindings, so one spec lays out fo
 
 ## Stacked scene
 
-A `scene` node with `"view_state": { "renderer": "stacked_scene" }` draws parts stacked in levels from a scene payload. Props:
+A `scene` node with `"renderer": "stacked_scene"` (or `"view_state": { "renderer": "stacked_scene" }`) draws parts stacked in levels from a scene payload. Props:
 
 - `scene_view`: the payload, bound to an object or its JSON text. A bad payload prints the reason on screen.
 - `view`: `plan` (default), `iso`, `south` or `west`. The iso is a fixed isometric projection: it looks down at 35.264 degrees from an azimuth of 45 degrees, and `quarter_turns` picks which of its four aspects is shown. The plan draws a part's x toward the right. Its y runs as `y_axis` says. The south elevation looks along +y with x to the right. The west elevation looks along +x, so the y that is drawn at the top of the plan is on its left.
@@ -239,6 +249,7 @@ A `table` draws one view from the engine's views response: `{ id, label, columns
 - `view`: a binding to the view object, for example `"view": "{reports.<view id>}"` with the views loaded by `--state reports=reports:<views.json>`. A bare id string is not a view: it is refused with the notice "table '<id>' has no view: bind view to the engine's view object".
 - `display`: the display profile, inline or a binding so one profile serves every table: `{ "units": { "<unit>": <entry> }, "kinds": { "<kind>": <entry> } }`. An entry is a named format (`"usd"`), an object format (`{ "scale", "suffix", "decimals" }`), or `{ "format": <either>, "label": "<text>" }`.
 - `display` is inherited. Any container (`column`, `row`, `stack`, `scrollview`, `grid`, `card`, `list`, `tabs`, `modal`) may carry `display`, and every `table` below it inherits it, through list rows, cards and scrolls; the screen root's `display` is the screen-wide default. The nearest container with a `display` wins for its subtree. A table's own `display` is merged over what it inherits, key by key: each of its `units` and `kinds` entries replaces the inherited entry for the same unit or kind, and every other entry is inherited. `display` on any other node is ignored. The resolution order and the notice below use the merged profile.
+- `tabs`: `items` are the labels, `selectedIndex` the bound index, and one child per item. A label is never broken across lines: when every label does not fit its equal share of the width, the strip scrolls sideways with each tab as wide as its label, and the selected tab is kept in view.
 - A column's format is decided in this order: its `columns` override's `format`; else the profile's `units` entry for its `unit`; else the profile's `kinds` entry for its `kind`; else none, the plain figure. A unit with no entry falls through to the kind, so `unit: "1", kind: "ratio"` takes `kinds.ratio`. A text column (`type` or `kind` `text`) is drawn as text with no format.
 - The table gives one notice, on screen and in its `/tree` `notices`, naming only what nothing covered: the units of columns drawn as plain figures because neither an override, a unit entry nor a kind entry covered them, and the kinds of such columns that have no unit. "table 'bom': no display entry for unit(s) 'kg*mm/second^2', 'joule'; drawn as plain figures". A table that covers every column gives none.
 - `show_unit` (default true): the header shows the entry's unit label after the column label: the entry's `label`, else an object format's `suffix` trimmed (" lbf" shows "Force (lbf)"), else nothing (a named format such as `usd` adds nothing unless it has a `label`).
@@ -248,6 +259,8 @@ A `table` draws one view from the engine's views response: `{ id, label, columns
 - `missing` (default "–") is drawn for a null value; a column's `null_display` wins over it. A null-bound cell carries `"null": true` in `/tree`.
 - `empty_text` is drawn when the view has no rows, as the node `<table id>/empty`.
 - `on_row_tap`: an action dispatched when a row is tapped, with params in the row's scope as list rows have: `{row.id}`, `{row.label}`, `{row.object_ids}`, `{row.values.<column>}`.
+- `sort_by` (a binding, e.g. `"{air.sort_by}"`) makes the headers tappable: it holds the sorted column's id (`label` for the label column), and `sort_desc` (a binding, optional) holds true when descending. A tap on a header sorts that column ascending, a second tap flips it; the sorted header ends in " ^" or " v" (plain letters, so the mark draws in every build's default font). Numbers sort by value, text without regard to case, rows with no value stay last either way, ties keep the engine's order. Another node can write the same paths to sort the table; with no `sort_by` binding the rows stay in the engine's order. Rows are numbered in drawn order in `/tree`.
+- Cells wrap inside their share of the width, so a table of four or five columns reads at 390 dp; give a wide column a `width` in `columns` to hold it.
 - `flex` as any child of a column or row.
 - `/tree` ids: the table `<id>`, its header row `<id>/head` and header cells `<id>/head/<column>` (the row label's header is `<id>/head/label`), each row `<id>/row/<i>` (zero-based) and each cell `<id>/row/<i>/label` and `<id>/row/<i>/<column>`. Cells are text nodes: they carry `text`, `null`, `ink` and `bounds`. A row with `on_row_tap` clicks by id.
 
@@ -266,7 +279,7 @@ A `row` with an `action` is tappable too, dispatching it like a card does.
 The `scene` family reads the engine's scene payload (`SceneView`, read by `readSceneView`).
 
 - Units are millimetres.
-- Layers: ground, surface, footprints, instances, water, boundaries and annotations. Each carries a version.
+- Layers: ground, surface, footprints, instances, flows (named water in older payloads, still read), boundaries and annotations. Each carries a version.
 - Every layer but annotations also carries provenance. Annotations carry a version only.
 - Footprints carry `stack_level` and `z_mm`.
 - Types carry an id, label, tags, `footprint_mm` and `height_mm`. Any other type key is ignored.
@@ -274,6 +287,156 @@ The `scene` family reads the engine's scene payload (`SceneView`, read by `readS
 - An absent or null key takes its default.
 - A present key of the wrong type is refused with a `SceneViewFormatException` naming the key. A fraction where a whole number belongs is refused, never rounded. So are a number given as text, a non-array list, a non-object list entry and a malformed `points_mm` pair.
 
+## Plan
+
+A `plan` draws shapes placed in millimetres, seen from above, with the largest y at the top. It holds no vocabulary of its own: the host names every style.
+
+- `shapes`: a list of `{ id, kind, x_mm, y_mm, ... }`. `kind` is `rect` (`width_mm` east and `depth_mm` north from its corner), `line` (to `x2_mm`, `y2_mm`), `marker` (a small square at the point) or `label` (`text`, `align` of `start`, `center` (default) or `end` about the point, and `dx_dp`, `dy_dp` to nudge it right and down).
+- `styles`: style name to `{ fill, stroke, weight, dash }`. Colours are `#rrggbb` or `#rrggbbaa`, `weight` is dp, `dash` is a bool. A shape's `style` names one; a shape with no style takes the theme's ink.
+- `legend`: a list of `{ label, style }`, drawn as swatches under the plan.
+- `empty_text`: drawn when no shape can be drawn.
+- `selected`: a binding to a list of ids (`"{selection.ids}"`). A tap picks the line or point within 14 dp of it, else the smallest rect holding it, a second tap on it or a tap on nothing clears, and the list is written to the bound path, so a `plan` and a `volume` bound to one path agree. With no binding the drawing keeps its own selection. The picked thing is outlined in the theme's ink.
+- `value_ramp`: colours boxes from numbers. A box may carry `values` (a series, read at the bound `frame` index, held between the first and last) or one `value`; with `value_ramp` (`{ stops: [[value, colour], ...] }` or a name: `heat`, `cool_warm`, `viridis`, spread over `min`..`max`) a box with a number is drawn in that ramp's colour for it, a box with none keeps its style. `unit` is printed with the legend line (minimum, gradient, maximum) drawn over the drawing's bottom left. An unreadable ramp is named in a notice.
+- `highlight`: a list of box ids or style names; the boxes it names are drawn as normal and every other box is drawn as a faint ghost (still pickable). A list that names no box the volume holds changes nothing. `focus`: a list of box ids the camera frames when the volume opens, moved in until they fill 98% of the drawing's width or height; "Reset view" returns to the framing of the whole volume. A drawing is never taller than the room its parent gives it (a `height` on the node, less the "Reset view" line), and a scene as small as a stool (down to 2 cm of camera distance) is framed whole.
+- `hidden`: a list of box ids that are not drawn and cannot be picked; the framing does not change when a box is hidden. `picked`: a binding the drawing writes on every tap, `[{ id, index, label }]` for each box the tap could mean, nearest to the viewer first (`label` is the box's `details` title, else its id; `[]` for a tap on nothing).
+- `through`: a bound number, the index into `picked` that is picked through to. The tap sets it to 0 (the nearest) or -1 for a tap on nothing; set it from a chip (`set_binding` with `{item.index}` over a `list` of `{pick.items}`) or a step button. With `through` bound, `selected` becomes `picked[through]` (empty at -1) and every box in front of it (`picked[0 until through]`) is hidden, in addition to `hidden`. Without `through` a tap works as before, walking the candidates one by one.
+- `detail_record`: a binding path the drawing writes the selected box's `details` entry to, as given (so extra fields the host puts there, such as `layers` or `checks`, reach the spec), and nothing when none or several are selected. A sheet binds `{piece.title}`, a `layers` node `{piece.layers}`, and a `list` of `stat` rows `{piece.checks}`.
+- `details`: id to `{ title, sections: [{ heading, rows: [{ label, value, note }] }] }`. When given, only ids it holds can be picked, and the selected one's card is drawn under the drawing (`/tree` node `<id>/detail`); `value` null reads as a dash and `note` is a quiet line under its row.
+- The drawing is fitted to the available width with a margin, and takes the height of its window (at most 1.5 times its width).
+- Shapes are painted in the order given. `/tree` has a node `<plan id>/<shape id>` for each shape, with its bounds, and `<plan id>/legend/<i>` for each legend text.
+- A shape that cannot be drawn (a rect with no `width_mm`, an unknown `kind`, a point that is not a number) is not drawn and the plan prints a notice naming it. A shape whose `style` is not in `styles` is drawn plain and the plan names the style.
+
+## Volume
+
+A `volume` draws boxes in millimetres as one solid scene the person turns, slides and zooms. Like `plan`, it holds no vocabulary: the host names every style. Millimetres are x east, y north, z up.
+
+- `boxes`: a list of `{ id, x_mm, y_mm, z_mm, width_mm, depth_mm, height_mm, rotation_deg, pitch_deg, style, estimate }`. `x_mm`, `y_mm` is the centre of the footprint on the ground, `z_mm` the underside, and `rotation_deg` turns it anticlockwise seen from above. `pitch_deg` (default 0) tips the box about its own width axis through its centre, before it is turned, raising the far (+depth) side for a positive angle: a sheet 2000 deep tipped 30 degrees has its far edge 500 mm above its centre and its near edge 500 mm below; shading, shadows and the drawing's framing follow the tipped corners. `top_rise_mm` (default 0) lifts only the top face's far (+depth) edge by that much, keeping the underside flat, so the box is a wedge (air under a sloped roof): a box 4800 deep with `height_mm` 400 and `top_rise_mm` 1000 is 400 tall at its near edge and 1400 at its far edge; shading, shadows, framing, values and colouring follow like `pitch_deg`. `field` draws a dense scalar field on a grid of cubic cells as soft translucent splats, not one box per cell: `{ origin_mm: [x,y,z] (corner of cell 0,0,0), step_mm, counts: [ni,nj,nk], mask (run lengths, outside then inside alternating, starting outside, over cells with i fastest then j then k; omit for every cell), scale (a reading is the integer / scale, default 1), values (one list per frame, one integer per INSIDE cell in mask order, null for no reading; a null FRAME is one that has not arrived: it draws clear and the volume says "volume field: frame N is not loaded yet." while it is the one shown), style (`soft`, default, a fading disc of radius_cells; or `cells`, a solid square one step wide per cell, opacity default 1, no blending into its neighbours), radius_cells (default 1, soft only), opacity (0 to 1, default 0.5 soft, 1 cells) }`. The volume's `camera` is `orbit` (default, the user turns it) or `side` (fixed, orthographic, looking north along +y with x to the right and z up, no turning or zoom, so a field with counts [nx,1,nz] reads as an exact section). It is coloured by the volume's `value_ramp`, `min`, `max`, `unit` and `frame`, so one slider drives the field and the boxes; without `value_ramp` it is named and not drawn. It is drawn behind the boxes, so a translucent house shows it through its glazing; the mask, not the boxes, decides which cells show. A `width_mm` or `depth_mm` of 0 is a vertical plane and both 0 is a vertical edge. An `estimate` of true hatches the box and dashes its outline: the host uses it for a size it was not given.
+- `styles`: style name to `{ stroke, weight, opacity }`. `opacity` (0 to 1, default 1) draws a style's faces at that alpha with their edges at full, so a glazed box shows what is inside it; it is still pickable and painted in the same far-to-near order. The body is the stroke lightened and shaded by face. `legend`: a list of `{ label, style, hatched }`; `hatched` draws the swatch hatched. `empty_text` is drawn when nothing can be drawn.
+- `fill`: true makes the drawing fill the height its parent gives (a `stack` child anchored `fill`), not 1.15 times its width, and puts "Reset view" over its top-right corner; the selected card is then left to the host. `bottom_inset_dp` leaves that many dp at the bottom for a panel drawn over it.
+- `lighting: "sun"` lights the faces from a sun and casts soft ground shadows from every box whose size is known. `sun`: `[east, north, up]`, the way to the sun, default `[-0.5, -0.6, 0.75]` (from the south-west, high); a vector with no height is ignored. Edges are a deeper tone of the style's `stroke`, which is the body colour.
+- `step`: a number (usually a binding); the field `stage_field` names in each box (default `stage`) is the step it is put in place at. A box is a faint ghost until its stage, drawn with an outline in `current_color` (default `#ffd479`) at it, and drawn as normal after; a box with no `stage` stays a ghost. With no `step` every box is drawn as normal.
+- `grade_mm`: the height in mm of the ground. A translucent soil plane is drawn there and a box that ends below it is drawn under the plane, seen through it; shadows fall on it. Without it the ground is at the lowest box. `grade_color` (`#rrggbb`, default `#6b5a48`) and `grade_opacity` (0 to 1, default 0.5) set the plane's tint.
+- `detail_text`: a binding path the drawing writes the selected thing's card to, as lines (title, headings, `label: value` rows, notes), empty when nothing or several are selected. A `text` bound to it, with `visible` the same path, shows the tapped piece in a dock.
+- `mode: "blueprint"` draws edges only (no faces or shadows) on `ground`, a colour; `lines` are `{id, from, to, style}` with `from` and `to` as `[x, y, z]` in mm, and `labels` are `{id, at, text, style}`, both styled from `styles`. A `plan` takes the same `ground`.
+- `selected`: a binding to a list of ids (`"{selection.ids}"`). A tap (a press that does not move) picks the nearest box whose faces hold it, else one with an edge within 12 dp, a second tap on it or a tap on nothing clears, and the list is written to the bound path, so a `plan` and a `volume` bound to one path agree. With no binding the drawing keeps its own selection. The picked thing is outlined in the theme's ink.
+- `details`: id to `{ title, sections: [{ heading, rows: [{ label, value, note }] }] }`. When given, only ids it holds can be picked, and the selected one's card is drawn under the drawing (`/tree` node `<id>/detail`); `value` null reads as a dash and `note` is a quiet line under its row.
+- One finger or the left button turns the view; two fingers, a right-drag or Ctrl-drag slide it; a pinch or the wheel zooms. A "Reset view" line under the drawing returns to the first framing, from the south-west looking north-east.
+- The drawing is at most 560 dp wide and 1.15 times its width tall. Boxes are painted far to near by their centres, so two boxes that interpenetrate may overlap wrongly.
+- `/tree` has a node `<volume id>/<box id>` for each box with its projected bounds (so a drag shows as bounds that moved), `<volume id>/north`, `<volume id>/reset` and `<volume id>/legend/<i>`. A box that cannot be drawn is named in a notice and not drawn; a `style` not in `styles` is drawn plain and named.
+
+## Chart
+
+A `chart` draws series of numbers against a numeric x: lines, or areas stacked about zero, on a left and a right axis. It computes nothing about the data: it reads each series' value from each row by a path and draws it. The host names every series, axis and unit.
+
+- `rows`: a list of objects, usually a binding (`"{season.steps}"`). `x`: the dotted path in each row to its x (time or any number). A row with no number at `x` is not drawn and one notice counts them. Rows are drawn in the order given.
+- `window`: `{ from, to }` or `{ from, length }` (`to` is `from + length`); either bound may be missing; only rows whose x is inside it, ends included, are drawn. A `from` bound to a path with no value yet leaves every row in.
+- `x_axis`: `{ every, as }`. A tick and a faint vertical line at each multiple of `every` inside the rows drawn, labelled by `as`: `number` (default) or `hour_of_day` (the x modulo 24 as `03:00`). With ticks the x end labels are not drawn; `every` that is not above zero, or an `as` it does not know, is named in a notice.
+- `ink` and `muted`: `#rrggbb` for the axis numbers, legend and readout text and the grid (muted for the numbers), for a page whose ground the theme's ink does not suit; each defaults to the theme's.
+- `series`: a list of `{ id, path, label, kind, axis, color, stack }`. `path` is the dotted path to the value in each row (`stocks.water_temperature_f`). `kind` is `line` (default) or `area`; `axis` is `left` (default) or `right`; `color` is `#rrggbb` (a series without one takes the next of a fixed palette); `label` defaults to `id`. A row with no number at a series' path breaks that series into two runs. A zero stacks on the side its neighbours are on (the nearest nonzero value before it, else after it, else above zero), so it keeps its place on the stack edge; an area that goes from above zero to below is drawn as two pieces that meet where the straight line between the two values crosses zero. A series that cannot be drawn (no id or path, a `kind` or `axis` it does not know, no number at its path in any row) is not drawn and a notice names it.
+- `areas`: positive values stack upward from zero and negative values downward, in series order, among the areas on one axis with the same `stack` name (default `stack`). Each area fills the band between its stack's edges; a zero value is a band of no height. Lines are never stacked.
+- `axes`: `{ left: { unit, label }, right: { unit, label } }`. An axis is drawn only when a series is on its side; it spans round tick values that enclose its series (and zero when it holds an area), with `unit` and `label` printed at its top and `unit` after each value read from a series on it. `x_label` is printed before the x end values and the hover's x.
+- Hover: a pointer over the drawing (or a touch pressed on it) reads the row nearest it: a crosshair, a dot on each series, and under the drawing each series' own value, not the edge it is stacked to. The legend, axes, x ticks, plotted values and the hover are in the node's `chart` field of `/tree`; the legend, axis and readout texts also carry accessibility labels `<id>/legend/<i>`, `<id>/axis/...` and `<id>/readout/...`, which are not `/tree` nodes.
+- `empty_text` is drawn when no series can be drawn.
+
+## Heatmap
+
+A `heatmap` draws a grid of numbers as colours, one frame at a time, and knows nothing about what the numbers are. The host names the axes, the range, the ramp and the unit.
+
+- `x`, `y`: each `{ origin, step, count, label }` (`step` above 0, `count` 1 or more), or `{ edges: [e0, e1, ..., eN], label }` for cells of unequal size: N+1 rising numbers, N cells, each drawn between its own two edges (a `count` beside `edges` is ignored). The grid has `x.count` columns and `y.count` rows; the axis end labels read `origin` and the last cell's `origin`, or the first and last edge. `label` is printed under the grid with the axis's first and last value.
+- `frames`: a list of frames, each a flat row-major list of `x.count * y.count` numbers (the first `x.count` are the first row). A cell that is not a number, or missing from a short frame, is left blank, and a short or long frame is named in a notice.
+- `frame`: the index of the frame drawn (usually a binding, driven by a `slider` or a `button`'s `set_binding`); it is held between the first and last frame. With no frames the node draws `empty_text`.
+- Rows run down the screen from the first; `y_up: true` draws the first row at the bottom. The drawing is as wide as its parent and as tall as the axes' extents (`count * step`, or last edge minus first) make it, between half and four times as wide as tall.
+- `ramp`: `{ stops: [[value, colour], ...], over, legend }` as in `scene`'s colour scale, with values in the data's units, or one of the names `heat`, `cool_warm` and `viridis`, which are spread over `min`..`max`. `min` and `max` (max above min) are required with a name and otherwise default to the first and last stop. A value past the last stop takes the ramp's `over` colour.
+- `unit`: printed after the legend's minimum and maximum. The legend line is the minimum, a gradient bar and the maximum.
+- Tags: `<id>/cells` is the grid, `<id>/legend/min`, `<id>/legend/bar`, `<id>/legend/max`, `<id>/x/first`, `<id>/x/last`, `<id>/x/label` and `<id>/y/label` the texts. The node's record in `/tree` has `text` "frame N of M" and `frame_shown` (the index drawn).
+
+## Audio and voice
+
+Both run only where the host gives the renderer a media engine: the browser (wasmJs) does; desktop, Android and iOS draw a notice and read back `unsupported`. The mic and speech recognition need a secure page (HTTPS or localhost). Neither works with the screen locked except playback and its lock-screen controls.
+
+`audio` plays one stored file (an `<audio>` element, so it keeps playing with the screen locked) and hands the lock screen's controls to the page through the Media Session.
+
+- `source`: the URL. `title`, `artist`, `album`, `artwork` (a URL): what the lock screen shows. A source that changes is opened again.
+- Two-way bindings: `position` (seconds), `playing` (bool), `rate` (number), and `duration` (seconds, written when known). The node writes `position` at most twice a second while it plays and writes `playing` when the player starts, pauses, ends or is refused; a write by anything else seeks, plays, pauses or changes the rate. A `position` already held when the length is known is where it resumes. Seek to a passage with a button's `set_binding` on `position`.
+- `markers`: `[{ at, label }]` in seconds, kept in time order and read back; with markers the lock screen's previous and next go to the start of the passage being heard (or the one before it, within 3 seconds of its start) and the next one; without them they seek by `seek_step` (default 15 seconds, as seekbackward and seekforward do).
+- `on_position`: an action told, with `position`, `rate`, `playing`, `duration` and `reason` (`play`, `pause`, `seek`, `rate`, `ended` or `tick`) added to its params, on each of those and every `report_every` seconds of narration while it plays (default 5).
+- `media_actions`: `{ <lock-screen action>: { action, params } }` for `play`, `pause`, `previoustrack`, `nexttrack`, `seekbackward`, `seekforward`, `seekto`, `stop`. A named one is dispatched instead of its default, with its params resolved then (`"position": "{book.position}"`), so a spec can make a lock-screen button a reaction such as "lost me". A name it does not know is named in a notice.
+- `show_title`: false hides the on-page title; `title` is still what the lock screen shows.
+- `controls`: true (default) draws a play and pause button, minus and plus `seek_step` buttons, a seek bar, the time and a rate button (0.75 to 2). Browsers start sound only after a tap, and a page that sets `playing` before one is refused: the node reads back `blocked`, writes `playing` false and says to tap play.
+- `/tree` node `audio` field: `source, status, position, duration, playing, rate, markers, media_actions`; `status` is `idle`, `loading`, `ready`, `blocked`, `failed` or `unsupported`.
+
+`voice` is one large control that captures speech.
+
+- `mode`: `hold` (default: listens while pressed) or `toggle`. `label` (default "Hold to talk" or "Tap to talk"). `lang`.
+- `capture`: `text` (default; the browser's speech recognition, which on Chrome sends the audio to the browser vendor's service) or `audio` (records and POSTs the recording to `upload_url`). Only one is used, because a phone's mic can serve one capture at a time.
+- `on_capture`: an action told when listening ends with something to tell, with `text`, `confidence`, `ms`, `uploaded` and `bytes` added to its params. Listening that ends with nothing heard tells nothing.
+- Bindings written: `listening` (bool) and `transcript` (the last words heard).
+- `/tree` node `voice` field: `label, mode, capture, status, listening, transcript`; `status` is `ready`, `listening`, `failed` or `unsupported`, and a failure (a refused mic, no HTTPS, no recognition) is in the node's notices.
+
+A `button` with `size: "xl"` is at least 72 dp tall with a large label, for a thumb. In the stock browser host, an action the host does not know is POSTed as `{ action, params }` (numbers and booleans kept) to `/action` beside the spec URL (`/spec.json` becomes `/action`), or to the `action` query parameter. The server's JSON answer can write bindings: `{ "set": { "pushback.guide": "…", "pushback.audio": "/x.mp3" } }` writes each path in one step, as `set_binding` with `values` does, except that a text is stored as it is and never read as a binding. An empty answer writes nothing. A status outside 200 to 299, an answer that is not a JSON object, a `set` that is not an object or has an empty path, or a server that cannot be reached writes the reason to `renderer.error` and changes nothing else. There is one route per spec: a server branches on the action name.
+
+## Readalong, and how a primitive is kept generic
+
+`readalong` is text whose runs light up as a number moves through their ranges. The number is any numeric binding: an audio position, a video time, a slider, a day count, a log offset. Nothing in the node knows about books or sound; a spec supplies the meaning.
+
+- `words`: `[{ t, at, end, v?, p? }]`. `t` is the run as shown, `at` and `end` are where it starts and stops on the number line, `v` is an optional small marker label drawn before it (a verse number, a line number, a speaker), `p: true` starts a new paragraph.
+- `position`: the numeric binding. The run with `at <= position < end` is lit, the previous one stays lit between runs, and none is lit before the first. The node only reads it; whatever moves the number (an `audio` node writing the same path) moves the text.
+- A tap on a run writes that run's `at` to `position`, so the thing that follows the number (an `audio` node) seeks. `on_word_tap` is also told `index`, `at` and `marker` (also given as `verse`, its older name).
+- `highlight_color` (a token name or `#rrggbb`; default the accent, with text chosen for contrast), `size` (sp), `follow` (default true: the lit run is kept in view; a drag pauses it until the next tap).
+- It scrolls inside itself, so the page does not. Give it `flex: 1` in a column to fill the space left under fixed controls, or a `height`; with neither it is at most 420 dp tall.
+- `/tree` node: `text` is the whole text, `props` carries `lit_index`, `lit_text` and `word_count`.
+
+Examples of the same node with no book in it:
+
+- A recipe whose steps are lit as a timer runs: runs are the steps, `position` is the timer's elapsed seconds.
+- Subtitles on a `video`: runs are the cues, `position` is the video's `position`.
+- A changelog read against a `slider` of dates: runs are the entries, `position` is the slider's value.
+
+The rule for any new primitive: name it for what it does to data, not for the app that asked for it; take its vocabulary from props (labels, units, colours), never from the renderer; read and write numbers and text through bindings so another node can drive it. If a request only makes sense for one app, build the generic node and let that app's spec carry the specifics.
+
+## Sheet
+
+`sheet` is a bottom sheet that shows more as it opens. Put it last in a `stack` so it sits over the content (a `scene3d`, a map, a table); it takes no space of its own and touches pass through everywhere it is not.
+
+- Children carry `slot`: `peek` (always shown), `half` (shown at half and full) or `full` (shown only at full). A child with no slot is shown at full and named in a notice.
+- `stop`: `peek`, `half` or `full`. Bind it (`"stop": "{piece.stop}"`) and the sheet writes it when the reader taps the handle (peek, half, full, back to peek) or drags it; a spec can also set it, for example to `half` when something is selected. Unbound, the sheet keeps its own stop.
+- `peek_height` (default 96 dp), `half_height` (default 320 dp); full is 92% of the height. `background` is a token name or `#rrggbb` (default the raised ground). The 44 dp handle is the touch target. Everything in the sheet scrolls together under the handle.
+- It is always a bottom sheet. Placement by window size is the spec's: draw a `sheet` with `visible: "{window.is_compact}"` and, for a wider window, a plain `column` child of the `stack` with `anchor: "end"` and a `width`, `visible: "{window.is_at_least_medium}"`, holding the same content without slots.
+- `/tree`: `props` carries `stop`; a slot that is not shown is not in the tree.
+
+`stack` children take an `anchor`: `fill`, `top`, `bottom`, or `end` (the right edge, the full height; give the child a `width`).
+
+A `row` may take `data` and an `itemTemplate` as a `list` does: it draws the template once per row, side by side, with the row bound as `{row.x}` and `{item.x}`. A template's `flex` may be a binding (`"flex": "{item.share}"`), so a proportional bar is a row of cells whose widths come from the data, and `background` may be too (`"{item.color}"`). With `scroll_to` bound to a number the row does not draw all its rows at once: it is one line that does not scroll by hand and brings the row at that number into view, so a chosen chip stays on screen (static `children` are not drawn then).
+
+`on_swipe` is a gesture any node may carry: `{ "left": <action>, "right": <action> }`. A horizontal drag of 48 dp or more, ending on that node, dispatches the action for its direction (left for a drag to the left); a shorter one does nothing. Either side may be left out. Use `set_binding` with `add` to step a number (`{ "path": "pick.through", "add": 1, "min": 0 }`), which keeps it in range. A node that scrolls sideways by itself takes the drag first.
+
+A child with `visible` false takes no space in a `column` or `row`, whatever its `flex`.
+## Stat
+
+A `stat` is a card for one figure: a label, a big monospaced number, a unit and an optional status.
+
+- `label`, `value`, `unit`: text. `value` is formatted as a `text` node formats its value (`format`, `missing`), so a figure the engine gave as null reads as the missing mark and the card is never empty.
+- `status`: `pass`, `warn` or `fail` draws a bar in the status colour down the card's left edge and says the word under the figure ("Pass", "Warn", "Fail"), so colour is never the only signal. `status_text` words it differently ("Fits"). Any other status is named in a notice and the card is drawn without one.
+- `fraction`: a number from 0 up (a value over its limit, 0.71 for 71%). Draws a bar under the figure, full at 1.0; past 1.0 it is full and in the fail colour. A negative one is ignored. It is how a check against a limit is drawn.
+- It reads back in `/tree` as one line of `text` (`label value unit`), `props.status_shown`, `props.fraction_shown` and its `notices`.
+
+## Page script (playground host)
+
+The playground's wasm page puts `window.factoredUi` on the page: `setState(path, json)` writes a dotted path (a numeric segment is a list index; an index past the end grows the list with null slots; a JS object is stringified for you), `getState(path)` returns JSON text, `onChange(path, fn)` calls `fn(json)` each time the value there is replaced and returns an id, and `off(id)` stops it. `setState` returns '' when written, else why not. A state string containing `{name}` is read as a binding and comes back empty, so a URL template needs another marker. A slider writes floats (12.000000953674316): round before using one as an index.
+
+## Theme and tokens
+
+Every colour, size and step a node draws with comes from a theme, and a theme is a set of design tokens in the W3C Design Tokens format (DTCG): `design/dark.tokens.json` and `design/light.tokens.json` are the defaults, written by the code, and a test fails if they drift.
+
+- Tokens: `color.ground`, `ink`, `muted`, `accent`, `on-accent`, `status.pass`, `status.warn`, `status.fail`, `series.1` to `series.8`; `elevation.surface`, `raised`, `overlay` (how far each surface steps from the ground toward the ink); `dimension.space.xs` to `xxl` and `gutter`; `dimension.radius.sm` to `xl`; `dimension.control.sm` (36), `md` (48), `lg` (56), `xl` (72); `type.display`, `heading`, `subheading`, `body`, `caption`, `label`, `mono` (DTCG typography: fontSize, fontWeight, lineHeight as a multiplier).
+- Names for a colour in a spec (`background`, a text's `color`): `ground`, `surface`, `raised`, `overlay`, `ink`, `muted`, `accent`, `on_accent`, `pass`, `warn`, `fail`, or `#rrggbb`. A text `variant` is `display`, `heading`, `subheading`, `body`, `caption`, `label` or `mono`.
+- A `button` is `size` `sm`, `md` (default), `lg` or `xl`: 36, 48, 56 and 72 dp, the first drawn that tall inside the platform's 48 dp touch target.
+- A chart takes the series colours from `color.series` (eight, colour-blind safe, 3:1 on every ground in both themes) unless a series names its own.
+- A user brings a theme as a DTCG file: `?tokens=<url>` or `localStorage["factoredui.theme"]` in the browser host. It declares `$extensions["ai.factoredui"].mode` (`dark` or `light`) and overrides only the tokens it names. A token with no type, the wrong type, a translucent colour, a value the renderer does not read, a text colour under 4.5:1 or a series colour under 3:1 on the ground, the surface or the raised surface, or one that would make a default colour unreadable, keeps its default; each reason is in `theme.notices`. A colour is a DTCG colour object (`colorSpace`, `components`, `hex`) or a bare hex string.
+
+## Window size
+
+The renderer writes the window's size class as bindings, so one spec lays out for a phone, a tablet and a desktop with `visible`: `window.class` (`compact` under 600 dp wide, `medium` from 600, `expanded` from 840), `window.is_compact`, `window.is_medium`, `window.is_expanded`, `window.is_at_least_medium`, `window.height_class` (`compact` under 480 dp, `medium` from 480, `expanded` from 900), `window.width` and `window.height` in dp.
 ## Reports data
 
 The engine answers with its views response: `{ "views": [ { "id", "label", "columns": [ { "id", "label", "unit" } ], "rows": [ { "id", "label", "object_ids": [...], "values": { ... } } ] } ] }`. These named tables are not the stacked_scene's `view` prop. An older engine answered `{ "reports": [...] }`, which is still read; when both keys are present, `views` is used. This guide calls each table a report.

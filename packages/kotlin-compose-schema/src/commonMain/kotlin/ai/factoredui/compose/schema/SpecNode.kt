@@ -34,6 +34,8 @@ data class Spec(
      * overlay than per-node bindings.
      */
     val keybindings: Map<ShortcutKey, ActionRef> = emptyMap(),
+    val state: Map<String, SpecValue> = emptyMap(),
+    val theme: String? = null,
 )
 
 /**
@@ -69,6 +71,10 @@ enum class SpecNodeType {
     @SerialName("text") TEXT,
     @SerialName("image") IMAGE,
     @SerialName("video") VIDEO,
+    @SerialName("audio") AUDIO,
+    @SerialName("readalong") READALONG,
+    @SerialName("sheet") SHEET,
+    @SerialName("voice") VOICE,
     @SerialName("icon") ICON,
     @SerialName("divider") DIVIDER,
     @SerialName("spacer") SPACER,
@@ -88,6 +94,11 @@ enum class SpecNodeType {
     @SerialName("graph") GRAPH,
     @SerialName("scene") SCENE,
     @SerialName("table") TABLE,
+    @SerialName("plan") PLAN,
+    @SerialName("chart") CHART,
+    @SerialName("heatmap") HEATMAP,
+    @SerialName("stat") STAT,
+    @SerialName("volume") VOLUME,
 }
 
 /**

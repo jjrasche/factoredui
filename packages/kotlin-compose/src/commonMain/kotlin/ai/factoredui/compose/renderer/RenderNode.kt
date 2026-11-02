@@ -54,6 +54,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.toArgb
 import ai.factoredui.compose.ramp.ValueColourReading
@@ -80,12 +81,17 @@ import ai.factoredui.compose.schema.asGridProps
 import ai.factoredui.compose.schema.asIconProps
 import ai.factoredui.compose.schema.asImageProps
 import ai.factoredui.compose.schema.asLayoutProps
+import ai.factoredui.compose.schema.fillsParent
 import ai.factoredui.compose.schema.asListProps
+import ai.factoredui.compose.schema.selectListRows
 import ai.factoredui.compose.schema.asSpacerProps
 import ai.factoredui.compose.schema.asTextProps
 import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.schema.displayedText
+import ai.factoredui.compose.schema.ButtonSize
 import ai.factoredui.compose.schema.ButtonVariant
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.LocalTextStyle
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
@@ -109,6 +115,16 @@ fun RenderSpec(root: SpecNode, context: RenderContext) {
     }
 }
 
+private fun themeOf(spec: Spec, context: RenderContext): SpecTheme {
+    val named = spec.theme ?: return context.theme
+    return context.themes[named] ?: themeNamed(named) ?: context.theme.also { context.setBinding(RENDERER_ERROR_PATH, "spec theme must be light or dark, not '$named'; the host's theme is used.") }
+}
+
+private fun windowGroundOf(root: SpecNode, theme: SpecTheme): Color {
+    val named = (root.props["background"] as? SpecValue.StringValue)?.value?.takeUnless { it.startsWith("{") }
+    return named?.let { theme.tokenColor(it) ?: it.parseColor() } ?: theme.ground
+}
+
 /**
  * Renders a full [Spec]: its root tree plus any spec-level keyboard shortcuts.
  * When [Spec.keybindings] is empty this is just the root render — no focus
@@ -116,11 +132,12 @@ fun RenderSpec(root: SpecNode, context: RenderContext) {
  */
 @Composable
 fun RenderSpec(spec: Spec, context: RenderContext) {
+    remember(spec) { context.startBindings(spec.state.mapValues { (_, value) -> BindingResolver.resolveValue(value, emptyMap()) }) }
     context.screen.root = spec.root
-    ThemeScope(context.theme) {
+    ThemeScope(remember(spec.theme, context.theme) { themeOf(spec, context) }) {
         CompositionLocalProvider(LocalScreenRegistry provides context.screen) {
             ScreenFrameCounter(context.screen)
-            Box(modifier = Modifier.fillMaxSize().background(context.theme.ground)) {
+            Box(modifier = Modifier.fillMaxSize().background(windowGroundOf(spec.root, LocalSpecTheme.current))) {
                 WindowSizeBindings(context)
                 if (spec.keybindings.isEmpty()) {
                     RenderNode(node = spec.root, context = context)
@@ -187,10 +204,12 @@ fun RenderNode(node: SpecNode, context: RenderContext) {
     val scopedTheme = themeNamed(resolvedProps["theme"] as? String)
     val profile = scopedProfileOf(node, resolvedProps) ?: LocalDisplayProfile.current
     CompositionLocalProvider(LocalNodeIdentity provides NodeIdentity(node.id, path), LocalDisplayProfile provides profile) {
-        if (scopedTheme == null) {
-            RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context)
-        } else {
-            ThemeScope(scopedTheme) { RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context) }
+        SwipeHost(node, context) {
+            if (scopedTheme == null) {
+                RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context)
+            } else {
+                ThemeScope(scopedTheme) { RenderNodeByType(node = node, resolvedProps = resolvedProps, context = context) }
+            }
         }
     }
 }
@@ -228,7 +247,7 @@ private fun boundPropsOf(node: SpecNode, resolvedProps: Map<String, Any?>): Map<
 
 @Composable
 private fun ThemeScope(theme: SpecTheme, content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = theme.colorScheme(MaterialTheme.colorScheme)) {
+    MaterialTheme(colorScheme = theme.colorScheme(MaterialTheme.colorScheme), typography = theme.typography(), shapes = theme.shapes()) {
         CompositionLocalProvider(LocalSpecTheme provides theme, LocalContentColor provides theme.ink, content = content)
     }
 }
@@ -249,7 +268,7 @@ private fun RenderNodeByType(
         SpecNodeType.STACK -> RenderStack(node, context)
         SpecNodeType.SCROLLVIEW -> RenderScrollView(node, context)
         SpecNodeType.GRID -> RenderGrid(node, context)
-        SpecNodeType.TEXT -> RenderText(node, resolvedProps)
+        SpecNodeType.TEXT -> RenderText(node, resolvedProps, context)
         SpecNodeType.BUTTON -> RenderButton(node, resolvedProps, context)
         SpecNodeType.IMAGE -> RenderImage(node, resolvedProps)
         SpecNodeType.ICON -> RenderIcon(node, resolvedProps)
@@ -293,10 +312,19 @@ private fun RenderNodeByType(
         SpecNodeType.CANVAS -> RenderCanvas(node, context)
         SpecNodeType.GEOMAP -> RenderGeomap(node, resolvedProps, context)
         SpecNodeType.GRAPH -> RenderGraph(node, resolvedProps, context)
+        SpecNodeType.PLAN -> RenderPlan(node, resolvedProps, context)
+        SpecNodeType.CHART -> RenderChart(node, resolvedProps, context)
+        SpecNodeType.HEATMAP -> RenderHeatmap(node, resolvedProps)
+        SpecNodeType.STAT -> RenderStat(node, resolvedProps)
+        SpecNodeType.VOLUME -> RenderVolume(node, resolvedProps, context)
         SpecNodeType.SCENE -> RenderScene(node, resolvedProps, context)
         SpecNodeType.TABLE -> RenderTable(node, resolvedProps, context)
         SpecNodeType.TOGGLE -> RenderToggle(node, resolvedProps, context)
         SpecNodeType.VIDEO -> RenderVideo(node, resolvedProps, context)
+        SpecNodeType.AUDIO -> RenderAudio(node, resolvedProps, context)
+        SpecNodeType.READALONG -> RenderReadAlong(node, resolvedProps, context)
+        SpecNodeType.SHEET -> RenderSheet(node, resolvedProps, context)
+        SpecNodeType.VOICE -> RenderVoice(node, resolvedProps, context)
         SpecNodeType.SLIDER -> RenderSlider(node, resolvedProps, context)
         SpecNodeType.SELECT -> RenderSelect(node, resolvedProps, context)
         SpecNodeType.TABS -> RenderTabs(node, resolvedProps, context)
@@ -329,11 +357,13 @@ private fun resolveLayoutProps(node: SpecNode, resolved: Map<String, Any?>): Lay
         gap = (resolved["gap"] as? Number)?.toInt() ?: base.gap,
         padding = (resolved["padding"] as? Number)?.toInt() ?: base.padding,
         background = (resolved["background"] as? String) ?: base.background,
+        flex = (resolved["flex"] as? Number)?.toFloat() ?: base.flex,
     )
 }
 
 @Composable
 private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val liveData by context.dataFlow.collectAsState()
     val props = resolveLayoutProps(node, resolvedProps)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     // A node's OWN flex is honoured by whatever lays it out — except at the root, where
@@ -355,6 +385,7 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
             val fixedWidth = childLayout.width
             val fixedHeight = childLayout.height
             when {
+                !BindingResolver.isVisible(child.visible, liveData) -> RenderNode(node = child, context = context)
                 fixedHeight != null -> Box(Modifier.height(fixedHeight.dp).then(columnSlotWidth(fixedWidth, props.align)), propagateMinConstraints = true) { RenderInSlot(child, context, fixedWidth) }
                 fixedWidth != null -> Box(Modifier.let { if (childFlex > 0f) it.weight(childFlex) else it }.width(fixedWidth.dp)) { RenderInFixedSlot(child, context) }
                 childFlex > 0f -> Box(Modifier.weight(childFlex)) { RenderNode(node = child, context = context) }
@@ -367,7 +398,9 @@ private fun RenderColumn(node: SpecNode, resolvedProps: Map<String, Any?>, conte
 
 @Composable
 private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val liveData by context.dataFlow.collectAsState()
     val props = resolveLayoutProps(node, resolvedProps)
+    if (node.scrollsToARow()) return ScrollingRowOfData(node, resolvedProps, context, props.gap, props.padding)
     val hasFlexChild = node.children.any { it.props.asLayoutProps().flex > 0f }
     val claimsSpace = props.flex > 0f
     val fillWidth = hasFlexChild || claimsSpace || props.justify != LayoutJustify.START
@@ -389,15 +422,31 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
             val fixedHeight = heightOf(childLayout.height)
             val isHeightFixed = childLayout.height != null
             when {
+                !BindingResolver.isVisible(child.visible, liveData) -> RenderNode(node = child, context = context)
                 fixedWidth != null -> Box(modifier = Modifier.width(fixedWidth.dp).then(fixedHeight), propagateMinConstraints = isHeightFixed) { RenderInFixedSlot(child, context) }
                 childLayout.flex > 0f -> Box(modifier = Modifier.weight(childLayout.flex).then(fixedHeight), propagateMinConstraints = isHeightFixed) {
-                    CompositionLocalProvider(LocalSlotWidth provides SlotWidth.GIVEN) { RenderNode(node = child, context = context) }
+                    CompositionLocalProvider(LocalSlotWidth provides SlotWidth.FLEX) { RenderNode(node = child, context = context) }
                 }
                 isHeightFixed -> Box(modifier = fixedHeight, propagateMinConstraints = true) {
                     CompositionLocalProvider(LocalSlotWidth provides SlotWidth.SHARED) { RenderNode(node = child, context = context) }
                 }
                 else -> CompositionLocalProvider(LocalSlotWidth provides SlotWidth.SHARED) { RenderNode(node = child, context = context) }
             }
+        }
+        RowOfData(node, resolvedProps, context)
+    }
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.RowOfData(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val template = (node.props["itemTemplate"] as? SpecValue.NodeValue)?.value ?: return
+    val rows = (resolvedProps["data"] as? List<*>)?.filterNotNull() ?: return
+    val listPath = LocalNodeIdentity.current?.path ?: node.id
+    rows.forEachIndexed { index, row ->
+        val rowContext = context.withAdditionalData(mapOf("row" to row, "item" to row))
+        val flex = (BindingResolver.resolveProps(template.props, rowContext.data)["flex"] as? Number)?.toFloat() ?: template.props.asLayoutProps().flex
+        CompositionLocalProvider(LocalPathPrefix provides "$listPath/$index/") {
+            if (flex > 0f) Box(modifier = Modifier.weight(flex)) { RenderNode(node = template, context = rowContext) } else RenderNode(node = template, context = rowContext)
         }
     }
 }
@@ -424,7 +473,7 @@ private fun columnSlotWidth(fixedWidth: Float?, align: LayoutAlign): Modifier = 
 
 /** A child of a stack or a scroll with a width or height is drawn in a slot of exactly that size; one with neither is drawn as it is. */
 @Composable
-private fun RenderSizedChild(child: SpecNode, context: RenderContext) {
+internal fun RenderSizedChild(child: SpecNode, context: RenderContext) {
     val layout = child.props.asLayoutProps()
     if (layout.width == null && layout.height == null) return RenderNode(node = child, context = context)
     Box(modifier = widthOf(layout.width).then(heightOf(layout.height)), propagateMinConstraints = true) { RenderInSlot(child, context, layout.width) }
@@ -481,9 +530,9 @@ private fun horizontalArrangement(justify: LayoutJustify, gap: Int): Arrangement
 
 @Composable
 private fun RenderStack(node: SpecNode, context: RenderContext) {
-    Box(modifier = Modifier.nodeTag(node.id)) {
+    Box(modifier = (if (node.props.fillsParent()) Modifier.fillMaxSize() else Modifier).groundOf(node.props.asLayoutProps()).nodeTag(node.id)) {
         SlotSizeNotices(node.children)
-        node.children.forEach { child -> RenderSizedChild(child, context) }
+        node.children.forEach { child -> RenderStackChild(child, context) }
     }
 }
 
@@ -710,7 +759,9 @@ private fun RenderStaticList(props: ListProps, context: RenderContext) {
  */
 @Composable
 private fun RenderRows(rows: List<Any?>, props: ListProps, context: RenderContext) {
-    val visibleRows = rows.filterNotNull().let { all ->
+    val liveData by context.dataFlow.collectAsState()
+    val selected = selectListRows(rows, props.where?.let { BindingResolver.resolveValue(it, liveData) }, props.order?.let { BindingResolver.resolveValue(it, liveData) })
+    val visibleRows = selected.filterNotNull().let { all ->
         val cap = props.maxItems
         if (cap != null && all.size > cap) all.take(cap) else all
     }
@@ -730,11 +781,17 @@ private fun RenderRows(rows: List<Any?>, props: ListProps, context: RenderContex
     RecordDrawn { rowCount = visibleRows.size }
     BoxWithConstraints(modifier = list?.let { Modifier.nodeTag(it.id) } ?: Modifier, propagateMinConstraints = true) {
         if (props.stacked || !constraints.hasBoundedHeight) {
-            StackedRows(visibleRows, itemTemplate, context, list?.path.orEmpty())
+            StackedRows(visibleRows, itemTemplate, context, list?.path.orEmpty(), props.rowName)
         } else {
-            LazyRows(visibleRows, itemTemplate, context, list?.path.orEmpty())
+            LazyRows(visibleRows, itemTemplate, context, list?.path.orEmpty(), props.rowName)
         }
     }
+}
+
+private fun rowData(row: Any, rowName: String?): Map<String, Any> = buildMap {
+    put("row", row)
+    put("item", row)
+    rowName?.let { put(it, row) }
 }
 
 @Composable
@@ -743,18 +800,18 @@ private fun RowScope(listPath: String, index: Int, content: @Composable () -> Un
 }
 
 @Composable
-private fun StackedRows(rows: List<Any>, itemTemplate: SpecNode, context: RenderContext, listPath: String) {
+private fun StackedRows(rows: List<Any>, itemTemplate: SpecNode, context: RenderContext, listPath: String, rowName: String?) {
     Column {
         rows.forEachIndexed { index, row ->
             RowScope(listPath, index) {
-                RenderNode(node = itemTemplate, context = context.withAdditionalData(mapOf("row" to row, "item" to row)))
+                RenderNode(node = itemTemplate, context = context.withAdditionalData(rowData(row, rowName)))
             }
         }
     }
 }
 
 @Composable
-private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: RenderContext, listPath: String) {
+private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: RenderContext, listPath: String, rowName: String?) {
     LazyColumn {
         itemsIndexed(visibleRows) { index, row ->
             // Scope the row under "row" (the requested "{row.x}" syntax) and
@@ -763,7 +820,7 @@ private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: Re
             // "{item.id}" resolve identically — and because the template renders
             // with this scoped context, action param interpolation in dispatch()
             // picks up the same row overlay for free.
-            val rowContext = context.withAdditionalData(mapOf("row" to row, "item" to row))
+            val rowContext = context.withAdditionalData(rowData(row, rowName))
             RowScope(listPath, index) { RenderNode(node = itemTemplate, context = rowContext) }
         }
     }
@@ -772,13 +829,17 @@ private fun LazyRows(visibleRows: List<Any>, itemTemplate: SpecNode, context: Re
 // --- Leaf nodes ---
 
 @Composable
-private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
-    val props = resolvedProps.asResolvedTextProps()
+private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val theme = LocalSpecTheme.current
+    val scope = rememberCoroutineScope()
+    val props = resolvedProps.asResolvedTextProps().let { read -> read.copy(colorValue = read.colorName?.let { named -> theme.tokenColor(named) ?: named.parseColor() }) }
     val style = when (props.variant) {
+        "display" -> MaterialTheme.typography.displayMedium
         "heading" -> MaterialTheme.typography.headlineMedium
         "subheading" -> MaterialTheme.typography.titleMedium
         "caption" -> MaterialTheme.typography.bodySmall
         "label" -> MaterialTheme.typography.labelMedium
+        "mono" -> theme.monoStyle()
         else -> MaterialTheme.typography.bodyMedium
     }
     val paint = textPaint(props, LocalSpecTheme.current.ink)
@@ -802,13 +863,14 @@ private fun RenderText(node: SpecNode, resolvedProps: Map<String, Any?>) {
         },
         maxLines = props.numberOfLines ?: Int.MAX_VALUE,
         modifier = Modifier.nodeTag(node.id)
+            .let { modifier -> node.action?.let { action -> modifier.clickable { scope.launch { context.dispatch(node.id, action) } } } ?: modifier }
             .let { if (fills) it.fillMaxWidth() else it }
             .let { modifier -> paint.background?.let { modifier.background(it).padding(horizontal = 6.dp, vertical = 2.dp) } ?: modifier },
     )
 }
 
-/** The width a node's slot gives it: what its parent gives (a flex share or the parent's width), shared with flex siblings in a row, or a fixed `width`. */
-internal enum class SlotWidth { GIVEN, SHARED, FIXED }
+/** The width a node's slot gives it: what its parent gives (the parent's width), a flex weight in a row, shared with flex siblings in a row, or a fixed `width`. */
+internal enum class SlotWidth { GIVEN, FLEX, SHARED, FIXED }
 
 internal val LocalSlotWidth = staticCompositionLocalOf { SlotWidth.GIVEN }
 
@@ -820,7 +882,7 @@ private fun isBindingToNull(node: SpecNode, resolvedProps: Map<String, Any?>): B
 private fun fillsItsSlot(align: String, hasBackground: Boolean, slot: SlotWidth): Boolean = when (slot) {
     SlotWidth.FIXED -> true
     SlotWidth.SHARED -> false
-    SlotWidth.GIVEN -> align == "center" || align == "right" || hasBackground
+    SlotWidth.GIVEN, SlotWidth.FLEX -> align == "center" || align == "right" || hasBackground
 }
 
 private class TextPaint(val ink: Color, val background: Color?, val notice: String?)
@@ -858,32 +920,35 @@ private fun RenderButton(node: SpecNode, resolvedProps: Map<String, Any?>, conte
             scope.launch { context.dispatch(node.id, actionRef) }
         }
     }
+    val fillsFlexShare = LocalSlotWidth.current == SlotWidth.FLEX && node.props.asLayoutProps().flex > 0f
 
+    val sized = Modifier.nodeTag(node.id).heightIn(min = LocalSpecTheme.current.control.dpOf(props.size.name.lowercase()))
+        .let { if (fillsFlexShare) it.fillMaxWidth() else it }
     when (props.variant) {
         ButtonVariant.OUTLINE -> OutlinedButton(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.nodeTag(node.id),
-        ) { ButtonContent(icon, label) }
+            modifier = sized,
+        ) { ButtonContent(icon, label, props.size) }
 
         ButtonVariant.GHOST -> TextButton(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.nodeTag(node.id),
-        ) { ButtonContent(icon, label) }
+            modifier = sized,
+        ) { ButtonContent(icon, label, props.size) }
 
         ButtonVariant.DESTRUCTIVE -> Button(
             onClick = onClickHandler,
             enabled = !isDisabled,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier.nodeTag(node.id),
-        ) { ButtonContent(icon, label) }
+            modifier = sized,
+        ) { ButtonContent(icon, label, props.size) }
 
         else -> Button(
             onClick = onClickHandler,
             enabled = !isDisabled,
-            modifier = Modifier.nodeTag(node.id),
-        ) { ButtonContent(icon, label) }
+            modifier = sized,
+        ) { ButtonContent(icon, label, props.size) }
     }
 }
 
@@ -960,15 +1025,16 @@ private fun IconifyImage(name: String, sizeDp: Dp, contentDescription: String, m
 }
 
 @Composable
-private fun ButtonContent(icon: String?, label: String) {
+private fun ButtonContent(icon: String?, label: String, size: ButtonSize) {
+    val style = if (size == ButtonSize.XL) MaterialTheme.typography.headlineSmall else LocalTextStyle.current
     if (!icon.isNullOrEmpty()) {
         IconifyImage(name = icon, sizeDp = 20.dp, contentDescription = label.ifEmpty { "icon" })
         if (label.isNotEmpty()) {
             Spacer(Modifier.width(8.dp))
-            Text(label)
+            Text(label, style = style, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     } else {
-        Text(label)
+        Text(label, style = style, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -1057,6 +1123,7 @@ private data class ResolvedTextProps(
     val variant: String,
     val align: String,
     val colorValue: Color?,
+    val colorName: String?,
     val bold: Boolean,
     val numberOfLines: Int?,
     val colorRamp: Any?,
@@ -1069,7 +1136,8 @@ private fun Map<String, Any?>.asResolvedTextProps(): ResolvedTextProps = Resolve
     value = displayedTextValue(),
     variant = (get("variant") as? String) ?: "body",
     align = (get("align") as? String) ?: "left",
-    colorValue = (get("color") as? String)?.parseColor(),
+    colorValue = null,
+    colorName = get("color") as? String,
     bold = (get("bold") as? Boolean) ?: false,
     numberOfLines = (get("numberOfLines") as? Double)?.toInt(),
     colorRamp = get("color_ramp"),
@@ -1090,7 +1158,7 @@ private fun Map<String, Any?>.asResolvedCardProps(): ResolvedCardProps = Resolve
     maxWidthFraction = (get("maxWidthFraction") as? Double)?.toFloat(),
 )
 
-private fun String.parseColor(): Color? = runCatching {
+internal fun String.parseColor(): Color? = runCatching {
     val hex = removePrefix("#")
     when (hex.length) {
         6 -> Color(

@@ -19,6 +19,8 @@ class Camera(
     var fovYRadians: Float = (PI / 3f).toFloat(),
     var near: Float = 0.1f,
     var far: Float = 500f,
+    var minDistance: Float = MIN_DISTANCE,
+    var orthoHalfHeight: Float? = null,
 ) {
 
     fun eyePosition(): Vec3 {
@@ -32,7 +34,7 @@ class Camera(
     fun viewMatrix(): Matrix4 = Matrix4.lookAt(eyePosition(), target, Vec3(0f, 1f, 0f))
 
     fun projectionMatrix(aspect: Float): Matrix4 =
-        Matrix4.perspective(fovYRadians, aspect, near, far)
+        orthoHalfHeight?.let { Matrix4.orthographic(it, aspect, near, far) } ?: Matrix4.perspective(fovYRadians, aspect, near, far)
 
     /**
      * Orbit by pointer delta. Dragging right increases yaw; dragging down
@@ -71,7 +73,7 @@ class Camera(
 
     private fun clampPitch(value: Float): Float = max(min(value, PITCH_LIMIT), -PITCH_LIMIT)
 
-    private fun clampDistance(value: Float): Float = max(min(value, MAX_DISTANCE), MIN_DISTANCE)
+    private fun clampDistance(value: Float): Float = max(min(value, MAX_DISTANCE), minDistance)
 
     companion object {
         private const val DRAG_SENSITIVITY = 0.01f

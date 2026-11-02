@@ -1,12 +1,17 @@
 package ai.factoredui.compose.render
 
+import ai.factoredui.compose.renderer.AudioRecord
 import ai.factoredui.compose.renderer.CanvasPlacement
+import ai.factoredui.compose.renderer.ChartAxisRecord
+import ai.factoredui.compose.renderer.ChartRecord
+import ai.factoredui.compose.renderer.ChartSeriesRecord
 import ai.factoredui.compose.renderer.MenuItemRecord
 import ai.factoredui.compose.renderer.NodeRecord
 import ai.factoredui.compose.renderer.ScenePartRecord
 import ai.factoredui.compose.renderer.SceneRecord
 import ai.factoredui.compose.renderer.ScreenBounds
 import ai.factoredui.compose.renderer.ScreenRegistry
+import ai.factoredui.compose.renderer.VoiceRecord
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.SpecNodeType
 import ai.factoredui.compose.schema.asListProps
@@ -149,6 +154,55 @@ private fun sceneJson(scene: SceneRecord, canvas: CanvasPlacement?): JsonObject 
     put("popup", valueJson(scene.popup))
 }
 
+private fun chartAxisJson(axis: ChartAxisRecord): JsonObject = buildJsonObject {
+    put("side", axis.side)
+    put("unit", valueJson(axis.unit))
+    put("label", valueJson(axis.label))
+    put("low", axis.low)
+    put("high", axis.high)
+    put("ticks", JsonArray(axis.ticks.map(::JsonPrimitive)))
+}
+
+private fun chartSeriesJson(series: ChartSeriesRecord): JsonObject = buildJsonObject {
+    put("id", series.id)
+    put("label", series.label)
+    put("kind", series.kind)
+    put("axis", series.axis)
+    put("color", hexOf(series.colour))
+    put("runs", JsonArray(series.runs.map { run -> JsonArray(run.map { point -> JsonArray(point.map(::JsonPrimitive)) }) }))
+}
+
+/** What a chart plotted: the x span, each axis with its ticks, each series as its runs of [x, value, from, to], and the values read at the hover. */
+private fun chartJson(chart: ChartRecord): JsonObject = buildJsonObject {
+    put("x", buildJsonObject { put("low", valueJson(chart.xLow)); put("high", valueJson(chart.xHigh)); put("ticks", buildJsonArray { chart.xTicks.forEach { (x, label) -> add(buildJsonObject { put("x", x); put("label", label) }) } }) })
+    put("axes", JsonArray(chart.axes.map(::chartAxisJson)))
+    put("series", JsonArray(chart.series.map(::chartSeriesJson)))
+    put("legend", buildJsonArray { chart.legend.forEach { entry -> add(buildJsonObject { put("label", entry.label); put("series", JsonArray(entry.series.map(::JsonPrimitive))) }) } })
+    put("hover", chart.hover?.let { hover -> buildJsonObject { put("x", hover.x); put("values", buildJsonArray { hover.values.forEach { (id, text) -> add(buildJsonObject { put("id", id); put("text", text) }) } }) } } ?: JsonNull)
+}
+
+/** What an audio node holds: where it is in the narration, whether it plays, how fast, the passages it knows and the lock-screen actions the spec maps. */
+private fun audioJson(audio: AudioRecord): JsonObject = buildJsonObject {
+    put("source", audio.source)
+    put("status", audio.status)
+    put("position", audio.position)
+    put("duration", valueJson(audio.duration))
+    put("playing", audio.isPlaying)
+    put("rate", audio.rate)
+    put("markers", buildJsonArray { audio.markers.forEach { add(buildJsonObject { put("at", it.at); put("label", it.label) }) } })
+    put("media_actions", JsonArray(audio.mediaActions.map(::JsonPrimitive)))
+}
+
+/** What a voice node holds: its mode, what it captures, whether it is listening and the last words it heard. */
+private fun voiceJson(voice: VoiceRecord): JsonObject = buildJsonObject {
+    put("label", voice.label)
+    put("mode", voice.mode)
+    put("capture", voice.capture)
+    put("status", voice.status)
+    put("listening", voice.isListening)
+    put("transcript", valueJson(voice.transcript))
+}
+
 fun optionPath(selectPath: String, value: String): String = "$selectPath/option/$value"
 
 private fun optionJson(record: NodeRecord, item: MenuItemRecord): JsonObject = buildJsonObject {
@@ -206,6 +260,9 @@ fun screenJson(node: ScreenNode): JsonObject = buildJsonObject {
     record.ink?.let { put("ink", hexOf(it)) }
     if (record.notices.isNotEmpty()) put("notices", JsonArray(record.notices.map(::JsonPrimitive)))
     record.scene?.let { put("scene", sceneJson(it, record.canvas)) }
+    record.chart?.let { put("chart", chartJson(it)) }
+    record.audio?.let { put("audio", audioJson(it)) }
+    record.voice?.let { put("voice", voiceJson(it)) }
     put("children", JsonArray(drawnChildren(node)))
 }
 

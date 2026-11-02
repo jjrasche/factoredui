@@ -102,6 +102,18 @@ class Matrix4(val m: FloatArray) {
             )
         }
 
+        fun orthographic(halfHeight: Float, aspect: Float, near: Float, far: Float): Matrix4 {
+            val nf = 1f / (near - far)
+            return Matrix4(
+                floatArrayOf(
+                    1f / (halfHeight * aspect), 0f, 0f, 0f,
+                    0f, 1f / halfHeight, 0f, 0f,
+                    0f, 0f, 2f * nf, 0f,
+                    0f, 0f, (far + near) * nf, 1f,
+                ),
+            )
+        }
+
         /**
          * Camera look-at: builds a view matrix placing the camera at `eye`
          * looking toward `target` with `up` as the world-up reference.

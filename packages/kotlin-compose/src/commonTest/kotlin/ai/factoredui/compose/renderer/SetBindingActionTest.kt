@@ -184,7 +184,7 @@ class SetBindingActionTest {
         waitForIdle()
         val refusal = "set_binding on 'no-path' was refused: 'path' must be non-empty text, not ''"
         assertEquals(refusal, rendererErrorIn(context.data))
-        assertEquals(setOf("renderer", "window"), context.data.keys)
+        assertEquals(setOf("renderer"), context.data.keys - "window")
         onNodeWithTag("error").assertTextEquals(refusal)
     }
 

@@ -64,6 +64,12 @@ class SceneSurface(spec: Spec, context: RenderContext, width: Int, height: Int, 
         "clicked ${point.x},${point.y}"
     }
 
+    /** Moves the pointer to [point] with no button down, as a mouse passing over the screen does. */
+    fun hover(point: Point): String = onScreenThread {
+        scene.sendPointerEvent(PointerEventType.Move, Offset(point.x.toFloat(), point.y.toFloat()))
+        "hovered ${point.x},${point.y}"
+    }
+
     /** Presses at [from], moves to [to] in [steps] even steps and releases there, with the control key held when [isCtrlHeld]. */
     fun drag(from: Point, to: Point, steps: Int = 10, isCtrlHeld: Boolean = false): String = onScreenThread {
         val keys = PointerKeyboardModifiers(isCtrlPressed = isCtrlHeld)

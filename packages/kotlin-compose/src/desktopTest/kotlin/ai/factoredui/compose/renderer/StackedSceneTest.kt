@@ -184,6 +184,17 @@ private fun assertWhiteSwatchIsOutlined(theme: SpecTheme) {
 }
 
 class StackedSceneTest {
+    @Test
+    fun a_scene_names_its_renderer_in_a_prop_and_draws_the_same_picture_as_one_naming_it_in_view_state() {
+        val named = json.decodeFromString(
+            Spec.serializer(),
+            """{"spec_version":1,"renderer_min":1,"root":{"id":"board","type":"scene","props":{"renderer":"stacked_scene","scene_view":"{board.scene}","view":"iso","hide_top":0,"selected":"{board.selected}","highlight":"{board.picked}","y_axis":"up"}}}""",
+        )
+        val viaProp = driveScreen(named, storeFor("iso"), WIDTH, HEIGHT).use { it.frame().png }
+        val viaViewState = driveScreen(orientedSpec("up", "iso"), storeFor("iso"), WIDTH, HEIGHT).use { it.frame().png }
+        assertTrue(viaProp.contentEquals(viaViewState), "the renderer prop draws the stacked scene as view_state.renderer does")
+    }
+
 
     private val board = readSceneView(stackedBoardText())
     private val blocks = board.footprints!!.items.filter { it.type == "block" }.map { it.id }

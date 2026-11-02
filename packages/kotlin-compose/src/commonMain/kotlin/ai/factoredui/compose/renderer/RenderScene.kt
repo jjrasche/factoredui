@@ -23,7 +23,7 @@ internal fun RenderScene(node: SpecNode, resolvedProps: Map<String, Any?>, conte
     val renderers = LocalSceneRenderers.current
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val profile = if (maxWidth < PHONE_WIDTH_LIMIT) DeviceProfile.PHONE else DeviceProfile.DESKTOP
-        val renderer = renderers.select(profile, levelFeet, view.rendererId)
+        val renderer = renderers.select(profile, levelFeet, resolvedProps["renderer"] as? String ?: view.rendererId)
         if (renderer == null) {
             Box(modifier = Modifier.fillMaxSize().nodeTag(node.id)) {
                 Text(

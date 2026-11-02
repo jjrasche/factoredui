@@ -83,4 +83,13 @@ class BindingResolverTest {
     fun isVisibleResolvesToTrueForTruthyBinding() {
         assertTrue(BindingResolver.isVisible("{shell.hasResult}", context))
     }
+
+    @Test
+    fun isVisibleComparesTheBoundValueToALiteralAfterAnEqualsSign() {
+        assertTrue(BindingResolver.isVisible("{count}=42", context))
+        assertTrue(BindingResolver.isVisible("{count}=42.0", context))
+        assertFalse(BindingResolver.isVisible("{count}=7", context))
+        assertTrue(BindingResolver.isVisible("{user.name}=Alice", context))
+        assertFalse(BindingResolver.isVisible("{nothing.here}=0", context))
+    }
 }

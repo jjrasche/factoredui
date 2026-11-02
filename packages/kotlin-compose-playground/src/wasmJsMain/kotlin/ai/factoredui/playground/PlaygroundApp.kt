@@ -17,7 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ai.factoredui.compose.net.startSseSubscription
 import ai.factoredui.compose.observability.LoggingObservability
+import ai.factoredui.compose.observability.NoOpObservability
 import ai.factoredui.compose.renderer.RenderContext
+import ai.factoredui.compose.renderer.applyActionAnswer
 import ai.factoredui.compose.scene3d.Scene3dWorldState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.Json
@@ -25,11 +27,17 @@ import kotlinx.serialization.json.Json
 @Composable
 fun PlaygroundApp() {
     val context = remember {
+        val answered = arrayOfNulls<RenderContext>(1)
+        val host = hostTheme()
         RenderContext(
-            actions = playgroundActions(actionUrlParam()),
-            observability = LoggingObservability(),
-        )
+            actions = playgroundActions(actionUrlParam()) { answer -> answered[0]?.applyActionAnswer(answer) },
+            observability = if (debugParam()) LoggingObservability() else NoOpObservability,
+            theme = host.theme,
+            themes = host.themes,
+            initialData = mapOf("theme" to mapOf("notices" to host.notices)),
+        ).also { answered[0] = it }
     }
+    InstallFactoredUiBridge(context)
     val specFlow = remember { MutableStateFlow(placeholderSpec("Loading spec…")) }
     var editorText by remember { mutableStateOf("") }
     var parseError by remember { mutableStateOf<String?>(null) }
@@ -83,7 +91,7 @@ fun PlaygroundApp() {
     MaterialTheme {
         Surface(Modifier.fillMaxSize()) {
             if (fullscreen) {
-                RenderedSpecPanel(specFlow = specFlow, context = context, modifier = Modifier.fillMaxSize())
+                RenderedSpecPanel(specFlow = specFlow, context = context, modifier = Modifier.fillMaxSize(), isBare = true)
             } else {
                 Row(Modifier.fillMaxSize()) {
                     SpecEditorPanel(

@@ -81,9 +81,18 @@ object BindingResolver {
         return current
     }
 
-    /** Evaluate the `visible` binding — node is visible when value is truthy. */
+    private val EQUALS_PATTERN = Regex("""^(\{[a-zA-Z_][a-zA-Z0-9_.]*\})=(.+)$""")
+
+    private fun isEqualTo(value: Any?, literal: String): Boolean = when (value) {
+        null -> false
+        is Number -> literal.toDoubleOrNull() == value.toDouble()
+        else -> value.toString() == literal
+    }
+
+    /** Evaluate the `visible` binding — node is visible when value is truthy, or, for `{path}=literal`, when the value at the path equals the literal (numbers compare as numbers). */
     fun isVisible(visibleRef: String?, context: Map<String, Any?>): Boolean {
         if (visibleRef == null) return true
+        EQUALS_PATTERN.find(visibleRef)?.let { return isEqualTo(resolveBinding(it.groupValues[1], context), it.groupValues[2]) }
         val value = resolveBinding(visibleRef, context)
         return when (value) {
             null -> false

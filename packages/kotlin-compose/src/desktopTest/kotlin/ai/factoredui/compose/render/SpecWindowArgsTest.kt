@@ -111,10 +111,10 @@ class SpecWindowArgsTest {
     @Test
     fun theWindowReadsTheSpecFromTheNamedSectionAndRefusesAMissingOneNamingTheKeys() {
         val file = """{"screen":{"spec_version":1,"renderer_min":1,"root":{"id":"page","type":"column"}},"types":{}}"""
-        assertEquals("page", windowSpecOf(file, "ui.json", "screen").root.id)
+        assertEquals("page", windowSpecOf(file, "screen").root.id)
         assertEquals(
             "the file has no section 'scene'; its top-level keys are screen, types",
-            kotlin.test.assertFailsWith<ai.factoredui.compose.schema.SpecSectionException> { windowSpecOf(file, "ui.json", "scene") }.message,
+            kotlin.test.assertFailsWith<ai.factoredui.compose.schema.SpecSectionException> { windowSpecOf(file, "scene") }.message,
         )
     }
 

@@ -4,6 +4,8 @@ import ai.factoredui.compose.adapter.ActionRegistry
 import ai.factoredui.compose.adapter.HostDataSource
 import ai.factoredui.compose.experiments.ControlExperiments
 import ai.factoredui.compose.experiments.Experiments
+import ai.factoredui.compose.media.MediaHost
+import ai.factoredui.compose.media.platformMediaHost
 import ai.factoredui.compose.observability.NoOpObservability
 import ai.factoredui.compose.observability.Observability
 import ai.factoredui.compose.schema.ActionRef
@@ -40,6 +42,8 @@ class RenderContext private constructor(
     private val store: MutableStateFlow<Map<String, Any?>>,
     private val overlay: Map<String, Any?>,
     val screen: ScreenRegistry,
+    val mediaHost: MediaHost,
+    val themes: Map<String, SpecTheme>,
 ) {
     constructor(
         actions: ActionRegistry = emptyMap(),
@@ -48,6 +52,8 @@ class RenderContext private constructor(
         experiments: Experiments = ControlExperiments,
         hostDataSource: HostDataSource? = null,
         theme: SpecTheme = SpecTheme.LIGHT,
+        mediaHost: MediaHost = platformMediaHost(),
+        themes: Map<String, SpecTheme> = emptyMap(),
     ) : this(
         actions = actions,
         observability = observability,
@@ -57,6 +63,8 @@ class RenderContext private constructor(
         store = MutableStateFlow(initialData),
         overlay = emptyMap(),
         screen = ScreenRegistry(),
+        mediaHost = mediaHost,
+        themes = themes,
     )
 
     /** Reactive flow of the merged (overlay + store) data map. */
@@ -81,6 +89,13 @@ class RenderContext private constructor(
         store.update { current -> writeAtPath(current, path.split("."), value) }
     }
 
+    fun startBindings(starts: Map<String, Any?>) {
+        store.update { current ->
+            starts.entries.filter { (path, _) -> path.isNotEmpty() && ai.factoredui.compose.schema.BindingResolver.resolveBinding("{$path}", current) == null }
+                .fold(current) { written, (path, value) -> writeAtPath(written, path.split("."), value) }
+        }
+    }
+
     fun setBindings(writes: Map<String, Any?>) {
         val writable = writes.filterKeys { it.isNotEmpty() }
         store.update { current -> writable.entries.fold(current) { written, (path, value) -> writeAtPath(written, path.split("."), value) } }
@@ -102,6 +117,8 @@ class RenderContext private constructor(
         store = store,
         overlay = overlay + extra,
         screen = screen,
+        mediaHost = mediaHost,
+        themes = themes,
     )
 
     /** Recursively rebuild a nested map structure with [value] placed at [segments]. */
@@ -161,6 +178,10 @@ suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
     val resolvedParams = ai.factoredui.compose.schema.BindingResolver
         .resolveProps(actionRef.params, data)
     observability.onInteraction(nodeId, actionRef, resolvedParams)
+    if (actionRef.action == ANIMATE_BINDING_ACTION) {
+        animateBinding(nodeId, resolvedParams)
+        return
+    }
     if (actionRef.action == SET_BINDING_ACTION) {
         writeBindingFrom(nodeId, resolvedParams)
         return
@@ -171,6 +192,11 @@ suspend fun RenderContext.dispatch(nodeId: String, actionRef: ActionRef) {
         return
     }
     handler(resolvedParams)
+}
+
+fun RenderContext.applyActionAnswer(answer: ai.factoredui.compose.schema.ActionAnswer) {
+    if (answer.error != null) return setBinding(RENDERER_ERROR_PATH, answer.error)
+    if (answer.writes.isNotEmpty()) setBindings(answer.writes)
 }
 
 const val SET_BINDING_ACTION = "set_binding"
@@ -208,8 +234,34 @@ private fun setBindingValuesRefusal(nodeId: String, params: Map<String, Any?>): 
 private fun bindingWritesIn(params: Map<String, Any?>): Map<String, Any?> =
     (params[SET_BINDING_VALUES] as Map<*, *>).entries.associate { (path, value) -> path.toString() to value }
 
+private const val SET_BINDING_ADD = "add"
+
 private fun RenderContext.writeBindingFrom(nodeId: String, params: Map<String, Any?>) {
-    if (SET_BINDING_VALUES in params) writeBindingValuesFrom(nodeId, params) else writeOneBindingFrom(nodeId, params)
+    when {
+        SET_BINDING_VALUES in params -> writeBindingValuesFrom(nodeId, params)
+        SET_BINDING_ADD in params -> writeAddedBindingFrom(nodeId, params)
+        else -> writeOneBindingFrom(nodeId, params)
+    }
+}
+
+private fun addedBindingRefusal(nodeId: String, params: Map<String, Any?>): String? {
+    val refused = "set_binding on '$nodeId' was refused:"
+    val path = params["path"]
+    if (path !is String || path.isEmpty()) return "$refused 'path' must be non-empty text, not '$path'"
+    if (SET_BINDING_VALUE in params) return "$refused it gives 'add' and also 'value'; give one"
+    if (params[SET_BINDING_ADD] !is Number) return "$refused 'add' must be a number, not '${params[SET_BINDING_ADD]}'"
+    return listOf("min", "max").firstOrNull { it in params && params[it] !is Number }?.let { "$refused '$it' must be a number, not '${params[it]}'" }
+}
+
+/** Adds the number in `add` to the number at `path` (or `min`, else 0, when there is none), kept between `min` and `max` when they are given. */
+private fun RenderContext.writeAddedBindingFrom(nodeId: String, params: Map<String, Any?>) {
+    val refusal = addedBindingRefusal(nodeId, params)
+    if (refusal != null) return setBinding(RENDERER_ERROR_PATH, refusal)
+    val path = params["path"] as String
+    val low = (params["min"] as? Number)?.toDouble()
+    val high = (params["max"] as? Number)?.toDouble()
+    val current = (ai.factoredui.compose.schema.BindingResolver.resolveBinding("{$path}", data) as? Number)?.toDouble() ?: low ?: 0.0
+    setBinding(path, (current + (params[SET_BINDING_ADD] as Number).toDouble()).coerceIn(low ?: Double.NEGATIVE_INFINITY, high ?: Double.POSITIVE_INFINITY))
 }
 
 private fun RenderContext.writeOneBindingFrom(nodeId: String, params: Map<String, Any?>) {
