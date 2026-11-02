@@ -69,7 +69,7 @@ internal fun shadeOutSelected(shade: ScoreShade, tessellation: GeomapTessellatio
         "percentile" to score?.let { shade.ranks?.percentileOf(it) },
         "bounds" to feature.geoBounds(),
         "info" to feature.info,
-        "figures" to shade.figureInfo.map { (figure, info) ->
+        "figures" to shade.figureInfo.filterKeys { it !in shade.fieldFigures.values }.map { (figure, info) ->
             mapOf("figure" to figure, "label" to info.label, "value" to feature.figures[figure], "text" to figureText(info, feature.figures[figure]))
         },
         "parts" to scoreParts(shade, feature.values).map { part ->

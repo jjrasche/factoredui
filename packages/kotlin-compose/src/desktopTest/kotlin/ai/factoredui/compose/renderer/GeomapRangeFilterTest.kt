@@ -92,14 +92,14 @@ class GeomapRangeFilterTest {
     }
 
     @Test
-    fun the_tapped_thing_card_gives_every_figure_in_its_units_and_each_weighted_field_beside_its_own_figure() {
+    fun the_tapped_thing_card_lists_the_figures_no_weighted_field_shows_and_each_field_beside_its_own_figure() {
         driveScreen(SPEC, widthDp = MAP_SIZE, heightDp = MAP_SIZE).use { screen ->
             screen.type("map.shade", shade())
             screen.type("map.picked", listOf("big"))
             screen.frame()
             val selected = assertNotNull(screen.store().at("map", "out", "selected")) as Map<*, *>
             val figures = (selected["figures"] as List<*>).map { (it as Map<*, *>)["text"] }
-            assertEquals(listOf("40.0 acres", "15 min"), figures)
+            assertEquals(listOf("15 min"), figures)
             val part = (selected["parts"] as List<*>).first() as Map<*, *>
             assertEquals("40.0 acres", part["figure_text"])
         }
