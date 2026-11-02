@@ -71,6 +71,17 @@ class GeomapShadeTest {
     }
 
     @Test
+    fun with_no_viewport_bound_the_map_fits_its_features_with_a_margin_around_them() {
+        driveScreen(spec(), widthDp = MAP_SIZE, heightDp = MAP_SIZE).use { screen ->
+            screen.type("map.shade", shade("""{"a":1,"b":1}"""))
+            val image = ImageIO.read(ByteArrayInputStream(screen.frame().png))
+            val drawnColumns = (0 until image.width).filter { x -> (0 until image.height).any { y -> (image.getRGB(x, y) and 0xFFFFFF) != 0xFFFFFF } }
+            assertTrue(drawnColumns.last() - drawnColumns.first() > MAP_SIZE * 0.85, "the features fill under 85% of the width")
+            assertTrue(drawnColumns.first() in 1..MAP_SIZE / 10, "the features touch the edge or sit far from it: first column ${drawnColumns.first()}")
+        }
+    }
+
+    @Test
     fun a_weight_written_at_its_own_path_inside_the_record_recolours_the_parcels() {
         driveScreen(spec(), widthDp = MAP_SIZE, heightDp = MAP_SIZE).use { screen ->
             screen.type("map.shade", shade("""{"a":1,"b":0}"""))
