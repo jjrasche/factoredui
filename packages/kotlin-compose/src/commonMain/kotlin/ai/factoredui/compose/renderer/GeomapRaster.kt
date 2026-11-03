@@ -59,6 +59,9 @@ internal fun visibleRasterTiles(viewport: GeomapViewport, widthPx: Float, height
     return (firstY..lastY).flatMap { y -> (firstX..lastX).map { x -> TileKey(level, x, y) } }
 }
 
+internal fun rasterTemplateAt(template: String, origin: String): String =
+    if (origin.isNotEmpty() && template.startsWith("/") && !template.startsWith("//")) origin + template else template
+
 internal fun rasterTileUrl(template: String, key: TileKey): String =
     template.replace("[z]", key.z.toString()).replace("[x]", key.x.toString()).replace("[y]", key.y.toString())
 
@@ -115,6 +118,7 @@ private fun RasterLayerTiles(
     failures: RasterFailures,
 ) {
     val density = LocalDensity.current.density
+    val template = remember(layer.urlTemplate) { rasterTemplateAt(layer.urlTemplate, pageOrigin()) }
     val level = rasterTileLevel(viewport.zoom, layer.tileSize, layer.tileMaxZoom)
     val tiles = visibleRasterTiles(viewport, widthPx, heightPx, level)
     val failed = failures.byLayer[layer.id].orEmpty()
@@ -136,7 +140,7 @@ private fun RasterLayerTiles(
             ) {
                 if (tile !in failed) {
                     AsyncImage(
-                        model = rasterTileUrl(layer.urlTemplate, tile),
+                        model = rasterTileUrl(template, tile),
                         imageLoader = imageLoader,
                         contentDescription = null,
                         contentScale = ContentScale.FillBounds,

@@ -51,6 +51,18 @@ class GeomapRasterTilesTest {
     }
 
     @Test
+    fun a_template_that_is_a_path_on_the_page_gets_the_pages_origin_so_the_image_loader_has_a_whole_address() {
+        assertEquals("http://h:8791/t/[z]/[y]/[x]", rasterTemplateAt("/t/[z]/[y]/[x]", "http://h:8791"))
+    }
+
+    @Test
+    fun a_full_address_a_protocol_relative_address_and_a_page_without_an_origin_leave_the_template_alone() {
+        assertEquals("https://t.example/[z]/[x]/[y]", rasterTemplateAt("https://t.example/[z]/[x]/[y]", "http://h:8791"))
+        assertEquals("//t.example/[z]/[x]/[y]", rasterTemplateAt("//t.example/[z]/[x]/[y]", "http://h:8791"))
+        assertEquals("/t/[z]/[y]/[x]", rasterTemplateAt("/t/[z]/[y]/[x]", ""))
+    }
+
+    @Test
     fun a_tile_at_the_viewports_whole_zoom_is_the_tile_size_on_screen_and_sits_where_the_math_says() {
         val rect = rasterTileRect(TileKey(3, 3, 3), centre, widthPx = 512f, heightPx = 512f)
         assertEquals(0f, rect.left, 0.01f)

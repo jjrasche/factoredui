@@ -1,0 +1,21 @@
+{"spec_version":1,"renderer_min":1,
+ "state":{"map":{"visibility":{"street":false}}},
+ "root":{"id":"page","type":"column","props":{"gap":8,"padding":12},"children":[
+   {"id":"label","type":"text","props":{"value":"Test case for raster layers: tiles from this page's own address under a vector layer; the buttons switch the basemap.","variant":"caption"}},
+   {"id":"row","type":"row","props":{"gap":8},"children":[
+     {"id":"show-satellite","type":"button","props":{"label":"satellite"},"action":{"action":"set_binding","params":{"path":"map.visibility","value":{"satellite":true,"street":false}}}},
+     {"id":"show-street","type":"button","props":{"label":"street"},"action":{"action":"set_binding","params":{"path":"map.visibility","value":{"satellite":false,"street":true}}}}
+   ]},
+   {"id":"map","type":"geomap","props":{
+     "flex":1,
+     "viewport":{"lon":-85.6,"lat":43.0,"zoom":9},
+     "layer_visibility":"{map.visibility}",
+     "layers":[
+       {"id":"satellite","kind":"raster","url":"/t/satellite/[z]/[y]/[x]","tile_max_zoom":19,"attribution":"test tiles, z/y/x"},
+       {"id":"street","kind":"raster","url":"/t/street/[z]/[x]/[y]","tile_max_zoom":19,"attribution":"test tiles, z/x/y","visible":true},
+       {"id":"parcels","kind":"fill","features":[
+         {"id":"a","fill":"#CC0000","rings":[[[-85.7,42.95],[-85.5,42.95],[-85.5,43.05],[-85.7,43.05]]]}
+       ]}
+     ]
+   }}
+ ]}}
