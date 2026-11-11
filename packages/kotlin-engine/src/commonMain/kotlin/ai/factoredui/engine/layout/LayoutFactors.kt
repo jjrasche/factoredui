@@ -155,7 +155,7 @@ private fun tapsToReach(view: PageView): Int {
     val stopIndex = view.page.captures.mapIndexed { index, capture -> (capture.stop?.let(STOP_ORDER::indexOf)?.takeIf { it >= 0 }) ?: index }
     val firstSeen = mutableMapOf<String, Int>()
     view.page.captures.forEachIndexed { index, capture ->
-        flattenTree(capture.tree).controls().forEach { firstSeen.putIfAbsent(it.id, stopIndex[index]) }
+        flattenTree(capture.tree).controls().forEach { firstSeen.getOrPut(it.id) { stopIndex[index] } }
     }
     return firstSeen.values.maxOrNull() ?: 0
 }

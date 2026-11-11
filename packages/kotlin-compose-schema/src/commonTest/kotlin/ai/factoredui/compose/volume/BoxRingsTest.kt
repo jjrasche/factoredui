@@ -1,10 +1,13 @@
 package ai.factoredui.compose.volume
 
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+
+private const val THIRTY_DEGREES = PI / 6
 
 private const val TOLERANCE = 1e-6
 
@@ -30,8 +33,8 @@ class BoxRingsTest {
     @Test
     fun a_sheet_pitched_thirty_degrees_has_its_far_edge_raised_and_its_near_edge_lowered_about_its_centre() {
         val rings = boxRings(SHEET.copy(pitchDeg = 30.0))
-        val rise = 1000.0 * sin(Math.toRadians(30.0))
-        val reach = 1000.0 * cos(Math.toRadians(30.0))
+        val rise = 1000.0 * sin(THIRTY_DEGREES)
+        val reach = 1000.0 * cos(THIRTY_DEGREES)
         assertPoint(Triple(400.0, 2000.0 - reach, 300.0 - rise), rings.low[0], "near west")
         assertPoint(Triple(1600.0, 2000.0 - reach, 300.0 - rise), rings.low[1], "near east")
         assertPoint(Triple(1600.0, 2000.0 + reach, 300.0 + rise), rings.low[2], "far east")
@@ -57,7 +60,7 @@ class BoxRingsTest {
     fun the_normals_of_a_pitched_sheet_lean_away_from_the_raised_side() {
         val normals = boxFaceNormals(boxRings(SHEET.copy(heightMm = 20.0, pitchDeg = 30.0)))
         val top = normals.first()
-        assertEquals(cos(Math.toRadians(30.0)), top.z, TOLERANCE)
+        assertEquals(cos(THIRTY_DEGREES), top.z, TOLERANCE)
         assertTrue(top.y < 0.0, "the top of a slope rising to the north faces south: ${top.y}")
     }
 
