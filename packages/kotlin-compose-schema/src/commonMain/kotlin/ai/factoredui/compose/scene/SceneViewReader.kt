@@ -1,5 +1,6 @@
 package ai.factoredui.compose.scene
 
+import ai.factoredui.compose.format.javaStyleDecimalText
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -32,8 +33,11 @@ fun readSceneViewValue(value: Any?): SceneView = when (value) {
 }
 
 /** A store decoded from JSON holds whole numbers as doubles, and the reader's whole-number fields refuse "6405.0". */
-private fun wholeOrFraction(value: Double): JsonPrimitive =
-    if (value.isFinite() && value % 1.0 == 0.0 && kotlin.math.abs(value) < MAX_EXACT_WHOLE) JsonPrimitive(value.toLong()) else JsonPrimitive(value)
+private fun wholeOrFraction(value: Double): JsonPrimitive = when {
+    !value.isFinite() -> JsonPrimitive(value)
+    value % 1.0 == 0.0 && kotlin.math.abs(value) < MAX_EXACT_WHOLE -> JsonPrimitive(value.toLong())
+    else -> Json.parseToJsonElement(javaStyleDecimalText(value)) as JsonPrimitive
+}
 
 private const val MAX_EXACT_WHOLE = 9.0e15
 

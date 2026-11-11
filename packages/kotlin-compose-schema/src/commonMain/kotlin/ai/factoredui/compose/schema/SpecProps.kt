@@ -4,6 +4,7 @@ import ai.factoredui.compose.format.MISSING_FIGURE
 import ai.factoredui.compose.format.dollarsText
 import ai.factoredui.compose.format.feetInches
 import ai.factoredui.compose.format.percentText
+import ai.factoredui.compose.format.plainDecimalText
 import ai.factoredui.compose.format.poundsText
 import ai.factoredui.compose.ramp.RampReading
 import ai.factoredui.compose.ramp.readColourRamp
@@ -98,24 +99,7 @@ private const val MAX_EXACT_WHOLE = 9.0e15
 internal fun plainFigureText(figure: Double): String = when {
     !figure.isFinite() -> figure.toString()
     figure % 1.0 == 0.0 && kotlin.math.abs(figure) < MAX_EXACT_WHOLE -> figure.toLong().toString()
-    else -> withoutExponent(figure.toString())
-}
-
-private fun withoutExponent(text: String): String {
-    val exponentAt = text.indexOfFirst { it == 'E' || it == 'e' }
-    if (exponentAt < 0) return text
-    val sign = if (text.startsWith("-")) "-" else ""
-    val mantissa = text.substring(sign.length, exponentAt)
-    val exponent = text.substring(exponentAt + 1).toInt()
-    val digits = mantissa.replace(".", "")
-    val point = (mantissa.indexOf('.').takeIf { it >= 0 } ?: mantissa.length) + exponent
-    val shifted = when {
-        point <= 0 -> "0." + "0".repeat(-point) + digits
-        point >= digits.length -> digits + "0".repeat(point - digits.length)
-        else -> digits.substring(0, point) + "." + digits.substring(point)
-    }
-    val trimmed = if ('.' in shifted) shifted.trimEnd('0').trimEnd('.') else shifted
-    return sign + trimmed.trimStart('0').ifEmpty { "0" }.let { if (it.startsWith(".")) "0$it" else it }
+    else -> plainDecimalText(figure)
 }
 
 private fun unformattedText(value: Any?, missingText: String?): String = when (value) {
