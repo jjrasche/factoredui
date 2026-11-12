@@ -1,0 +1,415 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "ai.factoredui",
+    "module": "kotlin-engine",
+    "version": "0.22.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "metadataApiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.platform.type": "common"
+      },
+      "dependencies": [
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-schema",
+          "version": {
+            "requires": "0.22.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-engine-metadata-0.22.0.jar",
+          "url": "kotlin-engine-0.22.0.jar",
+          "size": 15156,
+          "sha512": "9f38ed4596fdd91ba28edeb1a05ac6bd7a1f365ed377f20f51c050efcc31b1db28cb98fdfa9d61a6bc0e79102e7d03a6015ced00b58a30f01c118573051c28a6",
+          "sha256": "4b6b4ef193c60404d10fbe77d46b8769537a64cdc9feffec82cff412db379d93",
+          "sha1": "18ddfdd436acb0884c32a5c39e94e126aefbb457",
+          "md5": "a54997b181f5ce55eaff3295cef10e2d"
+        }
+      ]
+    },
+    {
+      "name": "metadataSourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.platform.type": "common"
+      },
+      "files": [
+        {
+          "name": "kotlin-engine-kotlin-0.22.0-sources.jar",
+          "url": "kotlin-engine-0.22.0-sources.jar",
+          "size": 18848,
+          "sha512": "4eb90edf0e23e68aef00c58e02d68ebaaa97de1f8a5a0e9384d05d01bb9ff2f972ae4d2734940e3d123ff86c2615ca8a6b80ecd38a1e1d91ae2630f5884cabff",
+          "sha256": "7c7779763df4e4bbd48243f51be9f828500346edac4e2dae3a5f40e0aa3d19ce",
+          "sha1": "0ca1fb2a650c65a93978e7c1b76f2c51382520c5",
+          "md5": "8fe60980c92ce9d3ae58bad00785f3b0"
+        }
+      ]
+    },
+    {
+      "name": "releaseApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-android/0.22.0/kotlin-engine-android-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-android",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "releaseRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-android/0.22.0/kotlin-engine-android-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-android",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "releaseSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-android/0.22.0/kotlin-engine-android-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-android",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "iosArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-iosarm64/0.22.0/kotlin-engine-iosarm64-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-iosarm64",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "iosArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-iosarm64/0.22.0/kotlin-engine-iosarm64-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-iosarm64",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "iosArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-iosarm64/0.22.0/kotlin-engine-iosarm64-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-iosarm64",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-iossimulatorarm64/0.22.0/kotlin-engine-iossimulatorarm64-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-iossimulatorarm64",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-iossimulatorarm64/0.22.0/kotlin-engine-iossimulatorarm64-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-iossimulatorarm64",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "iosSimulatorArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-iossimulatorarm64/0.22.0/kotlin-engine-iossimulatorarm64-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-iossimulatorarm64",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "iosX64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-iosx64/0.22.0/kotlin-engine-iosx64-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-iosx64",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "iosX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-iosx64/0.22.0/kotlin-engine-iosx64-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-iosx64",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "iosX64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-iosx64/0.22.0/kotlin-engine-iosx64-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-iosx64",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "jvmApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-jvm/0.22.0/kotlin-engine-jvm-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-jvm",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "jvmRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-jvm/0.22.0/kotlin-engine-jvm-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-jvm",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "jvmSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-jvm/0.22.0/kotlin-engine-jvm-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-jvm",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "linuxX64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "linux_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-linuxx64/0.22.0/kotlin-engine-linuxx64-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-linuxx64",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "linuxX64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "linux_x64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-linuxx64/0.22.0/kotlin-engine-linuxx64-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-linuxx64",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "wasmJsApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.platform.type": "wasm",
+        "org.jetbrains.kotlin.wasm.target": "js"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-wasm-js/0.22.0/kotlin-engine-wasm-js-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-wasm-js",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "wasmJsRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.platform.type": "wasm",
+        "org.jetbrains.kotlin.wasm.target": "js"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-wasm-js/0.22.0/kotlin-engine-wasm-js-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-wasm-js",
+        "version": "0.22.0"
+      }
+    },
+    {
+      "name": "wasmJsSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.platform.type": "wasm",
+        "org.jetbrains.kotlin.wasm.target": "js"
+      },
+      "available-at": {
+        "url": "../../kotlin-engine-wasm-js/0.22.0/kotlin-engine-wasm-js-0.22.0.module",
+        "group": "ai.factoredui",
+        "module": "kotlin-engine-wasm-js",
+        "version": "0.22.0"
+      }
+    }
+  ]
+}

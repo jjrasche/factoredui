@@ -1,0 +1,130 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../kotlin-compose-schema/0.22.0/kotlin-compose-schema-0.22.0.module",
+    "group": "ai.factoredui",
+    "module": "kotlin-compose-schema",
+    "version": "0.22.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "iosSimulatorArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-schema-iosSimulatorArm64Main-0.22.0.klib",
+          "url": "kotlin-compose-schema-iossimulatorarm64-0.22.0.klib",
+          "size": 932188,
+          "sha512": "711270021afbef0ac5d0f88745363a1064dfdc2afa4a2263d203357c202e7caa37993a26597980bbfa46870c0d5a3ae9fed702aa9938264816dc2030df4e539f",
+          "sha256": "410821dd37cdbda20cdc51e3e218e40d57e1e2bf952e4758b6ac73e4075a461d",
+          "sha1": "c304d63cabaf9831b6b17c1a9f19eaef64a5de2c",
+          "md5": "faf7cb4943e753d2efaebb816483fb23"
+        }
+      ]
+    },
+    {
+      "name": "iosSimulatorArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "files": [
+        {
+          "name": "kotlin-compose-schema-iossimulatorarm64-0.22.0-sources.jar",
+          "url": "kotlin-compose-schema-iossimulatorarm64-0.22.0-sources.jar",
+          "size": 105842,
+          "sha512": "ded0cab1165c3af39dc03ebe35e642f7fd4dca83b7599fe19d0c41c7573e61528343d2a7d321a0958a63d8312ac28c0140771c4f6e59703c183af767d2bcf2ce",
+          "sha256": "91e2edc959dab51e344ed9d556234cb6a0455303e82cc1ff0f17aedcbaa03300",
+          "sha1": "21c9622c1abd7b74089b0577911c5235608d0fe3",
+          "md5": "5258f4f1d1ef4b7b708a047a3b9a3b0e"
+        }
+      ]
+    },
+    {
+      "name": "iosSimulatorArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-datetime",
+          "version": {
+            "requires": "0.7.1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-compose-schema-iossimulatorarm64-0.22.0-metadata.jar",
+          "url": "kotlin-compose-schema-iossimulatorarm64-0.22.0-metadata.jar",
+          "size": 261,
+          "sha512": "691302361f00dd77df0ad64d810a52a1cc9cf30f6c5454983f7aac6ecee8aa969ae32aec24106aff48f68acc61e9fc44528fc08b1d158a9aba31c55f90841344",
+          "sha256": "25860b405bf0d0e84aad8102488572816335de6415ef8edb835ec3335db3a0d3",
+          "sha1": "721050e501eddf5e8d5a805d9fe7cbbd6a0b4718",
+          "md5": "1f8a89355c533ca5393b6f4b1fbcf784"
+        }
+      ]
+    }
+  ]
+}

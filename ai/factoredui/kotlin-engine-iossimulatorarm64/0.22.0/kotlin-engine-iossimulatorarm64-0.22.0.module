@@ -1,0 +1,130 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../kotlin-engine/0.22.0/kotlin-engine-0.22.0.module",
+    "group": "ai.factoredui",
+    "module": "kotlin-engine",
+    "version": "0.22.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "iosSimulatorArm64ApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-api",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-schema",
+          "version": {
+            "requires": "0.22.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-engine-iosSimulatorArm64Main-0.22.0.klib",
+          "url": "kotlin-engine-iossimulatorarm64-0.22.0.klib",
+          "size": 121978,
+          "sha512": "89aa7d273520d2b3c58bf16d9b2b3d1d8cbc81b49462c82dd6ec811b7863ba8a9d70f9f8c785b6c052d1b465ceae3c9be2305282e05b6d6800ab9c0a167b04c6",
+          "sha256": "d7244cfb1a6c982dce7295aa4c85eba3f40935163b4abad6a6c116a14ee60e60",
+          "sha1": "d95aa7587e25d17b43364dfa805a84225cb428b6",
+          "md5": "e8da07c7222ceedad1787b89c9ce0cc2"
+        }
+      ]
+    },
+    {
+      "name": "iosSimulatorArm64SourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-runtime",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "files": [
+        {
+          "name": "kotlin-engine-iossimulatorarm64-0.22.0-sources.jar",
+          "url": "kotlin-engine-iossimulatorarm64-0.22.0-sources.jar",
+          "size": 18848,
+          "sha512": "4eb90edf0e23e68aef00c58e02d68ebaaa97de1f8a5a0e9384d05d01bb9ff2f972ae4d2734940e3d123ff86c2615ca8a6b80ecd38a1e1d91ae2630f5884cabff",
+          "sha256": "7c7779763df4e4bbd48243f51be9f828500346edac4e2dae3a5f40e0aa3d19ce",
+          "sha1": "0ca1fb2a650c65a93978e7c1b76f2c51382520c5",
+          "md5": "8fe60980c92ce9d3ae58bad00785f3b0"
+        }
+      ]
+    },
+    {
+      "name": "iosSimulatorArm64MetadataElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "non-jvm",
+        "org.gradle.usage": "kotlin-metadata",
+        "org.jetbrains.kotlin.native.target": "ios_simulator_arm64",
+        "org.jetbrains.kotlin.platform.type": "native"
+      },
+      "dependencies": [
+        {
+          "group": "ai.factoredui",
+          "module": "kotlin-compose-schema",
+          "version": {
+            "requires": "0.22.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.3.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.11.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "kotlin-engine-iossimulatorarm64-0.22.0-metadata.jar",
+          "url": "kotlin-engine-iossimulatorarm64-0.22.0-metadata.jar",
+          "size": 261,
+          "sha512": "fee8e4ae3eb3a03408bea0ba947ffc888345612ca7c962990133f24a0340c37e0ba0363b6e8953dabf98a11234f2e2a70011cd40be7f59f01a1165af2cf33a68",
+          "sha256": "74a0fa89051b5a8def392fe1a5e03334e89a55af49cd60333f735b5d26a95a27",
+          "sha1": "afed0d8ca772070e189b01baa481b73cafaf1bb7",
+          "md5": "47d215b4bd7af857604cca5332e3707a"
+        }
+      ]
+    }
+  ]
+}
