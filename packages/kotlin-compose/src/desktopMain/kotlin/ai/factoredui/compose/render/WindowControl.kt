@@ -1,6 +1,7 @@
 package ai.factoredui.compose.render
 
 import ai.factoredui.compose.renderer.RenderContext
+import ai.factoredui.compose.renderer.ScreenBounds
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.serialization.json.Json
@@ -108,8 +109,11 @@ class WindowControl(private val context: RenderContext, private val surface: Con
      * A write returns once the screen has drawn it: a frame after it, then a frame that changed nothing in the tree, or the bound.
      * The waiter count is changed on the screen's thread: the frame counter's coroutine resumes on whichever thread changes it.
      */
+    private fun settleBoundOf(query: RouteQuery): Long =
+        query.optional(SETTLE_MS)?.let { requireNotNull(it.toLongOrNull()?.takeIf { ms -> ms >= 0 }) { "$SETTLE_MS must be a whole number of milliseconds, not '$it'" } } ?: DEFAULT_SETTLE_MS
+
     private fun settled(query: RouteQuery, expected: () -> Boolean = { true }, write: () -> String): String {
-        val boundMs = query.optional(SETTLE_MS)?.let { requireNotNull(it.toLongOrNull()?.takeIf { ms -> ms >= 0 }) { "$SETTLE_MS must be a whole number of milliseconds, not '$it'" } } ?: DEFAULT_SETTLE_MS
+        val boundMs = settleBoundOf(query)
         synchronized(writes) {
             if (boundMs == 0L) return write()
             val screen = context.screen
@@ -168,8 +172,25 @@ class WindowControl(private val context: RenderContext, private val surface: Con
         return anyToJson(current).toString()
     }
 
+    private fun boundsShownOf(id: String): ScreenBounds? = surface.onScreenThread { context.screen.recordOf(id)?.bounds }
+
+    /** A node cut off by its scroll is scrolled the way a person would, one wheel notch at a time, until it shows whole or the scroll stops moving it. */
+    private fun scrollIntoView(query: RouteQuery, id: String) {
+        if (settleBoundOf(query) == 0L) return
+        var shown = boundsShownOf(id)
+        repeat(MAX_SCROLL_INTO_VIEW_NOTCHES) {
+            val before = shown ?: return
+            if (before.isWhole || before.isCutOffBothEnds) return
+            val notches = if (before.hiddenBelow > 0) 1 else -1
+            settled(query) { surface.wheel(Point(before.centreX, before.centreY), notches) }
+            shown = boundsShownOf(id)
+            if (shown == before) return
+        }
+    }
+
     private fun click(query: RouteQuery): String {
         val id = query.optional("id") ?: return surface.click(pointOf(query))
+        scrollIntoView(query, id)
         return when (val target = surface.onScreenThread { clickTargetFor(context.screen, id) }) {
             is ClickTarget.AtPoint -> surface.click(target.point)
             is ClickTarget.ScenePart -> surface.onScreenThread { tapScenePart(context.screen, target) }
@@ -192,6 +213,7 @@ private const val SETTLE_MS = "settle_ms"
 private const val DEFAULT_SETTLE_MS = 2000L
 private const val SETTLE_POLL_MS = 2L
 private const val QUIET_FRAMES = 2
+private const val MAX_SCROLL_INTO_VIEW_NOTCHES = 20
 private const val NANOS_PER_MS = 1_000_000L
 
 private fun mouseEvent(target: Component, id: Int, at: Point, modifiers: Int, clicks: Int) =

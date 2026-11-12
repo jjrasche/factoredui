@@ -21,8 +21,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import kotlin.math.roundToInt
 
-data class ScreenBounds(val x: Int, val y: Int, val w: Int, val h: Int) {
+data class ScreenBounds(val x: Int, val y: Int, val w: Int, val h: Int, val hiddenAbove: Int = 0, val hiddenBelow: Int = 0) {
     val hasSize: Boolean get() = w > 0 && h > 0
+    val isWhole: Boolean get() = hiddenAbove == 0 && hiddenBelow == 0
+    val isCutOffBothEnds: Boolean get() = hiddenAbove > 0 && hiddenBelow > 0
     val centreX: Int get() = x + w / 2
     val centreY: Int get() = y + h / 2
 }
@@ -200,8 +202,14 @@ private fun unitsOf(left: Float, top: Float, width: Float, height: Float, densit
 /** Where a node shows in the window: null when it is clipped wholly out of view (below a scroll's fold, off the window); a node with no size keeps its place. */
 private fun windowUnits(coordinates: LayoutCoordinates, density: Density): ScreenBounds? {
     val shown = coordinates.boundsInWindow()
-    if (!shown.isEmpty) return unitsOf(shown.left, shown.top, shown.width, shown.height, density)
     val size = coordinates.size
+    if (!shown.isEmpty) {
+        val shownInWindow = unitsOf(shown.left, shown.top, shown.width, shown.height, density)
+        val originY = coordinates.positionInWindow().y
+        val hiddenAbove = ((shown.top - originY) / density.density).roundToInt().coerceAtLeast(0)
+        val hiddenBelow = ((originY + size.height - shown.bottom) / density.density).roundToInt().coerceAtLeast(0)
+        return shownInWindow.copy(hiddenAbove = hiddenAbove, hiddenBelow = hiddenBelow)
+    }
     if (size.width > 0 && size.height > 0) return null
     val origin = coordinates.positionInWindow()
     return unitsOf(origin.x, origin.y, size.width.toFloat(), size.height.toFloat(), density)

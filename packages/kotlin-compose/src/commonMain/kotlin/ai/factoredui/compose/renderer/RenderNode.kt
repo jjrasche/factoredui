@@ -417,7 +417,7 @@ private fun RenderRow(node: SpecNode, resolvedProps: Map<String, Any?>, context:
         horizontalArrangement = horizontalArrangement(props.justify, props.gap),
         verticalAlignment = rowVerticalAlignment(props.align),
     ) {
-        SlotSizeNotices(node.children)
+        SlotSizeNotices(node.children, Modifier.weight(1f, fill = false))
         node.children.forEach { child ->
             val childLayout = child.props.asLayoutProps()
             val fixedWidth = childLayout.width
@@ -482,11 +482,11 @@ internal fun RenderSizedChild(child: SpecNode, context: RenderContext) {
 }
 
 @Composable
-private fun SlotSizeNotices(children: List<SpecNode>) {
+private fun SlotSizeNotices(children: List<SpecNode>, noticeModifier: Modifier = Modifier) {
     val faults = children.flatMap { child -> child.props.asLayoutProps().sizeFaults.map { "'${child.id}' $it" } }
     if (faults.isEmpty()) return
     RecordDrawn { notices = faults }
-    faults.forEach { Text(text = it, style = MaterialTheme.typography.bodySmall, color = Color(0xFFB3261E)) }
+    faults.forEach { Text(text = it, modifier = noticeModifier, style = MaterialTheme.typography.bodySmall, color = Color(0xFFB3261E)) }
 }
 
 // A declared ground is painted UNDER the padding, so the colour fills the container
