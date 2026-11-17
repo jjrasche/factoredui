@@ -14,9 +14,9 @@
               {
                 "id": "jobs-filters", "type": "row", "props": { "gap": 6 },
                 "children": [
-                  { "id": "filter-needs-jim", "type": "button", "props": { "label": "Needs Jim", "flex": 1 }, "action": { "action": "set_binding", "params": { "values": { "ui.f.field": "needs_jim", "ui.f.in": ["true"] } } } },
+                  { "id": "filter-needs-jim", "type": "button", "props": { "label": "Jim", "flex": 1 }, "action": { "action": "set_binding", "params": { "values": { "ui.f.field": "needs_jim", "ui.f.in": ["true"] } } } },
                   { "id": "filter-trouble", "type": "button", "props": { "label": "Stuck", "flex": 1 }, "action": { "action": "set_binding", "params": { "values": { "ui.f.field": "status", "ui.f.in": ["blocked", "stuck"] } } } },
-                  { "id": "filter-started", "type": "button", "props": { "label": "Running", "flex": 1 }, "action": { "action": "set_binding", "params": { "values": { "ui.f.field": "status", "ui.f.in": ["started"] } } } },
+                  { "id": "filter-started", "type": "button", "props": { "label": "Live", "flex": 1 }, "action": { "action": "set_binding", "params": { "values": { "ui.f.field": "status", "ui.f.in": ["started"] } } } },
                   { "id": "filter-all", "type": "button", "props": { "label": "All", "flex": 1 }, "action": { "action": "set_binding", "params": { "values": { "ui.f.field": "status", "ui.f.in": [] } } } }
                 ]
               },
