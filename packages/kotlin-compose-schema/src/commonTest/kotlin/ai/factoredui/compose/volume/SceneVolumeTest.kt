@@ -73,6 +73,23 @@ class SceneVolumeTest {
     }
 
     @Test
+    fun an_object_the_engine_could_not_measure_is_not_drawn_and_is_listed_and_does_not_widen_the_range() {
+        val unmeasured = mapOf("id" to "slab", "type" to "slab", "system" to "frame", "box_mm" to null, "unmeasured" to mapOf("field" to "height", "why" to "no thickness"), "fields" to mapOf("utilisation" to mapOf("value" to 9.0, "unit" to "ratio", "source" to "row-9")))
+        val read = assertNotNull(readScene(answer(listOf(member("m1", 0.4), unmeasured), limits = emptyMap()), "utilisation"))
+        assertEquals(listOf("m1"), boxesOf(read).map { it["id"] })
+        assertTrue(read.notices.any { "'slab' is not measured" in it && "no thickness" in it })
+        assertNull(read.props["max"])
+    }
+
+    @Test
+    fun a_computed_source_is_shown_as_computed_with_what_it_came_from() {
+        val computed = member("m1", 0.4, mapOf("computed" to "structural.utilisation", "from" to listOf("row-1", "setting:frame.load")))
+        val read = assertNotNull(readScene(answer(listOf(computed)), "utilisation"))
+        val row = (((read.props["details"] as Map<*, *>)["m1"] as Map<*, *>)["sections"] as List<*>).filterIsInstance<Map<*, *>>().single()["rows"] as List<*>
+        assertEquals("computed: structural.utilisation from row-1, setting:frame.load", (row.single() as Map<*, *>)["note"])
+    }
+
+    @Test
     fun without_colour_by_every_object_is_drawn_plain_and_something_that_is_not_an_answer_reads_as_none() {
         val read = assertNotNull(readScene(answer(listOf(member("m1", 0.4))), null))
         assertEquals("object", boxesOf(read).single()["style"])

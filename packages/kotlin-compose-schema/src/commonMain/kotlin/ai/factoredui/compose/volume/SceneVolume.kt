@@ -25,9 +25,14 @@ private fun fieldsOf(raw: Any?): Map<*, *> = raw as? Map<*, *> ?: emptyMap<Any?,
 
 private fun numberOf(raw: Any?): Double? = (raw as? Number)?.toDouble()?.takeIf { it.isFinite() }
 
+private fun computedText(function: Any, inputs: Any?): String {
+    val names = (inputs as? List<*>).orEmpty().joinToString(", ")
+    return if (names.isEmpty()) "computed: $function" else "computed: $function from $names"
+}
+
 private fun sourceText(source: Any?): String? = when (source) {
     is String -> source
-    is Map<*, *> -> source["unknown"]?.let { "unknown: $it" }
+    is Map<*, *> -> source["unknown"]?.let { "unknown: $it" } ?: source["computed"]?.let { computedText(it, source["from"]) }
     else -> null
 }
 
@@ -89,10 +94,11 @@ private fun legendFor(styles: Set<String>): List<Map<String, Any?>> = listOfNotN
 /** Reads a scene answer — objects with a box in millimetres (x, y the footprint centre, z the underside) and named fields that each carry a value, a unit and a source — into volume props. [colourBy] names the field that colours the boxes; its range is the answer's own limit for that field, a side the limit does not state is the extreme read, a value outside the limit is drawn in the `outside` style, and a field with no value is drawn in the `unknown` style. Null when [scene] is not an answer. */
 fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null): SceneVolume? {
     val answer = scene as? Map<*, *> ?: return null
-    val objects = (answer["objects"] as? List<*>).orEmpty().filterIsInstance<Map<*, *>>()
+    val everyObject = (answer["objects"] as? List<*>).orEmpty().filterIsInstance<Map<*, *>>()
+    val (objects, unmeasured) = everyObject.partition { it["box_mm"] != null || it["unmeasured"] == null }
     val limit = colourBy?.let { fieldsOf(answer["limits"])[it] as? Map<*, *> }
     val readings = objects.map { colourBy?.let { name -> readingOf(fieldsOf(it["fields"])[name] as? Map<*, *>, limit) } }
-    val notices = mutableListOf<String>()
+    val notices = unmeasured.mapTo(mutableListOf()) { item -> "volume scene: '${item["id"]}' is not measured (${(item["unmeasured"] as? Map<*, *>)?.let { "${it["field"]}: ${it["why"]}" }}); it is not drawn." }
     val boxes = objects.zip(readings).mapNotNull { (item, reading) ->
         boxOf(item, styleNameOf(reading), reading) ?: null.also { notices += "volume scene: object '${item["id"]}' has no id or no box_mm; it is not drawn." }
     }
