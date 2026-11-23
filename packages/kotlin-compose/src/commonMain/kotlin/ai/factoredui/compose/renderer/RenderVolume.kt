@@ -99,6 +99,7 @@ private const val FIT_FILL = 0.98f
 private val OVERVIEW_FOV = (PI / 3).toFloat()
 private val CLOSE_FOV = (PI / 6).toFloat()
 private const val FIT_PASSES = 6
+private const val MAX_FOV_DEG = 120.0
 private val FIT_PITCHES_DEG = listOf(10, 15, 20, 25, 30, 40, 50)
 private const val MIN_FIT_SCALE = 0.05f
 private const val SMALLEST_VIEW_DISTANCE = 0.02f
@@ -180,10 +181,10 @@ private fun settleView(camera: Camera, span: VolumeSpanMm, widthPx: Float, heigh
 }
 
 /** Frames [span] as [frameCamera] does, then looks at it through a narrower lens from whichever of [FIT_PITCHES_DEG] lets it fill the drawing most, so a wide short drawing is given a low view and a tall one a high view. */
-private fun fitCamera(camera: Camera, span: VolumeSpanMm, widthPx: Float, heightPx: Float) {
+private fun fitCamera(camera: Camera, span: VolumeSpanMm, widthPx: Float, heightPx: Float, lens: Float) {
     frameCamera(camera, span)
     if (widthPx <= 0f || heightPx <= 0f) return
-    camera.fovYRadians = CLOSE_FOV
+    camera.fovYRadians = lens
     val framedTarget = camera.target
     val framedDistance = camera.distance
     fun lookFrom(degrees: Int): Boolean {
@@ -421,7 +422,7 @@ private fun PublishDetailRecord(node: SpecNode, selection: Set<String>, rawDetai
 /** Draws a volume; when `scene` holds an engine's scene answer, its boxes, details, styles, legend and colour range come from the answer and `colour_by` names the field that colours the boxes (`value_ramp` is the spec's). */
 @Composable
 internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
-    val scene = remember(resolvedProps["scene"], resolvedProps["colour_by"], resolvedProps["styles"]) { readScene(resolvedProps["scene"], resolvedProps["colour_by"] as? String, resolvedProps["styles"]) }
+    val scene = remember(resolvedProps["scene"], resolvedProps["colour_by"], resolvedProps["styles"], resolvedProps["colour_caption"], resolvedProps["length_unit"]) { readScene(resolvedProps["scene"], resolvedProps["colour_by"] as? String, resolvedProps["styles"], resolvedProps["colour_caption"] as? String, resolvedProps["length_unit"] as? String) }
     RenderVolumeProps(node, if (scene == null) resolvedProps else resolvedProps + scene.props + mapOf("scene_notices" to scene.notices), context)
 }
 
@@ -453,16 +454,19 @@ private fun RenderVolumeProps(node: SpecNode, resolvedProps: Map<String, Any?>, 
     val ground = planColour(resolvedProps["ground"] as? String)
     val currentTint = planColour(resolvedProps["current_color"] as? String) ?: CURRENT_INK
     val highlighted = remember(read, resolvedProps["highlight"]) { highlightedIds(read, resolvedProps["highlight"]) }
-    val focusSpan = remember(read, resolvedProps["focus"]) { volumeSpan(read.boxes.filter { it.id in idsIn(resolvedProps["focus"]) }) }
+    val fitModel = resolvedProps["fit"] == true
+    val focusSpan = remember(read, resolvedProps["focus"], fitModel) { volumeSpan(read.boxes.filter { it.id in idsIn(resolvedProps["focus"]) }) ?: if (fitModel) volumeSpan(read.boxes) else null }
+    val fitLens = (resolvedProps["fov_deg"] as? Number)?.toDouble()?.takeIf { it > 0 && it < MAX_FOV_DEG }?.let { (it * PI / 180).toFloat() }
     val colouring = remember(read, resolvedProps["value_ramp"], resolvedProps["min"], resolvedProps["max"], resolvedProps["frame"], resolvedProps["unit"], fieldRead) { boxColouringOf(read, resolvedProps, fieldRead.field?.frames?.size ?: 0) }
     val gradeTint = (planColour(resolvedProps["grade_color"] as? String) ?: GRADE_COLOUR).let { it.copy(alpha = (resolvedProps["grade_opacity"] as? Number)?.toFloat()?.coerceIn(0f, 1f) ?: GRADE_OPACITY) }
     Column(modifier = (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).nodeTag(node.id)) {
         val unloaded = fieldRead.field?.takeIf { colouring.colouring?.frame in it.notLoaded }?.let { "volume field: frame ${colouring.colouring?.frame} is not loaded yet." }
         (read.notices + (resolvedProps["scene_notices"] as? List<*>).orEmpty().map { it.toString() } + fieldRead.notices + listOfNotNull(cameraNotice, unloaded, colouring.notice, fieldRead.field?.takeIf { colouring.colouring == null }?.let { "volume field: give value_ramp to colour it; it is not drawn." })).forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
+        (resolvedProps["scene_info"] as? List<*>).orEmpty().forEach { Text(text = it.toString(), style = VOLUME_TEXT, color = LocalSpecTheme.current.ink) }
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, highlighted, focusSpan, colouring.colouring, fieldRead.field, isSide, pickedPath, throughPath, context)
+            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, highlighted, focusSpan, fitLens, colouring.colouring, fieldRead.field, isSide, pickedPath, throughPath, context)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -470,7 +474,7 @@ private fun RenderVolumeProps(node: SpecNode, resolvedProps: Map<String, Any?>, 
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, colouring: BoxColouring?, field: VolumeField?, isSide: Boolean, pickedPath: String?, throughPath: String?, context: RenderContext) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, fitLens: Float?, colouring: BoxColouring?, field: VolumeField?, isSide: Boolean, pickedPath: String?, throughPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
     val camera = remember(span, focusSpan) { Camera(near = NEAREST_SEEN, minDistance = SMALLEST_VIEW_DISTANCE).also { frameCamera(it, focusSpan ?: span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -482,7 +486,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
         val widthPx = with(density) { widthDp.toPx() }
         val heightPx = with(density) { heightDp.toPx() }
         if (isSide) remember(camera, span, widthPx, heightPx) { frameSideCamera(camera, span, widthPx / heightPx) }
-        else if (focusSpan != null) remember(camera, focusSpan, widthPx, heightPx) { fitCamera(camera, focusSpan, widthPx, heightPx) }
+        else if (focusSpan != null) remember(camera, focusSpan, widthPx, heightPx, fitLens) { fitCamera(camera, focusSpan, widthPx, heightPx, fitLens ?: CLOSE_FOV) }
         val scene = remember(revision, read, span, widthPx, heightPx, sun, step, gradeMm) { projectScene(read, span, camera, widthPx, heightPx, sun, step, gradeMm) }
         val splats = remember(revision, field, widthPx, heightPx) { field?.let { fieldSplatsOf(it, camera, widthPx, heightPx) } }
         val splatColours = remember(splats, colouring) { if (field != null && splats != null && colouring != null) fieldSplatColours(field, splats, colouring.frame, colouring.ramp) else null }

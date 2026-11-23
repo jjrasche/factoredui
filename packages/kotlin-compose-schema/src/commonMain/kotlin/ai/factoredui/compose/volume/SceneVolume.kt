@@ -96,13 +96,34 @@ private fun boxOf(objectFields: Map<*, *>, style: String, reading: Reading?): Ma
     ) + pitchOf(box["tilt"]) + if (reading is Reading.Scaled) mapOf("values" to listOf(reading.value)) else emptyMap()
 }
 
-private fun legendFor(styles: Set<String>): List<Map<String, Any?>> = listOfNotNull(
-    UNKNOWN_STYLE.takeIf { it in styles }?.let { mapOf("label" to "Unknown", "style" to it, "hatched" to true) },
-    OUTSIDE_STYLE.takeIf { it in styles }?.let { mapOf("label" to "Outside the limit", "style" to it, "hatched" to false) },
+private fun legendFor(styleCounts: Map<String, Int>): List<Map<String, Any?>> = listOfNotNull(
+    styleCounts[UNKNOWN_STYLE]?.let { mapOf("label" to "Unknown ($it)", "style" to UNKNOWN_STYLE, "hatched" to true) },
+    styleCounts[OUTSIDE_STYLE]?.let { mapOf("label" to "Outside the limit ($it)", "style" to OUTSIDE_STYLE, "hatched" to false) },
 )
 
+private const val MM_PER_INCH = 25.4
+private const val INCHES_PER_FOOT = 12
+
+private fun lengthText(mm: Double, lengthUnit: String?): String {
+    if (lengthUnit == "mm") return "${plainFigureText(kotlin.math.round(mm))} mm"
+    val inches = kotlin.math.round(mm / MM_PER_INCH).toInt()
+    return "${inches / INCHES_PER_FOOT} ft ${inches % INCHES_PER_FOOT} in"
+}
+
+private fun extentsLine(boxes: List<Map<String, Any?>>, lengthUnit: String?): String? {
+    fun low(centre: String, size: String) = boxes.minOfOrNull { numberOf(it[centre])!! - numberOf(it[size])!! / 2 }
+    fun high(centre: String, size: String) = boxes.maxOfOrNull { numberOf(it[centre])!! + numberOf(it[size])!! / 2 }
+    val east = high("x_mm", "width_mm") ?: return null
+    val north = high("y_mm", "depth_mm") ?: return null
+    val floor = boxes.minOf { numberOf(it["z_mm"])!! }
+    val ceiling = boxes.maxOf { numberOf(it["z_mm"])!! + numberOf(it["height_mm"])!! }
+    val width = east - low("x_mm", "width_mm")!!
+    val depth = north - low("y_mm", "depth_mm")!!
+    return "Overall: ${lengthText(width, lengthUnit)} east to west, ${lengthText(depth, lengthUnit)} north to south, ${lengthText(ceiling - floor, lengthUnit)} high."
+}
+
 /** Reads a scene answer — objects with a box in millimetres (x, y the footprint centre, z the underside) and named fields that each carry a value, a unit and a source — into volume props. [colourBy] names the field that colours the boxes; its range is the answer's own limit for that field, a side the limit does not state is the extreme read, a value outside the limit is drawn in the `outside` style, and a field with no value is drawn in the `unknown` style. Null when [scene] is not an answer. */
-fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null): SceneVolume? {
+fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null, colourCaption: String? = null, lengthUnit: String? = null): SceneVolume? {
     val answer = scene as? Map<*, *> ?: return null
     val everyObject = (answer["objects"] as? List<*>).orEmpty().filterIsInstance<Map<*, *>>()
     val (objects, unmeasured) = everyObject.partition { it["box_mm"] != null || it["unmeasured"] == null }
@@ -117,11 +138,12 @@ fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null): SceneVol
     val max = numberOf(limit?.get("high")) ?: scaled.maxOrNull()
     if (colourBy != null && (min == null || max == null || max <= min)) notices += "volume scene: '$colourBy' has no range to colour by; the boxes are drawn plain."
     notices += objects.mapNotNull { unsupportedTiltNotice(it) }
-    val usedStyles = boxes.mapNotNull { it["style"] as? String }.toSet()
+    val styleCounts = boxes.mapNotNull { it["style"] as? String }.groupingBy { it }.eachCount()
+    val usedStyles = styleCounts.keys
     val details = objects.zip(readings).filter { (item, _) -> item["id"] is String && item["box_mm"] is Map<*, *> }.associate { (item, reading) -> item["id"] as String to detailOf(item, colourBy, reading, fieldsOf(answer["computed_by"])) }
     (answer["page"] as? Map<*, *>)?.get("next")?.let { notices += "volume scene: more follows (${(answer["page"] as Map<*, *>)["region"]}, next $it)." }
     val unit = objects.firstNotNullOfOrNull { (fieldsOf(it["fields"])[colourBy] as? Map<*, *>)?.get("unit") as? String }
     val rangeProps = if (min != null && max != null && max > min) mapOf("min" to min, "max" to max, "frame" to 0, "unit" to unit) else emptyMap()
     val styles = DEFAULT_STYLES.filterKeys { it in usedStyles } + ((specStyles as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value } ?: emptyMap())
-    return SceneVolume(mapOf("boxes" to boxes, "details" to details, "styles" to styles, "legend" to legendFor(usedStyles)) + rangeProps, notices)
+    return SceneVolume(mapOf("boxes" to boxes, "details" to details, "styles" to styles, "legend" to legendFor(styleCounts), "scene_info" to listOfNotNull(colourCaption?.let { "Colour: $it." }, extentsLine(boxes, lengthUnit))) + rangeProps, notices)
 }

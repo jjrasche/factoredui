@@ -52,7 +52,7 @@ private fun frameAnswer(): Map<String, Any?> = mapOf(
 private fun sceneSpec(colourBy: String): String = """
     { "spec_version": 1, "renderer_min": 1,
       "root": { "id": "root", "type": "column", "props": {}, "children": [
-        { "id": "frame", "type": "volume", "props": { "scene": "{engine.scene}", "colour_by": "$colourBy", "value_ramp": "heat", "lighting": "sun" } } ] } }
+        { "id": "frame", "type": "volume", "props": { "scene": "{engine.scene}", "colour_by": "$colourBy", "colour_caption": "demand over capacity", "value_ramp": "heat", "lighting": "sun", "fit": true, "fov_deg": 12 } } ] } }
 """
 
 private fun pictureOf(colourBy: String): ByteArray = renderSpecToPng(

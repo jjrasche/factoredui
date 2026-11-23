@@ -101,6 +101,24 @@ class SceneVolumeTest {
     }
 
     @Test
+    fun the_legend_counts_the_members_outside_the_limit_and_the_unknown_ones() {
+        val objects = listOf(member("a", 1.2), member("b", 1.5), member("c", null, mapOf("unknown" to "x")), member("d", 0.5))
+        val read = assertNotNull(readScene(answer(objects), "utilisation"))
+        val labels = (read.props["legend"] as List<*>).map { (it as Map<*, *>)["label"] }
+        assertEquals(listOf("Unknown (1)", "Outside the limit (2)"), labels)
+    }
+
+    @Test
+    fun the_caption_and_the_overall_extents_are_given_as_lines_in_feet_and_inches_or_millimetres() {
+        val read = assertNotNull(readScene(answer(listOf(member("m1", 0.4))), "utilisation", colourCaption = "demand over capacity"))
+        val info = (read.props["scene_info"] as List<*>).map { it.toString() }
+        assertEquals("Colour: demand over capacity.", info[0])
+        assertEquals("Overall: 0 ft 4 in east to west, 0 ft 8 in north to south, 9 ft 10 in high.", info[1])
+        val millimetres = assertNotNull(readScene(answer(listOf(member("m1", 0.4))), "utilisation", lengthUnit = "mm"))
+        assertTrue((millimetres.props["scene_info"] as List<*>).single().toString().contains("100 mm east to west"))
+    }
+
+    @Test
     fun the_legend_rounds_to_three_significant_figures() {
         assertEquals("0.0769 ratio", heatLegendText(0.07692307692307693, "ratio"))
         assertEquals("4.03 ratio", heatLegendText(4.03045111619211, "ratio"))
