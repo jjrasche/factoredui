@@ -31,6 +31,7 @@ import ai.factoredui.compose.volume.sideNormal
 import ai.factoredui.compose.volume.sunShade
 import ai.factoredui.compose.volume.paintOnTop
 import ai.factoredui.compose.volume.readSun
+import ai.factoredui.compose.volume.readScene
 import ai.factoredui.compose.volume.readVolume
 import ai.factoredui.compose.volume.volumeSpan
 import androidx.compose.foundation.Canvas
@@ -416,8 +417,16 @@ private fun PublishDetailRecord(node: SpecNode, selection: Set<String>, rawDetai
     val record = selection.singleOrNull()?.let { (rawDetails as? Map<*, *>)?.get(it) }
     LaunchedEffect(path, record) { context.setBinding(path, record) }
 }
+
+/** Draws a volume; when `scene` holds an engine's scene answer, its boxes, details, styles, legend and colour range come from the answer and `colour_by` names the field that colours the boxes (`value_ramp` is the spec's). */
 @Composable
 internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
+    val scene = remember(resolvedProps["scene"], resolvedProps["colour_by"], resolvedProps["styles"]) { readScene(resolvedProps["scene"], resolvedProps["colour_by"] as? String, resolvedProps["styles"]) }
+    RenderVolumeProps(node, if (scene == null) resolvedProps else resolvedProps + scene.props + mapOf("scene_notices" to scene.notices), context)
+}
+
+@Composable
+private fun RenderVolumeProps(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
     val stageField = resolvedProps["stage_field"] as? String ?: "stage"
     val read = remember(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"], resolvedProps["lines"], resolvedProps["labels"], stageField) {
         readVolume(resolvedProps["boxes"], resolvedProps["styles"], resolvedProps["legend"], resolvedProps["lines"], resolvedProps["labels"], stageField)
@@ -449,7 +458,7 @@ internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, cont
     val gradeTint = (planColour(resolvedProps["grade_color"] as? String) ?: GRADE_COLOUR).let { it.copy(alpha = (resolvedProps["grade_opacity"] as? Number)?.toFloat()?.coerceIn(0f, 1f) ?: GRADE_OPACITY) }
     Column(modifier = (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).nodeTag(node.id)) {
         val unloaded = fieldRead.field?.takeIf { colouring.colouring?.frame in it.notLoaded }?.let { "volume field: frame ${colouring.colouring?.frame} is not loaded yet." }
-        (read.notices + fieldRead.notices + listOfNotNull(cameraNotice, unloaded, colouring.notice, fieldRead.field?.takeIf { colouring.colouring == null }?.let { "volume field: give value_ramp to colour it; it is not drawn." })).forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
+        (read.notices + (resolvedProps["scene_notices"] as? List<*>).orEmpty().map { it.toString() } + fieldRead.notices + listOfNotNull(cameraNotice, unloaded, colouring.notice, fieldRead.field?.takeIf { colouring.colouring == null }?.let { "volume field: give value_ramp to colour it; it is not drawn." })).forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
