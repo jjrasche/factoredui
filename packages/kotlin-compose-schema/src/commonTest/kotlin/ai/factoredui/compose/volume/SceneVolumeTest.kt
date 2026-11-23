@@ -82,11 +82,12 @@ class SceneVolumeTest {
     }
 
     @Test
-    fun a_computed_source_is_shown_as_computed_with_what_it_came_from() {
-        val computed = member("m1", 0.4, mapOf("computed" to "structural.utilisation", "from" to listOf("row-1", "setting:frame.load")))
-        val read = assertNotNull(readScene(answer(listOf(computed)), "utilisation"))
+    fun a_computed_source_is_shown_as_computed_with_what_its_function_reads() {
+        val computed = member("m1", 0.4, mapOf("computed" to "structural.utilisation"))
+        val withReads = answer(listOf(computed)) + ("computed_by" to mapOf("structural.utilisation" to mapOf("reads" to listOf("row-1", "setting:frame.load"))))
+        val read = assertNotNull(readScene(withReads, "utilisation"))
         val row = (((read.props["details"] as Map<*, *>)["m1"] as Map<*, *>)["sections"] as List<*>).filterIsInstance<Map<*, *>>().single()["rows"] as List<*>
-        assertEquals("computed: structural.utilisation from row-1, setting:frame.load", (row.single() as Map<*, *>)["note"])
+        assertEquals("computed: structural.utilisation, which reads row-1, setting:frame.load", (row.single() as Map<*, *>)["note"])
     }
 
     @Test

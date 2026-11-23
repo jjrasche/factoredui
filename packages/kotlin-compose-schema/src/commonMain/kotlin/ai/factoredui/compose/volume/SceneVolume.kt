@@ -25,14 +25,14 @@ private fun fieldsOf(raw: Any?): Map<*, *> = raw as? Map<*, *> ?: emptyMap<Any?,
 
 private fun numberOf(raw: Any?): Double? = (raw as? Number)?.toDouble()?.takeIf { it.isFinite() }
 
-private fun computedText(function: Any, inputs: Any?): String {
-    val names = (inputs as? List<*>).orEmpty().joinToString(", ")
-    return if (names.isEmpty()) "computed: $function" else "computed: $function from $names"
+private fun computedText(function: Any, computedBy: Map<*, *>): String {
+    val reads = ((computedBy[function] as? Map<*, *>)?.get("reads") as? List<*>).orEmpty().joinToString(", ")
+    return if (reads.isEmpty()) "computed: $function" else "computed: $function, which reads $reads"
 }
 
-private fun sourceText(source: Any?): String? = when (source) {
+private fun sourceText(source: Any?, computedBy: Map<*, *>): String? = when (source) {
     is String -> source
-    is Map<*, *> -> source["unknown"]?.let { "unknown: $it" } ?: source["computed"]?.let { computedText(it, source["from"]) }
+    is Map<*, *> -> source["unknown"]?.let { "unknown: $it" } ?: source["computed"]?.let { computedText(it, computedBy) }
     else -> null
 }
 
@@ -61,16 +61,16 @@ private fun valueText(field: Map<*, *>): String? {
     return listOfNotNull(figure, field["unit"] as? String).joinToString(" ")
 }
 
-private fun rowNote(name: String, field: Map<*, *>, colourBy: String?, reading: Reading?): String? {
-    val source = sourceText(field["source"])
+private fun rowNote(name: String, field: Map<*, *>, colourBy: String?, reading: Reading?, computedBy: Map<*, *>): String? {
+    val source = sourceText(field["source"], computedBy)
     val state = (reading as? Reading.Outside)?.takeIf { name == colourBy }?.let { "outside the limit: ${it.reason}" }
     return listOfNotNull(state, source).joinToString("; ").ifEmpty { null }
 }
 
-private fun detailOf(objectFields: Map<*, *>, colourBy: String?, reading: Reading?): Map<String, Any?> {
+private fun detailOf(objectFields: Map<*, *>, colourBy: String?, reading: Reading?, computedBy: Map<*, *>): Map<String, Any?> {
     val rows = fieldsOf(objectFields["fields"]).entries.map { (name, raw) ->
         val field = fieldsOf(raw)
-        mapOf("label" to name.toString(), "value" to valueText(field), "note" to rowNote(name.toString(), field, colourBy, reading.takeIf { name == colourBy }))
+        mapOf("label" to name.toString(), "value" to valueText(field), "note" to rowNote(name.toString(), field, colourBy, reading.takeIf { name == colourBy }, computedBy))
     }
     val heading = listOfNotNull(objectFields["type"] as? String, objectFields["system"] as? String).joinToString(" · ")
     return mapOf("title" to (objectFields["id"] as? String ?: ""), "sections" to listOf(mapOf("heading" to heading, "rows" to rows)))
@@ -107,7 +107,7 @@ fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null): SceneVol
     val max = numberOf(limit?.get("high")) ?: scaled.maxOrNull()
     if (colourBy != null && (min == null || max == null || max <= min)) notices += "volume scene: '$colourBy' has no range to colour by; the boxes are drawn plain."
     val usedStyles = boxes.mapNotNull { it["style"] as? String }.toSet()
-    val details = objects.zip(readings).filter { (item, _) -> item["id"] is String && item["box_mm"] is Map<*, *> }.associate { (item, reading) -> item["id"] as String to detailOf(item, colourBy, reading) }
+    val details = objects.zip(readings).filter { (item, _) -> item["id"] is String && item["box_mm"] is Map<*, *> }.associate { (item, reading) -> item["id"] as String to detailOf(item, colourBy, reading, fieldsOf(answer["computed_by"])) }
     (answer["page"] as? Map<*, *>)?.get("next")?.let { notices += "volume scene: more follows (${(answer["page"] as Map<*, *>)["region"]}, next $it)." }
     val unit = objects.firstNotNullOfOrNull { (fieldsOf(it["fields"])[colourBy] as? Map<*, *>)?.get("unit") as? String }
     val rangeProps = if (min != null && max != null && max > min) mapOf("min" to min, "max" to max, "frame" to 0, "unit" to unit) else emptyMap()
