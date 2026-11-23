@@ -4,6 +4,7 @@ import ai.factoredui.compose.ramp.ColourRamp
 import ai.factoredui.compose.ramp.RampReading
 import ai.factoredui.compose.ramp.RampStop
 import ai.factoredui.compose.ramp.readColourRamp
+import kotlin.math.pow
 import ai.factoredui.compose.schema.plainFigureText
 
 /** [edges] are the count + 1 cuts between cells, so cell i spans edges[i]..edges[i + 1]; [first] and [last] are the numbers printed at the axis ends. */
@@ -104,4 +105,13 @@ fun readHeatmapProps(resolved: Map<String, Any?>): HeatmapReading {
 
 fun heatFrameIndex(raw: Any?, frameCount: Int): Int = (finiteNumberOf(raw) ?: 0.0).toInt().coerceIn(0, maxOf(0, frameCount - 1))
 
-fun heatLegendText(value: Double, unit: String?): String = plainFigureText(value) + (unit?.let { " $it" } ?: "")
+private const val LEGEND_SIGNIFICANT_FIGURES = 3
+
+private fun roundedToFigures(value: Double): Double {
+    if (value == 0.0 || !value.isFinite()) return value
+    val decimals = LEGEND_SIGNIFICANT_FIGURES - kotlin.math.ceil(kotlin.math.log10(kotlin.math.abs(value))).toInt()
+    val scale = 10.0.pow(decimals)
+    return kotlin.math.round(value * scale) / scale
+}
+
+fun heatLegendText(value: Double, unit: String?): String = plainFigureText(roundedToFigures(value)) + (unit?.let { " $it" } ?: "")

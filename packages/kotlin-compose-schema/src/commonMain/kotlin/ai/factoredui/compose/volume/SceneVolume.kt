@@ -76,6 +76,16 @@ private fun detailOf(objectFields: Map<*, *>, colourBy: String?, reading: Readin
     return mapOf("title" to (objectFields["id"] as? String ?: ""), "sections" to listOf(mapOf("heading" to heading, "rows" to rows)))
 }
 
+private fun pitchOf(tilt: Any?): Map<String, Any?> {
+    val fields = tilt as? Map<*, *> ?: return emptyMap()
+    return if (fields["axis"] == "width" && numberOf(fields["deg"]) != null) mapOf("pitch_deg" to fields["deg"]) else emptyMap()
+}
+
+private fun unsupportedTiltNotice(item: Map<*, *>): String? {
+    val tilt = (item["box_mm"] as? Map<*, *>)?.get("tilt") as? Map<*, *> ?: return null
+    return "volume scene: '${item["id"]}' is tilted about its '${tilt["axis"]}' axis; only the width axis is drawn, so it is drawn level.".takeIf { tilt["axis"] != "width" }
+}
+
 private fun boxOf(objectFields: Map<*, *>, style: String, reading: Reading?): Map<String, Any?>? {
     val box = objectFields["box_mm"] as? Map<*, *> ?: return null
     val id = objectFields["id"] as? String ?: return null
@@ -83,7 +93,7 @@ private fun boxOf(objectFields: Map<*, *>, style: String, reading: Reading?): Ma
         "id" to id, "x_mm" to box["x"], "y_mm" to box["y"], "z_mm" to box["z"],
         "width_mm" to box["w"], "depth_mm" to box["d"], "height_mm" to box["h"],
         "style" to style, "estimate" to (reading is Reading.Unknown),
-    ) + if (reading is Reading.Scaled) mapOf("values" to listOf(reading.value)) else emptyMap()
+    ) + pitchOf(box["tilt"]) + if (reading is Reading.Scaled) mapOf("values" to listOf(reading.value)) else emptyMap()
 }
 
 private fun legendFor(styles: Set<String>): List<Map<String, Any?>> = listOfNotNull(
@@ -106,6 +116,7 @@ fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null): SceneVol
     val min = numberOf(limit?.get("low")) ?: scaled.minOrNull()
     val max = numberOf(limit?.get("high")) ?: scaled.maxOrNull()
     if (colourBy != null && (min == null || max == null || max <= min)) notices += "volume scene: '$colourBy' has no range to colour by; the boxes are drawn plain."
+    notices += objects.mapNotNull { unsupportedTiltNotice(it) }
     val usedStyles = boxes.mapNotNull { it["style"] as? String }.toSet()
     val details = objects.zip(readings).filter { (item, _) -> item["id"] is String && item["box_mm"] is Map<*, *> }.associate { (item, reading) -> item["id"] as String to detailOf(item, colourBy, reading, fieldsOf(answer["computed_by"])) }
     (answer["page"] as? Map<*, *>)?.get("next")?.let { notices += "volume scene: more follows (${(answer["page"] as Map<*, *>)["region"]}, next $it)." }

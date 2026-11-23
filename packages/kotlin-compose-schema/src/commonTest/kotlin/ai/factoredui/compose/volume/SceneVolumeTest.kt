@@ -1,5 +1,6 @@
 package ai.factoredui.compose.volume
 
+import ai.factoredui.compose.heatmap.heatLegendText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -88,6 +89,22 @@ class SceneVolumeTest {
         val read = assertNotNull(readScene(withReads, "utilisation"))
         val row = (((read.props["details"] as Map<*, *>)["m1"] as Map<*, *>)["sections"] as List<*>).filterIsInstance<Map<*, *>>().single()["rows"] as List<*>
         assertEquals("computed: structural.utilisation, which reads row-1, setting:frame.load", (row.single() as Map<*, *>)["note"])
+    }
+
+    @Test
+    fun a_tilt_about_the_width_axis_is_a_pitch_and_another_axis_is_named_and_drawn_level() {
+        fun tilted(id: String, axis: String) = member(id, 0.4).let { it + ("box_mm" to (it["box_mm"] as Map<*, *> + ("tilt" to mapOf("axis" to axis, "deg" to 20)))) }
+        val read = assertNotNull(readScene(answer(listOf(tilted("rafter", "width"), tilted("sheet", "depth"))), "utilisation"))
+        assertEquals(20, boxesOf(read).first { it["id"] == "rafter" }["pitch_deg"])
+        assertNull(boxesOf(read).first { it["id"] == "sheet" }["pitch_deg"])
+        assertTrue(read.notices.any { "'sheet'" in it && "depth" in it })
+    }
+
+    @Test
+    fun the_legend_rounds_to_three_significant_figures() {
+        assertEquals("0.0769 ratio", heatLegendText(0.07692307692307693, "ratio"))
+        assertEquals("4.03 ratio", heatLegendText(4.03045111619211, "ratio"))
+        assertEquals("40 C", heatLegendText(40.0, "C"))
     }
 
     @Test
