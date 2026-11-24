@@ -119,6 +119,16 @@ class SceneVolumeTest {
     }
 
     @Test
+    fun the_object_with_the_highest_value_is_labelled_with_its_id_type_value_and_governing_text() {
+        val governed = member("top", 1.3).let { it + ("fields" to ((it["fields"] as Map<*, *>) + ("governing" to mapOf("value" to "bending", "source" to "row-2")))) }
+        val read = assertNotNull(readScene(answer(listOf(member("low", 0.4), governed, member("gap", null, mapOf("unknown" to "x")))), "utilisation"))
+        val label = (read.props["labels"] as List<*>).single() as Map<*, *>
+        assertEquals("top · beam · 1.3 ratio · bending", label["text"])
+        assertEquals(listOf(1000, 2000, 3000.0), label["at"])
+        assertEquals(emptyList<Any?>(), assertNotNull(readScene(answer(listOf(member("low", 0.4))), null)).props["labels"])
+    }
+
+    @Test
     fun the_legend_rounds_to_three_significant_figures() {
         assertEquals("0.0769 ratio", heatLegendText(0.07692307692307693, "ratio"))
         assertEquals("4.03 ratio", heatLegendText(4.03045111619211, "ratio"))

@@ -107,6 +107,8 @@ private const val NEAREST_SEEN = 0.01f
 private const val RESET_ROW_DP = 24f
 private const val MM_PER_UNIT = 1000f
 private const val GROUND_MARGIN = 0.15f
+private const val COMPASS_TAIL_FRACTION = 0.1f
+private const val COMPASS_HEAD_FRACTION = 0.75f
 private const val HATCH_GAP_DP = 6f
 private const val OUTLINE_DP = 1.2f
 private const val LIT_OUTLINE_DP = 0.8f
@@ -211,7 +213,7 @@ private class ProjectedLine(val from: Offset, val to: Offset, val style: String?
 
 private class ProjectedLabel(val at: Offset, val text: String, val style: String?)
 
-private class ProjectedScene(val ground: List<Offset>?, val boxes: List<ProjectedBox>, val north: Offset?, val lines: List<ProjectedLine>, val labels: List<ProjectedLabel>, val shadows: List<List<Offset>>)
+private class ProjectedScene(val ground: List<Offset>?, val boxes: List<ProjectedBox>, val north: Offset?, val northTail: Offset?, val lines: List<ProjectedLine>, val labels: List<ProjectedLabel>, val shadows: List<List<Offset>>)
 
 private fun faceShades(ground: List<Pair<Double, Double>>, sun: Direction?): List<Float> =
     if (sun == null) listOf(1f) + SIDE_SHADES.toList()
@@ -269,13 +271,14 @@ private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, w
         span.east + marginX to span.north + marginY, span.west - marginX to span.north + marginY,
     ).map { project(worldOf(it.first, it.second, gradeMm ?: span.floor)) }
     val north = project(worldOf((span.west + span.east) / 2, span.north + marginY, span.floor))
+    val northTail = project(worldOf((span.west + span.east) / 2, span.north + marginY * COMPASS_TAIL_FRACTION, span.floor))
     val lines = read.lines.mapNotNull { line ->
         val from = project(worldOf(line.from.xMm, line.from.yMm, line.from.zMm))
         val to = project(worldOf(line.to.xMm, line.to.yMm, line.to.zMm))
         if (from != null && to != null) ProjectedLine(from, to, line.style) else null
     }
     val labels = read.labels.mapNotNull { label -> project(worldOf(label.at.xMm, label.at.yMm, label.at.zMm))?.let { ProjectedLabel(it, label.text, label.style) } }
-    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north, lines, labels, if (sun != null) projectShadows(read, span, step, gradeMm, sun, project) else emptyList())
+    return ProjectedScene(groundCorners.takeIf { corners -> corners.all { it != null } }?.map { it!! }, boxes, north, northTail, lines, labels, if (sun != null) projectShadows(read, span, step, gradeMm, sun, project) else emptyList())
 }
 
 private fun pathOf(corners: List<Offset>): Path = Path().apply {
@@ -364,6 +367,24 @@ private fun DrawScope.drawBlueprintBox(projected: ProjectedBox, style: PlanStyle
 private fun DrawScope.drawProjectedLine(line: ProjectedLine, style: PlanStyle, ink: Color) {
     val effect = if (style.dash) PathEffect.dashPathEffect(floatArrayOf(DASH_DP.dp.toPx(), DASH_DP.dp.toPx())) else null
     drawLine(planColour(style.stroke) ?: ink, line.from, line.to, strokeWidth = (style.weight ?: OUTLINE_DP).dp.toPx(), pathEffect = effect)
+}
+
+private const val ARROW_HEAD_FRACTION = 0.3f
+private const val ARROW_HEAD_SPREAD = 0.5f
+private const val ARROW_MIN_PX = 6f
+private const val ARROW_DP = 2f
+
+/** An arrow from [tail] to [head] with an open two-stroke head; nothing when the two nearly coincide (a view along the arrow). */
+private fun DrawScope.drawCompassArrow(tail: Offset, head: Offset, ink: Color) {
+    val along = head - tail
+    val length = along.getDistance()
+    if (length < ARROW_MIN_PX) return
+    val back = Offset(-along.x, -along.y) * ARROW_HEAD_FRACTION
+    val across = Offset(-back.y, back.x) * ARROW_HEAD_SPREAD
+    val width = ARROW_DP.dp.toPx()
+    drawLine(ink, tail, head, strokeWidth = width)
+    drawLine(ink, head, head + back + across, strokeWidth = width)
+    drawLine(ink, head, head + back - across, strokeWidth = width)
 }
 
 private fun DrawScope.drawSelectedBox(projected: ProjectedBox, ink: Color) {
@@ -530,6 +551,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                 scene.shadows.forEach { drawShadow(it) }
                 if (splats != null && splatColours != null) drawFieldSplats(splats, splatColours)
                 scene.boxes.filterNot(isBuried).forEach(::drawBox)
+                if (scene.north != null && scene.northTail != null) drawCompassArrow(scene.northTail, scene.northTail + (scene.north - scene.northTail) * COMPASS_HEAD_FRACTION, theme.ink)
                 scene.lines.forEach { drawProjectedLine(it, read.styles[it.style] ?: PlanStyle(), theme.ink) }
                 scene.boxes.filter { it.box.id in selection.ids }.forEach { drawSelectedBox(it, if (blueprint) Color.White else theme.ink) }
             }

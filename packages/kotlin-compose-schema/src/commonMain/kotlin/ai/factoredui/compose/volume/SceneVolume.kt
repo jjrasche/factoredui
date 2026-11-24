@@ -101,6 +101,27 @@ private fun legendFor(styleCounts: Map<String, Int>): List<Map<String, Any?>> = 
     styleCounts[OUTSIDE_STYLE]?.let { mapOf("label" to "Outside the limit ($it)", "style" to OUTSIDE_STYLE, "hatched" to false) },
 )
 
+private fun readValueOf(reading: Reading?): Double? = when (reading) {
+    is Reading.Scaled -> reading.value
+    is Reading.Outside -> reading.value
+    else -> null
+}
+
+/** One label over the object whose [colourBy] value is highest, naming its id, type, value and unit, and its text field `governing` when it has one. */
+private fun topLabelOf(objects: List<Map<*, *>>, readings: List<Reading?>, colourBy: String?): List<Map<String, Any?>> {
+    val top = objects.zip(readings)
+        .mapNotNull { (item, reading) -> readValueOf(reading)?.let { value -> Triple(item, value, item["box_mm"] as? Map<*, *>) } }
+        .filter { it.third != null && it.first["id"] is String }
+        .maxByOrNull { it.second } ?: return emptyList()
+    val (item, value, box) = top
+    val fields = fieldsOf(item["fields"])
+    val unit = (fieldsOf(fields[colourBy])["unit"] as? String)
+    val governing = fieldsOf(fields["governing"])["value"] as? String
+    val text = listOfNotNull(item["id"] as? String, item["type"] as? String, listOfNotNull(plainFigureText(value), unit).joinToString(" "), governing).joinToString(" · ")
+    val at = listOf(box!!["x"], box["y"], numberOf(box["z"])?.let { z -> z + (numberOf(box["h"]) ?: 0.0) })
+    return listOf(mapOf("id" to "highest", "at" to at, "text" to text))
+}
+
 private const val MM_PER_INCH = 25.4
 private const val INCHES_PER_FOOT = 12
 
@@ -145,5 +166,6 @@ fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null, colourCap
     val unit = objects.firstNotNullOfOrNull { (fieldsOf(it["fields"])[colourBy] as? Map<*, *>)?.get("unit") as? String }
     val rangeProps = if (min != null && max != null && max > min) mapOf("min" to min, "max" to max, "frame" to 0, "unit" to unit) else emptyMap()
     val styles = DEFAULT_STYLES.filterKeys { it in usedStyles } + ((specStyles as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value } ?: emptyMap())
-    return SceneVolume(mapOf("boxes" to boxes, "details" to details, "styles" to styles, "legend" to legendFor(styleCounts), "scene_info" to listOfNotNull(colourCaption?.let { "Colour: $it." }, extentsLine(boxes, lengthUnit))) + rangeProps, notices)
+    val labels = if (colourBy != null) topLabelOf(objects, readings, colourBy) else emptyList()
+    return SceneVolume(mapOf("boxes" to boxes, "labels" to labels,"details" to details, "styles" to styles, "legend" to legendFor(styleCounts), "scene_info" to listOfNotNull(colourCaption?.let { "Colour: $it." }, extentsLine(boxes, lengthUnit))) + rangeProps, notices)
 }
