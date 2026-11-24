@@ -49,14 +49,14 @@ private fun frameAnswer(): Map<String, Any?> = mapOf(
     "page" to mapOf("region" to "frame", "next" to null),
 )
 
-private fun sceneSpec(colourBy: String): String = """
+private fun sceneSpec(colourBy: String, extra: String): String = """
     { "spec_version": 1, "renderer_min": 1,
-      "root": { "id": "root", "type": "column", "props": {}, "children": [
-        { "id": "frame", "type": "volume", "props": { "scene": "{engine.scene}", "colour_by": "$colourBy", "colour_caption": "demand over capacity", "value_ramp": "heat", "lighting": "sun", "fit": true, "fov_deg": 12 } } ] } }
+      "root": { "id": "root", "type": "stack", "props": { "fill": true }, "children": [
+        { "id": "frame", "type": "volume", "props": { "fill": true, "anchor": "fill", $extra "scene": "{engine.scene}", "colour_by": "$colourBy", "colour_caption": "demand over capacity", "value_ramp": "heat", "lighting": "sun", "fit": true, "fov_deg": 12 } } ] } }
 """
 
-private fun pictureOf(colourBy: String): ByteArray = renderSpecToPng(
-    specJson = sceneSpec(colourBy),
+private fun pictureOf(colourBy: String, extra: String = ""): ByteArray = renderSpecToPng(
+    specJson = sceneSpec(colourBy, extra),
     width = PHONE_WIDTH_PX,
     height = PHONE_HEIGHT_PX,
     density = PHONE_DENSITY,
@@ -76,6 +76,7 @@ class SceneVolumeRenderTest {
         val plain = pictureOf("no_such_field")
         printPicture("utilisation", coloured)
         printPicture("plain", plain)
+        printPicture("side", pictureOf("utilisation", """ "camera": "side", """))
         assertTrue(coloured.isNotEmpty())
         assertFalse(coloured.contentEquals(plain))
     }
