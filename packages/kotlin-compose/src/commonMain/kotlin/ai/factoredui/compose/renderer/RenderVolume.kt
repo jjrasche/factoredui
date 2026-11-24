@@ -154,7 +154,7 @@ private fun frameSideCamera(camera: Camera, span: VolumeSpanMm, aspect: Float, v
     val northSouthMetres = (span.north - span.south).toFloat() / MM_PER_UNIT
     val yawDegrees = SIDE_VIEW_YAW_DEGREES[view] ?: 0
     val isAlongX = yawDegrees % 180 == 0
-    val facedMetres = if (isAlongX) eastWestMetres else northSouthMetres
+    val facedMetres = if (isAlongX) eastWestMetres else northSouthMetres * (1 + 2 * GROUND_MARGIN)
     val behindMetres = if (isAlongX) northSouthMetres else eastWestMetres
     camera.target = worldOf((span.west + span.east) / 2, (span.south + span.north) / 2, (span.floor + span.ceiling) / 2)
     camera.setOrbit(radiansOf(yawDegrees), 0f, behindMetres / 2 + SIDE_STANDOFF_METRES)

@@ -1,5 +1,6 @@
 package ai.factoredui.compose.volume
 
+import ai.factoredui.compose.heatmap.heatLegendText
 import ai.factoredui.compose.schema.plainFigureText
 
 /** The volume props a scene answer stands for: boxes, styles, legend, details and the colour range, plus notices for what could not be drawn. */
@@ -57,8 +58,8 @@ private fun styleNameOf(reading: Reading?): String = when (reading) {
 
 private fun valueText(field: Map<*, *>): String? {
     val value = field["value"] ?: return null
-    val figure = numberOf(value)?.let { plainFigureText(it) } ?: value.toString()
-    return listOfNotNull(figure, field["unit"] as? String).joinToString(" ")
+    val unit = field["unit"] as? String
+    return numberOf(value)?.let { heatLegendText(it, unit) } ?: listOfNotNull(value.toString(), unit).joinToString(" ")
 }
 
 private fun rowNote(name: String, field: Map<*, *>, colourBy: String?, reading: Reading?, computedBy: Map<*, *>): String? {
@@ -115,9 +116,9 @@ private fun topLabelOf(objects: List<Map<*, *>>, readings: List<Reading?>, colou
         .maxByOrNull { it.second } ?: return emptyList()
     val (item, value, box) = top
     val fields = fieldsOf(item["fields"])
-    val unit = (fieldsOf(fields[colourBy])["unit"] as? String)
+    val unit = fieldsOf(fields[colourBy])["unit"] as? String
     val governing = fieldsOf(fields["governing"])["value"] as? String
-    val text = listOfNotNull(item["id"] as? String, item["type"] as? String, listOfNotNull(plainFigureText(value), unit).joinToString(" "), governing).joinToString(" · ")
+    val text = listOfNotNull(item["id"] as? String, item["type"] as? String, heatLegendText(value, unit), governing).joinToString(" · ")
     val at = listOf(box!!["x"], box["y"], numberOf(box["z"])?.let { z -> z + (numberOf(box["h"]) ?: 0.0) })
     return listOf(mapOf("id" to "highest", "at" to at, "text" to text))
 }
