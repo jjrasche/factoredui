@@ -476,7 +476,7 @@ private fun PublishDetailRecord(node: SpecNode, selection: Set<String>, rawDetai
 /** Draws a volume; when `scene` holds an engine's scene answer, its boxes, details, styles, legend and colour range come from the answer and `colour_by` names the field that colours the boxes (`value_ramp` is the spec's). */
 @Composable
 internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
-    val scene = remember(resolvedProps["scene"], resolvedProps["colour_by"], resolvedProps["styles"], resolvedProps["colour_caption"], resolvedProps["length_unit"], resolvedProps["lighting"], resolvedProps["transmittance_field"]) { readScene(resolvedProps["scene"], resolvedProps["colour_by"] as? String, resolvedProps["styles"], resolvedProps["colour_caption"] as? String, resolvedProps["length_unit"] as? String, resolvedProps["lighting"] as? String, resolvedProps["transmittance_field"] as? String) }
+    val scene = remember(resolvedProps["scene"], resolvedProps["colour_by"], resolvedProps["styles"], resolvedProps["colour_caption"], resolvedProps["length_unit"], resolvedProps["lighting"], resolvedProps["transmittance_field"], resolvedProps["light_passing_types"]) { readScene(resolvedProps["scene"], resolvedProps["colour_by"] as? String, resolvedProps["styles"], resolvedProps["colour_caption"] as? String, resolvedProps["length_unit"] as? String, resolvedProps["lighting"] as? String, resolvedProps["transmittance_field"] as? String, (resolvedProps["light_passing_types"] as? List<*>).orEmpty().filterIsInstance<String>()) }
     RenderVolumeProps(node, if (scene == null) resolvedProps else resolvedProps + scene.props + mapOf("scene_notices" to scene.notices), context)
 }
 

@@ -87,10 +87,17 @@ private fun unsupportedTiltNotice(item: Map<*, *>): String? {
     return "volume scene: '${item["id"]}' is tilted about its '${tilt["axis"]}' axis; only the width axis is drawn, so it is drawn level.".takeIf { tilt["axis"] != "width" }
 }
 
-/** One notice naming the objects whose transmittance is stated as unknown, which are shadowed as opaque. */
-private fun opaqueByDefaultNotices(objects: List<Map<*, *>>, transmittanceField: String): List<String> {
-    val unknown = objects.filter { item -> unknownReason(fieldsOf(fieldsOf(item["fields"])[transmittanceField])) != null }.mapNotNull { it["id"] as? String }
-    return if (unknown.isEmpty()) emptyList() else listOf("volume scene: the light these pass is unknown (${unknown.take(3).joinToString(", ")}${if (unknown.size > 3) ", and ${unknown.size - 3} more" else ""}); they cast opaque shadows.")
+private fun lacksTransmittance(item: Map<*, *>, transmittanceField: String, lightPassingTypes: Set<String>): Boolean {
+    val field = fieldsOf(fieldsOf(item["fields"])[transmittanceField])
+    val isUnknown = unknownReason(field) != null
+    val isMissingOnLightPassingType = numberOf(field["value"]) == null && item["type"] in lightPassingTypes
+    return isUnknown || isMissingOnLightPassingType
+}
+
+/** One notice naming the objects whose transmittance is unknown, or missing on a type the spec says passes light; they are shadowed as opaque. */
+private fun opaqueByDefaultNotices(objects: List<Map<*, *>>, transmittanceField: String, lightPassingTypes: Set<String>): List<String> {
+    val unknown = objects.filter { lacksTransmittance(it, transmittanceField, lightPassingTypes) }.mapNotNull { it["id"] as? String }
+    return if (unknown.isEmpty()) emptyList() else listOf("volume scene: the light these pass is unknown or not given (${unknown.take(3).joinToString(", ")}${if (unknown.size > 3) ", and ${unknown.size - 3} more" else ""}); they cast opaque shadows.")
 }
 
 private const val DEFAULT_TRANSMITTANCE_FIELD = "transmittance"
@@ -171,7 +178,7 @@ private fun extentsLine(boxes: List<Map<String, Any?>>, lengthUnit: String?): St
 }
 
 /** Reads a scene answer — objects with a box in millimetres (x, y the footprint centre, z the underside) and named fields that each carry a value, a unit and a source — into volume props. [colourBy] names the field that colours the boxes; its range is the answer's own limit for that field, a side the limit does not state is the extreme read, a value outside the limit is drawn in the `outside` style, and a field with no value is drawn in the `unknown` style. Null when [scene] is not an answer. */
-fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null, colourCaption: String? = null, lengthUnit: String? = null, specLighting: String? = null, transmittanceField: String? = null): SceneVolume? {
+fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null, colourCaption: String? = null, lengthUnit: String? = null, specLighting: String? = null, transmittanceField: String? = null, lightPassingTypes: List<String> = emptyList()): SceneVolume? {
     val answer = scene as? Map<*, *> ?: return null
     val everyObject = (answer["objects"] as? List<*>).orEmpty().filterIsInstance<Map<*, *>>()
     val (objects, unmeasured) = everyObject.partition { it["box_mm"] != null || it["unmeasured"] == null }
@@ -186,7 +193,7 @@ fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null, colourCap
     val max = numberOf(limit?.get("high")) ?: scaled.maxOrNull()
     if (colourBy != null && (min == null || max == null || max <= min)) notices += "volume scene: '$colourBy' has no range to colour by; the boxes are drawn plain."
     notices += objects.mapNotNull { unsupportedTiltNotice(it) }
-    notices += opaqueByDefaultNotices(objects, transmittanceField ?: DEFAULT_TRANSMITTANCE_FIELD)
+    notices += opaqueByDefaultNotices(objects, transmittanceField ?: DEFAULT_TRANSMITTANCE_FIELD, lightPassingTypes.toSet())
     val styleCounts = boxes.mapNotNull { it["style"] as? String }.groupingBy { it }.eachCount()
     val usedStyles = styleCounts.keys
     val details = objects.zip(readings).filter { (item, _) -> item["id"] is String && item["box_mm"] is Map<*, *> }.associate { (item, reading) -> item["id"] as String to detailOf(item, colourBy, reading, fieldsOf(answer["computed_by"])) }

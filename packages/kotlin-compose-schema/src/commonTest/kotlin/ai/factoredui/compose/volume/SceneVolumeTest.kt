@@ -162,6 +162,15 @@ class SceneVolumeTest {
     }
 
     @Test
+    fun an_object_of_a_type_the_spec_says_passes_light_but_has_no_transmittance_is_named_and_cast_opaque() {
+        val sheet = member("sheet-1", 0.4).let { it + ("type" to "sheet") }
+        val steel = member("steel-1", 0.4)
+        val read = assertNotNull(readScene(answer(listOf(sheet, steel)), "utilisation", lightPassingTypes = listOf("sheet")))
+        assertTrue(read.notices.any { "sheet-1" in it && "steel-1" !in it && "opaque shadows" in it })
+        assertTrue(assertNotNull(readScene(answer(listOf(sheet, steel)), "utilisation")).notices.none { "opaque shadows" in it })
+    }
+
+    @Test
     fun the_legend_rounds_to_three_significant_figures() {
         assertEquals("0.0769 ratio", heatLegendText(0.07692307692307693, "ratio"))
         assertEquals("4.03 ratio", heatLegendText(4.03045111619211, "ratio"))
