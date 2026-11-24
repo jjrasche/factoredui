@@ -4,6 +4,7 @@ import kotlin.math.sqrt
 
 private const val ON_PLANE_MM = 0.5
 private const val FACING_SUN = 1e-6
+private const val SLIVER_MM2 = 1.0
 
 private data class Plane(val origin: VolumePoint, val normal: Direction, val across: Direction, val up: Direction)
 
@@ -93,6 +94,9 @@ private fun anticlockwise(polygon: List<Pair<Double, Double>>): List<Pair<Double
     return if (area >= 0.0) polygon else polygon.reversed()
 }
 
+private fun areaOf(polygon: List<Pair<Double, Double>>): Double =
+    kotlin.math.abs(polygon.indices.sumOf { i -> polygon[i].first * polygon[(i + 1) % polygon.size].second - polygon[(i + 1) % polygon.size].first * polygon[i].second }) / 2
+
 private fun shadowOnFace(face: List<VolumePoint>, normal: Direction, occluders: List<Pair<BoxRings, Double>>, toSun: Direction): List<FaceShadow> {
     val plane = planeOf(face, normal)
     val window = anticlockwise(face.map { planar(plane, it) })
@@ -100,7 +104,7 @@ private fun shadowOnFace(face: List<VolumePoint>, normal: Direction, occluders: 
         val points = shadowPoints(plane, occluder, toSun).map { planar(plane, it) }
         val outline = if (points.size >= 3) convexHull(points) else emptyList()
         val covered = if (outline.size >= 3) clipToWindow(outline, window) else emptyList()
-        covered.takeIf { it.size >= 3 }?.let { polygon -> FaceShadow(polygon.map { spaceOf(plane, it) }, strength) }
+        covered.takeIf { it.size >= 3 && areaOf(it) > SLIVER_MM2 }?.let { polygon -> FaceShadow(polygon.map { spaceOf(plane, it) }, strength) }
     }
 }
 
