@@ -43,10 +43,11 @@ private fun frameObjects(): List<Map<String, Any?>> {
     return columns + alongX + alongY
 }
 
-private fun frameAnswer(): Map<String, Any?> = mapOf(
+private fun frameAnswer(sun: List<Double>): Map<String, Any?> = mapOf(
     "objects" to frameObjects(),
     "limits" to mapOf("utilisation" to mapOf("high" to 1.0, "source" to "setting:frame.utilisation_limit")),
     "page" to mapOf("region" to "frame", "next" to null),
+    "sun" to mapOf("direction" to sun, "time" to "2026-06-21T16:00:00Z", "source" to "fixture"),
 )
 
 private fun sceneSpec(colourBy: String, extra: String): String = """
@@ -55,12 +56,12 @@ private fun sceneSpec(colourBy: String, extra: String): String = """
         { "id": "frame", "type": "volume", "props": { "fill": true, "anchor": "fill", $extra "scene": "{engine.scene}", "colour_by": "$colourBy", "colour_caption": "demand over capacity", "value_ramp": "heat", "lighting": "sun", "fit": true, "fov_deg": 12 } } ] } }
 """
 
-private fun pictureOf(colourBy: String, extra: String = ""): ByteArray = renderSpecToPng(
+private fun pictureOf(colourBy: String, extra: String = "", sun: List<Double> = listOf(-0.5, -0.6, 0.75)): ByteArray = renderSpecToPng(
     specJson = sceneSpec(colourBy, extra),
     width = PHONE_WIDTH_PX,
     height = PHONE_HEIGHT_PX,
     density = PHONE_DENSITY,
-    data = mapOf("engine" to mapOf("scene" to frameAnswer())),
+    data = mapOf("engine" to mapOf("scene" to frameAnswer(sun))),
 )
 
 private fun printPicture(name: String, png: ByteArray) {
@@ -79,6 +80,14 @@ class SceneVolumeRenderTest {
         printPicture("side", pictureOf("utilisation", """ "camera": "side", """))
         assertTrue(coloured.isNotEmpty())
         assertFalse(coloured.contentEquals(plain))
+    }
+
+    @Test
+    fun a_low_sun_throws_one_pieces_shadow_onto_another_and_the_picture_differs_from_the_default_sun() {
+        val low = pictureOf("utilisation", sun = listOf(-0.85, -0.25, 0.46))
+        val high = pictureOf("utilisation")
+        printPicture("sun-low", low)
+        assertFalse(low.contentEquals(high))
     }
 
     @Test

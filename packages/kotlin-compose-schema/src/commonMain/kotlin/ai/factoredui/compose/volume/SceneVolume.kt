@@ -123,13 +123,17 @@ private fun topLabelOf(objects: List<Map<*, *>>, readings: List<Reading?>, colou
     return listOf(mapOf("id" to "highest", "at" to at, "text" to text))
 }
 
-/** The sun the answer carries, `sun: {direction: [east, north, up]}` pointing toward the sun: lighting props for it, lighting off with a notice when it is at or below the horizon, nothing when the answer carries none or it is not three numbers. */
-private fun sunPropsOf(answer: Map<*, *>, notices: MutableList<String>): Map<String, Any?> {
-    val direction = (fieldsOf(answer["sun"])["direction"] as? List<*>) ?: return emptyMap()
+private const val LIGHTING_OFF = "none"
+
+/** The light an answer gives a spec that asks for sun lighting: the answer's `sun: {direction: [east, north, up]}` (toward the sun) as the light, or lighting off with a notice when the answer gives no sun, no three numbers, or one at or below the horizon. A spec that asks for no sun lighting is left alone. */
+private fun sunPropsOf(answer: Map<*, *>, specLighting: String?, notices: MutableList<String>): Map<String, Any?> {
+    if (specLighting != "sun") return emptyMap()
+    fun off(why: String) = mapOf<String, Any?>("lighting" to LIGHTING_OFF).also { notices += "volume scene: $why; no sunlight or shadows are drawn." }
+    val direction = fieldsOf(answer["sun"])["direction"] as? List<*> ?: return off("no sun was given")
     val parts = direction.map { numberOf(it) }
-    if (parts.size != 3 || parts.any { it == null }) return emptyMap<String, Any?>().also { notices += "volume scene: sun.direction must be [east, north, up] numbers; the spec's sun is used." }
-    if (parts[2]!! <= 0.0) return mapOf("lighting" to "none").also { notices += "volume scene: the sun is at or below the horizon; no sunlight or shadows are drawn." }
-    return mapOf("lighting" to "sun", "sun" to parts)
+    if (parts.size != 3 || parts.any { it == null }) return off("sun.direction is not [east, north, up] numbers")
+    if (parts[2]!! <= 0.0) return off("the sun is at or below the horizon")
+    return mapOf("sun" to parts)
 }
 
 private const val MM_PER_INCH = 25.4
@@ -154,7 +158,7 @@ private fun extentsLine(boxes: List<Map<String, Any?>>, lengthUnit: String?): St
 }
 
 /** Reads a scene answer — objects with a box in millimetres (x, y the footprint centre, z the underside) and named fields that each carry a value, a unit and a source — into volume props. [colourBy] names the field that colours the boxes; its range is the answer's own limit for that field, a side the limit does not state is the extreme read, a value outside the limit is drawn in the `outside` style, and a field with no value is drawn in the `unknown` style. Null when [scene] is not an answer. */
-fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null, colourCaption: String? = null, lengthUnit: String? = null): SceneVolume? {
+fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null, colourCaption: String? = null, lengthUnit: String? = null, specLighting: String? = null): SceneVolume? {
     val answer = scene as? Map<*, *> ?: return null
     val everyObject = (answer["objects"] as? List<*>).orEmpty().filterIsInstance<Map<*, *>>()
     val (objects, unmeasured) = everyObject.partition { it["box_mm"] != null || it["unmeasured"] == null }
@@ -177,5 +181,5 @@ fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null, colourCap
     val rangeProps = if (min != null && max != null && max > min) mapOf("min" to min, "max" to max, "frame" to 0, "unit" to unit) else emptyMap()
     val styles = DEFAULT_STYLES.filterKeys { it in usedStyles } + ((specStyles as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value } ?: emptyMap())
     val labels = if (colourBy != null) topLabelOf(objects, readings, colourBy) else emptyList()
-    return SceneVolume(mapOf("boxes" to boxes, "labels" to labels,"details" to details, "styles" to styles, "legend" to legendFor(styleCounts), "scene_info" to listOfNotNull(colourCaption?.let { "Colour: $it." }, extentsLine(boxes, lengthUnit))) + rangeProps + sunPropsOf(answer, notices), notices)
+    return SceneVolume(mapOf("boxes" to boxes, "labels" to labels,"details" to details, "styles" to styles, "legend" to legendFor(styleCounts), "scene_info" to listOfNotNull(colourCaption?.let { "Colour: $it." }, extentsLine(boxes, lengthUnit))) + rangeProps + sunPropsOf(answer, specLighting, notices), notices)
 }

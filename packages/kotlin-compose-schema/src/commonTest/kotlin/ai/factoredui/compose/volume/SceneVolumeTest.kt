@@ -133,14 +133,20 @@ class SceneVolumeTest {
     @Test
     fun the_sun_the_answer_carries_lights_the_scene_and_one_at_the_horizon_turns_the_light_off_with_a_notice() {
         fun withSun(direction: Any?) = answer(listOf(member("m1", 0.4))) + ("sun" to mapOf("direction" to direction))
-        val up = assertNotNull(readScene(withSun(listOf(0.2, -0.5, 0.8)), "utilisation"))
+        val up = assertNotNull(readScene(withSun(listOf(0.2, -0.5, 0.8)), "utilisation", specLighting = "sun"))
         assertEquals(listOf(0.2, -0.5, 0.8), up.props["sun"])
-        assertEquals("sun", up.props["lighting"])
-        val night = assertNotNull(readScene(withSun(listOf(0.2, -0.5, -0.1)), "utilisation"))
+        assertNull(up.props["lighting"])
+        val night = assertNotNull(readScene(withSun(listOf(0.2, -0.5, -0.1)), "utilisation", specLighting = "sun"))
         assertEquals("none", night.props["lighting"])
         assertTrue(night.notices.any { "below the horizon" in it })
-        assertNull(assertNotNull(readScene(answer(listOf(member("m1", 0.4))), "utilisation")).props["sun"])
-        assertTrue(assertNotNull(readScene(withSun(listOf(1, 2)), "utilisation")).notices.any { "sun.direction" in it })
+        val none = assertNotNull(readScene(answer(listOf(member("m1", 0.4))), "utilisation", specLighting = "sun"))
+        assertEquals("none", none.props["lighting"])
+        assertNull(none.props["sun"])
+        assertTrue(none.notices.any { "no sun was given" in it })
+        assertTrue(assertNotNull(readScene(withSun(listOf(1, 2)), "utilisation", specLighting = "sun")).notices.any { "sun.direction" in it })
+        val unlit = assertNotNull(readScene(answer(listOf(member("m1", 0.4))), "utilisation"))
+        assertNull(unlit.props["lighting"])
+        assertTrue(unlit.notices.isEmpty())
     }
 
     @Test
