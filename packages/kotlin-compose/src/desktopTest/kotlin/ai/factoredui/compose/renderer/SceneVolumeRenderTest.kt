@@ -80,4 +80,14 @@ class SceneVolumeRenderTest {
         assertTrue(coloured.isNotEmpty())
         assertFalse(coloured.contentEquals(plain))
     }
+
+    @Test
+    fun a_side_elevation_seen_from_the_east_or_the_west_differs_from_the_south_and_each_other() {
+        val south = pictureOf("utilisation", """ "camera": "side", """)
+        val east = pictureOf("utilisation", """ "camera": "side", "view": "east", """)
+        val west = pictureOf("utilisation", """ "camera": "side", "view": "west", """)
+        printPicture("side-east", east)
+        assertFalse(south.contentEquals(east))
+        assertFalse(east.contentEquals(west))
+    }
 }

@@ -143,13 +143,20 @@ private fun frameCamera(camera: Camera, span: VolumeSpanMm) {
     camera.setOrbit(FRAMING_YAW, FRAMING_PITCH, radius / sin(camera.fovYRadians / 2) * FRAMING_SLACK)
 }
 
-private fun frameSideCamera(camera: Camera, span: VolumeSpanMm, aspect: Float) {
-    val widthMetres = (span.east - span.west).toFloat() / MM_PER_UNIT
+private val SIDE_VIEW_YAW_DEGREES = mapOf("south" to 0, "east" to 90, "north" to 180, "west" to 270)
+
+/** Frames an orthographic elevation seen from the [view] side (south, east, north or west; south when absent or unknown), sized to the span that side faces. */
+private fun frameSideCamera(camera: Camera, span: VolumeSpanMm, aspect: Float, view: String?) {
+    val eastWestMetres = (span.east - span.west).toFloat() / MM_PER_UNIT
     val heightMetres = (span.ceiling - span.floor).toFloat() / MM_PER_UNIT
-    val depthMetres = (span.north - span.south).toFloat() / MM_PER_UNIT
+    val northSouthMetres = (span.north - span.south).toFloat() / MM_PER_UNIT
+    val yawDegrees = SIDE_VIEW_YAW_DEGREES[view] ?: 0
+    val isAlongX = yawDegrees % 180 == 0
+    val facedMetres = if (isAlongX) eastWestMetres else northSouthMetres
+    val behindMetres = if (isAlongX) northSouthMetres else eastWestMetres
     camera.target = worldOf((span.west + span.east) / 2, (span.south + span.north) / 2, (span.floor + span.ceiling) / 2)
-    camera.setOrbit(0f, 0f, depthMetres / 2 + SIDE_STANDOFF_METRES)
-    camera.orthoHalfHeight = max(heightMetres / 2, widthMetres / 2 / aspect) * SIDE_MARGIN
+    camera.setOrbit(radiansOf(yawDegrees), 0f, behindMetres / 2 + SIDE_STANDOFF_METRES)
+    camera.orthoHalfHeight = max(heightMetres / 2, facedMetres / 2 / aspect) * SIDE_MARGIN
 }
 
 private fun radiansOf(degrees: Int): Float = (degrees * PI / 180).toFloat()
@@ -448,6 +455,8 @@ private fun RenderVolumeProps(node: SpecNode, resolvedProps: Map<String, Any?>, 
     val span = unionSpan(volumeSpan(read.boxes), fieldRead.field?.span())
     val isSide = resolvedProps["camera"] == "side"
     val cameraNotice = (resolvedProps["camera"] as? String)?.takeIf { it != "side" && it != "orbit" }?.let { "volume camera: '$it' is not orbit or side; orbit is used." }
+    val sideView = resolvedProps["view"] as? String
+    val viewNotice = sideView?.takeIf { isSide && it !in SIDE_VIEW_YAW_DEGREES }?.let { "volume view: '$it' is not south, east, north or west; south is used." }
     val fill = resolvedProps["fill"] == true
     val bottomInsetDp = (resolvedProps["bottom_inset_dp"] as? Number)?.toFloat() ?: 0f
     val blueprint = resolvedProps["mode"] == "blueprint"
@@ -461,12 +470,12 @@ private fun RenderVolumeProps(node: SpecNode, resolvedProps: Map<String, Any?>, 
     val gradeTint = (planColour(resolvedProps["grade_color"] as? String) ?: GRADE_COLOUR).let { it.copy(alpha = (resolvedProps["grade_opacity"] as? Number)?.toFloat()?.coerceIn(0f, 1f) ?: GRADE_OPACITY) }
     Column(modifier = (if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()).nodeTag(node.id)) {
         val unloaded = fieldRead.field?.takeIf { colouring.colouring?.frame in it.notLoaded }?.let { "volume field: frame ${colouring.colouring?.frame} is not loaded yet." }
-        (read.notices + (resolvedProps["scene_notices"] as? List<*>).orEmpty().map { it.toString() } + fieldRead.notices + listOfNotNull(cameraNotice, unloaded, colouring.notice, fieldRead.field?.takeIf { colouring.colouring == null }?.let { "volume field: give value_ramp to colour it; it is not drawn." })).forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
+        (read.notices + (resolvedProps["scene_notices"] as? List<*>).orEmpty().map { it.toString() } + fieldRead.notices + listOfNotNull(cameraNotice, viewNotice, unloaded, colouring.notice, fieldRead.field?.takeIf { colouring.colouring == null }?.let { "volume field: give value_ramp to colour it; it is not drawn." })).forEach { Text(text = it, style = VOLUME_TEXT, color = NOTICE_INK) }
         (resolvedProps["scene_info"] as? List<*>).orEmpty().forEach { Text(text = it.toString(), style = VOLUME_TEXT, color = LocalSpecTheme.current.ink) }
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, highlighted, focusSpan, fitLens, colouring.colouring, fieldRead.field, isSide, pickedPath, throughPath, context)
+            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, highlighted, focusSpan, fitLens, colouring.colouring, fieldRead.field, isSide, sideView, pickedPath, throughPath, context)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -474,7 +483,7 @@ private fun RenderVolumeProps(node: SpecNode, resolvedProps: Map<String, Any?>, 
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, fitLens: Float?, colouring: BoxColouring?, field: VolumeField?, isSide: Boolean, pickedPath: String?, throughPath: String?, context: RenderContext) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, fitLens: Float?, colouring: BoxColouring?, field: VolumeField?, isSide: Boolean, sideView: String?, pickedPath: String?, throughPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
     val camera = remember(span, focusSpan) { Camera(near = NEAREST_SEEN, minDistance = SMALLEST_VIEW_DISTANCE).also { frameCamera(it, focusSpan ?: span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -485,7 +494,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
         val density = LocalDensity.current
         val widthPx = with(density) { widthDp.toPx() }
         val heightPx = with(density) { heightDp.toPx() }
-        if (isSide) remember(camera, span, widthPx, heightPx) { frameSideCamera(camera, span, widthPx / heightPx) }
+        if (isSide) remember(camera, span, widthPx, heightPx, sideView) { frameSideCamera(camera, span, widthPx / heightPx, sideView) }
         else if (focusSpan != null) remember(camera, focusSpan, widthPx, heightPx, fitLens) { fitCamera(camera, focusSpan, widthPx, heightPx, fitLens ?: CLOSE_FOV) }
         val scene = remember(revision, read, span, widthPx, heightPx, sun, step, gradeMm) { projectScene(read, span, camera, widthPx, heightPx, sun, step, gradeMm) }
         val splats = remember(revision, field, widthPx, heightPx) { field?.let { fieldSplatsOf(it, camera, widthPx, heightPx) } }
