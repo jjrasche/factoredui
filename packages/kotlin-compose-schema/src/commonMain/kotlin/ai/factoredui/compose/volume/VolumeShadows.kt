@@ -93,24 +93,27 @@ private fun anticlockwise(polygon: List<Pair<Double, Double>>): List<Pair<Double
     return if (area >= 0.0) polygon else polygon.reversed()
 }
 
-private fun shadowOnFace(face: List<VolumePoint>, normal: Direction, occluders: List<BoxRings>, toSun: Direction): List<List<VolumePoint>> {
+private fun shadowOnFace(face: List<VolumePoint>, normal: Direction, occluders: List<Pair<BoxRings, Double>>, toSun: Direction): List<FaceShadow> {
     val plane = planeOf(face, normal)
     val window = anticlockwise(face.map { planar(plane, it) })
-    return occluders.mapNotNull { occluder ->
+    return occluders.mapNotNull { (occluder, strength) ->
         val points = shadowPoints(plane, occluder, toSun).map { planar(plane, it) }
         val outline = if (points.size >= 3) convexHull(points) else emptyList()
         val covered = if (outline.size >= 3) clipToWindow(outline, window) else emptyList()
-        covered.takeIf { it.size >= 3 }?.map { spaceOf(plane, it) }
+        covered.takeIf { it.size >= 3 }?.let { polygon -> FaceShadow(polygon.map { spaceOf(plane, it) }, strength) }
     }
 }
 
-/** Where the other boxes' shadows fall on each lit face of a box, by the box's id: for the top face and then the four sides (the order [boxFaceNormals] gives), the polygons in millimetres that [occluders] shade when the sun is toward [toSun]. A box with a sloping top takes none, and a face turned from the sun takes none. */
-fun shadowsOnFaces(receivers: List<VolumeBox>, occluders: List<VolumeBox>, toSun: Direction): Map<String, List<List<List<VolumePoint>>>> {
-    val occluderRings = occluders.map { it.id to boxRings(it) }
-    return receivers.filter { it.topRiseMm == 0.0 }.associate { receiver ->
+/** A shadow on one face: its polygon in millimetres and its [strength], 1 for an opaque occluder and less for one that passes some sunlight. */
+data class FaceShadow(val polygon: List<VolumePoint>, val strength: Double)
+
+/** Where the other boxes' shadows fall on each lit face of a box, by the box's id: for the top face and then the four sides (the order [boxFaceNormals] gives), the shadows in each face's own plane that [occluders] cast when the sun is toward [toSun]. A face turned from the sun takes none. */
+fun shadowsOnFaces(receivers: List<VolumeBox>, occluders: List<VolumeBox>, toSun: Direction): Map<String, List<List<FaceShadow>>> {
+    val occluderRings = occluders.map { Triple(it.id, boxRings(it), 1.0 - it.transmittance) }
+    return receivers.associate { receiver ->
         val rings = boxRings(receiver)
         val faces = listOf(rings.high) + rings.low.indices.map { i -> listOf(rings.low[i], rings.low[(i + 1) % 4], rings.high[(i + 1) % 4], rings.high[i]) }
-        val others = occluderRings.filter { it.first != receiver.id }.map { it.second }
+        val others = occluderRings.filter { it.first != receiver.id }.map { it.second to it.third }
         receiver.id to faces.zip(boxFaceNormals(rings)).map { (face, normal) ->
             if (dot(normal, toSun) > FACING_SUN) shadowOnFace(face, normal, others, toSun) else emptyList()
         }

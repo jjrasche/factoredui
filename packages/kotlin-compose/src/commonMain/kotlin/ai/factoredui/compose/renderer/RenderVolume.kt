@@ -14,7 +14,7 @@ import ai.factoredui.compose.plan.PlanStyle
 import ai.factoredui.compose.schema.SpecNode
 import ai.factoredui.compose.schema.bindingPath
 import ai.factoredui.compose.volume.VolumeBox
-import ai.factoredui.compose.volume.VolumePoint
+import ai.factoredui.compose.volume.FaceShadow
 import ai.factoredui.compose.volume.shadowsOnFaces
 import ai.factoredui.compose.volume.VolumeField
 import ai.factoredui.compose.volume.VolumeLegendEntry
@@ -128,6 +128,7 @@ private const val SHADOW_LAYERS = 4
 private const val SHADOW_SPREAD = 0.04f
 private const val SHADOW_ALPHA = 0.07f
 private const val FACE_SHADOW_ALPHA = 0.32f
+private const val OPAQUE_STRENGTH = 0.999f
 private const val DASH_DP = 5f
 private const val LEGEND_SWATCH_DP = 14f
 private const val WHITE_MIX = 0.6f
@@ -209,7 +210,9 @@ private fun fitCamera(camera: Camera, span: VolumeSpanMm, widthPx: Float, height
     if (best == null) frameCamera(camera, span) else lookFrom(best)
 }
 
-private data class ProjectedFace(val corners: List<Offset>, val shade: Float, val shadows: List<List<Offset>> = emptyList())
+private data class ProjectedShadow(val corners: List<Offset>, val strength: Float)
+
+private data class ProjectedFace(val corners: List<Offset>, val shade: Float, val shadows: List<ProjectedShadow> = emptyList())
 
 private data class ProjectedBox(val box: VolumeBox, val faces: List<ProjectedFace>, val left: Float, val top: Float, val right: Float, val bottom: Float)
 
@@ -217,7 +220,7 @@ private class ProjectedLine(val from: Offset, val to: Offset, val style: String?
 
 private class ProjectedLabel(val at: Offset, val text: String, val style: String?)
 
-private class ProjectedScene(val ground: List<Offset>?, val boxes: List<ProjectedBox>, val north: Offset?, val northTail: Offset?, val lines: List<ProjectedLine>, val labels: List<ProjectedLabel>, val shadows: List<List<Offset>>)
+private class ProjectedScene(val ground: List<Offset>?, val boxes: List<ProjectedBox>, val north: Offset?, val northTail: Offset?, val lines: List<ProjectedLine>, val labels: List<ProjectedLabel>, val shadows: List<ProjectedShadow>)
 
 private fun faceShades(ground: List<Pair<Double, Double>>, sun: Direction?): List<Float> =
     if (sun == null) listOf(1f) + SIDE_SHADES.toList()
@@ -226,13 +229,13 @@ private fun faceShades(ground: List<Pair<Double, Double>>, sun: Direction?): Lis
 private fun pitchedFaceShades(rings: BoxRings, sun: Direction?): List<Float> =
     if (sun == null) listOf(1f) + SIDE_SHADES.toList() else boxFaceNormals(rings).map { sunShade(it, sun).toFloat() }
 
-private fun projectShadowsOnFace(polygons: List<List<VolumePoint>>?, project: (Vec3) -> Offset?): List<List<Offset>> =
-    polygons.orEmpty().mapNotNull { polygon ->
-        val corners = polygon.map { project(worldOf(it.xMm, it.yMm, it.zMm)) }
-        corners.takeIf { all -> all.all { it != null } }?.map { it!! }
+private fun projectShadowsOnFace(shadows: List<FaceShadow>?, project: (Vec3) -> Offset?): List<ProjectedShadow> =
+    shadows.orEmpty().mapNotNull { shadow ->
+        val corners = shadow.polygon.map { project(worldOf(it.xMm, it.yMm, it.zMm)) }
+        corners.takeIf { all -> all.all { it != null } }?.let { ProjectedShadow(it.map { corner -> corner!! }, shadow.strength.toFloat()) }
     }
 
-private fun projectBox(box: VolumeBox, eye: Vec3, sun: Direction?, shadowsOnFaces: List<List<List<VolumePoint>>>?, project: (Vec3) -> Offset?): Pair<Float, ProjectedBox>? {
+private fun projectBox(box: VolumeBox, eye: Vec3, sun: Direction?, shadowsOnFaces: List<List<FaceShadow>>?, project: (Vec3) -> Offset?): Pair<Float, ProjectedBox>? {
     val rings = boxRings(box)
     val low = rings.low.map { worldOf(it.xMm, it.yMm, it.zMm) }
     val high = rings.high.map { worldOf(it.xMm, it.yMm, it.zMm) }
@@ -262,13 +265,13 @@ private fun phaseOf(box: VolumeBox, step: Double?): Phase {
     }
 }
 
-private fun projectShadows(read: VolumeRead, span: VolumeSpanMm, step: Double?, gradeMm: Double?, sun: Direction, project: (Vec3) -> Offset?): List<List<Offset>> =
+private fun projectShadows(read: VolumeRead, span: VolumeSpanMm, step: Double?, gradeMm: Double?, sun: Direction, project: (Vec3) -> Offset?): List<ProjectedShadow> =
     read.boxes.filter { !it.isEstimate && phaseOf(it, step) != Phase.GHOST }.mapNotNull { box ->
         val outline = shadowOutline(box, groundLevelMm(span, gradeMm), sun).map { (x, y) -> project(worldOf(x, y, groundLevelMm(span, gradeMm))) }
-        outline.takeIf { points -> points.size >= 3 && points.all { it != null } }?.map { it!! }
+        outline.takeIf { points -> points.size >= 3 && points.all { it != null } }?.let { points -> ProjectedShadow(points.map { it!! }, (1.0 - box.transmittance).toFloat()) }
     }
 
-private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, widthPx: Float, heightPx: Float, sun: Direction?, step: Double?, gradeMm: Double?, onFaces: Map<String, List<List<List<VolumePoint>>>>): ProjectedScene {
+private fun projectScene(read: VolumeRead, span: VolumeSpanMm, camera: Camera, widthPx: Float, heightPx: Float, sun: Direction?, step: Double?, gradeMm: Double?, onFaces: Map<String, List<List<FaceShadow>>>): ProjectedScene {
     val view = camera.viewMatrix()
     val lens = camera.projectionMatrix(widthPx / heightPx)
     val project = { point: Vec3 -> point.project(view, lens, widthPx, heightPx).takeIf { it.visible }?.let { Offset(it.x, it.y) } }
@@ -335,11 +338,12 @@ private fun DrawScope.drawProjectedBox(projected: ProjectedBox, style: PlanStyle
     }
 }
 
-private fun DrawScope.drawShadow(outline: List<Offset>) {
+private fun DrawScope.drawShadow(shadow: ProjectedShadow) {
+    val outline = shadow.corners
     val centre = Offset(outline.sumOf { it.x.toDouble() }.toFloat() / outline.size, outline.sumOf { it.y.toDouble() }.toFloat() / outline.size)
     (0 until SHADOW_LAYERS).forEach { layer ->
         val spread = 1f + SHADOW_SPREAD * layer
-        drawPath(pathOf(outline.map { centre + (it - centre) * spread }), Color.Black.copy(alpha = SHADOW_ALPHA), style = Fill)
+        drawPath(pathOf(outline.map { centre + (it - centre) * spread }), Color.Black.copy(alpha = SHADOW_ALPHA * shadow.strength), style = Fill)
     }
 }
 
@@ -352,7 +356,9 @@ private fun DrawScope.drawLitBox(projected: ProjectedBox, style: PlanStyle, ink:
         val path = pathOf(face.corners)
         val faceColour = shaded(body, face.shade).copy(alpha = style.opacity)
         drawPath(path, faceColour, style = Fill)
-        if (face.shadows.isNotEmpty()) drawPath(unionPathOf(face.shadows), Color.Black.copy(alpha = FACE_SHADOW_ALPHA * style.opacity), style = Fill)
+        val (opaque, partial) = face.shadows.partition { it.strength >= OPAQUE_STRENGTH }
+        if (opaque.isNotEmpty()) drawPath(unionPathOf(opaque.map { it.corners }), Color.Black.copy(alpha = FACE_SHADOW_ALPHA * style.opacity), style = Fill)
+        partial.forEach { drawPath(pathOf(it.corners), Color.Black.copy(alpha = FACE_SHADOW_ALPHA * it.strength * style.opacity), style = Fill) }
         if (projected.box.isEstimate) drawHatch(face.corners, stroke.copy(alpha = 0.55f))
         val edge = shaded(stroke, EDGE_DARKEN)
         drawPath(path, edge, style = Stroke(width = (style.weight ?: LIT_OUTLINE_DP).dp.toPx(), pathEffect = effect))
@@ -470,7 +476,7 @@ private fun PublishDetailRecord(node: SpecNode, selection: Set<String>, rawDetai
 /** Draws a volume; when `scene` holds an engine's scene answer, its boxes, details, styles, legend and colour range come from the answer and `colour_by` names the field that colours the boxes (`value_ramp` is the spec's). */
 @Composable
 internal fun RenderVolume(node: SpecNode, resolvedProps: Map<String, Any?>, context: RenderContext) {
-    val scene = remember(resolvedProps["scene"], resolvedProps["colour_by"], resolvedProps["styles"], resolvedProps["colour_caption"], resolvedProps["length_unit"], resolvedProps["lighting"]) { readScene(resolvedProps["scene"], resolvedProps["colour_by"] as? String, resolvedProps["styles"], resolvedProps["colour_caption"] as? String, resolvedProps["length_unit"] as? String, resolvedProps["lighting"] as? String) }
+    val scene = remember(resolvedProps["scene"], resolvedProps["colour_by"], resolvedProps["styles"], resolvedProps["colour_caption"], resolvedProps["length_unit"], resolvedProps["lighting"], resolvedProps["transmittance_field"]) { readScene(resolvedProps["scene"], resolvedProps["colour_by"] as? String, resolvedProps["styles"], resolvedProps["colour_caption"] as? String, resolvedProps["length_unit"] as? String, resolvedProps["lighting"] as? String, resolvedProps["transmittance_field"] as? String) }
     RenderVolumeProps(node, if (scene == null) resolvedProps else resolvedProps + scene.props + mapOf("scene_notices" to scene.notices), context)
 }
 

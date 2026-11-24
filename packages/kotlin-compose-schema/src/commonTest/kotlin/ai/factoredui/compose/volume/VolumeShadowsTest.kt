@@ -17,10 +17,10 @@ class VolumeShadowsTest {
     fun a_post_in_the_east_sun_throws_its_height_of_shadow_west_across_the_top_of_the_floor() {
         val onFloorTop = shadowsOnFaces(listOf(FLOOR, POST), listOf(FLOOR, POST), EAST_AT_45).getValue("floor")[0]
         assertEquals(1, onFloorTop.size)
-        val xs = onFloorTop.single().map { it.xMm }
+        val xs = onFloorTop.single().polygon.map { it.xMm }
         assertTrue(abs(xs.min() - -4500.0) < 1.0, "west end ${xs.min()}")
         assertTrue(abs(xs.max() - 500.0) < 1.0, "east end ${xs.max()}")
-        assertTrue(onFloorTop.single().all { abs(it.zMm - 100.0) < 0.01 })
+        assertTrue(onFloorTop.single().polygon.all { abs(it.zMm - 100.0) < 0.01 })
     }
 
     @Test
@@ -35,7 +35,7 @@ class VolumeShadowsTest {
         val onPost = shadowsOnFaces(listOf(POST), listOf(POST, beam), EAST_AT_45).getValue("post")
         val eastSide = onPost.drop(1).filter { it.isNotEmpty() }
         assertTrue(eastSide.isNotEmpty(), "the beam's shadow falls on a side of the post")
-        assertTrue(eastSide.flatten().flatten().all { it.zMm in 100.0..4100.0 })
+        assertTrue(eastSide.flatten().flatMap { it.polygon }.all { it.zMm in 100.0..4100.0 })
     }
 
     @Test
@@ -43,6 +43,34 @@ class VolumeShadowsTest {
         val fromWest = Direction(-1 / sqrt(2.0), 0.0, 1 / sqrt(2.0))
         val onFloorTop = shadowsOnFaces(listOf(FLOOR), listOf(FLOOR, POST), fromWest).getValue("floor")[0]
         assertEquals(1, onFloorTop.size)
-        assertTrue(onFloorTop.single().map { it.xMm }.max() > 4000.0)
+        assertTrue(onFloorTop.single().polygon.map { it.xMm }.max() > 4000.0)
+    }
+
+    @Test
+    fun a_roof_sheet_tipped_thirty_degrees_throws_a_foreshortened_shadow_straight_down_onto_the_floor() {
+        val sheet = VolumeBox("sheet", 0.0, 0.0, 1500.0, 2000.0, 2000.0, 20.0, pitchDeg = 30.0)
+        val overhead = Direction(0.0, 0.0, 1.0)
+        val shadow = shadowsOnFaces(listOf(FLOOR), listOf(FLOOR, sheet), overhead).getValue("floor")[0].single().polygon
+        val ys = shadow.map { it.yMm }
+        val xs = shadow.map { it.xMm }
+        assertTrue(abs(xs.min() - -1000.0) < 2.0 && abs(xs.max() - 1000.0) < 2.0, "east-west $xs")
+        assertTrue(abs(ys.max() - 871.0) < 2.0 && abs(ys.min() - -871.0) < 2.0, "north-south $ys")
+    }
+
+    @Test
+    fun a_sheet_that_passes_light_casts_a_weaker_shadow_and_an_opaque_one_casts_full() {
+        val glazing = VolumeBox("glazing", 0.0, 0.0, 1500.0, 2000.0, 2000.0, 20.0, transmittance = 0.8)
+        val steel = VolumeBox("steel", 5000.0, 0.0, 1500.0, 2000.0, 2000.0, 20.0)
+        val shadows = shadowsOnFaces(listOf(FLOOR), listOf(FLOOR, glazing, steel), Direction(0.0, 0.0, 1.0)).getValue("floor")[0]
+        assertEquals(listOf(0.2, 1.0), shadows.map { it.strength }.sorted().map { kotlin.math.round(it * 100) / 100 })
+    }
+
+    @Test
+    fun a_roof_sloping_across_a_wedge_top_still_takes_a_shadow_in_its_own_plane() {
+        val wedge = VolumeBox("wedge", 5000.0, 0.0, 100.0, 1000.0, 1000.0, 500.0, topRiseMm = 300.0)
+        val roof = VolumeBox("roof", 5000.0, 0.0, 2000.0, 3000.0, 3000.0, 20.0)
+        val onWedge = shadowsOnFaces(listOf(wedge), listOf(wedge, roof), Direction(0.0, 0.0, 1.0)).getValue("wedge")[0]
+        assertEquals(1, onWedge.size)
+        assertTrue(onWedge.single().polygon.all { it.zMm in 599.0..901.0 })
     }
 }

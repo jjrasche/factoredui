@@ -150,6 +150,18 @@ class SceneVolumeTest {
     }
 
     @Test
+    fun the_light_an_object_passes_comes_from_its_transmittance_field_and_an_unknown_one_is_named_and_cast_opaque() {
+        fun glazed(id: String, transmittance: Map<String, Any?>) = member(id, 0.4).let { it + ("fields" to ((it["fields"] as Map<*, *>) + ("transmittance" to transmittance))) }
+        val read = assertNotNull(readScene(answer(listOf(glazed("pane", mapOf("value" to 0.82, "source" to "row-7")), glazed("mystery", mapOf("value" to null, "source" to mapOf("unknown" to "no datasheet"))), member("steel", 0.5))), "utilisation"))
+        assertEquals(0.82, boxesOf(read).first { it["id"] == "pane" }["transmittance"])
+        assertNull(boxesOf(read).first { it["id"] == "mystery" }["transmittance"])
+        assertNull(boxesOf(read).first { it["id"] == "steel" }["transmittance"])
+        assertTrue(read.notices.any { "mystery" in it && "opaque shadows" in it })
+        val renamed = assertNotNull(readScene(answer(listOf(member("m1", 0.4).let { it + ("fields" to ((it["fields"] as Map<*, *>) + ("light_pass" to mapOf("value" to 0.5, "source" to "r")))) })), "utilisation", transmittanceField = "light_pass"))
+        assertEquals(0.5, boxesOf(renamed).single()["transmittance"])
+    }
+
+    @Test
     fun the_legend_rounds_to_three_significant_figures() {
         assertEquals("0.0769 ratio", heatLegendText(0.07692307692307693, "ratio"))
         assertEquals("4.03 ratio", heatLegendText(4.03045111619211, "ratio"))
