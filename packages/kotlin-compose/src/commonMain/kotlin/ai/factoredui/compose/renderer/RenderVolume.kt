@@ -68,6 +68,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -296,6 +297,15 @@ private fun pathOf(corners: List<Offset>): Path = Path().apply {
     close()
 }
 
+private fun hasPositiveArea(corners: List<Offset>): Boolean =
+    corners.indices.sumOf { i -> (corners[i].x * corners[(i + 1) % corners.size].y - corners[(i + 1) % corners.size].x * corners[i].y).toDouble() } >= 0.0
+
+/** One path over all the polygons, each wound the same way, so where shadows overlap the fill is the union and is darkened once. */
+private fun unionPathOf(polygons: List<List<Offset>>): Path = Path().apply {
+    fillType = PathFillType.NonZero
+    polygons.forEach { addPath(pathOf(if (hasPositiveArea(it)) it else it.reversed())) }
+}
+
 private fun shaded(colour: Color, shade: Float): Color = Color(colour.red * shade, colour.green * shade, colour.blue * shade, colour.alpha)
 
 private fun DrawScope.drawHatch(corners: List<Offset>, colour: Color) {
@@ -342,7 +352,7 @@ private fun DrawScope.drawLitBox(projected: ProjectedBox, style: PlanStyle, ink:
         val path = pathOf(face.corners)
         val faceColour = shaded(body, face.shade).copy(alpha = style.opacity)
         drawPath(path, faceColour, style = Fill)
-        face.shadows.forEach { drawPath(pathOf(it), Color.Black.copy(alpha = FACE_SHADOW_ALPHA * style.opacity), style = Fill) }
+        if (face.shadows.isNotEmpty()) drawPath(unionPathOf(face.shadows), Color.Black.copy(alpha = FACE_SHADOW_ALPHA * style.opacity), style = Fill)
         if (projected.box.isEstimate) drawHatch(face.corners, stroke.copy(alpha = 0.55f))
         val edge = shaded(stroke, EDGE_DARKEN)
         drawPath(path, edge, style = Stroke(width = (style.weight ?: LIT_OUTLINE_DP).dp.toPx(), pathEffect = effect))
