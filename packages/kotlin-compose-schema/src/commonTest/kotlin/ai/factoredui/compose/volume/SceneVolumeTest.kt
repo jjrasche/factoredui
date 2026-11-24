@@ -131,6 +131,19 @@ class SceneVolumeTest {
     }
 
     @Test
+    fun the_sun_the_answer_carries_lights_the_scene_and_one_at_the_horizon_turns_the_light_off_with_a_notice() {
+        fun withSun(direction: Any?) = answer(listOf(member("m1", 0.4))) + ("sun" to mapOf("direction" to direction))
+        val up = assertNotNull(readScene(withSun(listOf(0.2, -0.5, 0.8)), "utilisation"))
+        assertEquals(listOf(0.2, -0.5, 0.8), up.props["sun"])
+        assertEquals("sun", up.props["lighting"])
+        val night = assertNotNull(readScene(withSun(listOf(0.2, -0.5, -0.1)), "utilisation"))
+        assertEquals("none", night.props["lighting"])
+        assertTrue(night.notices.any { "below the horizon" in it })
+        assertNull(assertNotNull(readScene(answer(listOf(member("m1", 0.4))), "utilisation")).props["sun"])
+        assertTrue(assertNotNull(readScene(withSun(listOf(1, 2)), "utilisation")).notices.any { "sun.direction" in it })
+    }
+
+    @Test
     fun the_legend_rounds_to_three_significant_figures() {
         assertEquals("0.0769 ratio", heatLegendText(0.07692307692307693, "ratio"))
         assertEquals("4.03 ratio", heatLegendText(4.03045111619211, "ratio"))

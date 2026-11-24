@@ -123,6 +123,15 @@ private fun topLabelOf(objects: List<Map<*, *>>, readings: List<Reading?>, colou
     return listOf(mapOf("id" to "highest", "at" to at, "text" to text))
 }
 
+/** The sun the answer carries, `sun: {direction: [east, north, up]}` pointing toward the sun: lighting props for it, lighting off with a notice when it is at or below the horizon, nothing when the answer carries none or it is not three numbers. */
+private fun sunPropsOf(answer: Map<*, *>, notices: MutableList<String>): Map<String, Any?> {
+    val direction = (fieldsOf(answer["sun"])["direction"] as? List<*>) ?: return emptyMap()
+    val parts = direction.map { numberOf(it) }
+    if (parts.size != 3 || parts.any { it == null }) return emptyMap<String, Any?>().also { notices += "volume scene: sun.direction must be [east, north, up] numbers; the spec's sun is used." }
+    if (parts[2]!! <= 0.0) return mapOf("lighting" to "none").also { notices += "volume scene: the sun is at or below the horizon; no sunlight or shadows are drawn." }
+    return mapOf("lighting" to "sun", "sun" to parts)
+}
+
 private const val MM_PER_INCH = 25.4
 private const val INCHES_PER_FOOT = 12
 
@@ -168,5 +177,5 @@ fun readScene(scene: Any?, colourBy: String?, specStyles: Any? = null, colourCap
     val rangeProps = if (min != null && max != null && max > min) mapOf("min" to min, "max" to max, "frame" to 0, "unit" to unit) else emptyMap()
     val styles = DEFAULT_STYLES.filterKeys { it in usedStyles } + ((specStyles as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value } ?: emptyMap())
     val labels = if (colourBy != null) topLabelOf(objects, readings, colourBy) else emptyList()
-    return SceneVolume(mapOf("boxes" to boxes, "labels" to labels,"details" to details, "styles" to styles, "legend" to legendFor(styleCounts), "scene_info" to listOfNotNull(colourCaption?.let { "Colour: $it." }, extentsLine(boxes, lengthUnit))) + rangeProps, notices)
+    return SceneVolume(mapOf("boxes" to boxes, "labels" to labels,"details" to details, "styles" to styles, "legend" to legendFor(styleCounts), "scene_info" to listOfNotNull(colourCaption?.let { "Colour: $it." }, extentsLine(boxes, lengthUnit))) + rangeProps + sunPropsOf(answer, notices), notices)
 }
