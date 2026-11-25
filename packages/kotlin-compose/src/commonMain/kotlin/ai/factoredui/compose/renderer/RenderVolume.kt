@@ -88,6 +88,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.PI
 import kotlin.math.hypot
 import kotlin.math.max
+import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.tan
 
@@ -126,9 +127,19 @@ private const val LIT_WHITE_MIX = 0.35f
 private const val EDGE_DARKEN = 0.55f
 private const val SHADOW_LAYERS = 4
 private const val SHADOW_SPREAD = 0.04f
-private const val SHADOW_ALPHA = 0.07f
-private const val FACE_SHADOW_ALPHA = 0.32f
+private const val GROUND_SHADOW_OPACITY = 0.25f
+private const val FACE_SHADOW_OPACITY = 0.32f
 private const val OPAQUE_STRENGTH = 0.999f
+
+/** How dark a full shadow is drawn, from the spec's shadow_opacity (on boxes' faces) and ground_shadow_opacity. */
+private data class ShadowOpacity(val onFaces: Float, val onGround: Float) {
+    val perGroundLayer: Float get() = 1f - (1f - onGround).pow(1f / SHADOW_LAYERS)
+}
+
+private fun shadowOpacityOf(props: Map<String, Any?>): ShadowOpacity = ShadowOpacity(
+    onFaces = (props["shadow_opacity"] as? Number)?.toFloat()?.coerceIn(0f, 1f) ?: FACE_SHADOW_OPACITY,
+    onGround = (props["ground_shadow_opacity"] as? Number)?.toFloat()?.coerceIn(0f, 1f) ?: GROUND_SHADOW_OPACITY,
+)
 private const val DASH_DP = 5f
 private const val LEGEND_SWATCH_DP = 14f
 private const val WHITE_MIX = 0.6f
@@ -338,17 +349,17 @@ private fun DrawScope.drawProjectedBox(projected: ProjectedBox, style: PlanStyle
     }
 }
 
-private fun DrawScope.drawShadow(shadow: ProjectedShadow) {
+private fun DrawScope.drawShadow(shadow: ProjectedShadow, opacity: ShadowOpacity) {
     val outline = shadow.corners
     val centre = Offset(outline.sumOf { it.x.toDouble() }.toFloat() / outline.size, outline.sumOf { it.y.toDouble() }.toFloat() / outline.size)
     (0 until SHADOW_LAYERS).forEach { layer ->
         val spread = 1f + SHADOW_SPREAD * layer
-        drawPath(pathOf(outline.map { centre + (it - centre) * spread }), Color.Black.copy(alpha = SHADOW_ALPHA * shadow.strength), style = Fill)
+        drawPath(pathOf(outline.map { centre + (it - centre) * spread }), Color.Black.copy(alpha = opacity.perGroundLayer * shadow.strength), style = Fill)
     }
 }
 
 /** A box lit from the sun in its style's colour, with a thin edge in a deeper tone of it. */
-private fun DrawScope.drawLitBox(projected: ProjectedBox, style: PlanStyle, ink: Color) {
+private fun DrawScope.drawLitBox(projected: ProjectedBox, style: PlanStyle, ink: Color, shadowOpacity: Float) {
     val stroke = planColour(style.stroke) ?: ink
     val body = lerp(stroke, Color.White, LIT_WHITE_MIX)
     val effect = if (projected.box.isEstimate) PathEffect.dashPathEffect(floatArrayOf(DASH_DP.dp.toPx(), DASH_DP.dp.toPx())) else null
@@ -357,8 +368,8 @@ private fun DrawScope.drawLitBox(projected: ProjectedBox, style: PlanStyle, ink:
         val faceColour = shaded(body, face.shade).copy(alpha = style.opacity)
         drawPath(path, faceColour, style = Fill)
         val (opaque, partial) = face.shadows.partition { it.strength >= OPAQUE_STRENGTH }
-        if (opaque.isNotEmpty()) drawPath(unionPathOf(opaque.map { it.corners }), Color.Black.copy(alpha = FACE_SHADOW_ALPHA * style.opacity), style = Fill)
-        partial.forEach { drawPath(pathOf(it.corners), Color.Black.copy(alpha = FACE_SHADOW_ALPHA * it.strength * style.opacity), style = Fill) }
+        if (opaque.isNotEmpty()) drawPath(unionPathOf(opaque.map { it.corners }), Color.Black.copy(alpha = shadowOpacity * style.opacity), style = Fill)
+        partial.forEach { drawPath(pathOf(it.corners), Color.Black.copy(alpha = shadowOpacity * it.strength * style.opacity), style = Fill) }
         if (projected.box.isEstimate) drawHatch(face.corners, stroke.copy(alpha = 0.55f))
         val edge = shaded(stroke, EDGE_DARKEN)
         drawPath(path, edge, style = Stroke(width = (style.weight ?: LIT_OUTLINE_DP).dp.toPx(), pathEffect = effect))
@@ -522,7 +533,7 @@ private fun RenderVolumeProps(node: SpecNode, resolvedProps: Map<String, Any?>, 
         if (span == null) {
             Text(text = resolvedProps["empty_text"] as? String ?: "", style = VOLUME_TEXT, color = LocalSpecTheme.current.muted)
         } else {
-            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, highlighted, focusSpan, fitLens, colouring.colouring, fieldRead.field, isSide, sideView, pickedPath, throughPath, context)
+            VolumeDrawing(node.id, shown, span, selection, details, if (fill) bottomInsetDp else null, blueprint, ground, if (resolvedProps["lighting"] == "sun") readSun(resolvedProps["sun"]) else null, (resolvedProps["step"] as? Number)?.toDouble(), (resolvedProps["grade_mm"] as? Number)?.toDouble(), gradeTint, currentTint, highlighted, focusSpan, fitLens, colouring.colouring, fieldRead.field, isSide, sideView, shadowOpacityOf(resolvedProps), pickedPath, throughPath, context)
             if (!fill) SelectionDetailCard(node.id, selection.ids, details)
             VolumeLegend(node.id, read.legend, read.styles)
         }
@@ -530,7 +541,7 @@ private fun RenderVolumeProps(node: SpecNode, resolvedProps: Map<String, Any?>, 
 }
 
 @Composable
-private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, fitLens: Float?, colouring: BoxColouring?, field: VolumeField?, isSide: Boolean, sideView: String?, pickedPath: String?, throughPath: String?, context: RenderContext) {
+private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: VolumeSpanMm, selection: DrawingSelection, details: Map<String, SelectionDetail>, fillInsetDp: Float?, blueprint: Boolean, ground: Color?, sun: Direction?, step: Double?, gradeMm: Double?, gradeTint: Color, currentTint: Color, highlighted: Set<String>?, focusSpan: VolumeSpanMm?, fitLens: Float?, colouring: BoxColouring?, field: VolumeField?, isSide: Boolean, sideView: String?, shadowOpacity: ShadowOpacity, pickedPath: String?, throughPath: String?, context: RenderContext) {
     val theme = LocalSpecTheme.current
     val camera = remember(span, focusSpan) { Camera(near = NEAREST_SEEN, minDistance = SMALLEST_VIEW_DISTANCE).also { frameCamera(it, focusSpan ?: span) } }
     var revision by remember(camera) { mutableStateOf(0) }
@@ -567,7 +578,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                         blueprint -> drawBlueprintBox(it, style, ground ?: Color.Transparent, theme.ink)
                         highlighted != null && it.box.id !in highlighted -> drawGhostBox(it, style, theme.ink)
                         phase == Phase.GHOST -> drawGhostBox(it, style, theme.ink)
-                        sun != null -> drawLitBox(it, style, theme.ink)
+                        sun != null -> drawLitBox(it, style, theme.ink, shadowOpacity.onFaces)
                         else -> drawProjectedBox(it, style, theme.ink)
                     }
                     if (phase == Phase.CURRENT && !blueprint) drawCurrentOutline(it, currentTint)
@@ -575,7 +586,7 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                 val isBuried = { projected: ProjectedBox -> gradeMm != null && !blueprint && projected.box.zMm + projected.box.heightMm < gradeMm - BURIED_TOLERANCE_MM }
                 scene.boxes.filter(isBuried).forEach(::drawBox)
                 if (gradeMm != null && !blueprint) scene.ground?.let { drawPath(pathOf(it), gradeTint, style = Fill) }
-                scene.shadows.forEach { drawShadow(it) }
+                scene.shadows.forEach { drawShadow(it, shadowOpacity) }
                 if (splats != null && splatColours != null) drawFieldSplats(splats, splatColours)
                 scene.boxes.filterNot(isBuried).forEach(::drawBox)
                 if (scene.north != null && scene.northTail != null) drawCompassArrow(scene.northTail, scene.northTail + (scene.north - scene.northTail) * COMPASS_HEAD_FRACTION, theme.ink)

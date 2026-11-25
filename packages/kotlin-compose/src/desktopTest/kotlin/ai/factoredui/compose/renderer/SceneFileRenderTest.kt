@@ -16,6 +16,7 @@ import kotlin.test.assertTrue
 
 private const val SCENE_DIRECTORY_PROPERTY = "scene.files.directory"
 private const val DEFAULT_SCENE_DIRECTORY = "C:/Users/falcon-ridge-bmax/workspace/world-engine/kotlin/build/scenes"
+private const val SCENE_FILE_SUFFIX = ".scene.json"
 private const val PHONE_WIDTH_PX = 780
 private const val PHONE_HEIGHT_PX = 1560
 private const val PHONE_DENSITY = 2f
@@ -27,6 +28,8 @@ private fun plainValueOf(element: JsonElement): Any? = when (element) {
     is JsonPrimitive -> if (element.isString) element.content else element.booleanOrNull ?: element.doubleOrNull
 }
 
+private fun onlyLimitOf(scene: Any?): String? = ((scene as? Map<*, *>)?.get("limits") as? Map<*, *>)?.keys?.singleOrNull()?.toString()
+
 private fun sceneSpec(colourBy: String?): String = """
     { "spec_version": 1, "renderer_min": 1,
       "root": { "id": "root", "type": "stack", "props": { "fill": true }, "children": [
@@ -36,16 +39,21 @@ private fun sceneSpec(colourBy: String?): String = """
 class SceneFileRenderTest {
 
     @Test
-    fun the_scene_answer_files_the_world_engine_wrote_are_drawn_when_they_are_on_this_machine() {
+    fun every_scene_answer_file_in_the_folder_is_drawn_coloured_by_its_one_limit_and_an_empty_folder_says_so() {
         val directory = File(System.getProperty(SCENE_DIRECTORY_PROPERTY) ?: DEFAULT_SCENE_DIRECTORY)
-        val files = listOf("frame" to "utilisation", "greenhouse" to null).map { (name, colourBy) -> Triple(name, File(directory, "$name.scene.json"), colourBy) }
-        val present = files.filter { it.second.isFile }
-        files.filterNot { it.second.isFile }.forEach { println("SCENE-FILE-ABSENT ${it.second}") }
-        present.forEach { (name, file, colourBy) ->
+        val files = directory.listFiles { file -> file.name.endsWith(SCENE_FILE_SUFFIX) }.orEmpty().sortedBy { it.name }
+        if (files.isEmpty()) println("SCENE-FILE-ABSENT $directory")
+        files.forEach { file ->
             val scene = plainValueOf(Json.parseToJsonElement(file.readText()))
-            val png = renderSpecToPng(sceneSpec(colourBy), PHONE_WIDTH_PX, PHONE_HEIGHT_PX, PHONE_DENSITY, mapOf("engine" to mapOf("scene" to scene)))
-            println("SCENE-FILE-PNG $name ${Base64.getEncoder().encodeToString(png)}")
-            assertTrue(png.isNotEmpty(), name)
+            val png = renderSpecToPng(
+                specJson = sceneSpec(onlyLimitOf(scene)),
+                width = PHONE_WIDTH_PX,
+                height = PHONE_HEIGHT_PX,
+                density = PHONE_DENSITY,
+                data = mapOf("engine" to mapOf("scene" to scene)),
+            )
+            println("SCENE-FILE-PNG ${file.name.removeSuffix(SCENE_FILE_SUFFIX)} ${Base64.getEncoder().encodeToString(png)}")
+            assertTrue(png.isNotEmpty(), file.name)
         }
     }
 }

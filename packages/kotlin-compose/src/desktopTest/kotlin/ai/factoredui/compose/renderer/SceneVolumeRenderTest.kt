@@ -91,6 +91,19 @@ class SceneVolumeRenderTest {
     }
 
     @Test
+    fun how_dark_a_shadow_is_drawn_comes_from_the_spec_and_its_defaults_are_the_unset_picture() {
+        val lowSun = listOf(-0.85, -0.25, 0.46)
+        val unset = pictureOf("utilisation", sun = lowSun)
+        val defaults = pictureOf("utilisation", """ "shadow_opacity": 0.32, "ground_shadow_opacity": 0.25, """, lowSun)
+        val darkFaces = pictureOf("utilisation", """ "shadow_opacity": 0.9, """, lowSun)
+        val darkGround = pictureOf("utilisation", """ "ground_shadow_opacity": 0.9, """, lowSun)
+        printPicture("shadow-dark", darkFaces)
+        assertTrue(unset.contentEquals(defaults))
+        assertFalse(unset.contentEquals(darkFaces))
+        assertFalse(unset.contentEquals(darkGround))
+    }
+
+    @Test
     fun a_side_elevation_seen_from_the_east_or_the_west_differs_from_the_south_and_each_other() {
         val south = pictureOf("utilisation", """ "camera": "side", """)
         val east = pictureOf("utilisation", """ "camera": "side", "view": "east", """)
