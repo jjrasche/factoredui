@@ -33,7 +33,7 @@ private fun onlyLimitOf(scene: Any?): String? = ((scene as? Map<*, *>)?.get("lim
 private fun sceneSpec(colourBy: String?): String = """
     { "spec_version": 1, "renderer_min": 1,
       "root": { "id": "root", "type": "stack", "props": { "fill": true }, "children": [
-        { "id": "scene", "type": "volume", "props": { "fill": true, "anchor": "fill", "scene": "{engine.scene}", ${colourBy?.let { """"colour_by": "$it", "value_ramp": "heat",""" } ?: ""} "lighting": "sun", "fit": true, "fov_deg": 12 } } ] } }
+        { "id": "scene", "type": "volume", "props": { "fill": true, "anchor": "fill", "scene": "{engine.scene}", ${colourBy?.let { """"colour_by": "$it", "value_ramp": "darkening",""" } ?: ""} "lighting": "sun", "fit": true, "fov_deg": 12 } } ] } }
 """
 
 class SceneFileRenderTest {

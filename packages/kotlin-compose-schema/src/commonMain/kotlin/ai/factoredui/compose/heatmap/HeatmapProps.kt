@@ -33,6 +33,7 @@ private val NAMED_RAMPS: Map<String, List<Long>> = mapOf(
     "heat" to listOf(0xFF1B1B3A, 0xFF6A1B6B, 0xFFC4452F, 0xFFF59E0B, 0xFFFFF3B0),
     "cool_warm" to listOf(0xFF2B5FA8, 0xFF8FB8DE, 0xFFF1F1F1, 0xFFE9A07A, 0xFFB4352A),
     "viridis" to listOf(0xFF440154, 0xFF3B528B, 0xFF21908C, 0xFF5DC863, 0xFFFDE725),
+    "darkening" to listOf(0xFFFFF3B0, 0xFFF59E0B, 0xFFC4452F, 0xFF6A1B6B, 0xFF1B1B3A),
 )
 
 private const val BLANK_CELL: Long = 0x00000000L

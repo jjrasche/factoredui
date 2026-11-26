@@ -34,6 +34,13 @@ class HeatmapPropsTest {
     }
 
     @Test
+    fun the_darkening_ramp_is_pale_at_min_and_dark_at_max() {
+        val ramp = drawn(heat(mapOf("ramp" to "darkening"))).ramp
+        assertEquals(0xFFFFF3B0L, rampColourFor(ramp, 0.0))
+        assertEquals(0xFF1B1B3AL, rampColourFor(ramp, 10.0))
+    }
+
+    @Test
     fun a_ramp_of_stops_needs_no_min_and_max_and_takes_them_from_its_first_and_last_stop() {
         val props = drawn(heat(mapOf("ramp" to mapOf("stops" to listOf(listOf(20, "#0000ff"), listOf(80, "#ff0000"))), "min" to null, "max" to null)))
         assertEquals(20.0 to 80.0, props.min to props.max)
@@ -54,7 +61,7 @@ class HeatmapPropsTest {
 
     @Test
     fun a_ramp_name_it_does_not_know_or_a_name_with_no_range_refuses_the_drawing() {
-        assertTrue(refused(heat(mapOf("ramp" to "rainbow"))).single().contains("is not one of heat, cool_warm, viridis"))
+        assertTrue(refused(heat(mapOf("ramp" to "rainbow"))).single().contains("is not one of heat, cool_warm, viridis, darkening"))
         assertTrue(refused(heat(mapOf("min" to 5, "max" to 5))).single().contains("needs min and max"))
     }
 

@@ -55,7 +55,7 @@ class VolumeColourTest {
     @Test
     fun a_ramp_that_cannot_be_read_is_named_and_the_boxes_keep_their_style() {
         driveScreen(specWith(""","values": [0, 40]""", """ "value_ramp": "rainbow", "min": 0, "max": 40, "frame": "{play.frame}", """), widthDp = WIDTH_DP, heightDp = HEIGHT_DP).use { screen ->
-            assertNotNull(screen.boundsOfText("heatmap ramp 'rainbow' is not one of heat, cool_warm, viridis; give { stops: [[value, colour], ...] } or one of those names."))
+            assertNotNull(screen.boundsOfText("heatmap ramp 'rainbow' is not one of heat, cool_warm, viridis, darkening; give { stops: [[value, colour], ...] } or one of those names."))
         }
     }
 

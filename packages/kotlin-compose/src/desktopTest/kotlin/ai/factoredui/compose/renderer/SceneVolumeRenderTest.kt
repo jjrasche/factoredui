@@ -53,7 +53,7 @@ private fun frameAnswer(sun: List<Double>): Map<String, Any?> = mapOf(
 private fun sceneSpec(colourBy: String, extra: String): String = """
     { "spec_version": 1, "renderer_min": 1,
       "root": { "id": "root", "type": "stack", "props": { "fill": true }, "children": [
-        { "id": "frame", "type": "volume", "props": { "fill": true, "anchor": "fill", $extra "scene": "{engine.scene}", "colour_by": "$colourBy", "colour_caption": "demand over capacity", "value_ramp": "heat", "lighting": "sun", "fit": true, "fov_deg": 12 } } ] } }
+        { "id": "frame", "type": "volume", "props": { "fill": true, "anchor": "fill", $extra "scene": "{engine.scene}", "colour_by": "$colourBy", "colour_caption": "demand over capacity", "value_ramp": "darkening", "lighting": "sun", "fit": true, "fov_deg": 12 } } ] } }
 """
 
 private fun pictureOf(colourBy: String, extra: String = "", sun: List<Double> = listOf(-0.5, -0.6, 0.75)): ByteArray = renderSpecToPng(
