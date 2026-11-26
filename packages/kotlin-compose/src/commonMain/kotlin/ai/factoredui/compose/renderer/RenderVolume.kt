@@ -53,6 +53,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.ui.layout.Layout
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
@@ -134,6 +136,20 @@ private const val OPAQUE_STRENGTH = 0.999f
 /** How dark a full shadow is drawn, from the spec's shadow_opacity (on boxes' faces) and ground_shadow_opacity. */
 private data class ShadowOpacity(val onFaces: Float, val onGround: Float) {
     val perGroundLayer: Float get() = 1f - (1f - onGround).pow(1f / SHADOW_LAYERS)
+}
+
+private const val LABEL_GROUND_ALPHA = 0.85f
+private const val LABEL_LIFT_DP = 6
+
+/** A label sitting just above the point it names, slid sideways and down as needed to stay whole inside the drawing. */
+@Composable
+private fun LabelAbovePoint(at: Offset, content: @Composable () -> Unit) {
+    Layout(content = content, modifier = Modifier.fillMaxSize()) { measurables, constraints ->
+        val placeable = measurables.first().measure(constraints.copy(minWidth = 0, minHeight = 0))
+        val left = (at.x - placeable.width / 2f).coerceIn(0f, (constraints.maxWidth - placeable.width).coerceAtLeast(0).toFloat())
+        val top = (at.y - placeable.height - LABEL_LIFT_DP.dp.toPx()).coerceIn(0f, (constraints.maxHeight - placeable.height).coerceAtLeast(0).toFloat())
+        layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(left.toInt(), top.toInt()) }
+    }
 }
 
 private fun shadowOpacityOf(props: Map<String, Any?>): ShadowOpacity = ShadowOpacity(
@@ -594,8 +610,8 @@ private fun ColumnScope.VolumeDrawing(nodeId: String, read: VolumeRead, span: Vo
                 scene.boxes.filter { it.box.id in selection.ids }.forEach { drawSelectedBox(it, if (blueprint) Color.White else theme.ink) }
             }
             scene.labels.forEach { label ->
-                PlanPlaced(label.at.x, label.at.y, PlanLabelAlign.CENTER, null) {
-                    Text(text = label.text, style = VOLUME_TEXT, color = planColour(read.styles[label.style]?.stroke) ?: theme.ink)
+                LabelAbovePoint(label.at) {
+                    Text(text = label.text, style = VOLUME_TEXT, color = planColour(read.styles[label.style]?.stroke) ?: theme.ink, modifier = Modifier.background(theme.ground.copy(alpha = LABEL_GROUND_ALPHA)).padding(horizontal = 4.dp, vertical = 1.dp))
                 }
             }
             scene.boxes.forEach { projected ->
